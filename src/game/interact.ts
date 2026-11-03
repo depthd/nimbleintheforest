@@ -788,7 +788,7 @@ export class Interaction {
     eq.charges--;
     let chance = this.flameQuality(kind);
     if (kind === 'match' && eq.moisture > 0.4) chance *= 0.05;
-    const air = G.house.zoneAt(G.player.pos) ? G.thermal.zone(G.house.zoneAt(G.player.pos)!).T : G.weather.temp;
+    const air = G.thermal.tAt(G.camera.position);
     if (kind === 'lighter' && air < -15) chance *= clamp(1 - (-15 - air) / 15, 0.15, 1);
     if (!G.house.zoneAt(G.player.pos)) chance *= 1 - clamp((G.weather.wind - 4) / 14, 0, 0.7);
     if (Math.random() < chance) {

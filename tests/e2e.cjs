@@ -131,6 +131,36 @@ function check(name, ok, extra = '') {
   await page.waitForTimeout(800);
   await shot('04-stove');
 
+  // ---- the air inside is a field, not one number ----
+  const field = await ev(() => {
+    const g = window.__game;
+    const G = g.G;
+    const V = g.THREE.Vector3;
+    const Th = G.thermal;
+    const Y = G.house.Y0;
+    const sf = G.fires.stoveFire;
+    const feed = (n) => { for (let i = 0; i < n; i++) G.fires.addFuel(sf, G.entities.spawnItem('firewood', new V(0, -50, 0), { moisture: 0.05 })); };
+    for (let h = 0; h < 12; h++) { if (sf.fuel.length < 2) feed(2); if (!sf.burning) G.fires.ignite(sf, 1); g.simulate(600); }
+    const at = (x, y, z) => Th.tAt(new V(x, Y + y, z));
+    const out = { stove: at(-3.5, 1.2, -2.4), corner: at(4.5, 1.2, 3.5), centre: at(0.5, 1.2, 0) };
+    const w = G.house.windows.find((e) => e.data.zone === 'ground' && e.data.inward.x === -1);
+    const near = new V(4.2, Y + 1.4, 0.8);
+    out.draftBefore = Th.draftAt(near);
+    G.house.breakGlass(w, true);
+    G.thermal.update(1);
+    g.simulate(900);
+    out.draftBroken = Th.draftAt(near);
+    out.nearBroken = Th.tAt(near);
+    out.centreBroken = at(0.5, 1.2, 0);
+    G.house.hangCover(w, G.entities.spawnItem('blanket', new V(0, -50, 0)));
+    G.thermal.update(1);
+    out.draftCovered = Th.draftAt(near);
+    return out;
+  });
+  check('stove side warmer than far corner', field.stove > field.corner + 3, JSON.stringify(field));
+  check('broken window: draught and a cold spot', field.draftBroken > 0.3 && field.nearBroken < field.centreBroken - 1);
+  check('blanket over the hole cuts the draught', field.draftCovered < field.draftBroken * 0.5);
+
   // ---- fell a tree and cut the trunk ----
   const tree = await ev(() => {
     const g = window.__game;

@@ -411,7 +411,7 @@ export class Player {
     cam.rotation.z = 0;
     // breath vapour in cold air
     this.breathT -= dtReal;
-    const air = G.house.zoneAt(this.pos) ? G.thermal.zone(G.house.zoneAt(this.pos)!).T : G.weather.temp;
+    const air = G.thermal.tAt(cam.position);
     if (this.breathT <= 0) {
       this.breathT = this.sprinting ? 1.4 : 3.2;
       if (air < 3) G.fx.breath(cam.position.clone().add(new THREE.Vector3(0, -0.12, 0)), this.forward());

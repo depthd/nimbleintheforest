@@ -426,9 +426,8 @@ export class Fires {
   }
 
   private ambientAt(e: Entity) {
-    const p = e.inWorld || e.pinned ? e.position() : G.player.pos;
-    const z = G.house.zoneAt(p);
-    return z ? G.thermal.zone(z).T : G.weather.temp;
+    const p = e.inWorld || e.pinned ? e.position() : G.player.pos.clone().add(new THREE.Vector3(0, 1, 0));
+    return G.thermal.tAt(p);
   }
 
   private potStep(e: Entity, dt: number, heatKW: number) {
@@ -447,7 +446,9 @@ export class Fires {
         c.temp = Math.min(100, c.temp + Q / (c.water * 4186 + e.def!.mass * 450));
         if (c.temp >= 99.5) {
           e.data.boilT = (e.data.boilT ?? 0) + dt;
-          c.water = Math.max(0, c.water - dt * 0.00004);
+          const ev = Math.min(c.water, dt * 0.00004);
+          c.water -= ev;
+          G.thermal.addVapour(e.position(), ev * 1000);
           if (e.data.boilT > 60 && !c.boiled) {
             c.boiled = true;
             c.dirty = false;

@@ -124,3 +124,8 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
   #start .settings { grid-template-columns: 1fr; }
   #debug { left: 8px; right: 8px; width: auto; }
 }
+
+#legend { display: none; position: absolute; left: 50%; top: 14px; transform: translateX(-50%); padding: 6px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; width: 220px; text-align: center; }
+#legend .grad { height: 8px; border-radius: 4px; margin: 5px 0 2px; }
+#legend .ends { display: flex; justify-content: space-between; color: var(--dim); font-size: 11px; }
+#env .draft { color: var(--warn); }

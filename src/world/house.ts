@@ -445,6 +445,14 @@ export class House {
       const top = (i + 1) * rise;
       const z = zBottom - (i + 0.5) * run;
       this.solid(w, top, run, cx, top / 2, z, i % 2 ? M.wood() : M.woodDark(), 1.2, false);
+      // solid block under the walking ramp so you can't walk through the staircase
+      const under = i * rise - 0.03;
+      if (under > 0.05) {
+        G.world.createCollider(
+          G.R.ColliderDesc.cuboid(w / 2, under / 2, run / 2).setTranslation(cx, this.Y0 + under / 2, z).setCollisionGroups(GROUPS_STATIC),
+          this.body,
+        );
+      }
     }
     const len = Math.hypot(zBottom + 1.0, UPPER);
     const ang = Math.atan2(UPPER, zBottom + 1.0);
@@ -751,14 +759,16 @@ export class House {
 
   update(dt: number) {
     this.updateDoor(dt);
-    // window frost depends on inside temperature
-    for (const w of this.windows) {
+    // frost grows on the glass from the room's moisture (see thermal model)
+    this.windows.forEach((w, i) => {
       const d = w.data as WindowData;
-      if (d.glass !== 'intact') continue;
-      const tin = G.thermal?.zone(d.zone).T ?? -10;
-      const frost = Math.max(0, Math.min(1, (2 - tin) / 12));
+      if (d.glass !== 'intact') return;
+      const grams = G.thermal?.windowFrost[i] ?? 0;
+      const frost = Math.min(1, grams / 25);
       const m = d.glassMesh.material as THREE.MeshStandardMaterial;
-      m.opacity = 0.22 + frost * 0.5;
-    }
+      m.opacity = 0.2 + frost * 0.62;
+      m.color.setRGB(0.87 + frost * 0.13, 0.93 + frost * 0.07, 0.99);
+      m.roughness = 0.15 + frost * 0.7;
+    });
   }
 }

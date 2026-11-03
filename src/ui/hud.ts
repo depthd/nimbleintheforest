@@ -10,6 +10,8 @@ import { Tex } from '../core/textures';
 
 const $ = (sel: string) => document.querySelector(sel) as HTMLElement;
 const KEY_LABEL: Record<string, string> = { E: 'E', F: 'F', G: 'G', LMB: 'ЛКМ', RMB: 'ПКМ' };
+const OVERLAY_NAMES: Record<string, string> = { off: 'Выкл', temp: 'Температура', rh: 'Влажность', draft: 'Сквозняк' };
+const OVERLAY_ORDER = ['off', 'temp', 'rh', 'draft'] as const;
 
 function fmtTemp(t: number) {
   return `${t > 0 ? '+' : ''}${t.toFixed(t > -10 && t < 10 ? 1 : 0)}°C`;
@@ -223,8 +225,7 @@ export class HUD {
     const h = Number(range.value);
     $('#sleep-h').textContent = `${h} ч`;
     const b = this.bedding(plan.mode, plan.bed);
-    const z = G.house.zoneAt(G.player.pos);
-    const air = z ? G.thermal.zone(z).T : G.weather.temp;
+    const air = G.thermal.tAt(G.player.pos.clone().add(new THREE.Vector3(0, 0.6, 0)));
     const clo = G.body.wornClo(G.player.worn).clo + (G.player.wrapped?.def?.insul ?? 0);
     const warmth = clo + b;
     // rough rule: how cold can you sleep at this insulation
@@ -457,6 +458,7 @@ export class HUD {
         <label>Средняя температура <b id="dbg-bt">${S.baseTemp}°C</b><input type="range" id="dbg-base" min="-40" max="0" step="1" value="${S.baseTemp}"></label>
         <label>Скорость времени <b id="dbg-ts">×${S.timeScale}</b><input type="range" id="dbg-scale" min="1" max="120" step="1" value="${S.timeScale}"></label>
         <label>Погода <select id="dbg-weather">${wopts}</select></label>
+        <label>Тепловизор [V] <select id="dbg-overlay">${['off', 'temp', 'rh', 'draft'].map((m) => `<option value="${m}" ${G.thermal.overlayMode === m ? 'selected' : ''}>${OVERLAY_NAMES[m]}</option>`).join('')}</select></label>
         <div class="row2"><button data-dbg="h1">+1 час</button><button data-dbg="h6">+6 ч</button><button data-dbg="night">→ ночь</button><button data-dbg="day">→ утро</button></div>
         <label class="chk"><input type="checkbox" id="dbg-nocold" ${S.noCold ? 'checked' : ''}> Без холода (тест)</label>
         <label class="chk"><input type="checkbox" id="dbg-horror" ${S.horror ? 'checked' : ''}> Жуть по ночам</label>
@@ -468,10 +470,15 @@ export class HUD {
     const B = G.body;
     const zrows = (['ground', 'upper'] as const).map((n) => {
       const z = G.thermal.zone(n);
-      const parts = z.parts.map((p) => `<tr><td>${p.label}</td><td>${p.ua.toFixed(0)} Вт/К</td><td>${((p.ua * (z.T - G.weather.temp)) / 1000).toFixed(2)} кВт</td></tr>`).join('');
-      return `<h4>${n === 'ground' ? '1 этаж' : '2 этаж'}: ${fmtTemp(z.T)} <small>→ равновесие ${fmtTemp(G.thermal.equilibrium(n))}</small></h4>
+      const parts = z.parts.map((p) => `<tr><td>${p.label}</td><td></td><td>${(p.w / 1000).toFixed(2)} кВт</td></tr>`).join('');
+      return `<h4>${n === 'ground' ? '1 этаж' : '2 этаж'}: ${fmtTemp(z.T)} · влажн. ${Math.round(z.rh * 100)}%</h4>
         <table>${parts}<tr class="sum"><td>Приток тепла</td><td></td><td>${(z.heatW / 1000).toFixed(2)} кВт</td></tr><tr class="sum"><td>Потери</td><td>${z.ua.toFixed(0)} Вт/К</td><td>${(z.lossW / 1000).toFixed(2)} кВт</td></tr></table>`;
     }).join('');
+    const P = G.player;
+    const chest = P.pos.clone().add(new THREE.Vector3(0, 1.2, 0));
+    const here = G.house.zoneAt(P.pos)
+      ? `<h4>Здесь: ${fmtTemp(G.thermal.tAt(chest))} · влажн. ${Math.round(G.thermal.rhAt(chest) * 100)}% · сквозняк ${G.thermal.draftAt(chest).toFixed(1)} м/с · стены ${fmtTemp(G.thermal.mrtAt(chest))}</h4>`
+      : '';
     const fires = G.fires.list.map((f) => `<div>${G.fires.describe(f)}<br><small>${f.fuel.map((x) => `${x.name}${x.burning ? '🔥' : ''}${x.moisture > 0.3 ? '💧' : ''} ${Math.round(x.remaining / 60)}м`).join(', ') || '—'} · угли ${Math.round(f.embers * 100)}%</small></div>`).join('');
     live.innerHTML = `
       <h4>Тело</h4>
@@ -485,6 +492,7 @@ export class HUD {
         <tr><td>Состояние</td><td>${B.condition.toFixed(1)}%</td><td>обморож. ${Math.round(B.frostHands * 100)}/${Math.round(B.frostFeet * 100)}%</td></tr>
       </table>
       <h4>Улица: ${fmtTemp(G.weather.temp)} · ветер ${G.weather.wind.toFixed(1)} м/с · ${WEATHER_NAMES[G.weather.type]}</h4>
+      ${here}
       ${zrows}
       <h4>Огонь</h4>${fires}`;
   }
@@ -501,6 +509,7 @@ export class HUD {
       $('#dbg-ts').textContent = `×${S.timeScale}`;
     }
     if (t.id === 'dbg-weather') S.weatherLock = t.value === 'auto' ? null : t.value;
+    if (t.id === 'dbg-overlay') this.setOverlay(t.value as 'off');
     if (t.id === 'dbg-nocold') S.noCold = t.checked;
     if (t.id === 'dbg-horror') S.horror = t.checked;
   }
@@ -562,6 +571,27 @@ export class HUD {
     }
   }
 
+  // ---------- thermal vision ----------
+
+  setOverlay(mode: 'off' | 'temp' | 'rh' | 'draft') {
+    G.thermal.setOverlay(mode);
+    const el = $('#legend');
+    if (mode === 'off') {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'block';
+    const grad =
+      mode === 'temp' ? 'linear-gradient(90deg,#1a2bff,#2ea8ff,#4af2d6,#a8f04a,#ffd23a,#ff7a1a,#ff2020)' : mode === 'rh' ? 'linear-gradient(90deg,#ffd94c,#33a6ff)' : 'linear-gradient(90deg,#33e64d,#ff3399)';
+    const ends = mode === 'temp' ? ['−20°', '0°', '+30°'] : mode === 'rh' ? ['сухо', '', '100%'] : ['тихо', '', '2 м/с'];
+    el.innerHTML = `<div>Тепловизор: ${OVERLAY_NAMES[mode]} <span class="key">V</span></div><div class="grad" style="background:${grad}"></div><div class="ends"><span>${ends[0]}</span><span>${ends[1]}</span><span>${ends[2]}</span></div>`;
+  }
+
+  cycleOverlay() {
+    const i = OVERLAY_ORDER.indexOf(G.thermal.overlayMode);
+    this.setOverlay(OVERLAY_ORDER[(i + 1) % OVERLAY_ORDER.length]);
+  }
+
   // ---------- per frame ----------
 
   update(dt: number) {
@@ -620,7 +650,12 @@ export class HUD {
     const P = G.player;
     const z = G.house.zoneAt(P.pos);
     const W = G.weather;
-    const loc = z ? `Дом, ${z === 'ground' ? '1 этаж' : '2 этаж'}: <b>${fmtTemp(G.thermal.zone(z).T)}</b>` : G.lake.onIce(P.pos) ? 'На льду озера' : Math.hypot(P.pos.x, P.pos.z) < 14 ? 'Двор' : 'Лес';
+    let loc = G.lake.onIce(P.pos) ? 'На льду озера' : Math.hypot(P.pos.x, P.pos.z) < 14 ? 'Двор' : 'Лес';
+    if (z) {
+      const chest = P.pos.clone().add(new THREE.Vector3(0, 1.2, 0));
+      const dr = G.thermal.draftAt(chest);
+      loc = `Дом, ${z === 'ground' ? '1 этаж' : '2 этаж'} · здесь <b>${fmtTemp(G.thermal.tAt(chest))}</b> · влажн. ${Math.round(G.thermal.rhAt(chest) * 100)}%${dr > 0.15 ? ` · <span class="draft">сквозняк ${dr.toFixed(1)} м/с</span>` : ''}`;
+    }
     this.env.innerHTML = `
       <div class="time">День ${dayOf(G.time)} · ${fmtTime(G.time)}</div>
       <div>${WEATHER_NAMES[W.type]} · ${fmtTemp(W.temp)} · ветер ${W.wind.toFixed(0)} м/с</div>

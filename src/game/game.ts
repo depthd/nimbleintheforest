@@ -179,6 +179,7 @@ function handleGlobalKeys() {
     G.interact.timed = { action: { key: 'E', label: 'Отряхнуть снег', time: 2, run: () => { G.body.snow = 0; msg('Снег стряхнут', 'info'); } }, t: 0, start: P.pos.clone() };
   }
   if (inp.hit('KeyZ')) hud.openSleep('floor');
+  if (inp.hit('KeyV')) hud.cycleOverlay();
   if (inp.hit('KeyT')) hud.openSleep('wait');
   for (let i = 1; i <= 9; i++) {
     if (inp.hit('Digit' + i)) {
@@ -201,18 +202,24 @@ function bodyEnv(): Env {
   const P = G.player;
   const zone = G.house.zoneAt(P.pos);
   const W = G.weather;
-  const air = zone ? G.thermal.zone(zone).T : W.temp;
+  const chest = P.pos.clone().add(new THREE.Vector3(0, P.crouch ? 0.7 : 1.2, 0));
+  let air = W.temp;
   let wind = 0;
+  let rh = 0.85;
+  let surfaces = 0;
   if (!zone) {
     const inForest = !G.lake.onIce(P.pos) && Math.hypot(P.pos.x, P.pos.z) > 16;
     wind = W.wind * (inForest ? 0.65 : 1);
     // porch roof and walls give a little shelter
     if (Math.abs(P.pos.x - 2) < 3 && P.pos.z > 3.9 && P.pos.z < 6.2) wind *= 0.6;
   } else {
-    // drafts from broken windows/open door
-    const z = G.thermal.zone(zone);
-    const leak = z.parts.filter((p) => p.label.startsWith('Сквозняк') || p.label.startsWith('Открытая') || p.label.startsWith('Пустой')).reduce((s, p) => s + p.ua, 0);
-    wind = Math.min(4, leak / 300);
+    air = G.thermal.tAt(chest);
+    wind = Math.min(5, G.thermal.draftAt(chest));
+    // standing in the jet from a broken window you breathe almost outdoor air
+    air += (W.temp - air) * Math.min(0.7, wind / 3);
+    rh = G.thermal.rhAt(chest);
+    // cold walls and glass nearby pull warmth out of you by radiation
+    surfaces = 0.45 * (G.thermal.mrtAt(chest) - air);
   }
   const sun = !zone ? 3 * G.sky.daylight * (1 - W.cloud) : 0;
   const se = G.hud.sleepEnv();
@@ -222,7 +229,7 @@ function bodyEnv(): Env {
   return {
     air,
     wind,
-    radiant: G.fires.radiantAt(P.pos, zone) + sun,
+    radiant: G.fires.radiantAt(P.pos, zone) + sun + surfaces,
     inWater: !!P.water,
     sleeping: se.sleeping,
     bedding: se.bedding,
@@ -232,7 +239,32 @@ function bodyEnv(): Env {
     metalTool: metal,
     outdoors: !zone,
     snowfall: !zone && !underRoof ? W.snow : 0,
+    rh,
   };
+}
+
+/** Wood and matches dry in warm dry air and get damp in cold humid corners. */
+function updateMoisture(dtGame: number) {
+  const P = G.player;
+  for (const e of G.entities.list) {
+    if (e.removed || !(e.def?.fuel || e.defId === 'matches')) continue;
+    const carried = P.inventory.includes(e);
+    if (!carried && !e.inWorld) continue;
+    const p = carried ? P.pos.clone().add(new THREE.Vector3(0, 1, 0)) : e.position();
+    const inside = !!G.house.zoneAt(p);
+    const T = inside ? G.thermal.tAt(p) : G.weather.temp;
+    const rh = inside ? G.thermal.rhAt(p) : 0.85;
+    const pack = carried ? 0.3 : 1;
+    const fire = G.fires.radiantAt(p, inside ? 'ground' : null);
+    if (T > 3 && rh < 0.8) {
+      const rate = ((T - 3) / (20 * 3600 * 8)) * (1 + fire / 4) * (0.85 - rh) * 2 * pack;
+      const before = e.moisture;
+      e.moisture = Math.max(0.03, e.moisture - dtGame * rate);
+      if (inside) G.thermal.addVapour(p, (before - e.moisture) * 400 * e.mass);
+    } else if (inside && rh > 0.88) {
+      e.moisture = Math.min(0.5, e.moisture + ((dtGame * (rh - 0.88)) / 3600) * 0.6 * pack);
+    }
+  }
 }
 
 const lampLights = new Map<Entity, THREE.PointLight>();
@@ -296,9 +328,14 @@ function contactEvents() {
     const b = G.entities.byCollider.get(ev.collider2());
     const win = a?.kind === 'window' ? a : b?.kind === 'window' ? b : null;
     const other = win === a ? b : a;
-    if (win && other && other.kind === 'item' && win.data.glass === 'intact' && !win.data.cover && ev.maxForceMagnitude() > 260) {
-      G.house.breakGlass(win);
-    }
+    if (!win || !other || other.kind !== 'item' || win.data.glass !== 'intact' || win.data.cover) return;
+    const d = other.def;
+    // soft things (blankets, clothes, paper, boughs) don't break glass
+    const soft = !!d && (!!d.wear || !!d.insul || ['cloth', 'paper', 'tinder', 'boughs'].includes(d.fuel?.kind ?? ''));
+    if (soft) return;
+    // pressing something you hold against the glass needs real force; a throw breaks it
+    const need = G.player.carried === other ? 1500 : 260;
+    if (ev.maxForceMagnitude() > need) G.house.breakGlass(win);
   });
   G.events.drainCollisionEvents(() => {});
 }
@@ -310,17 +347,13 @@ function simulate(dtGame: number, dtReal: number) {
   G.thermal.update(dtGame);
   G.lake.update(dtGame);
   updateLights(dtGame);
-  // matches and wet stuff dry slowly in the warm
-  for (const e of G.player.inventory) {
-    if (e.moisture > 0.05 && (e.defId === 'matches' || e.def?.fuel)) {
-      const z = G.house.zoneAt(G.player.pos);
-      const T = z ? G.thermal.zone(z).T : G.weather.temp;
-      if (T > 5) e.moisture = Math.max(0.03, e.moisture - (dtGame * (T - 5)) / (20 * 3600 * 6));
-    }
-  }
+  updateMoisture(dtGame);
   G.player.workT = Math.max(0, G.player.workT - dtReal);
   G.body.activity = activity();
+  const wet0 = G.body.wetness;
   G.body.update(dtGame, bodyEnv(), G.player.worn);
+  // drying clothes put water vapour into the room
+  if (G.body.wetness < wet0 && G.house.zoneAt(G.player.pos)) G.thermal.addVapour(G.player.pos.clone().add(new THREE.Vector3(0, 1.1, 0)), (wet0 - G.body.wetness) * 900);
 }
 
 /** Advance time quickly (waiting / debug). */

@@ -20,6 +20,7 @@ export interface Env {
   metalTool: boolean;
   outdoors: boolean;
   snowfall: number;
+  rh: number; // relative humidity of the air around you, 0..1
 }
 
 const MET: Record<Activity, number> = { idle: 95, walk: 210, sprint: 430, work: 380, sleep: 72, water: 420 };
@@ -92,7 +93,7 @@ export class Body {
     this.windproof = windproof;
     const windEff = env.wind * (1 - windproof * 0.85);
     const Te = env.air + env.radiant;
-    this.felt = env.outdoors ? G.weather.windChill(env.air, env.wind) + env.radiant : Te;
+    this.felt = G.weather.windChill(env.air, env.wind) + env.radiant;
 
     // metabolic heat
     let M = MET[this.activity];
@@ -193,7 +194,8 @@ export class Body {
       this.wetness = clamp(this.wetness + melt * 0.45, 0, 1);
     }
     if (Te > 0 && !env.inWater) {
-      this.wetness = clamp(this.wetness - (dt * Te) / (20 * 5400) * (1 + env.radiant / 4), 0, 1);
+      const dry = clamp(1.15 - env.rh, 0.08, 1);
+      this.wetness = clamp(this.wetness - ((dt * Te) / (20 * 5400)) * (1 + env.radiant / 4) * dry, 0, 1);
     } else if (!env.inWater) {
       this.wetness = clamp(this.wetness - dt / (3600 * 30), 0, 1); // sublimation
     }
