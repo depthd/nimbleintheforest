@@ -1,0 +1,483 @@
+// Boot and main loop: builds the world, runs physics at a fixed step and all
+// simulation systems in game time.
+import * as THREE from 'three';
+import RAPIER from '@dimforge/rapier3d-compat';
+import { G, Settings, hourOf, msg } from './ctx';
+import { Rng } from '../core/rng';
+import { GameAudio } from '../core/audio';
+import { Input } from '../core/input';
+import { Terrain } from '../world/terrain';
+import { Weather, WeatherType } from '../world/weather';
+import { Sky } from '../world/sky';
+import { Forest } from '../world/forest';
+import { House } from '../world/house';
+import { Lake } from '../world/lake';
+import { Entities, Entity } from './entities';
+import { Player } from './player';
+import { Body, Env, Activity } from './body';
+import { Thermal } from './thermal';
+import { Fires } from './fire';
+import { Interaction } from './interact';
+import { ViewModel } from './viewmodel';
+import { Effects } from './effects';
+import { HUD } from '../ui/hud';
+import { Horror } from './horror';
+import { def } from './items';
+
+const STEP = 1 / 60;
+let horror: Horror;
+
+export async function startGame(settings: Settings) {
+  await RAPIER.init();
+  G.R = RAPIER;
+  G.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+  G.world.timestep = STEP;
+  G.events = new RAPIER.EventQueue(true);
+  G.settings = settings;
+  G.rng = new Rng(settings.seed);
+  G.time = settings.startHour * 3600;
+  G.startTime = G.time;
+  G.sleeping = false;
+  G.dead = false;
+  G.paused = false;
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.autoClear = false;
+  document.getElementById('app')!.appendChild(renderer.domElement);
+  G.renderer = renderer;
+  G.scene = new THREE.Scene();
+  G.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 1500);
+  G.scene.add(G.camera);
+
+  G.audio = new GameAudio();
+  G.input = new Input(renderer.domElement);
+
+  const rng = G.rng;
+  G.terrain = new Terrain(rng);
+  G.terrain.build();
+  G.weather = new Weather(rng);
+  const startWeather: WeatherType = (settings.weatherLock as WeatherType) ?? rng.pick(['snow', 'cloudy', 'clear', 'snow'] as WeatherType[]);
+  G.weather.init(startWeather);
+  G.sky = new Sky();
+  G.fx = new Effects();
+  G.entities = new Entities();
+  G.lake = new Lake();
+  G.lake.build(rng);
+  G.house = new House();
+  G.house.build(rng);
+  G.forest = new Forest();
+  G.forest.build(rng);
+  G.thermal = new Thermal();
+  G.body = new Body();
+  G.fires = new Fires();
+  G.fires.init();
+  G.player = new Player();
+  const { spawn, yaw } = findSpawn(rng);
+  G.player.init(spawn, yaw);
+  G.interact = new Interaction();
+  G.vm = new ViewModel();
+  G.hud = new HUD();
+  horror = new Horror();
+  G.skip = skip;
+
+  // starting clothes and a chocolate bar
+  for (const id of ['jeans', 'sweater', 'jacket_light', 'sneakers']) {
+    const e = G.entities.spawnItem(id, new THREE.Vector3(0, -50, 0));
+    G.player.addToInventory(e);
+    G.player.worn.set(e.def!.wear!.slot, e);
+  }
+  G.player.addToInventory(G.entities.spawnItem('chocolate', new THREE.Vector3(0, -50, 0)));
+
+  // let furniture and loot settle
+  for (let i = 0; i < 150; i++) G.world.step(G.events);
+  G.entities.sync();
+  for (const e of G.entities.list) G.entities.syncOne(e);
+  G.thermal.init();
+  G.weather.update(0, 0);
+  G.sky.update();
+
+  window.addEventListener('resize', onResize);
+  onResize();
+  G.input.onLockChange = (locked) => {
+    if (locked) G.hud.showPause(false);
+    else if (!G.hud.modal && !G.dead) G.hud.showPause(true);
+  };
+  renderer.domElement.addEventListener('click', () => {
+    if (!G.input.locked && !G.hud.modal) G.hud.resume();
+  });
+
+  (window as any).__game = testApi();
+  hud_intro();
+  requestAnimationFrame(loop);
+}
+
+function hud_intro() {
+  msg('Холодает. Впереди — дом. Внутри можно согреться.', 'info');
+  setTimeout(() => msg('F1 — управление, Tab — инвентарь, F3 — параметры', 'info'), 2500);
+}
+
+function findSpawn(rng: Rng) {
+  const T = G.terrain;
+  for (let i = 0; i < 200; i++) {
+    const a = rng.float(0, Math.PI * 2);
+    const d = rng.float(14, 18);
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if (T.lakeQ(x, z) < 1.3) continue;
+    if (x > 3 && x < 10 && z > -4 && z < 7) continue;
+    if (G.forest.trees.some((t) => Math.hypot(t.x - x, t.z - z) < 2)) continue;
+    // keep the view to the house clear
+    const blocked = G.forest.trees.some((t) => {
+      const L = Math.hypot(x, z);
+      const ux = -x / L, uz = -z / L;
+      const px = t.x - x, pz = t.z - z;
+      const along = px * ux + pz * uz;
+      if (along < 0 || along > L - 6) return false;
+      return Math.abs(px * uz - pz * ux) < 1.8 + t.r;
+    });
+    if (blocked) continue;
+    const yaw = Math.atan2(x, z); // face the house
+    return { spawn: new THREE.Vector3(x, T.heightAt(x, z) + 0.05, z), yaw };
+  }
+  return { spawn: new THREE.Vector3(0, T.heightAt(0, 15) + 0.05, 15), yaw: 0 };
+}
+
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  G.renderer.setSize(w, h);
+  G.camera.aspect = w / h;
+  G.camera.updateProjectionMatrix();
+  G.vm.resize(w / h);
+}
+
+let last = performance.now();
+let acc = 0;
+
+function handleGlobalKeys() {
+  const inp = G.input;
+  const hud = G.hud;
+  const P = G.player;
+  const pressed = inp.pressed;
+  if (pressed.has('Tab') || (pressed.has('KeyI') && !hud.sleepOpen)) {
+    if (!G.dead && !G.sleeping) hud.toggleInventory();
+  }
+  if (pressed.has('F3') || pressed.has('Backquote')) hud.toggleDebug();
+  if (pressed.has('F1')) hud.toggleHelp();
+  if (pressed.has('Escape')) {
+    if (hud.invOpen) hud.toggleInventory(false);
+    if (hud.helpOpen) hud.toggleHelp(false);
+  }
+  if (!inp.enabled || G.sleeping || G.dead) return;
+  P.handsWarming = inp.down('KeyH') && !P.carried && !G.interact.swinging;
+  if (inp.hit('KeyX') && G.body.snow > 0.02) {
+    G.interact.timed = { action: { key: 'E', label: 'Отряхнуть снег', time: 2, run: () => { G.body.snow = 0; msg('Снег стряхнут', 'info'); } }, t: 0, start: P.pos.clone() };
+  }
+  if (inp.hit('KeyZ')) hud.openSleep('floor');
+  if (inp.hit('KeyT')) hud.openSleep('wait');
+  for (let i = 1; i <= 9; i++) {
+    if (inp.hit('Digit' + i)) {
+      const list = hud.hotbarItems();
+      const e = list[i - 1];
+      if (e && !P.carried) P.equip(e);
+    }
+  }
+}
+
+function activity(): Activity {
+  const P = G.player;
+  if (P.water) return 'water';
+  if (G.sleeping && G.hud.sleepEnv().sleeping) return 'sleep';
+  if (G.interact.swinging || G.interact.timed || P.workT > 0 || (P.carried && P.carried.mass > 15)) return 'work';
+  return P.lastActivity;
+}
+
+function bodyEnv(): Env {
+  const P = G.player;
+  const zone = G.house.zoneAt(P.pos);
+  const W = G.weather;
+  const air = zone ? G.thermal.zone(zone).T : W.temp;
+  let wind = 0;
+  if (!zone) {
+    const inForest = !G.lake.onIce(P.pos) && Math.hypot(P.pos.x, P.pos.z) > 16;
+    wind = W.wind * (inForest ? 0.65 : 1);
+    // porch roof and walls give a little shelter
+    if (Math.abs(P.pos.x - 2) < 3 && P.pos.z > 3.9 && P.pos.z < 6.2) wind *= 0.6;
+  } else {
+    // drafts from broken windows/open door
+    const z = G.thermal.zone(zone);
+    const leak = z.parts.filter((p) => p.label.startsWith('Сквозняк') || p.label.startsWith('Открытая') || p.label.startsWith('Пустой')).reduce((s, p) => s + p.ua, 0);
+    wind = Math.min(4, leak / 300);
+  }
+  const sun = !zone ? 3 * G.sky.daylight * (1 - W.cloud) : 0;
+  const se = G.hud.sleepEnv();
+  const eq = P.equipped;
+  const metal = !!eq && ['axe', 'saw', 'hammer', 'prybar', 'auger', 'shovel', 'pot', 'bucket'].includes(eq.defId);
+  const underRoof = Math.abs(P.pos.x - 2) < 2.7 && P.pos.z > 3.9 && P.pos.z < 6.1;
+  return {
+    air,
+    wind,
+    radiant: G.fires.radiantAt(P.pos, zone) + sun,
+    inWater: !!P.water,
+    sleeping: se.sleeping,
+    bedding: se.bedding,
+    wrapClo: P.wrapped?.def?.insul ?? 0,
+    handsWarming: P.handsWarming,
+    lampInHand: eq?.defId === 'lamp' && eq.lit,
+    metalTool: metal,
+    outdoors: !zone,
+    snowfall: !zone && !underRoof ? W.snow : 0,
+  };
+}
+
+const lampLights = new Map<Entity, THREE.PointLight>();
+
+function updateLights(dtGame: number) {
+  const P = G.player;
+  // flashlight
+  const fl = P.equipped?.defId === 'flashlight' && P.equipped.lit ? P.equipped : null;
+  if (fl) {
+    const cold = G.house.zoneAt(P.pos) ? 1 : G.weather.temp < -15 ? 1.8 : 1.3;
+    fl.charges = Math.max(0, fl.charges - (dtGame / (3 * 3600)) * 100 * cold);
+    if (fl.charges <= 0) {
+      fl.lit = false;
+      msg('Фонарик погас — батарейка села', 'warn');
+    }
+    G.fx.spot.intensity = 14 * Math.min(1, 0.3 + fl.charges / 40);
+  } else G.fx.spot.intensity = 0;
+  // kerosene lamps (in hand or placed)
+  for (const e of G.entities.list) {
+    if (e.defId !== 'lamp') continue;
+    const inHand = P.equipped === e;
+    const visible = inHand || e.inWorld || !!e.pinned;
+    if (e.lit && visible) {
+      e.charges = Math.max(0, e.charges - (dtGame / (8 * 3600)) * 100);
+      if (e.charges <= 0) {
+        e.lit = false;
+        msg('Лампа погасла — кончился керосин', 'warn');
+      }
+    }
+    let l = lampLights.get(e);
+    if (e.lit && visible && !e.removed) {
+      if (!l) {
+        l = G.fx.acquireLight() ?? undefined;
+        if (l) {
+          l.color.setHex(0xffc27a);
+          lampLights.set(e, l);
+        }
+      }
+      if (l) {
+        const p = inHand ? G.camera.position.clone().add(P.forward().multiplyScalar(0.45)).add(new THREE.Vector3(0, -0.2, 0)) : e.position().add(new THREE.Vector3(0, 0.12, 0));
+        l.position.copy(p);
+        l.intensity = 2.2 * (0.92 + Math.random() * 0.08);
+        l.distance = 9;
+      }
+      const wick = e.obj?.getObjectByName('wick') as THREE.Mesh | undefined;
+      if (wick) (wick.material as THREE.MeshStandardMaterial).emissive.setHex(0xffaa44);
+    } else if (l) {
+      G.fx.releaseLight(l);
+      lampLights.delete(e);
+    }
+    if (!e.lit) {
+      const wick = e.obj?.getObjectByName('wick') as THREE.Mesh | undefined;
+      if (wick) (wick.material as THREE.MeshStandardMaterial).emissive.setHex(0x000000);
+    }
+  }
+}
+
+function contactEvents() {
+  G.events.drainContactForceEvents((ev) => {
+    const a = G.entities.byCollider.get(ev.collider1());
+    const b = G.entities.byCollider.get(ev.collider2());
+    const win = a?.kind === 'window' ? a : b?.kind === 'window' ? b : null;
+    const other = win === a ? b : a;
+    if (win && other && other.kind === 'item' && win.data.glass === 'intact' && !win.data.cover && ev.maxForceMagnitude() > 260) {
+      G.house.breakGlass(win);
+    }
+  });
+  G.events.drainCollisionEvents(() => {});
+}
+
+function simulate(dtGame: number, dtReal: number) {
+  G.time += dtGame;
+  G.weather.update(dtGame, dtReal);
+  G.fires.update(dtGame, dtReal);
+  G.thermal.update(dtGame);
+  G.lake.update(dtGame);
+  updateLights(dtGame);
+  // matches and wet stuff dry slowly in the warm
+  for (const e of G.player.inventory) {
+    if (e.moisture > 0.05 && (e.defId === 'matches' || e.def?.fuel)) {
+      const z = G.house.zoneAt(G.player.pos);
+      const T = z ? G.thermal.zone(z).T : G.weather.temp;
+      if (T > 5) e.moisture = Math.max(0.03, e.moisture - (dtGame * (T - 5)) / (20 * 3600 * 6));
+    }
+  }
+  G.player.workT = Math.max(0, G.player.workT - dtReal);
+  G.body.activity = activity();
+  G.body.update(dtGame, bodyEnv(), G.player.worn);
+}
+
+/** Advance time quickly (waiting / debug). */
+function skip(seconds: number) {
+  let left = seconds;
+  while (left > 0) {
+    const s = Math.min(60, left);
+    left -= s;
+    simulate(s, 0);
+    if (G.dead) break;
+  }
+  G.sky.update();
+}
+
+function loop(now: number) {
+  requestAnimationFrame(loop);
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.1) dt = 0.1;
+  const inp = G.input;
+  handleGlobalKeys();
+  const paused = !inp.locked && !G.hud.modal && !(window as any).__test;
+
+  if (!paused && !G.dead) {
+    G.player.look();
+    acc += dt;
+    let steps = 0;
+    while (acc >= STEP && steps < 5) {
+      G.player.physics(STEP);
+      G.house.updateDoor(STEP);
+      G.world.step(G.events);
+      contactEvents();
+      acc -= STEP;
+      steps++;
+    }
+    if (steps >= 5) acc = 0;
+    G.entities.sync();
+    let dtGame = dt * G.settings.timeScale;
+    if (G.sleeping) dtGame = G.hud.sleepStep(dt);
+    simulate(dtGame, dt);
+    horror.update(dtGame, dt);
+  }
+  G.player.updateCamera(dt);
+  G.interact.update(paused ? 0 : dt);
+  const indoorAmb = G.sky.daylight > 0.3 ? 0.5 : 0.75;
+  G.sky.indoorFactor = THREE.MathUtils.lerp(G.sky.indoorFactor, G.house.zoneAt(G.player.pos) ? indoorAmb : 1, Math.min(1, dt * 2));
+  G.sky.update();
+  G.fx.update(dt);
+  G.vm.update(dt);
+  G.audio.setListener(G.camera.position, G.player.forward());
+  G.audio.update(dt, G.weather.wind, !!G.house.zoneAt(G.player.pos), G.fires.nearest(G.player.pos));
+  G.hud.update(dt);
+
+  G.renderer.clear();
+  G.renderer.render(G.scene, G.camera);
+  G.vm.render(G.renderer);
+  inp.endFrame();
+}
+
+// ---------- test/debug API (used by automated browser tests) ----------
+
+function testApi() {
+  const P = () => G.player;
+  return {
+    G,
+    THREE,
+    lookAt(x: number, y: number, z: number) {
+      const e = P().eyePos;
+      const dx = x - e.x, dy = y - e.y, dz = z - e.z;
+      P().yaw = Math.atan2(-dx, -dz);
+      P().pitch = Math.atan2(dy, Math.hypot(dx, dz));
+      G.player.updateCamera(0);
+      G.camera.updateMatrixWorld(true);
+    },
+    teleport(x: number, y: number, z: number) {
+      const c = P().carried;
+      P().teleport(new THREE.Vector3(x, y, z));
+      if (c?.body) {
+        const p = P().eyePos.add(P().forward().multiplyScalar(1.2));
+        c.body.setTranslation({ x: p.x, y: p.y, z: p.z }, true);
+      }
+    },
+    /** stand ~dist metres from a point, on the right floor, and look at it */
+    approach(x: number, y: number, z: number, dist = 0.9) {
+      const G_ = G;
+      const target = new THREE.Vector3(x, y, z);
+      const zone = G_.house.zoneAt(target);
+      const dir = new THREE.Vector3(-x, 0, -z * 0.3);
+      if (dir.lengthSq() < 0.01) dir.set(1, 0, 0);
+      dir.normalize();
+      const px = x + dir.x * dist, pz = z + dir.z * dist;
+      const py = zone === 'ground' ? G_.house.Y0 + 0.02 : zone === 'upper' ? G_.house.Y0 + 3.02 : G_.terrain.heightAt(px, pz) + 0.05;
+      this.teleport(px, py, pz);
+      this.steps(10);
+      this.lookAt(x, y, z);
+    },
+    actions() {
+      G.interact.update(0);
+      return { info: G.interact.info, target: G.interact.target.kind, actions: G.interact.actions.map((a) => `${a.key}:${a.label}`) };
+    },
+    act(key: string, match?: string) {
+      G.interact.update(0);
+      const a = G.interact.actions.find((x) => x.key === key && (!match || x.label.includes(match)));
+      if (!a) return false;
+      a.run();
+      return true;
+    },
+    swing() {
+      const eq = P().equipped;
+      if (!eq) return false;
+      G.camera.updateMatrixWorld(true);
+      (G.interact as any).resolveHit(eq);
+      return true;
+    },
+    give(id: string, opts: Record<string, number> = {}) {
+      const e = G.entities.spawnItem(id, P().eyePos, { charges: opts.charges ?? def(id).charges, moisture: opts.moisture });
+      if (def(id).pocket) P().addToInventory(e);
+      return e.id;
+    },
+    equip(id: string) {
+      const e = P().inventory.find((x) => x.defId === id);
+      if (e) {
+        if (P().equipped !== e) P().equip(e);
+        return true;
+      }
+      return false;
+    },
+    find(defId: string) {
+      return G.entities.list.filter((e) => e.defId === defId && !e.removed).map((e) => ({ id: e.id, pos: e.position().toArray(), inWorld: e.inWorld, pinned: e.pinned }));
+    },
+    entity(id: number) {
+      return G.entities.list.find((e) => e.id === id) ?? null;
+    },
+    simulate(seconds: number) {
+      skip(seconds);
+    },
+    steps(n: number) {
+      for (let i = 0; i < n; i++) {
+        G.player.physics(STEP);
+        G.house.updateDoor(STEP);
+        G.world.step(G.events);
+        contactEvents();
+      }
+      G.entities.sync();
+    },
+    state() {
+      const B = G.body;
+      return {
+        time: hourOf(G.time),
+        core: B.core, hands: B.hands, kcal: B.kcal, water: B.water, condition: B.condition, wet: B.wetness,
+        ground: G.thermal.zone('ground').T, upper: G.thermal.zone('upper').T, out: G.weather.temp,
+        groundUA: G.thermal.zone('ground').ua, upperUA: G.thermal.zone('upper').ua,
+        stove: G.fires.stoveFire.status(), stovePower: G.fires.stoveFire.power,
+        inv: P().inventory.map((e) => e.defId),
+        pos: P().pos.toArray(),
+        dead: G.dead,
+      };
+    },
+  };
+}

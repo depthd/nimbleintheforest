@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nimble in the Forest</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="hud">
+      <div id="crosshair"></div>
+      <div id="target"><div id="target-info"></div><div id="prompt"></div></div>
+      <div id="progress"><div></div></div>
+      <div id="status"></div>
+      <div id="env"></div>
+      <div id="hands"></div>
+      <div id="hotbar"></div>
+      <div id="msgs"></div>
+      <div id="frost"></div>
+      <div id="vignette"></div>
+      <div id="flash"></div>
+    </div>
+
+    <div id="inventory" class="modal"></div>
+    <div id="debug"></div>
+
+    <div id="sleep" class="modal box">
+      <h2 id="sleep-title">Сон</h2>
+      <label>Сколько часов: <b id="sleep-h">8 ч</b><input id="sleep-hours" type="range" min="1" max="12" value="8" /></label>
+      <p id="sleep-info"></p>
+      <div class="row"><button id="sleep-go">Спать</button><button id="sleep-cancel">Отмена</button></div>
+    </div>
+    <div id="sleep-overlay"><div id="sleep-overlay-text">Вы спите…</div></div>
+
+    <div id="help" class="modal box">
+      <h2>Управление</h2>
+      <div class="cols">
+        <div>
+          <p><b>WASD</b> — идти, <b>Shift</b> — бег, <b>Ctrl/C</b> — присесть, <b>Пробел</b> — прыжок</p>
+          <p><b>E / F / G</b> — действия с тем, на что смотрите (подсказки у прицела)</p>
+          <p><b>ЛКМ</b> — использовать предмет в руке (рубить, чиркнуть спичкой, набрать снег…)</p>
+          <p><b>ПКМ</b> — бросить то, что несёте; пить из котелка</p>
+          <p><b>Q</b> — положить предмет, <b>R</b> — повернуть, <b>колесо</b> — ближе/дальше</p>
+          <p><b>1–9</b> — инструменты, <b>Tab</b> — рюкзак и одежда</p>
+        </div>
+        <div>
+          <p><b>H</b> (держать) — греть руки подмышками</p>
+          <p><b>X</b> — отряхнуть снег с одежды (перед входом в тепло!)</p>
+          <p><b>Z</b> — спать здесь, <b>T</b> — ждать</p>
+          <p><b>F3</b> — параметры мира и симуляции, <b>F1</b> — эта справка</p>
+          <p class="hint">Почти всё можно поднять, перетащить, бросить, сжечь или разрубить. Одеяла — на кровать, на окна, в дверной проём или на плечи. Мебель и перила — на дрова. Пила даёт доски, топор — поленья.</p>
+        </div>
+      </div>
+      <button id="help-close">Закрыть</button>
+    </div>
+
+    <div id="pause" class="overlay">
+      <h1>Пауза</h1>
+      <p>Кликните, чтобы продолжить</p>
+      <div class="row"><button id="pause-continue">Продолжить</button><button id="pause-help">Управление</button><button id="pause-new">Новый мир</button></div>
+    </div>
+
+    <div id="death" class="overlay">
+      <h1>Вы погибли</h1>
+      <p id="death-cause"></p>
+      <p id="death-stats"></p>
+      <div class="row"><button id="death-restart">Заново (тот же мир)</button><button id="death-new">Новый мир</button></div>
+    </div>
+
+    <div id="start" class="overlay">
+      <h1>Nimble in the Forest</h1>
+      <p class="sub">Северная глушь. Холод. Дом у замёрзшего озера. Выживайте как хотите.</p>
+      <div class="settings">
+        <label>Мир (seed) <input id="st-seed" type="number" /></label>
+        <label>Климат
+          <select id="st-temp">
+            <option value="-6">Мягкий (около −6°C)</option>
+            <option value="-14" selected>Обычный (около −14°C)</option>
+            <option value="-24">Суровый (около −24°C)</option>
+            <option value="-34">Лютый (около −34°C)</option>
+          </select>
+        </label>
+        <label>Время
+          <select id="st-hour">
+            <option value="8.5">Утро</option>
+            <option value="13">День</option>
+            <option value="15.75" selected>Ближе к вечеру</option>
+            <option value="22">Ночь</option>
+          </select>
+        </label>
+        <label class="chk"><input id="st-horror" type="checkbox" checked /> Жуть по ночам</label>
+      </div>
+      <button id="st-go">Начать</button>
+      <p class="hint">Лучше в наушниках. Мышь — осмотреться, клик — захватить курсор.</p>
+    </div>
+    <div id="loading" class="overlay"><h2>Генерация мира…</h2></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
