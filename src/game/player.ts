@@ -231,10 +231,11 @@ export class Player {
 
   fallThroughIce(hole: THREE.Vector3) {
     this.releaseCarry();
-    this.water = { hole: hole.clone(), climb: 0 };
+    const L = G.lake.levelAt(hole.x, hole.z);
+    this.water = { hole: hole.clone().setY(Number.isNaN(L) ? hole.y : L), climb: 0 };
     G.audio.play('ice_break', { pos: hole });
     G.audio.play('splash', { pos: hole });
-    G.fx.burst('splash', hole.clone().setY(G.lake.level + 0.1), 30);
+    G.fx.burst('splash', this.water.hole.clone().setY(this.water.hole.y + 0.1), 30);
     msg('Лёд проломился! Вы в ледяной воде! Жмите [Пробел], чтобы выбраться.', 'bad');
     // matches in the pack get soaked
     for (const e of this.inventory) if (e.defId === 'matches' && Math.random() < 0.8) e.moisture = 1;
@@ -242,7 +243,7 @@ export class Player {
 
   private updateWater(dt: number) {
     const w = this.water!;
-    const target = new THREE.Vector3(w.hole.x, G.lake.level - 1.3, w.hole.z);
+    const target = new THREE.Vector3(w.hole.x, w.hole.y - 1.3, w.hole.z);
     this.pos.copy(target);
     this.body.setNextKinematicTranslation({ x: target.x, y: target.y + HALF + RADIUS, z: target.z });
     w.climb = Math.max(0, w.climb - dt * 0.12);
@@ -252,10 +253,8 @@ export class Player {
       G.audio.play('splash', { pos: w.hole, vol: 0.4 });
     }
     if (w.climb >= 1) {
-      // climb out towards the house
-      const dir = new THREE.Vector3(-w.hole.x, 0, -w.hole.z).normalize();
-      const out = w.hole.clone().addScaledVector(dir, 1.9);
-      out.y = G.lake.level + 0.05;
+      // climb out onto the nearest thick ice or the bank
+      const out = G.lake.safeSpotNear(w.hole) ?? w.hole.clone().setY(w.hole.y + 0.06);
       this.water = null;
       this.teleport(out);
       msg('Вы выбрались. Одежда мокрая насквозь — срочно к огню!', 'warn');
@@ -352,12 +351,8 @@ export class Player {
     } else if (wasGrounded) this.fallStartY = ny;
     else this.fallStartY = Math.max(this.fallStartY, ny);
     // world boundary
-    let px = nx, pz = nz;
-    const r = Math.hypot(px, pz);
-    if (r > 112) {
-      px *= 112 / r;
-      pz *= 112 / r;
-    }
+    const Rg = G.region;
+    const px = clamp(nx, Rg.minX + 30, Rg.maxX - 30), pz = clamp(nz, Rg.minZ + 30, Rg.maxZ - 30);
     this.body.setNextKinematicTranslation({ x: px, y: ny, z: pz });
     const moved = Math.hypot(px - this.pos.x, pz - this.pos.z);
     this.pos.set(px, ny - HALF - RADIUS, pz);
@@ -372,6 +367,12 @@ export class Player {
         const indoors = !!G.house.zoneAt(this.pos) || (Math.abs(this.pos.x) < 5 && this.pos.z > 3.9 && this.pos.z < 6.1 && Math.abs(this.pos.y - G.house.Y0) < 0.3);
         G.audio.play(indoors ? 'step_wood' : 'step_snow', { vol: this.crouch ? 0.4 : 1 });
       }
+    }
+    // stepped or slid into open water
+    const wl = G.lake.levelAt(this.pos.x, this.pos.z);
+    if (!Number.isNaN(wl) && this.pos.y < wl - 0.45) {
+      this.fallThroughIce(this.pos.clone());
+      return;
     }
     // thin ice
     if (G.lake.onThin(this.pos) && this.grounded) {

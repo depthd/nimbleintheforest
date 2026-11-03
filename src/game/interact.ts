@@ -75,8 +75,8 @@ export class Interaction {
     } else if (tree) {
       t.kind = 'tree';
       t.tree = tree;
-    } else if (h === G.terrainHandle) t.kind = 'ground';
-    else if (h === G.iceHandle) t.kind = 'ice';
+    } else if (G.terrain.handles.has(h)) t.kind = 'ground';
+    else if (G.lake.handles.has(h)) t.kind = 'ice';
     else t.kind = 'static';
   }
 
@@ -815,7 +815,7 @@ export class Interaction {
       msg('Костёр в доме — плохая идея. Для этого есть печь.', 'warn');
       return;
     }
-    const ground = G.lake.onIce(at) ? G.lake.level : G.terrain.heightAt(at.x, at.z);
+    const ground = G.lake.onIce(at) ? G.lake.levelAt(at.x, at.z) + 0.03 : G.terrain.heightAt(at.x, at.z);
     const f = G.fires.makeCampfire(new THREE.Vector3(at.x, ground, at.z));
     for (const it of G.entities.near(at, 0.8, (x) => x.kind === 'item' && !!x.def?.fuel && x !== G.player.carried)) G.fires.addFuel(f, it);
     this.lightFire(f);
@@ -973,7 +973,7 @@ export class Interaction {
       msg('Кострище уже рядом', 'warn');
       return;
     }
-    const y = G.lake.onIce(p) ? G.lake.level : G.terrain.heightAt(p.x, p.z);
+    const y = G.lake.onIce(p) ? G.lake.levelAt(p.x, p.z) + 0.03 : G.terrain.heightAt(p.x, p.z);
     G.fires.makeCampfire(new THREE.Vector3(p.x, y, p.z));
     G.audio.play('snow_scoop');
     msg('Кострище готово. Положите трут, растопку, дрова — и поджигайте.', 'good');

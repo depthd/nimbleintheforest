@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { G, hourOf } from '../game/ctx';
 import { clamp, lerp, smoothstep } from '../core/rng';
+import { groundUniforms } from './terrain';
+import { waterUniforms } from './water';
 
 const tmpA = new THREE.Color();
 const tmpB = new THREE.Color();
@@ -77,7 +79,7 @@ export class Sky {
           gl_FragColor = vec4(col, 1.0);
         }`,
     });
-    this.dome = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), this.mat);
+    this.dome = new THREE.Mesh(new THREE.SphereGeometry(11000, 32, 16), this.mat);
     this.dome.renderOrder = -10;
     this.dome.frustumCulled = false;
     G.scene.add(this.dome);
@@ -103,9 +105,9 @@ export class Sky {
       const a = Math.random() * Math.PI * 2;
       const r = Math.sqrt(1 - u * u);
       const y = Math.abs(u);
-      p[i * 3] = Math.cos(a) * r * 800;
-      p[i * 3 + 1] = y * 800;
-      p[i * 3 + 2] = Math.sin(a) * r * 800;
+      p[i * 3] = Math.cos(a) * r * 10000;
+      p[i * 3 + 1] = y * 10000;
+      p[i * 3 + 2] = Math.sin(a) * r * 10000;
     }
     sg.setAttribute('position', new THREE.BufferAttribute(p, 3));
     this.stars = new THREE.Points(
@@ -171,6 +173,14 @@ export class Sky {
     fog.color.copy(this.fogColor);
     fog.density = w.fog;
 
+    // ground sparkle and water reflections follow the sky
+    groundUniforms.uSunDir.value.copy(lightDir);
+    groundUniforms.uGlint.value = sunUp * (1 - overcast * 0.9);
+    waterUniforms.uSunDir.value.copy(lightDir);
+    waterUniforms.uSkyTop.value.copy(top);
+    waterUniforms.uSkyHorizon.value.copy(hor);
+    waterUniforms.uSunColor.value.copy(this.sun.color).multiplyScalar(sunUp * (1 - overcast));
+    waterUniforms.uTime.value = performance.now() / 1000;
     this.dome.position.copy(G.camera.position);
     this.stars.position.copy(G.camera.position);
   }

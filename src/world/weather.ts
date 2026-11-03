@@ -23,9 +23,9 @@ interface Target {
 }
 
 const TARGETS: Record<WeatherType, Target> = {
-  clear: { cloud: 0.05, snow: 0, wind: [0.5, 3], fog: 0.0035, temp: -2 },
-  cloudy: { cloud: 0.7, snow: 0, wind: [2, 5], fog: 0.006, temp: 0 },
-  snow: { cloud: 0.9, snow: 0.45, wind: [2, 6], fog: 0.014, temp: 1 },
+  clear: { cloud: 0.05, snow: 0, wind: [0.5, 3], fog: 0.0007, temp: -2 },
+  cloudy: { cloud: 0.7, snow: 0, wind: [2, 5], fog: 0.0016, temp: 0 },
+  snow: { cloud: 0.9, snow: 0.45, wind: [2, 6], fog: 0.006, temp: 1 },
   blizzard: { cloud: 1, snow: 1, wind: [11, 18], fog: 0.05, temp: -6 },
   fog: { cloud: 0.6, snow: 0.05, wind: [0, 1.5], fog: 0.035, temp: 1 },
 };

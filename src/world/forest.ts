@@ -1,6 +1,9 @@
 // Procedural forest: spruces, birches and dead trees. Trees can be felled and chopped.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import type { Props } from '../gen/region';
+import { Sp } from '../gen/biomes';
+import { makeGroundMaterial } from './terrain';
 import type RAPIER_T from '@dimforge/rapier3d-compat';
 import { G, GROUPS_ITEM, GROUPS_STATIC, msg } from '../game/ctx';
 import { Rng, Simplex2, clamp } from '../core/rng';
@@ -8,7 +11,7 @@ import { M, mat } from '../game/meshes';
 import { Tex } from '../core/textures';
 import { Entity } from '../game/entities';
 
-export type TreeType = 'spruce' | 'birch' | 'dead';
+export type TreeType = 'spruce' | 'birch' | 'dead' | 'pine' | 'burnt';
 
 export interface Tree {
   id: number;
@@ -31,8 +34,8 @@ export interface Tree {
   twigs: number;
 }
 
-const BASE_H: Record<TreeType, number> = { spruce: 10, birch: 11, dead: 8 };
-const BASE_R: Record<TreeType, number> = { spruce: 0.2, birch: 0.15, dead: 0.17 };
+const BASE_H: Record<'spruce' | 'birch' | 'dead', number> = { spruce: 10, birch: 11, dead: 8 };
+const BASE_R: Record<'spruce' | 'birch' | 'dead', number> = { spruce: 0.2, birch: 0.15, dead: 0.17 };
 
 function colorize(g: THREE.BufferGeometry, fn: (y: number, x: number, z: number) => [number, number, number]) {
   const p = g.attributes.position as THREE.BufferAttribute;
@@ -144,6 +147,10 @@ const tmpM = new THREE.Matrix4();
 const tmpQ = new THREE.Quaternion();
 const tmpS = new THREE.Vector3();
 const tmpP = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+
+const R0 = 240; // trees drawn within this radius
+const RC = 45; // colliders within this radius
 
 export class Forest {
   trees: Tree[] = [];
@@ -151,144 +158,218 @@ export class Forest {
   private kinds: Kind[] = [];
   private body!: RAPIER_T.RigidBody;
   private stumps: THREE.Mesh[] = [];
+  private P!: Props;
+  private rocksP!: Props;
+  private state = new Map<number, Tree>();
+  private colliders = new Map<number, RAPIER_T.Collider>();
+  private rockCols = new Map<number, RAPIER_T.Collider>();
+  private center = new THREE.Vector3(1e9, 0, 1e9);
+  private colCenter = new THREE.Vector3(1e9, 0, 1e9);
+  private kindOfSp: number[][] = [];
+  private rockMesh!: THREE.InstancedMesh;
 
   build(rng: Rng) {
+    const R = G.region;
+    this.P = R.trees;
+    this.rocksP = R.rocks;
     this.body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed());
-    const foliageMat = mat('foliage', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true }));
+    const foliageMat = mat('foliage', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
     for (let v = 0; v < 3; v++) {
       const g = spruceGeometry(v, rng);
       this.kinds.push({ type: 'spruce', variant: v, meshes: [], geos: [g.trunk, g.foliage], mats: [M.barkSpruce(), foliageMat], trees: [] });
     }
     for (let v = 0; v < 2; v++) this.kinds.push({ type: 'birch', variant: v, meshes: [], geos: [birchGeometry(rng)], mats: [M.barkBirch()], trees: [] });
     this.kinds.push({ type: 'dead', variant: 0, meshes: [], geos: [deadGeometry(rng)], mats: [M.barkDead()], trees: [] });
-
-    // placement
-    const noise = new Simplex2(() => rng.next());
-    const T = G.terrain;
-    const pts: Tree[] = [];
-    const minD = 2.6;
-    const grid = new Map<string, Tree[]>();
-    const key = (x: number, z: number) => `${Math.floor(x / 4)},${Math.floor(z / 4)}`;
-    let tries = 0;
-    while (pts.length < 620 && tries < 40000) {
-      tries++;
-      const x = rng.float(-108, 108);
-      const z = rng.float(-108, 108);
-      const r = Math.hypot(x, z);
-      if (r > 110) continue;
-      const dHouse = Math.hypot(x, z * 1.1);
-      if (dHouse < 12) continue;
-      if (x > 4 && x < 10 && z > -4 && z < 6) continue; // woodpile area
-      const q = T.lakeQ(x, z);
-      if (q < 1.12) continue;
-      const dens = clamp(0.55 + noise.fbm(x * 0.03, z * 0.03, 3) * 0.9, 0.05, 1) * clamp((dHouse - 12) / 10, 0.25, 1) * clamp((q - 1.12) * 2.5, 0.2, 1);
-      if (rng.next() > dens) continue;
-      const k = key(x, z);
-      let ok = true;
-      for (let gx = -1; gx <= 1 && ok; gx++) for (let gz = -1; gz <= 1 && ok; gz++) {
-        const cell = grid.get(`${Math.floor(x / 4) + gx},${Math.floor(z / 4) + gz}`);
-        if (cell) for (const t of cell) if (Math.hypot(t.x - x, t.z - z) < minD) ok = false;
-      }
-      if (!ok) continue;
-      const roll = rng.next();
-      const type: TreeType = roll < 0.72 ? 'spruce' : roll < 0.9 ? 'birch' : 'dead';
-      const s = type === 'spruce' ? rng.float(0.45, 1.35) : type === 'birch' ? rng.float(0.55, 1.15) : rng.float(0.6, 1.2);
-      const kinds = this.kinds.filter((kk) => kk.type === type);
-      const kind = rng.pick(kinds);
-      const y = T.heightAt(x, z) - 0.15;
-      const tree: Tree = {
-        id: pts.length, type, variant: kind.variant, x, y, z, s, rotY: rng.float(0, Math.PI * 2),
-        r: BASE_R[type] * s, h: BASE_H[type] * s, hp: 0, maxHp: 0, alive: true, index: kind.trees.length,
-        collider: null, bark: type === 'birch' ? 3 : 0, boughs: type === 'spruce' ? 4 : 0, twigs: type === 'dead' ? 4 : 2,
-      };
-      tree.maxHp = tree.hp = Math.round(3 + tree.r * 80);
-      kind.trees.push(tree);
-      pts.push(tree);
-      if (!grid.has(k)) grid.set(k, []);
-      grid.get(k)!.push(tree);
-    }
-    this.trees = pts;
-
+    const burntMat = mat('barkBurnt', () => new THREE.MeshStandardMaterial({ map: Tex.barkBurnt(), roughness: 1 }));
+    this.kinds.push({ type: 'burnt', variant: 0, meshes: [], geos: [deadGeometry(rng)], mats: [burntMat], trees: [] });
+    const pineMat = mat('barkPine', () => new THREE.MeshStandardMaterial({ map: Tex.barkPine(), roughness: 1 }));
+    const pg = spruceGeometry(1, rng);
+    this.kinds.push({ type: 'pine', variant: 0, meshes: [], geos: [pg.trunk, pg.foliage], mats: [pineMat, foliageMat], trees: [] });
+    // species → kind indices (see gen/biomes Sp)
+    this.kindOfSp = [[0, 1, 2], [7], [3, 4], [5], [6], [0, 1, 2]];
     for (const kind of this.kinds) {
       for (let gi = 0; gi < kind.geos.length; gi++) {
-        const im = new THREE.InstancedMesh(kind.geos[gi], kind.mats[gi], Math.max(1, kind.trees.length));
+        const im = new THREE.InstancedMesh(kind.geos[gi], kind.mats[gi], 4000);
         im.castShadow = true;
         im.receiveShadow = true;
-        im.count = kind.trees.length;
-        for (const t of kind.trees) {
-          tmpQ.setFromAxisAngle(new THREE.Vector3(0, 1, 0), t.rotY);
-          tmpM.compose(tmpP.set(t.x, t.y, t.z), tmpQ, tmpS.setScalar(t.s));
-          im.setMatrixAt(t.index, tmpM);
-        }
-        im.instanceMatrix.needsUpdate = true;
-        im.computeBoundingSphere();
+        im.count = 0;
+        im.frustumCulled = false;
         im.userData.forestKind = kind;
         G.scene.add(im);
         kind.meshes.push(im);
       }
-      for (const t of kind.trees) {
+    }
+    // boulders: smooth, snow settles on top (ground shader)
+    const rg = new THREE.IcosahedronGeometry(1, 2);
+    const rp = rg.attributes.position as THREE.BufferAttribute;
+    const nz = new Simplex2(() => rng.next());
+    const merged = mergeVertices(rg);
+    const mp = merged.attributes.position as THREE.BufferAttribute;
+    for (let k = 0; k < mp.count; k++) {
+      const x = mp.getX(k), y = mp.getY(k), z = mp.getZ(k);
+      const f = 1 + 0.22 * nz.noise(x * 1.7 + 3, z * 1.7 + y) + 0.08 * nz.noise(x * 4, y * 4 + z);
+      mp.setXYZ(k, x * f * 1.15, y * f * 0.7, z * f);
+    }
+    void rp;
+    merged.computeVertexNormals();
+    this.rockMesh = new THREE.InstancedMesh(merged, makeGroundMaterial(false), 3000);
+    this.rockMesh.castShadow = true;
+    this.rockMesh.receiveShadow = true;
+    this.rockMesh.count = 0;
+    this.rockMesh.frustumCulled = false;
+    G.scene.add(this.rockMesh);
+    // rock pillars: landmarks seen from far away
+    for (const p of R.pillars) {
+      const g = new THREE.CylinderGeometry(p.r * 0.75, p.r, p.h, 14, 10, false);
+      const gp = g.attributes.position as THREE.BufferAttribute;
+      const pn = new Simplex2(() => ((p.seed % 1000) / 1000));
+      for (let k = 0; k < gp.count; k++) {
+        const x = gp.getX(k), y = gp.getY(k), z = gp.getZ(k);
+        const a = Math.atan2(z, x);
+        const f = 1 + 0.28 * pn.noise(Math.cos(a) * 1.3, y / 6) + 0.12 * pn.noise(a * 3, y / 2);
+        gp.setXYZ(k, x * f, y, z * f);
+      }
+      g.computeVertexNormals();
+      const m = new THREE.Mesh(g, makeGroundMaterial(false));
+      m.position.set(p.x, p.y + p.h / 2 - 1, p.z);
+      m.castShadow = m.receiveShadow = true;
+      G.scene.add(m);
+      G.world.createCollider(G.R.ColliderDesc.cylinder(p.h / 2, p.r * 0.85).setTranslation(p.x, p.y + p.h / 2 - 1, p.z).setCollisionGroups(GROUPS_STATIC), this.body);
+    }
+    this.scatter(rng);
+  }
+
+  /** the Tree record for prop index i (created on first use) */
+  private tree(i: number): Tree {
+    let t = this.state.get(i);
+    if (t) return t;
+    const P = this.P;
+    const sp = P.kind[i];
+    const ks = this.kindOfSp[sp];
+    const kindIdx = ks[Math.min(ks.length - 1, P.variant[i])];
+    const kind = this.kinds[kindIdx];
+    const type = kind.type;
+    const s = P.s[i] * (sp === Sp.Pine ? 1.15 : 1);
+    const baseType: 'spruce' | 'birch' | 'dead' = type === 'birch' ? 'birch' : type === 'spruce' || type === 'pine' ? 'spruce' : 'dead';
+    t = {
+      id: i, type, variant: kind.variant, x: P.x[i], y: P.y[i] - 0.15, z: P.z[i], s, rotY: P.rot[i],
+      r: BASE_R[baseType] * s, h: BASE_H[baseType] * s, hp: 0, maxHp: 0, alive: (P.flags[i] & 3) === 0, index: kindIdx,
+      collider: null, bark: type === 'birch' ? 3 : 0, boughs: type === 'spruce' || type === 'pine' ? 4 : 0, twigs: type === 'dead' || type === 'burnt' ? 4 : 2,
+    };
+    t.maxHp = t.hp = Math.round(3 + t.r * 80);
+    this.state.set(i, t);
+    return t;
+  }
+
+  /** trees near a point (records), for tests and spawning */
+  treesNear(x: number, z: number, r: number): Tree[] {
+    const out: Tree[] = [];
+    G.region.forEachProp(this.P, x, z, r, (i) => {
+      if ((this.P.flags[i] & 3) === 0) out.push(this.tree(i));
+    });
+    return out;
+  }
+
+  /** Rebuild the visible instances and colliders around the player. */
+  update(p: THREE.Vector3, force = false) {
+    const R = G.region;
+    const P = this.P;
+    if (force || Math.hypot(p.x - this.center.x, p.z - this.center.z) > 14) {
+      this.center.copy(p);
+      for (const k of this.kinds) for (const im of k.meshes) im.count = 0;
+      R.forEachProp(P, p.x, p.z, R0, (i) => {
+        if (P.flags[i] & 3) return;
+        const sp = P.kind[i];
+        const ks = this.kindOfSp[sp];
+        const kind = this.kinds[ks[Math.min(ks.length - 1, P.variant[i])]];
+        const s = P.s[i] * (sp === Sp.Pine ? 1.15 : 1) * (sp === Sp.Dwarf ? 0.55 : 1);
+        tmpQ.setFromAxisAngle(UP, P.rot[i]);
+        tmpM.compose(tmpP.set(P.x[i], P.y[i] - 0.15, P.z[i]), tmpQ, sp === Sp.Pine ? tmpS.set(s * 0.8, s * 1.25, s * 0.8) : tmpS.setScalar(s));
+        for (const im of kind.meshes) {
+          if (im.count >= im.instanceMatrix.count) continue;
+          im.setMatrixAt(im.count++, tmpM);
+        }
+      });
+      for (const k of this.kinds) for (const im of k.meshes) im.instanceMatrix.needsUpdate = true;
+      const RP = this.rocksP;
+      this.rockMesh.count = 0;
+      R.forEachProp(RP, p.x, p.z, 320, (i) => {
+        if (this.rockMesh.count >= 3000) return;
+        tmpQ.setFromAxisAngle(UP, RP.rot[i]);
+        const s = RP.s[i];
+        tmpM.compose(tmpP.set(RP.x[i], RP.y[i] - s * 0.25, RP.z[i]), tmpQ, tmpS.setScalar(s));
+        this.rockMesh.setMatrixAt(this.rockMesh.count++, tmpM);
+      });
+      this.rockMesh.instanceMatrix.needsUpdate = true;
+    }
+    if (force || Math.hypot(p.x - this.colCenter.x, p.z - this.colCenter.z) > 6) {
+      this.colCenter.copy(p);
+      const want = new Set<number>();
+      R.forEachProp(P, p.x, p.z, RC, (i) => {
+        if (P.flags[i] & 3) return;
+        want.add(i);
+        if (this.colliders.has(i)) return;
+        const t = this.tree(i);
         const col = G.world.createCollider(
           G.R.ColliderDesc.cylinder(t.h * 0.5, Math.max(0.08, t.r * 0.9)).setTranslation(t.x, t.y + t.h * 0.5, t.z).setCollisionGroups(GROUPS_STATIC),
           this.body,
         );
         t.collider = col;
+        this.colliders.set(i, col);
         this.byCollider.set(col.handle, t);
+      });
+      for (const [i, col] of this.colliders) {
+        if (want.has(i)) continue;
+        this.byCollider.delete(col.handle);
+        G.world.removeCollider(col, false);
+        this.colliders.delete(i);
+        const t = this.state.get(i);
+        if (t) t.collider = null;
       }
+      const RP = this.rocksP;
+      const wantR = new Set<number>();
+      R.forEachProp(RP, p.x, p.z, RC, (i) => {
+        wantR.add(i);
+        if (this.rockCols.has(i)) return;
+        const s = RP.s[i];
+        const col = G.world.createCollider(G.R.ColliderDesc.ball(s * 0.72).setTranslation(RP.x[i], RP.y[i] - s * 0.25, RP.z[i]).setCollisionGroups(GROUPS_STATIC), this.body);
+        this.rockCols.set(i, col);
+      });
+      for (const [i, col] of this.rockCols) {
+        if (wantR.has(i)) continue;
+        G.world.removeCollider(col, false);
+        this.rockCols.delete(i);
+      }
+      this.trees = [...this.colliders.keys()].map((i) => this.tree(i));
     }
-
-    this.scatter(rng);
   }
 
-  /** sticks, fallen logs and rocks on the forest floor */
+  /** sticks and fallen logs around the house so the start isn't empty-handed */
   private scatter(rng: Rng) {
     const T = G.terrain;
+    const near = this.treesNear(0, 0, 140).filter((t) => Math.hypot(t.x, t.z) > 14);
     let placed = 0;
-    for (let i = 0; i < 400 && placed < 70; i++) {
-      const t = rng.pick(this.trees);
+    for (let i = 0; i < 400 && placed < 60 && near.length; i++) {
+      const t = rng.pick(near);
       const a = rng.float(0, Math.PI * 2);
       const d = rng.float(1, 3);
       const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d;
-      if (T.lakeQ(x, z) < 1.05) continue;
-      const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rng.float(0, 6));
+      if (!Number.isNaN(G.region.waterAt(x, z))) continue;
+      const q = new THREE.Quaternion().setFromAxisAngle(UP, rng.float(0, 6));
       G.entities.spawnItem('sticks', new THREE.Vector3(x, T.heightAt(x, z) + 0.05, z), { quat: q, sleep: true, moisture: rng.float(0.15, 0.4) });
       placed++;
     }
-    // a few dead logs lying around
-    for (let i = 0; i < 8; i++) {
-      const t = rng.pick(this.trees);
+    for (let i = 0; i < 8 && near.length; i++) {
+      const t = rng.pick(near);
       const x = t.x + rng.float(-3, 3), z = t.z + rng.float(-3, 3);
-      if (T.lakeQ(x, z) < 1.1 || Math.hypot(x, z) < 10) continue;
-      const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rng.float(0, 6));
+      if (!Number.isNaN(G.region.waterAt(x, z)) || Math.hypot(x, z) < 10) continue;
+      const q = new THREE.Quaternion().setFromAxisAngle(UP, rng.float(0, 6));
       G.entities.spawnItem('log', new THREE.Vector3(x, T.heightAt(x, z) + 0.2, z), { quat: q, sleep: true, moisture: 0.3, params: { dead: 1 } });
-    }
-    // rocks: static decoration with colliders
-    const rockMat = mat('rock', () => new THREE.MeshStandardMaterial({ map: Tex.stone(), color: 0x9a9a9a, roughness: 1, flatShading: true }));
-    for (let i = 0; i < 45; i++) {
-      const x = rng.float(-100, 100), z = rng.float(-100, 100);
-      if (Math.hypot(x, z) < 14 || T.lakeQ(x, z) < 1.05) continue;
-      const s = rng.float(0.3, 1.4);
-      const g = new THREE.IcosahedronGeometry(s, 0);
-      const p = g.attributes.position as THREE.BufferAttribute;
-      for (let k = 0; k < p.count; k++) p.setXYZ(k, p.getX(k) * rng.float(0.8, 1.3), p.getY(k) * 0.6, p.getZ(k) * rng.float(0.8, 1.3));
-      g.computeVertexNormals();
-      const m = new THREE.Mesh(g, rockMat);
-      const y = T.heightAt(x, z) - s * 0.15;
-      m.position.set(x, y, z);
-      m.rotation.y = rng.float(0, 6);
-      m.castShadow = m.receiveShadow = true;
-      G.scene.add(m);
-      // snow cap
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(s * 0.95, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2.6), M.snow());
-      cap.scale.set(1.05, 0.45, 1.05);
-      cap.position.set(x, y + s * 0.3, z);
-      cap.receiveShadow = true;
-      G.scene.add(cap);
-      G.world.createCollider(G.R.ColliderDesc.ball(s * 0.75).setTranslation(x, y, z).setCollisionGroups(GROUPS_STATIC), this.body);
     }
   }
 
   kindOf(t: Tree) {
-    return this.kinds.find((k) => k.type === t.type && k.variant === t.variant)!;
+    return this.kinds[t.index];
   }
 
   /** Fell a tree: hide the instance and spawn a falling trunk entity. */
@@ -296,16 +377,14 @@ export class Forest {
     if (!t.alive) return;
     t.alive = false;
     const kind = this.kindOf(t);
-    tmpM.compose(tmpP.set(t.x, -1000, t.z), tmpQ.identity(), tmpS.setScalar(0.0001));
-    for (const im of kind.meshes) {
-      im.setMatrixAt(t.index, tmpM);
-      im.instanceMatrix.needsUpdate = true;
-    }
+    this.P.flags[t.id] |= 2;
     if (t.collider) {
       this.byCollider.delete(t.collider.handle);
       G.world.removeCollider(t.collider, true);
+      this.colliders.delete(t.id);
       t.collider = null;
     }
+    this.update(G.player.pos, true);
     // stump
     const stumpH = 0.4;
     const stump = new THREE.Mesh(new THREE.CylinderGeometry(t.r * 0.95, t.r * 1.05, stumpH, 8), [M.barkSpruce(), M.woodEnd(), M.woodEnd()]);
@@ -318,11 +397,11 @@ export class Forest {
 
     // trunk entity
     const e = new Entity('trunk');
-    e.name = t.type === 'spruce' ? 'Поваленная ель' : t.type === 'birch' ? 'Поваленная берёза' : 'Поваленный сухостой';
+    e.name = { spruce: 'Поваленная ель', pine: 'Поваленная сосна', birch: 'Поваленная берёза', dead: 'Поваленный сухостой', burnt: 'Обгорелый ствол' }[t.type];
     const len = t.h - stumpH;
     e.data = { len, r: t.r, type: t.type, mass: Math.PI * t.r * t.r * t.h * 520 };
     e.maxHp = e.hp = Math.round(4 + len * t.r * 6 + len * 0.4);
-    e.moisture = t.type === 'dead' ? 0.12 : 0.45;
+    e.moisture = t.type === 'dead' || t.type === 'burnt' ? 0.1 : 0.45;
     const g = new THREE.Group();
     for (let gi = 0; gi < kind.geos.length; gi++) {
       const m = new THREE.Mesh(kind.geos[gi], kind.mats[gi]);
@@ -351,7 +430,7 @@ export class Forest {
     body.setAngvel({ x: axis.x * 0.35, y: 0, z: axis.z * 0.35 }, true);
     body.applyImpulseAtPoint({ x: dir.x * e.data.mass * 0.6, y: 0, z: dir.z * e.data.mass * 0.6 }, { x: t.x, y: cy + len * 0.45, z: t.z }, true);
     G.audio.play('tree_fall', { pos: new THREE.Vector3(t.x, t.y + 2, t.z) });
-    msg(`${t.type === 'spruce' ? 'Ель' : t.type === 'birch' ? 'Берёза' : 'Сухостой'} падает!`, 'good');
+    msg(`${{ spruce: 'Ель', pine: 'Сосна', birch: 'Берёза', dead: 'Сухостой', burnt: 'Обгорелый ствол' }[t.type]} падает!`, 'good');
     return e;
   }
 
@@ -359,7 +438,7 @@ export class Forest {
   trunkYields(e: Entity) {
     const { len, r, type } = e.data;
     const out: { id: string; n: number; params?: Record<string, number> }[] = [];
-    const p: Record<string, number> = type === 'birch' ? { birch: 1 } : type === 'dead' ? { dead: 1 } : {};
+    const p: Record<string, number> = type === 'birch' ? { birch: 1 } : type === 'dead' || type === 'burnt' ? { dead: 1 } : {};
     if (r < 0.11) {
       out.push({ id: 'firewood', n: Math.max(1, Math.round(len / 2)), params: p });
       out.push({ id: 'sticks', n: 3 });
@@ -367,7 +446,7 @@ export class Forest {
       out.push({ id: 'log', n: clamp(Math.floor((len * 0.75) / 1.2), 1, 8), params: p });
       out.push({ id: 'sticks', n: 2 });
     }
-    if (type === 'spruce') out.push({ id: 'boughs', n: 3 });
+    if (type === 'spruce' || type === 'pine') out.push({ id: 'boughs', n: 3 });
     if (type === 'birch') out.push({ id: 'bark', n: 2 });
     return out;
   }

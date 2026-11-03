@@ -10,7 +10,8 @@ import type { Sky } from '../world/sky';
 import type { Weather } from '../world/weather';
 import type { Forest } from '../world/forest';
 import type { House } from '../world/house';
-import type { Lake } from '../world/lake';
+import type { Water } from '../world/water';
+import type { Region } from '../gen/region';
 import type { Entities } from './entities';
 import type { Player } from './player';
 import type { Body } from './body';
@@ -29,6 +30,7 @@ export interface Settings {
   weatherLock: string | null;
   noCold: boolean;
   horror: boolean;
+  size: number;
 }
 
 export interface Ctx {
@@ -49,7 +51,8 @@ export interface Ctx {
   weather: Weather;
   forest: Forest;
   house: House;
-  lake: Lake;
+  lake: Water;
+  region: Region;
   entities: Entities;
   player: Player;
   body: Body;
@@ -59,9 +62,6 @@ export interface Ctx {
   vm: ViewModel;
   hud: HUD;
   fx: Effects;
-  /** collider handles of static world parts */
-  terrainHandle: number;
-  iceHandle: number;
   paused: boolean;
   sleeping: boolean;
   dead: boolean;

@@ -1,220 +1,448 @@
-// Procedural heightmap terrain with a flattened clearing for the house
-// and a basin for the lake.
+// Terrain rendering and collision for the generated region.
+// Rendering: 128 m chunks with four levels of detail near the camera plus one low-resolution
+// mesh for the whole map (so the view from a hill reaches the far mountains) and a backdrop of
+// mountains and sea beyond the border. Collision: one heightfield per 128 m tile.
+// The ground shader paints snow, wind-scoured rock on steep slopes, darker snow with needles
+// under the forest, ash on burned land, bog grass, shore pebbles, and sparkle in the sun.
 import * as THREE from 'three';
 import { G, GROUPS_STATIC } from '../game/ctx';
-import { Rng, Simplex2, clamp, lerp, smoothstep } from '../core/rng';
+import type { Region } from '../gen/region';
+import { Simplex2, clamp, lerp, smoothstep } from '../core/rng';
 import { Tex } from '../core/textures';
+import { noiseTexture } from '../core/noisetex';
 
-export const WORLD_SIZE = 240;
-const N = 160; // subdivisions
+const CH = 64; // fine cells per chunk side
+const STEPS = [1, 2, 4, 8];
+const NEAR_K = 6; // chunks drawn individually: (2K+1)²
 
-export interface LakeShape {
-  cx: number;
-  cz: number;
-  rx: number;
-  rz: number;
-  rot: number;
-  level: number;
-  wobble: number[]; // radius multipliers by angle
+/** uniforms shared by all ground materials (updated by the sky each frame) */
+export const groundUniforms = {
+  uOrigin: { value: new THREE.Vector2() },
+  uSize: { value: 1 },
+  uBiome: { value: null as THREE.Texture | null },
+  uWaterTex: { value: null as THREE.Texture | null },
+  uNoise: { value: null as THREE.Texture | null },
+  uRock: { value: null as THREE.Texture | null },
+  uTreeline: { value: 160 },
+  uNearCenter: { value: new THREE.Vector2(0, 0) },
+  uNearHalf: { value: new THREE.Vector2(0, 0) },
+  uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+  uGlint: { value: 1 },
+  uForestFar: { value: new THREE.Vector2(380, 620) },
+};
+
+function ridged(n: Simplex2, x: number, y: number, oct: number) {
+  let s = 0, a = 0.5, f = 1, prev = 1, norm = 0;
+  for (let o = 0; o < oct; o++) {
+    let v = 1 - Math.abs(n.noise(x * f, y * f));
+    v *= v;
+    s += v * a * prev;
+    norm += a;
+    prev = v;
+    f *= 2.1;
+    a *= 0.5;
+  }
+  return s / norm;
+}
+
+export function makeGroundMaterial(far: boolean) {
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
+  m.defines = far ? { FAR_TERRAIN: 1 } : {};
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, groundUniforms);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNorm;')
+      .replace(
+        '#include <worldpos_vertex>',
+        '#include <worldpos_vertex>\nvec4 wp4 = vec4(transformed, 1.0);\nvec3 wn3 = objectNormal;\n#ifdef USE_INSTANCING\nwp4 = instanceMatrix * wp4;\nwn3 = mat3(instanceMatrix) * wn3;\n#endif\nvWPos = (modelMatrix * wp4).xyz;\nvWNorm = normalize(mat3(modelMatrix) * wn3);',
+      );
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        /* glsl */ `#include <common>
+varying vec3 vWPos;
+varying vec3 vWNorm;
+uniform vec2 uOrigin; uniform float uSize; uniform sampler2D uBiome; uniform sampler2D uWaterTex; uniform sampler2D uNoise; uniform sampler2D uRock;
+uniform float uTreeline; uniform vec2 uNearCenter; uniform vec2 uNearHalf; uniform vec3 uSunDir; uniform float uGlint; uniform vec2 uForestFar;
+vec3 triRock(vec3 p, vec3 n) {
+  vec3 w = pow(abs(n), vec3(4.0)); w /= (w.x + w.y + w.z);
+  return texture2D(uRock, p.yz).rgb * w.x + texture2D(uRock, p.xz).rgb * w.y + texture2D(uRock, p.xy).rgb * w.z;
+}`,
+      )
+      .replace(
+        '#include <map_fragment>',
+        /* glsl */ `
+#ifdef FAR_TERRAIN
+  if (abs(vWPos.x - uNearCenter.x) < uNearHalf.x && abs(vWPos.z - uNearCenter.y) < uNearHalf.y) discard;
+#endif
+  vec2 uvB = (vWPos.xz + uOrigin) / uSize;
+  vec4 bio = texture2D(uBiome, uvB);
+  vec3 N = normalize(vWNorm);
+  float slope = 1.0 - N.y;
+  vec4 nz1 = texture2D(uNoise, vWPos.xz * 0.0071);
+  vec4 nz2 = texture2D(uNoise, vWPos.xz * 0.061);
+  vec4 nz3 = texture2D(uNoise, vWPos.xz * 0.53);
+  float camDist = length(cameraPosition - vWPos);
+  // snow: slight dunes and blue-white variation
+  vec3 snow = vec3(0.92, 0.945, 0.975) * (0.95 + 0.07 * nz1.r + 0.03 * nz2.g);
+  // under the forest: darker, with needles and twigs
+  float debris = smoothstep(0.6, 0.82, nz3.b) * (1.0 - smoothstep(30.0, 80.0, camDist));
+  snow = mix(snow, snow * vec3(0.84, 0.86, 0.88), bio.r * 0.6);
+  snow = mix(snow, vec3(0.36, 0.31, 0.26), bio.r * debris * 0.45);
+  // burned land: grey snow, black specks
+  snow = mix(snow, vec3(0.6, 0.6, 0.61), bio.g * (0.35 + 0.25 * nz2.r));
+  snow = mix(snow, vec3(0.08, 0.075, 0.07), bio.g * smoothstep(0.55, 0.75, nz3.g) * 0.75);
+  // bog: yellow sedge tufts through the snow
+  float tuft = smoothstep(0.58, 0.78, nz3.a) * smoothstep(0.35, 0.65, nz2.b);
+  snow = mix(snow, vec3(0.6, 0.52, 0.32), bio.b * tuft * 0.75);
+  // shore: pebbles and grey sand where the snow is thin
+  float peb = bio.a * smoothstep(0.45, 0.7, nz2.a) * (0.6 + 0.4 * nz3.r);
+  snow = mix(snow, vec3(0.5, 0.48, 0.45) * (0.7 + 0.5 * nz3.g), peb * 0.75);
+  // rock: steep slopes are bare, ledges keep snow; high ground is wind-scoured
+  float rockK = smoothstep(0.3 + 0.12 * nz2.r, 0.46 + 0.08 * nz2.g, slope);
+  rockK = max(rockK, smoothstep(uTreeline + 50.0, uTreeline + 170.0, vWPos.y) * smoothstep(0.12, 0.3, slope) * (0.6 + 0.4 * nz1.g));
+  vec3 rock = triRock(vWPos * 0.09, N) * vec3(0.62, 0.62, 0.66) * (0.75 + 0.35 * nz2.b);
+  vec3 col = mix(snow, rock, rockK);
+  // distant forest canopy: dark green-grey seen from afar (the trees themselves stop drawing)
+  float farF = smoothstep(uForestFar.x, uForestFar.y, camDist);
+  col = mix(col, vec3(0.13, 0.17, 0.15) * (0.85 + 0.3 * nz2.r), bio.r * farF * 0.85);
+  // far lakes and sea seen as ice / dark water (near ones have their own meshes)
+  vec4 wt = texture2D(uWaterTex, uvB);
+  float wet = step(-500.0, wt.r) * step(vWPos.y, wt.r - 0.25) * smoothstep(250.0, 350.0, camDist);
+  vec3 iceCol = mix(vec3(0.08, 0.14, 0.2), vec3(0.86, 0.9, 0.94) * (0.94 + 0.08 * nz1.b), smoothstep(0.0, 0.08, wt.g));
+  col = mix(col, iceCol, wet);
+  rockK *= 1.0 - wet;
+  diffuseColor.rgb = col;
+`,
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.82, 0.95, rockK);',
+      )
+      .replace(
+        '#include <opaque_fragment>',
+        /* glsl */ `
+  {
+    // sun glints on the snow
+    vec3 V = normalize(cameraPosition - vWPos);
+    vec3 cell = floor(vWPos * 70.0);
+    float rnd = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+    vec3 facet = normalize(N * 1.5 + (vec3(fract(rnd * 13.1), fract(rnd * 7.7), fract(rnd * 3.3)) - 0.5));
+    float g = pow(max(dot(reflect(-uSunDir, facet), V), 0.0), 800.0) * step(0.7, rnd);
+    // only in direct sun: lit surfaces are brighter than the ambient-only shade
+    float lit = smoothstep(0.55, 0.9, dot(outgoingLight, vec3(0.333)) / max(0.05, dot(diffuseColor.rgb, vec3(0.333))));
+    g *= (1.0 - rockK) * uGlint * lit * (1.0 - smoothstep(6.0, 28.0, camDist));
+    outgoingLight += vec3(g * 1.2);
+  }
+#include <opaque_fragment>`,
+      );
+  };
+  m.customProgramCacheKey = () => (far ? 'ground-far' : 'ground');
+  return m;
+}
+
+interface Slot {
+  ci: number;
+  cj: number;
+  mesh: THREE.Mesh | null;
+  geos: (THREE.BufferGeometry | null)[];
+  lod: number;
+  minY: number;
+  maxY: number;
 }
 
 export class Terrain {
-  size = WORLD_SIZE;
-  n = N;
-  heights: Float32Array; // (n+1)*(n+1), row-major [row(z)][col(x)]
-  noise: Simplex2;
-  lake: LakeShape;
+  R: Region;
+  size: number;
+  n: number;
   houseY: number;
-  mesh!: THREE.Mesh;
+  handles = new Set<number>();
+  mat!: THREE.MeshStandardMaterial;
+  farMat!: THREE.MeshStandardMaterial;
+  far!: THREE.Mesh;
+  backdrop!: THREE.Mesh;
+  private slots: Slot[] = [];
+  private indices: THREE.BufferAttribute[] = [];
+  private cpc: number; // chunks per side
+  private group = new THREE.Group();
 
-  constructor(rng: Rng) {
-    this.noise = new Simplex2(() => rng.next());
-    const ang = rng.float(0.35, 1.1);
-    const dist = rng.float(34, 42);
-    const wobble: number[] = [];
-    const wob = new Simplex2(() => rng.next());
-    for (let i = 0; i < 64; i++) {
-      const a = (i / 64) * Math.PI * 2;
-      wobble.push(1 + 0.16 * wob.noise(Math.cos(a) * 1.3, Math.sin(a) * 1.3));
-    }
-    this.lake = {
-      cx: Math.cos(ang) * dist,
-      cz: Math.sin(ang) * dist,
-      rx: rng.float(18, 24),
-      rz: rng.float(12, 16),
-      rot: rng.float(0, Math.PI),
-      level: 0,
-      wobble,
-    };
-    this.houseY = this.natural(0, 0);
-    // lake level slightly below the lowest natural point on its shore
-    let minShore = Infinity;
-    for (let i = 0; i < 48; i++) {
-      const a = (i / 48) * Math.PI * 2;
-      const p = this.lakePoint(a, 1.0);
-      minShore = Math.min(minShore, this.natural(p.x, p.z));
-    }
-    this.lake.level = Math.min(minShore, this.houseY) - 1.1;
-
-    const n = this.n;
-    this.heights = new Float32Array((n + 1) * (n + 1));
-    for (let r = 0; r <= n; r++) {
-      for (let c = 0; c <= n; c++) {
-        const x = -this.size / 2 + (c * this.size) / n;
-        const z = -this.size / 2 + (r * this.size) / n;
-        this.heights[r * (n + 1) + c] = this.height(x, z);
-      }
-    }
+  constructor(R: Region) {
+    this.R = R;
+    this.size = R.size;
+    this.n = R.n;
+    this.houseY = R.sites.house.y;
+    this.cpc = R.n / CH;
   }
 
-  /** Point on the lake ellipse boundary at angle a, scaled by k. */
-  lakePoint(a: number, k: number) {
-    const L = this.lake;
-    const w = this.wobbleAt(a);
-    const lx = Math.cos(a) * L.rx * w * k;
-    const lz = Math.sin(a) * L.rz * w * k;
-    const c = Math.cos(L.rot), s = Math.sin(L.rot);
-    return { x: L.cx + lx * c - lz * s, z: L.cz + lx * s + lz * c };
-  }
-
-  private wobbleAt(a: number) {
-    const W = this.lake.wobble;
-    let t = ((a / (Math.PI * 2)) % 1 + 1) % 1;
-    t *= W.length;
-    const i = Math.floor(t);
-    const f = t - i;
-    return lerp(W[i % W.length], W[(i + 1) % W.length], f);
-  }
-
-  /** Normalised lake distance: <1 inside the lake. */
-  lakeQ(x: number, z: number) {
-    const L = this.lake;
-    const dx = x - L.cx, dz = z - L.cz;
-    const c = Math.cos(-L.rot), s = Math.sin(-L.rot);
-    const lx = dx * c - dz * s;
-    const lz = dx * s + dz * c;
-    const a = Math.atan2(lz / L.rz, lx / L.rx);
-    const w = this.wobbleAt(a < 0 ? a + Math.PI * 2 : a);
-    return Math.hypot(lx / L.rx, lz / L.rz) / w;
-  }
-
-  natural(x: number, z: number) {
-    const n = this.noise;
-    let h = n.fbm(x * 0.011, z * 0.011, 4) * 6 + n.fbm(x * 0.045 + 17, z * 0.045 - 9, 3) * 1.1;
-    const r = Math.hypot(x, z);
-    h += smoothstep(70, 118, r) * 22 * (0.7 + 0.3 * n.noise(x * 0.02, z * 0.02));
-    return h;
-  }
-
-  height(x: number, z: number) {
-    let h = this.natural(x, z);
-    // house clearing
-    const dh = Math.hypot(x, z * 1.1);
-    h = lerp(this.houseY, h, smoothstep(9, 19, dh));
-    // lake basin
-    const q = this.lakeQ(x, z);
-    const L = this.lake;
-    if (q < 1.45) {
-      const shore = L.level + 0.25;
-      if (q < 1) {
-        const bed = L.level - 0.35 - 2.6 * (1 - q * q);
-        h = Math.min(h, bed);
-      } else {
-        const t = smoothstep(1, 1.45, q);
-        h = lerp(Math.min(h, shore + (q - 1) * 2), h, t);
-      }
-    }
-    return h;
-  }
-
-  /** Bilinear height from the grid (matches the collider closely). */
   heightAt(x: number, z: number) {
-    const n = this.n;
-    const fx = clamp(((x + this.size / 2) / this.size) * n, 0, n - 0.0001);
-    const fz = clamp(((z + this.size / 2) / this.size) * n, 0, n - 0.0001);
-    const c = Math.floor(fx), r = Math.floor(fz);
-    const tx = fx - c, tz = fz - r;
-    const H = this.heights;
-    const i = r * (n + 1) + c;
-    const h00 = H[i], h10 = H[i + 1], h01 = H[i + n + 1], h11 = H[i + n + 2];
-    // match the two-triangle split of the heightfield approximately
-    return lerp(lerp(h00, h10, tx), lerp(h01, h11, tx), tz);
+    return this.R.heightAt(x, z);
   }
 
   build() {
-    const n = this.n;
-    const geo = new THREE.PlaneGeometry(this.size, this.size, n, n);
-    geo.rotateX(-Math.PI / 2);
-    const pos = geo.attributes.position as THREE.BufferAttribute;
-    const colors = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i);
-      pos.setY(i, this.heightAt(x, z));
+    const R = this.R;
+    const U = groundUniforms;
+    U.uOrigin.value.set(R.ox, R.oz);
+    U.uSize.value = R.size;
+    U.uTreeline.value = R.treeline;
+    // biome look texture (coarse grid)
+    const bt = new THREE.DataTexture(R.tex, R.cn + 1, R.cn + 1, THREE.RGBAFormat);
+    bt.magFilter = bt.minFilter = THREE.LinearFilter;
+    bt.wrapS = bt.wrapT = THREE.ClampToEdgeWrapping;
+    bt.needsUpdate = true;
+    U.uBiome.value = bt;
+    U.uNoise.value = noiseTexture();
+    const rock = Tex.rock();
+    U.uRock.value = rock;
+    // far water: level and ice per coarse vertex
+    const nc = R.cn + 1;
+    const wd = new Float32Array(nc * nc * 4);
+    for (let j = 0; j < nc; j++) for (let i = 0; i < nc; i++) {
+      const x = i * R.cc - R.ox, z = j * R.cc - R.oz;
+      const w = R.waterAt(x, z);
+      const o = (j * nc + i) * 4;
+      wd[o] = Number.isNaN(w) ? -1000 : w;
+      wd[o + 1] = Number.isNaN(w) ? 0 : R.iceAt(x, z);
     }
-    geo.computeVertexNormals();
-    const nrm = geo.attributes.normal as THREE.BufferAttribute;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i);
-      const slope = 1 - nrm.getY(i);
-      const v = 0.94 + 0.06 * this.noise.noise(x * 0.15, z * 0.15);
-      const rock = smoothstep(0.25, 0.45, slope);
-      const q = this.lakeQ(x, z);
-      const shore = q > 0.97 && q < 1.12 ? 0.05 : 0;
-      colors[i * 3] = lerp(v * 0.95, 0.42, rock) - shore;
-      colors[i * 3 + 1] = lerp(v * 0.97, 0.41, rock) - shore * 0.8;
-      colors[i * 3 + 2] = lerp(v * 1.02, 0.4, rock) - shore * 0.3;
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const uv = geo.attributes.uv as THREE.BufferAttribute;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 50, uv.getY(i) * 50);
-    const mat = new THREE.MeshStandardMaterial({
-      map: Tex.snow(),
-      vertexColors: true,
-      roughness: 0.92,
-      metalness: 0,
-    });
-    this.mesh = new THREE.Mesh(geo, mat);
-    this.mesh.receiveShadow = true;
-    this.mesh.name = 'terrain';
-    G.scene.add(this.mesh);
+    const wt = new THREE.DataTexture(wd, nc, nc, THREE.RGBAFormat, THREE.FloatType);
+    wt.magFilter = wt.minFilter = THREE.NearestFilter;
+    wt.needsUpdate = true;
+    U.uWaterTex.value = wt;
 
-    // physics heightfield: column-major, rows along z, columns along x
-    const hf = new Float32Array((n + 1) * (n + 1));
-    for (let c = 0; c <= n; c++) {
-      for (let r = 0; r <= n; r++) {
-        hf[c * (n + 1) + r] = this.heights[r * (n + 1) + c];
-      }
-    }
-    const body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed());
-    const col = G.world.createCollider(
-      G.R.ColliderDesc.heightfield(n, n, hf, { x: this.size, y: 1, z: this.size })
-        .setFriction(0.9)
-        .setCollisionGroups(GROUPS_STATIC),
-      body,
-    );
-    G.terrainHandle = col.handle;
+    this.mat = makeGroundMaterial(false);
+    this.farMat = makeGroundMaterial(true);
+    G.scene.add(this.group);
 
-    this.buildMountains();
+    // index buffers (grid + skirt) per LOD
+    for (const s of STEPS) this.indices.push(this.makeIndex(CH / s + 1));
+    for (let cj = 0; cj < this.cpc; cj++) for (let ci = 0; ci < this.cpc; ci++) {
+      const { minY, maxY } = this.chunkRange(ci, cj);
+      this.slots.push({ ci, cj, mesh: null, geos: [null, null, null, null], lod: -1, minY, maxY });
+    }
+    this.buildPhysics();
+    this.buildFar();
+    this.buildBackdrop();
   }
 
-  private buildMountains() {
-    // distant ring of hills, mostly fog silhouettes
-    const geo = new THREE.CylinderGeometry(420, 470, 1, 128, 6, true);
-    const pos = geo.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-      const a = Math.atan2(z, x);
-      const t = y + 0.5; // 0 bottom, 1 top
-      const peak = 40 + 70 * Math.max(0, this.noise.fbm(Math.cos(a) * 2.2, Math.sin(a) * 2.2, 4) + 0.35);
-      pos.setY(i, -10 + t * peak);
-      const shrink = 1 - t * 0.12;
-      pos.setX(i, x * shrink);
-      pos.setZ(i, z * shrink);
+  private chunkRange(ci: number, cj: number) {
+    const H = this.R.h, nf = this.n + 1;
+    let mn = Infinity, mx = -Infinity;
+    for (let j = cj * CH; j <= (cj + 1) * CH; j += 4) for (let i = ci * CH; i <= (ci + 1) * CH; i += 4) {
+      const h = H[j * nf + i];
+      if (h < mn) mn = h;
+      if (h > mx) mx = h;
     }
-    geo.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({ color: 0xdfe6ee, roughness: 1, side: THREE.DoubleSide });
-    const m = new THREE.Mesh(geo, mat);
-    m.name = 'mountains';
-    G.scene.add(m);
+    return { minY: mn - 4, maxY: mx + 2 };
+  }
+
+  private makeIndex(m: number) {
+    const idx: number[] = [];
+    for (let b = 0; b < m - 1; b++) for (let a = 0; a < m - 1; a++) {
+      const v = b * m + a;
+      // same diagonal on every quad
+      idx.push(v, v + m, v + 1, v + 1, v + m, v + m + 1);
+    }
+    // skirts: one ring of extra vertices after the grid, in the order top, right, bottom, left
+    const base = m * m;
+    const edge = (k: number, side: number) => {
+      switch (side) {
+        case 0: return k; // b = 0
+        case 1: return k * m + (m - 1); // a = m-1
+        case 2: return (m - 1) * m + (m - 1 - k); // b = m-1, reversed
+        default: return (m - 1 - k) * m; // a = 0, reversed
+      }
+    };
+    for (let side = 0; side < 4; side++) {
+      for (let k = 0; k < m - 1; k++) {
+        const a = edge(k, side), b = edge(k + 1, side);
+        const sa = base + side * m + k, sb = base + side * m + k + 1;
+        idx.push(a, sa, b, b, sa, sb);
+      }
+    }
+    return new THREE.BufferAttribute(new Uint32Array(idx), 1);
+  }
+
+  private makeGeometry(ci: number, cj: number, lod: number) {
+    const s = STEPS[lod];
+    const m = CH / s + 1;
+    const H = this.R.h, nf = this.n + 1;
+    const pos = new Float32Array((m * m + 4 * m) * 3);
+    const nrm = new Float32Array((m * m + 4 * m) * 3);
+    const i0 = ci * CH, j0 = cj * CH;
+    const hAt = (i: number, j: number) => H[clamp(j, 0, this.n) * nf + clamp(i, 0, this.n)];
+    const span = s;
+    const setV = (o: number, a: number, b: number, drop: number) => {
+      const i = i0 + a * s, j = j0 + b * s;
+      const h = hAt(i, j);
+      pos[o * 3] = a * s * 2;
+      pos[o * 3 + 1] = h - drop;
+      pos[o * 3 + 2] = b * s * 2;
+      const dx = hAt(i + span, j) - hAt(i - span, j);
+      const dz = hAt(i, j + span) - hAt(i, j - span);
+      const L = Math.hypot(dx, 4 * span, dz);
+      nrm[o * 3] = -dx / L;
+      nrm[o * 3 + 1] = (4 * span) / L;
+      nrm[o * 3 + 2] = -dz / L;
+    };
+    for (let b = 0; b < m; b++) for (let a = 0; a < m; a++) setV(b * m + a, a, b, 0);
+    const drop = 1.5 + s * 1.5;
+    const base = m * m;
+    for (let k = 0; k < m; k++) {
+      setV(base + k, k, 0, drop);
+      setV(base + m + k, m - 1, k, drop);
+      setV(base + 2 * m + k, m - 1 - k, m - 1, drop);
+      setV(base + 3 * m + k, 0, m - 1 - k, drop);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    g.setIndex(this.indices[lod]);
+    const slot = this.slots[cj * this.cpc + ci];
+    g.boundingBox = new THREE.Box3(new THREE.Vector3(0, slot.minY, 0), new THREE.Vector3(CH * 2, slot.maxY, CH * 2));
+    g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere());
+    return g;
+  }
+
+  private buildPhysics() {
+    const R = this.R, H = R.h, nf = this.n + 1;
+    const body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed());
+    for (let tj = 0; tj < this.cpc; tj++) for (let ti = 0; ti < this.cpc; ti++) {
+      const hf = new Float32Array((CH + 1) * (CH + 1));
+      for (let c = 0; c <= CH; c++) for (let r = 0; r <= CH; r++) hf[c * (CH + 1) + r] = H[(tj * CH + r) * nf + ti * CH + c];
+      const cx = (ti * CH + CH / 2) * 2 - R.ox, cz = (tj * CH + CH / 2) * 2 - R.oz;
+      const col = G.world.createCollider(
+        G.R.ColliderDesc.heightfield(CH, CH, hf, { x: CH * 2, y: 1, z: CH * 2 })
+          .setTranslation(cx, 0, cz)
+          .setFriction(0.9)
+          .setCollisionGroups(GROUPS_STATIC),
+        body,
+      );
+      this.handles.add(col.handle);
+    }
+  }
+
+  private buildFar() {
+    const R = this.R, s = 8;
+    const m = this.n / s + 1;
+    const g = new THREE.PlaneGeometry(R.size, R.size, m - 1, m - 1);
+    g.rotateX(-Math.PI / 2);
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    for (let k = 0; k < pos.count; k++) {
+      const x = pos.getX(k) + R.size / 2 - R.ox, z = pos.getZ(k) + R.size / 2 - R.oz;
+      pos.setXYZ(k, x, R.heightAt(x, z) - 0.3, z);
+    }
+    g.computeVertexNormals();
+    g.computeBoundingSphere();
+    this.far = new THREE.Mesh(g, this.farMat);
+    this.far.receiveShadow = false;
+    this.far.frustumCulled = false;
+    this.far.name = 'terrain-far';
+    G.scene.add(this.far);
+  }
+
+  /** Mountains and sea beyond the border, so the horizon is never empty. */
+  private buildBackdrop() {
+    const R = this.R;
+    const W = 7000, step = 64;
+    const x0 = -W, x1 = R.size + W;
+    const m = Math.round((x1 - x0) / step) + 1;
+    const noise = new Simplex2(() => 0.37);
+    const pos: number[] = [];
+    const sea = R.seaSide;
+    for (let b = 0; b < m; b++) for (let a = 0; a < m; a++) {
+      const gx = x0 + a * step, gy = x0 + b * step;
+      const cx = clamp(gx, 0, R.size), cy = clamp(gy, 0, R.size);
+      const out = Math.hypot(gx - cx, gy - cy);
+      const edgeH = R.heightAt(cx - R.ox, cy - R.oz);
+      let h: number;
+      // which side are we beyond?
+      const side = gy < 0 ? 0 : gy > R.size ? 1 : gx < 0 ? 2 : gx > R.size ? 3 : -1;
+      const towardsSea = side === sea || (side >= 0 && ((sea === 0 && gy < 0) || (sea === 1 && gy > R.size) || (sea === 2 && gx < 0) || (sea === 3 && gx > R.size)));
+      if (out <= 0) h = edgeH - 12;
+      else if (towardsSea) {
+        // open sea, a few far islands
+        const isl = Math.max(0, ridged(noise, gx / 2400, gy / 2400, 4) - 0.62) * 600 * smoothstep(1500, 3000, out);
+        h = lerp(edgeH, -40, smoothstep(0, 400, out)) + isl;
+      } else {
+        const mount = 260 + 620 * ridged(noise, gx / 1700, gy / 1700, 5) * smoothstep(0, 2500, out);
+        h = lerp(edgeH, mount, smoothstep(0, 900, out));
+      }
+      pos.push(gx - R.ox, h, gy - R.oz);
+    }
+    const idx: number[] = [];
+    for (let b = 0; b < m - 1; b++) for (let a = 0; a < m - 1; a++) {
+      const v = b * m + a;
+      // skip quads entirely inside the map
+      const gx = x0 + a * step, gy = x0 + b * step;
+      if (gx >= 0 && gy >= 0 && gx + step <= R.size && gy + step <= R.size) continue;
+      idx.push(v, v + m, v + 1, v + 1, v + m, v + m + 1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    this.backdrop = new THREE.Mesh(g, this.farMat);
+    this.backdrop.frustumCulled = false;
+    this.backdrop.name = 'backdrop';
+    G.scene.add(this.backdrop);
+  }
+
+  /** Pick the level of detail for chunks around the camera. */
+  update(cam: THREE.Vector3, budget = 6) {
+    const R = this.R;
+    const cs = CH * 2;
+    const cci = clamp(Math.floor((cam.x + R.ox) / cs), 0, this.cpc - 1);
+    const ccj = clamp(Math.floor((cam.z + R.oz) / cs), 0, this.cpc - 1);
+    const i0 = Math.max(0, cci - NEAR_K), i1 = Math.min(this.cpc - 1, cci + NEAR_K);
+    const j0 = Math.max(0, ccj - NEAR_K), j1 = Math.min(this.cpc - 1, ccj + NEAR_K);
+    // the far mesh is cut out exactly where the near chunks are
+    groundUniforms.uNearCenter.value.set(((i0 + i1 + 1) / 2) * cs - R.ox, ((j0 + j1 + 1) / 2) * cs - R.oz);
+    groundUniforms.uNearHalf.value.set(((i1 - i0 + 1) / 2) * cs, ((j1 - j0 + 1) / 2) * cs);
+    for (const s of this.slots) {
+      const inNear = s.ci >= i0 && s.ci <= i1 && s.cj >= j0 && s.cj <= j1;
+      if (!inNear) {
+        if (s.mesh) s.mesh.visible = false;
+        continue;
+      }
+      const x0 = s.ci * cs - R.ox, z0 = s.cj * cs - R.oz;
+      const dx = Math.max(x0 - cam.x, 0, cam.x - (x0 + cs));
+      const dz = Math.max(z0 - cam.z, 0, cam.z - (z0 + cs));
+      const dy = Math.max(s.minY - cam.y, 0, cam.y - s.maxY);
+      const d = Math.hypot(dx, dz, dy * 0.5);
+      const want = d < 150 ? 0 : d < 330 ? 1 : d < 620 ? 2 : 3;
+      let lod = want;
+      if (!s.geos[lod]) {
+        if (budget > 0 || lod === 3) {
+          s.geos[lod] = this.makeGeometry(s.ci, s.cj, lod);
+          budget--;
+        } else {
+          // use whatever is ready, building the cheapest one if needed
+          lod = s.geos.findIndex((g) => g !== null);
+          if (lod < 0) {
+            lod = 3;
+            s.geos[3] = this.makeGeometry(s.ci, s.cj, 3);
+          }
+        }
+      }
+      if (!s.mesh) {
+        s.mesh = new THREE.Mesh(s.geos[lod]!, this.mat);
+        s.mesh.position.set(x0, 0, z0);
+        s.mesh.receiveShadow = true;
+        s.mesh.name = 'terrain';
+        this.group.add(s.mesh);
+      }
+      if (s.lod !== lod) {
+        s.mesh.geometry = s.geos[lod]!;
+        s.lod = lod;
+        s.mesh.castShadow = lod <= 1;
+      }
+      s.mesh.visible = true;
+      // free detailed geometry of chunks far away
+      if (want >= 2) {
+        for (let l = 0; l < 2; l++) if (s.geos[l] && l !== lod) {
+          s.geos[l]!.dispose();
+          s.geos[l] = null;
+        }
+      }
+    }
   }
 }

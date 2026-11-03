@@ -109,7 +109,7 @@ export class Fires {
     const rp = ringGeo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < rp.count; i++) {
       const wx = pos.x + rp.getX(i), wz = pos.z + rp.getZ(i);
-      const gy = G.lake.onIce(new THREE.Vector3(wx, pos.y, wz)) ? G.lake.level : G.terrain.heightAt(wx, wz);
+      const gy = G.lake.onIce(new THREE.Vector3(wx, pos.y, wz)) ? G.lake.levelAt(wx, wz) + 0.03 : G.terrain.heightAt(wx, wz);
       rp.setY(i, gy - pos.y + 0.03);
     }
     ringGeo.computeVertexNormals();
@@ -121,7 +121,7 @@ export class Fires {
       const a = (i / 9) * Math.PI * 2;
       const sx = Math.cos(a) * 0.48, sz = Math.sin(a) * 0.48;
       const st = new THREE.Mesh(new THREE.IcosahedronGeometry(0.08 + Math.random() * 0.04, 0), stoneMat);
-      const gy = G.lake.onIce(new THREE.Vector3(pos.x + sx, pos.y, pos.z + sz)) ? G.lake.level : G.terrain.heightAt(pos.x + sx, pos.z + sz);
+      const gy = G.lake.onIce(new THREE.Vector3(pos.x + sx, pos.y, pos.z + sz)) ? G.lake.levelAt(pos.x + sx, pos.z + sz) + 0.03 : G.terrain.heightAt(pos.x + sx, pos.z + sz);
       st.position.set(sx, gy - pos.y + 0.04, sz);
       st.scale.y = 0.7;
       st.castShadow = true;

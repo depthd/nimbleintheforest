@@ -23,6 +23,7 @@ async function go() {
     weatherLock: params.get('weather'),
     noCold: params.get('nocold') === '1',
     horror: params.get('horror') ? params.get('horror') === '1' : el('st-horror').checked,
+    size: Number(params.get('size') ?? 3072),
   };
   document.getElementById('start')!.style.display = 'none';
   const loading = document.getElementById('loading')!;
@@ -48,4 +49,5 @@ async function go() {
 }
 
 document.getElementById('st-go')!.addEventListener('click', go);
-if (params.get('autostart') === '1' || params.get('test') === '1') go();
+if (params.get('preview') === 'map') import('./preview').then((m) => m.previewMap(params));
+else if (params.get('autostart') === '1' || params.get('test') === '1') go();

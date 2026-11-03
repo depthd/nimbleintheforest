@@ -11,7 +11,8 @@ import { Weather, WeatherType } from '../world/weather';
 import { Sky } from '../world/sky';
 import { Forest } from '../world/forest';
 import { House } from '../world/house';
-import { Lake } from '../world/lake';
+import { Water } from '../world/water';
+import { Region } from '../gen/region';
 import { Entities, Entity } from './entities';
 import { Player } from './player';
 import { Body, Env, Activity } from './body';
@@ -53,14 +54,23 @@ export async function startGame(settings: Settings) {
   document.getElementById('app')!.appendChild(renderer.domElement);
   G.renderer = renderer;
   G.scene = new THREE.Scene();
-  G.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 1500);
+  G.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 14000);
   G.scene.add(G.camera);
 
   G.audio = new GameAudio();
   G.input = new Input(renderer.domElement);
 
   const rng = G.rng;
-  G.terrain = new Terrain(rng);
+  const loadText = document.querySelector('#loading h2');
+  const region = new Region(settings.seed, settings.size);
+  await region.generate(async (stage, f) => {
+    if (loadText) loadText.textContent = `Генерация мира: ${stage.toLowerCase()} — ${Math.round(f * 100)}%`;
+    await new Promise((r) => setTimeout(r, 0));
+  });
+  if (loadText) loadText.textContent = 'Строим мир…';
+  await new Promise((r) => setTimeout(r, 0));
+  G.region = region;
+  G.terrain = new Terrain(region);
   G.terrain.build();
   G.weather = new Weather(rng);
   const startWeather: WeatherType = (settings.weatherLock as WeatherType) ?? rng.pick(['snow', 'cloudy', 'clear', 'snow'] as WeatherType[]);
@@ -68,8 +78,8 @@ export async function startGame(settings: Settings) {
   G.sky = new Sky();
   G.fx = new Effects();
   G.entities = new Entities();
-  G.lake = new Lake();
-  G.lake.build(rng);
+  G.lake = new Water();
+  G.lake.build(region);
   G.house = new House();
   G.house.build(rng);
   G.forest = new Forest();
@@ -95,7 +105,10 @@ export async function startGame(settings: Settings) {
   }
   G.player.addToInventory(G.entities.spawnItem('chocolate', new THREE.Vector3(0, -50, 0)));
 
-  // let furniture and loot settle
+  // stream the world around the player, then let furniture and loot settle
+  G.terrain.update(G.camera.position.copy(G.player.eyePos), 400);
+  G.forest.update(G.player.pos, true);
+  G.lake.stream(G.player.pos, 60);
   for (let i = 0; i < 150; i++) G.world.step(G.events);
   G.entities.sync();
   for (const e of G.entities.list) G.entities.syncOne(e);
@@ -125,23 +138,15 @@ function hud_intro() {
 
 function findSpawn(rng: Rng) {
   const T = G.terrain;
-  for (let i = 0; i < 200; i++) {
-    const a = rng.float(0, Math.PI * 2);
-    const d = rng.float(14, 18);
+  // in front of the porch, looking at the house
+  for (let i = 0; i < 300; i++) {
+    const a = Math.PI / 2 + rng.float(-0.9, 0.9);
+    const d = rng.float(13, 19);
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
-    if (T.lakeQ(x, z) < 1.3) continue;
+    if (!Number.isNaN(G.region.waterAt(x, z))) continue;
     if (x > 3 && x < 10 && z > -4 && z < 7) continue;
-    if (G.forest.trees.some((t) => Math.hypot(t.x - x, t.z - z) < 2)) continue;
-    // keep the view to the house clear
-    const blocked = G.forest.trees.some((t) => {
-      const L = Math.hypot(x, z);
-      const ux = -x / L, uz = -z / L;
-      const px = t.x - x, pz = t.z - z;
-      const along = px * ux + pz * uz;
-      if (along < 0 || along > L - 6) return false;
-      return Math.abs(px * uz - pz * ux) < 1.8 + t.r;
-    });
-    if (blocked) continue;
+    if (G.forest.treesNear(x, z, 2).length) continue;
+    if (G.region.slopeAt(x, z) > 0.4) continue;
     const yaw = Math.atan2(x, z); // face the house
     return { spawn: new THREE.Vector3(x, T.heightAt(x, z) + 0.05, z), yaw };
   }
@@ -208,7 +213,7 @@ function bodyEnv(): Env {
   let rh = 0.85;
   let surfaces = 0;
   if (!zone) {
-    const inForest = !G.lake.onIce(P.pos) && Math.hypot(P.pos.x, P.pos.z) > 16;
+    const inForest = !G.lake.onIce(P.pos) && G.region.forestAt(P.pos.x, P.pos.z) > 0.35;
     wind = W.wind * (inForest ? 0.65 : 1);
     // porch roof and walls give a little shelter
     if (Math.abs(P.pos.x - 2) < 3 && P.pos.z > 3.9 && P.pos.z < 6.2) wind *= 0.6;
@@ -397,6 +402,9 @@ function loop(now: number) {
     horror.update(dtGame, dt);
   }
   G.player.updateCamera(dt);
+  G.terrain.update(G.camera.position);
+  G.forest.update(G.player.pos);
+  G.lake.stream(G.player.pos);
   G.interact.update(paused ? 0 : dt);
   const indoorAmb = G.sky.daylight > 0.3 ? 0.5 : 0.75;
   G.sky.indoorFactor = THREE.MathUtils.lerp(G.sky.indoorFactor, G.house.zoneAt(G.player.pos) ? indoorAmb : 1, Math.min(1, dt * 2));

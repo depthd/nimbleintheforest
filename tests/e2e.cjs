@@ -22,14 +22,14 @@ function check(name, ok, extra = '') {
   const url = `http://localhost:${port}/?test=1&seed=${process.env.SEED || 42}&hour=13&weather=cloudy`;
 
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const page = await browser.newPage({ viewport: { width: 800, height: 450 } });
   const errors = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(url);
-  await page.waitForFunction(() => window.__game, null, { timeout: 90000 });
+  await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
   await page.waitForTimeout(1500);
-  const shot = (n) => page.screenshot({ path: path.join(OUT, n + '.png') });
+  const shot = (n) => page.screenshot({ timeout: 180000, path: path.join(OUT, n + '.png') });
   const ev = (fn, arg) => page.evaluate(fn, arg);
 
   await shot('01-start');
@@ -165,7 +165,8 @@ function check(name, ok, extra = '') {
   const tree = await ev(() => {
     const g = window.__game;
     const G = g.G;
-    const tr = G.forest.trees.filter((t) => t.alive && t.type === 'spruce' && t.r < 0.16 && Math.hypot(t.x, t.z) > 15 && Math.hypot(t.x, t.z) < 40).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+    const tr = G.forest.treesNear(0, 0, 90).filter((t) => t.alive && (t.type === 'spruce' || t.type === 'pine') && t.r < 0.2 && Math.hypot(t.x, t.z) > 15 && G.region.slopeAt(t.x, t.z) < 0.3).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+    G.forest.update(new g.THREE.Vector3(tr.x, tr.y, tr.z), true);
     const px = tr.x + 1.0, pz = tr.z + 0.3;
     g.teleport(px, G.terrain.heightAt(px, pz) + 0.05, pz);
     g.steps(20);
@@ -201,26 +202,32 @@ function check(name, ok, extra = '') {
   const ice = await ev(() => {
     const g = window.__game;
     const G = g.G;
-    const L = G.terrain.lake;
-    // a point on the lake away from thin ice
-    let px = L.cx, pz = L.cz;
-    for (let a = 0; a < 6.28; a += 0.3) {
-      const x = L.cx + Math.cos(a) * 4, z = L.cz + Math.sin(a) * 4;
-      if (Math.hypot(x - G.lake.thin.x, z - G.lake.thin.z) > G.lake.thin.r + 4) { px = x; pz = z; break; }
+    // a point on thick lake ice near the house, away from the thin patch
+    let px = 0, pz = 0, lvl = 0;
+    for (let r = 10; r < 600 && !lvl; r += 4) for (let a = 0; a < 6.28; a += 0.2) {
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const L = G.region.waterAt(x, z);
+      if (Number.isNaN(L) || L === 0 || G.region.iceAt(x, z) < 0.3) continue;
+      if (Math.hypot(x - G.lake.thin.x, z - G.lake.thin.z) < G.lake.thin.r + 4) continue;
+      let ok = true;
+      for (let b = 0; b < 6.28; b += 0.8) if (G.region.iceAt(x + Math.cos(b) * 3, z + Math.sin(b) * 3) < 0.3) ok = false;
+      if (ok) { px = x; pz = z; lvl = L; break; }
     }
-    g.teleport(px, G.lake.level + 0.05, pz);
+    g.teleport(px, lvl + 0.1, pz);
+    G.lake.stream(G.player.pos, 50);
+    G.forest.update(G.player.pos, true);
     g.steps(30);
     g.give('auger');
     g.equip('auger');
     const e = G.player.eyePos;
-    g.lookAt(e.x + 1, G.lake.level, e.z);
+    g.lookAt(e.x + 1, lvl, e.z);
     const acts = g.actions();
     g.act('LMB');
     g.steps(1);
     const holes = G.lake.holes.length;
     g.give('pot');
     g.equip('pot');
-    g.lookAt(e.x + 1, G.lake.level, e.z);
+    g.lookAt(e.x + 1, lvl, e.z);
     const acts2 = g.actions();
     g.act('LMB', 'воды');
     const pot = G.player.inventory.find((x) => x.defId === 'pot');
@@ -312,7 +319,8 @@ function check(name, ok, extra = '') {
     }
     out.campfire = f.burning;
     // thin ice
-    g.teleport(G.lake.thin.x, G.lake.level + 0.05, G.lake.thin.z);
+    g.teleport(G.lake.thin.x, G.lake.levelAt(G.lake.thin.x, G.lake.thin.z) + 0.1, G.lake.thin.z);
+    G.lake.stream(G.player.pos, 50);
     g.steps(30);
     out.fellIn = !!G.player.water;
     g.simulate(30);

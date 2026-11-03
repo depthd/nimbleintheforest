@@ -1,3 +1,4 @@
+import { BIOME_NAMES } from '../gen/biomes';
 // DOM overlay: status, target prompts, messages, inventory, sleep dialog,
 // debug/parameters panel, pause and death screens.
 import * as THREE from 'three';
@@ -546,13 +547,13 @@ export class HUD {
         P.teleport(new THREE.Vector3(1.5, G.house.Y0 + 0.05, 2));
         break;
       case 'tp-lake': {
-        const L = G.terrain.lake;
-        P.teleport(new THREE.Vector3(L.cx - L.rx * 0.3, G.lake.level + 0.05, L.cz));
+        const L = [...G.region.lakes].sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+        if (L) P.teleport(new THREE.Vector3(L.x, L.level + 0.1, L.z));
         break;
       }
       case 'tp-forest': {
-        const tr = G.forest.trees.find((x) => x.alive && Math.hypot(x.x, x.z) > 30)!;
-        P.teleport(new THREE.Vector3(tr.x + 2, G.terrain.heightAt(tr.x + 2, tr.z) + 0.1, tr.z));
+        const tr = G.forest.treesNear(0, 0, 120).find((x) => x.alive && Math.hypot(x.x, x.z) > 30);
+        if (tr) P.teleport(new THREE.Vector3(tr.x + 2, G.terrain.heightAt(tr.x + 2, tr.z) + 0.1, tr.z));
         break;
       }
       case 'heal': {
@@ -650,7 +651,7 @@ export class HUD {
     const P = G.player;
     const z = G.house.zoneAt(P.pos);
     const W = G.weather;
-    let loc = G.lake.onIce(P.pos) ? 'На льду озера' : Math.hypot(P.pos.x, P.pos.z) < 14 ? 'Двор' : 'Лес';
+    let loc = G.lake.onIce(P.pos) ? (G.lake.levelAt(P.pos.x, P.pos.z) === 0 ? 'Морской лёд' : 'На льду') : Math.hypot(P.pos.x, P.pos.z) < 14 ? 'Двор' : BIOME_NAMES[G.region.biomeAt(P.pos.x, P.pos.z)];
     if (z) {
       const chest = P.pos.clone().add(new THREE.Vector3(0, 1.2, 0));
       const dr = G.thermal.draftAt(chest);
