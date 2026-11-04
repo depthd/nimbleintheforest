@@ -56,7 +56,7 @@ export async function startGame(settings: Settings) {
   document.getElementById('app')!.appendChild(renderer.domElement);
   G.renderer = renderer;
   G.scene = new THREE.Scene();
-  G.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 14000);
+  G.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 14000);
   G.scene.add(G.camera);
 
   G.audio = new GameAudio();

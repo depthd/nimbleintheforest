@@ -8,6 +8,7 @@ import { clamp } from '../core/rng';
 import { Entity } from '../game/entities';
 import { mat } from '../game/meshes';
 import { noiseTexture } from '../core/noisetex';
+import { groundUniforms } from './terrain';
 
 const CH = 64;
 
@@ -21,10 +22,10 @@ export const waterUniforms = {
 };
 
 function makeIceMaterial(sea: boolean) {
-  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0, polygonOffset: !sea, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
   m.defines = sea ? { SEA: 1 } : {};
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, waterUniforms);
+    Object.assign(sh.uniforms, waterUniforms, { uWaterTex: groundUniforms.uWaterTex, uOrigin: groundUniforms.uOrigin, uSize: groundUniforms.uSize });
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aIce;\nvarying float vIce;\nvarying vec3 vWPos;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#ifdef SEA\nvIce = 0.0;\n#else\nvIce = aIce;\n#endif');
@@ -33,7 +34,8 @@ function makeIceMaterial(sea: boolean) {
         '#include <common>',
         `#include <common>
 varying float vIce; varying vec3 vWPos;
-uniform vec3 uSkyTop; uniform vec3 uSkyHorizon; uniform vec3 uSunDir; uniform vec3 uSunColor; uniform float uTime; uniform sampler2D uNoise;`,
+uniform vec3 uSkyTop; uniform vec3 uSkyHorizon; uniform vec3 uSunDir; uniform vec3 uSunColor; uniform float uTime; uniform sampler2D uNoise;
+uniform sampler2D uWaterTex; uniform vec2 uOrigin; uniform float uSize;`,
       )
       .replace(
         '#include <map_fragment>',
@@ -42,6 +44,9 @@ uniform vec3 uSkyTop; uniform vec3 uSkyHorizon; uniform vec3 uSunDir; uniform ve
   vec4 n2 = texture2D(uNoise, vWPos.xz * 0.09);
   vec4 n3 = texture2D(uNoise, vWPos.xz * 0.6);
   float iceT = vIce;
+#ifdef SEA
+  iceT = texture2D(uWaterTex, (vWPos.xz + uOrigin) / uSize).g;
+#endif
   float isIce = smoothstep(0.0, 0.02, iceT);
   // ice: wind-packed snow patches over clear blue-grey ice with white cracks
   float snowK = smoothstep(0.42, 0.62, n1.g + n2.r * 0.35) * smoothstep(0.08, 0.2, iceT);
@@ -128,7 +133,7 @@ export class Water {
     const sg = new THREE.PlaneGeometry(60000, 60000, 1, 1);
     sg.rotateX(-Math.PI / 2);
     this.sea = new THREE.Mesh(sg, makeIceMaterial(true));
-    this.sea.position.set(R.size / 2 - R.ox, -0.12, R.size / 2 - R.oz);
+    this.sea.position.set(R.size / 2 - R.ox, -0.7, R.size / 2 - R.oz);
     this.sea.frustumCulled = false;
     this.sea.name = 'sea';
     G.scene.add(this.sea);
