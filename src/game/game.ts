@@ -466,6 +466,7 @@ function loop(now: number) {
     simulate(dtGame, dt);
     horror.update(dtGame, dt);
   }
+  G.player.renderAlpha = paused || G.dead ? 1 : acc / STEP;
   G.player.updateCamera(dt);
   G.terrain.update(G.camera.position);
   G.forest.update(G.player.pos);

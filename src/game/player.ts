@@ -62,6 +62,14 @@ export class Player {
     this.fallStartY = spawn.y;
   }
 
+  /** position at the previous physics step, for smooth rendering between steps */
+  prevPos = new THREE.Vector3();
+  /** 0..1: how far the render frame is between the previous and the current step */
+  renderAlpha = 1;
+  private camY = NaN;
+  winded = false;
+  private bobAmp = 0;
+
   get eyePos() {
     return new THREE.Vector3(this.pos.x, this.pos.y + (this.crouch ? 1.05 : EYE) + (this.water ? 0 : 0), this.pos.z);
   }
@@ -282,6 +290,8 @@ export class Player {
 
   teleport(p: THREE.Vector3) {
     this.pos.copy(p);
+    this.prevPos.copy(p);
+    this.camY = NaN;
     this.vy = 0;
     this.body.setTranslation({ x: p.x, y: p.y + HALF + RADIUS, z: p.z }, true);
     this.body.setNextKinematicTranslation({ x: p.x, y: p.y + HALF + RADIUS, z: p.z });
@@ -300,6 +310,7 @@ export class Player {
 
   /** Called every fixed physics step before world.step(). */
   physics(dt: number) {
+    this.prevPos.copy(this.pos);
     this.updateCarry(dt);
     if (this.water) {
       this.updateWater(dt);
@@ -319,7 +330,12 @@ export class Player {
     const wantSprint = !busy && inp.down('ShiftLeft') && fz < 0 && !this.crouch;
     const B = G.body;
     const maxStam = 1 - Math.max(0, B.fatigue - 0.6) * 1.5;
-    this.sprinting = wantSprint && this.stamina > 0.05 && len > 0 && !this.dragging;
+    // out of breath: no sprinting until you have caught your breath a little
+    if (this.stamina <= 0.05) {
+      if (!this.winded && wantSprint) msg('Вы запыхались', 'warn');
+      this.winded = true;
+    } else if (this.stamina > 0.3) this.winded = false;
+    this.sprinting = wantSprint && !this.winded && len > 0 && !this.dragging;
     if (this.sprinting) this.stamina = Math.max(0, this.stamina - dt / 7);
     else this.stamina = Math.min(maxStam, this.stamina + (dt / (len > 0 ? 14 : 7)) * (G.body.mood > 0.7 ? 1.25 : 1));
 
@@ -426,12 +442,21 @@ export class Player {
   updateCamera(dtReal: number) {
     const cam = G.camera;
     const e = this.eyePos;
-    let bobY = 0, bobX = 0;
-    if (this.moving && this.grounded) {
-      const k = this.sprinting ? 1.6 : 1;
-      bobY = -Math.abs(Math.sin(this.bob)) * 0.045 * k;
-      bobX = Math.cos(this.bob) * 0.022 * k;
-    }
+    // between physics steps: interpolate, so fast movement doesn't stutter
+    const a = THREE.MathUtils.clamp(this.renderAlpha, 0, 1);
+    const ip = this.prevPos.clone().lerp(this.pos, a);
+    const eyeY = ip.y + (this.crouch ? 1.05 : EYE);
+    // steps over rocks and bumps are eased instead of snapping the view
+    if (Number.isNaN(this.camY) || Math.abs(this.camY - eyeY) > 1.5) this.camY = eyeY;
+    else this.camY += (eyeY - this.camY) * Math.min(1, dtReal * 18);
+    // head bob fades in and out instead of switching on and off
+    const want = this.moving && this.grounded ? (this.sprinting ? 1.5 : 1) : 0;
+    this.bobAmp += (want - this.bobAmp) * Math.min(1, dtReal * 6);
+    const bobY = -(1 - Math.cos(this.bob * 2)) * 0.5 * 0.04 * this.bobAmp;
+    const bobX = Math.cos(this.bob) * 0.02 * this.bobAmp;
+    e.x = ip.x;
+    e.z = ip.z;
+    e.y = this.camY;
     const sh = G.body.shiver > 20 ? (G.body.shiver / 260) * 0.006 : 0;
     const water = this.water ? Math.sin(performance.now() / 300) * 0.05 : 0;
     cam.position.set(e.x + Math.cos(this.yaw) * bobX + (Math.random() - 0.5) * sh, e.y + bobY + water + (Math.random() - 0.5) * sh, e.z - Math.sin(this.yaw) * bobX);

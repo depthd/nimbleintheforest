@@ -963,37 +963,59 @@ export class Region {
     };
     // the weather station: the highest reachable flat spot far from the house
     {
-      let best = -1e9, bx = 0, bz = 0;
-      for (let k = 0; k < 2500; k++) {
-        const x = rng.float(this.minX + 260, this.maxX - 260), z = rng.float(this.minZ + 260, this.maxZ - 260);
-        if (Math.hypot(x, z) < S * 0.3) continue;
-        const h = this.heightAt(x, z);
-        if (this.flatAround(x, z, 9) > 2.5) continue;
-        if (h > best) {
-          best = h;
-          bx = x;
-          bz = z;
+      let best = -1e9, bx = NaN, bz = NaN;
+      for (const tol of [2.5, 4.5, 9, 1e9]) {
+        for (let k = 0; k < 2500; k++) {
+          const x = rng.float(this.minX + 260, this.maxX - 260), z = rng.float(this.minZ + 260, this.maxZ - 260);
+          if (Math.hypot(x, z) < S * 0.3) continue;
+          const h = this.heightAt(x, z);
+          if (this.flatAround(x, z, 9) > tol) continue;
+          if (h > best) {
+            best = h;
+            bx = x;
+            bz = z;
+          }
         }
+        if (!Number.isNaN(bx)) break;
+      }
+      if (Number.isNaN(bx)) {
+        bx = S * 0.35;
+        bz = 0;
       }
       const p = add('station', bx, bz, rng.float(0, Math.PI * 2), { clear: 14 });
       this.flattenPad(bx, bz, p.y, 7, 13);
     }
-    // hunters' huts in the forest
-    for (let k = 0, n = 0; k < 3000 && n < 5; k++) {
-      const a = rng.float(0, Math.PI * 2), d = rng.float(260, maxD);
-      const x = Math.cos(a) * d, z = Math.sin(a) * d;
-      if (!this.inside(x, z, 220) || !this.farFrom(x, z, 330)) continue;
-      const b = this.biomeAt(x, z);
-      if (b === B.Alpine || b === B.Sea || b === B.Water || b === B.Coast) continue;
-      if (this.flatAround(x, z, 7) > 1.6) continue;
-      const p = add('hut', x, z, Math.round(rng.float(0, 4)) * (Math.PI / 2) + rng.float(-0.3, 0.3), { clear: 9 });
-      this.flattenPad(x, z, p.y, 4.5, 9);
-      n++;
-      // an abandoned car next to some of them
-      if (n <= 2) {
+    // hunters' huts: one close to the house for sure, then more further out
+    const tryHut = (minD: number, maxD: number, tol: number, spacing: number) => {
+      for (let k = 0; k < 2500; k++) {
+        const a = rng.float(0, Math.PI * 2), d = rng.float(minD, maxD);
+        const x = Math.cos(a) * d, z = Math.sin(a) * d;
+        if (!this.inside(x, z, 220) || !this.farFrom(x, z, spacing)) continue;
+        const b = this.biomeAt(x, z);
+        if (b === B.Alpine || b === B.Sea || b === B.Water) continue;
+        if (this.flatAround(x, z, 7) > tol) continue;
+        const p = add('hut', x, z, Math.round(rng.float(0, 4)) * (Math.PI / 2) + rng.float(-0.3, 0.3), { clear: 9 });
+        this.flattenPad(x, z, p.y, 4.5, 10);
+        return p;
+      }
+      return null;
+    };
+    let near: Place | null = null;
+    for (const tol of [1.6, 2.6, 4, 7, 1e9]) if (!near) near = tryHut(160, 420, tol, 140);
+    let huts = near ? 1 : 0;
+    for (const tol of [1.6, 2.6, 4]) while (huts < 5 && tryHut(380, maxD, tol, 330)) huts++;
+    for (const tol of [7, 1e9]) while (huts < 3 && tryHut(300, maxD, tol, 250)) huts++;
+    // abandoned cars by two of the huts
+    const hutList = this.places.filter((p) => p.kind === 'hut');
+    for (const h of hutList.slice(0, 3)) {
+      if (this.places.filter((p) => p.kind === 'car').length >= 2) break;
+      for (let k = 0; k < 8; k++) {
         const ca = rng.float(0, Math.PI * 2);
-        const cx = x + Math.cos(ca) * 9, cz = z + Math.sin(ca) * 9;
-        if (this.flatAround(cx, cz, 3) < 1.2) add('car', cx, cz, rng.float(0, Math.PI * 2), { clear: 4 });
+        const cx = h.x + Math.cos(ca) * 9, cz = h.z + Math.sin(ca) * 9;
+        if (this.flatAround(cx, cz, 3) < 1.5 && Number.isNaN(this.waterAt(cx, cz))) {
+          add('car', cx, cz, rng.float(0, Math.PI * 2), { clear: 4 });
+          break;
+        }
       }
     }
     // the battery for the radio is in one of the cars (or a hut if there is no car)
