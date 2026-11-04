@@ -252,9 +252,11 @@ export class Structures {
       m.castShadow = true;
       b.group.add(m);
     }
-    // bunk and shelf
-    b.box(1.9, 0.45, 0.85, -0.95, 0.22, -D / 2 + 0.6, M.woodDark());
+    // bunk (things are stashed under it), shelf, a chest
+    const bunk = b.box(1.9, 0.45, 0.85, -0.95, 0.22, -D / 2 + 0.6, M.woodDark());
     b.box(1.6, 0.05, 0.3, 1.1, 1.3, -D / 2 + 0.35, M.wood());
+    const chest = b.box(0.8, 0.5, 0.45, 1.4, 0.25, -D / 2 + 0.45, M.wood());
+    b.box(0.84, 0.06, 0.49, 1.4, 0.52, -D / 2 + 0.45, M.iron(), { collide: false });
     // hearth inside, by the door
     const hearth = b.world(1.35, 0, 0.9);
     hearth.y = p.y + 0.02;
@@ -265,7 +267,13 @@ export class Structures {
     this.stump(b.world(1.8, 0, D / 2 + 1.6), 0.25);
     this.stump(b.world(2.6, 0, D / 2 + 2.2), 0.2);
     const ids = this.lootList(p.remote, no === 0 ? ['backpack'] : p.remote > 0.7 && r.chance(0.6) ? ['backpack_big'] : []);
-    this.placeLoot(b, ids, [[-0.95, 0.5, -D / 2 + 0.6], [1.1, 1.36, -D / 2 + 0.35], [0.6, 0.05, -0.6], [-1.4, 0.05, 0.8], [1.6, 0.05, -0.3]]);
+    // a couple of things in sight, the rest stashed in the chest and under the bunk
+    r.shuffle(ids);
+    const seen = ids.splice(0, Math.min(2, ids.length));
+    this.placeLoot(b, seen, [[1.1, 1.36, -D / 2 + 0.35], [-0.95, 0.5, -D / 2 + 0.6]]);
+    const half = Math.ceil(ids.length / 2);
+    this.container(b, 'Сундук', chest, 1.4, 0.3, -D / 2 + 0.45, ids.slice(0, half));
+    this.container(b, 'Нары · под ними что-то лежит', bunk, -0.95, 0.2, -D / 2 + 0.6, ids.slice(half));
     // notes: the driver's note sits in the hut by the car with the battery
     const car = this.places.find((c) => c.kind === 'car' && c.data.battery && Math.hypot(c.x - p.x, c.z - p.z) < 14);
     const key = car ? 'battery' : r.pick(['hunter', 'wife', 'kid', 'hunter']);
@@ -350,7 +358,8 @@ export class Structures {
     if (desk) G.entities.registerStatic(radio, [desk]);
     b.box(1.9, 0.45, 0.85, -1.9, 0.22, -D / 2 + 0.6, M.woodDark());
     this.note('station', b.world(1.2, 0.85, -D / 2 + 0.5));
-    this.placeLoot(b, this.lootList(0.6, ['stew', 'tea']), [[-1.9, 0.5, -D / 2 + 0.6], [-2.2, 0.05, 1.2], [0.2, 0.05, -1.4]]);
+    const locker = b.box(0.6, 1.8, 0.5, -2.55, 0.9, 1.1, M.iron());
+    this.container(b, 'Шкафчик', locker, -2.55, 0.9, 1.1, this.lootList(0.6, ['stew', 'tea', 'fur_mitts']));
     G.fires.makeCampfire(b.world(-1.8, 0, 1.1).setY(p.y + 0.02));
     // radio mast with a red beacon, visible from far away
     const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.18, 32, 6), M.metal());
@@ -432,6 +441,19 @@ export class Structures {
     if (body) G.entities.registerStatic(e, [body]);
   }
 
+  /** a box, chest or space under a bunk that has to be searched */
+  private container(b: Builder, name: string, col: RAPIER_T.Collider | null, x: number, y: number, z: number, loot: string[]) {
+    if (!col) return;
+    const e = new Entity('container');
+    e.name = name;
+    const o = new THREE.Object3D();
+    o.position.set(x, y, z);
+    b.group.add(o);
+    e.obj = o;
+    e.data = { loot, searched: false };
+    G.entities.registerStatic(e, [col]);
+  }
+
   /** search a container: its loot drops next to the player */
   search(e: Entity) {
     if (e.data.searched) return;
@@ -442,11 +464,15 @@ export class Structures {
       msg(`${e.name}: пусто, кто-то уже всё забрал`, 'info');
       return;
     }
-    const base = P.pos.clone().add(P.forward().setY(0).normalize().multiplyScalar(0.7));
+    const base = P.pos.clone().add(P.forward().setY(0).normalize().multiplyScalar(0.35));
     ids.forEach((id, i) => {
       const p = base.clone().add(new THREE.Vector3((i % 3) * 0.25 - 0.25, 0.4 + Math.floor(i / 3) * 0.2, 0));
-      const it = this.spawn(id, p, id === 'battery' ? { charges: 70 } : { moisture: 0.1 });
-      if (it.def?.pocket && id !== 'battery') P.addToInventory(it);
+      const opts: Record<string, any> = id === 'battery' ? { charges: 70 } : { moisture: 0.1 };
+      if (id === 'matches') opts.charges = this.rng.int(4, 14);
+      if (id === 'book') opts.params = { t: this.rng.int(0, BOOKS.length - 1) };
+      if (id === 'newspaper') opts.params = { t: this.rng.int(0, NEWSPAPERS.length - 1) };
+      const it = this.spawn(id, p, opts);
+      if (it.def?.pocket && id !== 'battery' && P.packWeight() + it.mass <= P.maxPack()) P.addToInventory(it);
     });
     msg(`Нашли: ${ids.map((id) => G.entities.list.find((x) => x.defId === id)?.name ?? id).join(', ')}`, 'good');
   }
