@@ -166,3 +166,7 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 #reader-body { white-space: pre-wrap; font-size: 15.5px; line-height: 1.55; max-height: 60vh; overflow-y: auto; }
 #reader .hint { color: #6a5f4a; font-family: system-ui, sans-serif; }
 #reader button { color: #2a2620; background: rgba(0, 0, 0, 0.06); border-color: rgba(0, 0, 0, 0.2); }
+
+#mapview { inset: 0; background: rgba(6, 9, 14, 0.88); align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
+#map-canvas { width: min(90vh, 92vw); height: min(90vh, 92vw); border-radius: 8px; box-shadow: 0 0 30px #000; }
+#mapview .maplegend { color: var(--dim); font-size: 13px; }

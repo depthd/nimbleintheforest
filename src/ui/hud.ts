@@ -1,3 +1,4 @@
+import { renderRegionMap, mapXY } from './map';
 import { NOTES, NOTE_KEYS, NEWSPAPERS, BOOKS } from '../game/lore';
 import { itemIcon } from './icons';
 import { BIOME_NAMES } from '../gen/biomes';
@@ -50,6 +51,10 @@ export class HUD {
   debugOpen = false;
   helpOpen = false;
   readerOpen = false;
+  mapOpen = false;
+  private mapBase: HTMLCanvasElement | null = null;
+  private mapFog: HTMLCanvasElement | null = null;
+  private fogTick = 0;
   sleepOpen = false;
   private tick = 0;
   private sleepPlan: { hours: number; mode: 'bed' | 'floor' | 'wait'; bed?: Entity; left: number; woke?: string } | null = null;
@@ -109,7 +114,7 @@ export class HUD {
   }
 
   get modal() {
-    return this.invOpen || this.sleepOpen || this.helpOpen || this.readerOpen || G.dead;
+    return this.invOpen || this.sleepOpen || this.helpOpen || this.readerOpen || this.mapOpen || G.dead;
   }
 
   message(text: string, kind: 'info' | 'warn' | 'good' | 'bad' = 'info') {
@@ -151,6 +156,95 @@ export class HUD {
     this.debugOpen = !this.debugOpen;
     this.debug.style.display = this.debugOpen ? 'block' : 'none';
     if (this.debugOpen) this.renderDebug(true);
+  }
+
+  // ---------- map ----------
+
+  /** reveal the map around where the player has been */
+  updateFog(dt: number) {
+    this.fogTick -= dt;
+    if (this.fogTick > 0) return;
+    this.fogTick = 1;
+    const R = G.region;
+    if (!this.mapFog) {
+      this.mapFog = document.createElement('canvas');
+      this.mapFog.width = this.mapFog.height = 300;
+    }
+    const c = this.mapFog.getContext('2d')!;
+    const P = G.player.pos;
+    const k = 300 / R.size;
+    const high = Math.max(0, P.y - G.terrain.heightAt(P.x, P.z)) + Math.max(0, P.y - 40) * 0.5;
+    const r = (170 + Math.min(400, high * 6)) * k;
+    const g = c.createRadialGradient((P.x - R.minX) * k, (P.z - R.minZ) * k, r * 0.5, (P.x - R.minX) * k, (P.z - R.minZ) * k, r);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc((P.x - R.minX) * k, (P.z - R.minZ) * k, r, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  toggleMap(open?: boolean) {
+    this.mapOpen = open ?? !this.mapOpen;
+    $('#mapview').style.display = this.mapOpen ? 'flex' : 'none';
+    if (this.mapOpen) this.drawMap();
+    this.syncInput();
+  }
+
+  private drawMap() {
+    const R = G.region;
+    const cv = $('#map-canvas') as HTMLCanvasElement;
+    const px = cv.width;
+    if (!this.mapBase) this.mapBase = renderRegionMap(R, px);
+    const c = cv.getContext('2d')!;
+    c.clearRect(0, 0, px, px);
+    c.drawImage(this.mapBase, 0, 0);
+    // unexplored: dark paper
+    const fog = document.createElement('canvas');
+    fog.width = fog.height = px;
+    const f = fog.getContext('2d')!;
+    f.fillStyle = 'rgba(18,22,28,0.93)';
+    f.fillRect(0, 0, px, px);
+    f.globalCompositeOperation = 'destination-out';
+    if (this.mapFog) f.drawImage(this.mapFog, 0, 0, px, px);
+    c.drawImage(fog, 0, 0);
+    const label = (x: number, z: number, text: string, col: string) => {
+      const p = mapXY(R, px, x, z);
+      c.fillStyle = col;
+      c.beginPath();
+      c.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      c.fill();
+      c.font = '13px system-ui, sans-serif';
+      c.lineWidth = 3;
+      c.strokeStyle = 'rgba(0,0,0,0.7)';
+      c.strokeText(text, p.x + 8, p.y + 4);
+      c.fillStyle = '#fff';
+      c.fillText(text, p.x + 8, p.y + 4);
+    };
+    label(0, 0, 'Дом', '#e05a3a');
+    const names: Record<string, string> = { hut: 'Заимка', station: 'Метеостанция «Кряж»', grotto: 'Грот', car: 'УАЗ', bridge: 'Мост', logging: 'Вырубка', cross: 'Крест' };
+    for (const p of R.places) if (G.structures.seen.has(p)) label(p.x, p.z, names[p.kind], '#f0c36a');
+    const st = G.structures.station;
+    if (st && !G.structures.seen.has(st) && G.region.sites.tower && Math.hypot(G.player.pos.x - G.region.sites.tower.x, G.player.pos.z - G.region.sites.tower.z) < 400) label(st.x, st.z, 'Мачта с красным огнём?', '#ff4a3a');
+    if (R.sites.tower) label(R.sites.tower.x, R.sites.tower.z, 'Пожарная вышка', '#9cc8ff');
+    // you
+    const P = G.player;
+    const me = mapXY(R, px, P.pos.x, P.pos.z);
+    c.save();
+    c.translate(me.x, me.y);
+    c.rotate(-P.yaw);
+    c.fillStyle = '#ffffff';
+    c.strokeStyle = '#000';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.moveTo(0, -11);
+    c.lineTo(7, 8);
+    c.lineTo(0, 4);
+    c.lineTo(-7, 8);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
   }
 
   closeReader() {
@@ -759,6 +853,7 @@ export class HUD {
   // ---------- per frame ----------
 
   update(dt: number) {
+    this.updateFog(dt);
     const I = G.interact;
     // prompts every frame (cheap)
     const P = G.player;
