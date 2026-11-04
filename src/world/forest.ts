@@ -112,6 +112,19 @@ function birchGeometry(rng: Rng) {
   return mergeGeometries(parts.map((p) => p.toNonIndexed()));
 }
 
+/** a crown of fine winter twigs: crossed alpha planes */
+function twigCrown(rng: Rng, y0: number, y1: number, w: number) {
+  const parts: THREE.BufferGeometry[] = [];
+  const n = 5;
+  for (let i = 0; i < n; i++) {
+    const g = new THREE.PlaneGeometry(w * rng.float(0.85, 1.1), y1 - y0);
+    g.translate(0, (y0 + y1) / 2, 0);
+    g.rotateY((i / n) * Math.PI + rng.float(-0.15, 0.15));
+    parts.push(g);
+  }
+  return mergeGeometries(parts);
+}
+
 function deadGeometry(rng: Rng) {
   const H = BASE_H.dead;
   const R = BASE_R.dead;
@@ -178,7 +191,8 @@ export class Forest {
       const g = spruceGeometry(v, rng);
       this.kinds.push({ type: 'spruce', variant: v, meshes: [], geos: [g.trunk, g.foliage], mats: [M.barkSpruce(), foliageMat], trees: [] });
     }
-    for (let v = 0; v < 2; v++) this.kinds.push({ type: 'birch', variant: v, meshes: [], geos: [birchGeometry(rng)], mats: [M.barkBirch()], trees: [] });
+    const twigMat = mat('twigs', () => new THREE.MeshStandardMaterial({ map: Tex.twigs(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 }));
+    for (let v = 0; v < 2; v++) this.kinds.push({ type: 'birch', variant: v, meshes: [], geos: [birchGeometry(rng), twigCrown(rng, 3.2 + v, 11.8, 4.6 - v)], mats: [M.barkBirch(), twigMat], trees: [] });
     this.kinds.push({ type: 'dead', variant: 0, meshes: [], geos: [deadGeometry(rng)], mats: [M.barkDead()], trees: [] });
     const burntMat = mat('barkBurnt', () => new THREE.MeshStandardMaterial({ map: Tex.barkBurnt(), roughness: 1 }));
     this.kinds.push({ type: 'burnt', variant: 0, meshes: [], geos: [deadGeometry(rng)], mats: [burntMat], trees: [] });

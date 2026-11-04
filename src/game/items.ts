@@ -4,11 +4,11 @@ export type ToolTag =
   | 'axe' | 'saw' | 'knife' | 'blunt' | 'hammer' | 'prybar' | 'shovel' | 'auger' | 'rod'
   | 'matches' | 'lighter' | 'flashlight' | 'lamp' | 'pot';
 
-export type Slot = 'head' | 'neck' | 'base' | 'mid' | 'outer' | 'legs' | 'socks' | 'feet' | 'hands';
+export type Slot = 'head' | 'neck' | 'base' | 'mid' | 'outer' | 'legs' | 'socks' | 'feet' | 'hands' | 'back';
 
 export const SLOT_NAMES: Record<Slot, string> = {
   head: 'Голова', neck: 'Шея', base: 'Бельё', mid: 'Свитер', outer: 'Верх', legs: 'Ноги',
-  socks: 'Носки', feet: 'Обувь', hands: 'Руки',
+  socks: 'Носки', feet: 'Обувь', hands: 'Руки', back: 'Спина',
 };
 
 export type FuelKind = 'tinder' | 'kindling' | 'wood' | 'log' | 'cloth' | 'paper' | 'boughs';
@@ -43,7 +43,9 @@ export interface ItemDef {
   tool?: { tags: ToolTag[]; swing: number; power: number; reach?: number };
   fuel?: { kind: FuelKind; power: number; burn: number; ignite: number; moisture?: number };
   chop?: ChopSpec;
-  wear?: { slot: Slot; clo: number; wind: number; dex?: number; wetSens?: number };
+  wear?: { slot: Slot; clo: number; wind: number; dex?: number; wetSens?: number; pack?: number; material?: string };
+  /** readable: book, newspaper, note */
+  read?: 'book' | 'paper' | 'note';
   food?: { kcal: number; water?: number; open?: boolean; raw?: boolean };
   insul?: number; // blankets: clo when wrapped, on a bed or over a window
   cook?: { to: string; time: number }; // cooking result and game seconds
@@ -118,9 +120,12 @@ const D: ItemDef[] = [
   { id: 'cloth', name: 'Ткань', mass: 0.15, pocket: true, shape: { t: 'box', x: 0.08, y: 0.015, z: 0.08 },
     fuel: { kind: 'cloth', power: 1.2, burn: 90, ignite: 0.6 }, desc: 'Трут.' },
   { id: 'book', name: 'Книга', mass: 0.6, pocket: true, shape: { t: 'box', x: 0.08, y: 0.025, z: 0.11 },
-    fuel: { kind: 'paper', power: 1.5, burn: 600, ignite: 0.25 }, tearInto: [{ id: 'paper', n: 4 }] },
+    fuel: { kind: 'paper', power: 1.5, burn: 600, ignite: 0.25 }, tearInto: [{ id: 'paper', n: 4 }], read: 'book',
+    desc: 'Почитать у огня — поднимает настроение. Или пустить на растопку.' },
   { id: 'newspaper', name: 'Газета', mass: 0.1, pocket: true, shape: { t: 'box', x: 0.15, y: 0.006, z: 0.2 },
-    fuel: { kind: 'paper', power: 1.2, burn: 60, ignite: 0.95 }, tearInto: [{ id: 'paper', n: 2 }] },
+    fuel: { kind: 'paper', power: 1.2, burn: 60, ignite: 0.95 }, tearInto: [{ id: 'paper', n: 2 }], read: 'paper' },
+  { id: 'note', name: 'Записка', mass: 0.01, pocket: true, shape: { t: 'box', x: 0.07, y: 0.002, z: 0.1 },
+    fuel: { kind: 'paper', power: 1, burn: 30, ignite: 1 }, read: 'note' },
   { id: 'shard', name: 'Осколок стекла', mass: 0.1, pocket: true, shape: { t: 'box', x: 0.05, y: 0.004, z: 0.07 },
     tool: { tags: ['knife'], swing: 0.5, power: 0.07 }, desc: 'Можно резать, как ножом. Можно и порезаться.' },
   { id: 'snowblock', name: 'Снежный блок', mass: 12, pocket: false, shape: { t: 'box', x: 0.3, y: 0.18, z: 0.15 },
@@ -194,6 +199,27 @@ const D: ItemDef[] = [
     wear: { slot: 'hands', clo: 0.9, wind: 0.6, dex: 0.35 }, desc: 'Тёплые, но спичку в них не зажечь.' },
   { id: 'gloves', name: 'Рабочие перчатки', mass: 0.12, pocket: true, shape: { t: 'box', x: 0.05, y: 0.015, z: 0.09 },
     wear: { slot: 'hands', clo: 0.35, wind: 0.4, dex: 0.8 } },
+
+  { id: 'telogreika', name: 'Ватник', mass: 1.6, pocket: true, shape: { t: 'box', x: 0.22, y: 0.07, z: 0.18 },
+    wear: { slot: 'outer', clo: 1.05, wind: 0.55, wetSens: 0.85, material: 'хлопок, вата' }, desc: 'Тёплый и крепкий, но мокрым почти не греет и сохнет долго.' },
+  { id: 'tulup', name: 'Овчинный тулуп', mass: 4.2, pocket: true, shape: { t: 'box', x: 0.26, y: 0.1, z: 0.22 },
+    wear: { slot: 'outer', clo: 2.1, wind: 0.92, wetSens: 0.5, material: 'овчина' }, desc: 'Самое тёплое, что можно найти. Тяжёлый.' },
+  { id: 'fleece', name: 'Флисовая кофта', mass: 0.4, pocket: true, shape: { t: 'box', x: 0.16, y: 0.04, z: 0.13 },
+    wear: { slot: 'mid', clo: 0.5, wind: 0.1, wetSens: 0.2, material: 'синтетика' }, desc: 'Греет и мокрой, быстро сохнет.' },
+  { id: 'wool_pants', name: 'Шерстяные брюки', mass: 0.8, pocket: true, shape: { t: 'box', x: 0.17, y: 0.04, z: 0.14 },
+    wear: { slot: 'legs', clo: 0.55, wind: 0.35, wetSens: 0.4, material: 'шерсть' }, desc: 'Шерсть греет даже влажной.' },
+  { id: 'balaclava', name: 'Балаклава', mass: 0.1, pocket: true, shape: { t: 'box', x: 0.08, y: 0.03, z: 0.08 },
+    wear: { slot: 'head', clo: 0.3, wind: 0.55, wetSens: 0.4, material: 'шерсть' } },
+  { id: 'fur_mitts', name: 'Меховые рукавицы', mass: 0.35, pocket: true, shape: { t: 'box', x: 0.07, y: 0.03, z: 0.12 },
+    wear: { slot: 'hands', clo: 1.3, wind: 0.85, dex: 0.2, wetSens: 0.5, material: 'мех' }, desc: 'Очень тёплые. Чтобы чиркнуть спичкой, придётся снять.' },
+  { id: 'unty', name: 'Унты', mass: 1.8, pocket: true, shape: { t: 'box', x: 0.09, y: 0.2, z: 0.15 },
+    wear: { slot: 'feet', clo: 1.1, wind: 0.85, wetSens: 0.5, material: 'мех, кожа' }, desc: 'Меховые сапоги. Лучшая обувь для мороза.' },
+  { id: 'backpack', name: 'Рюкзак', mass: 0.9, pocket: true, shape: { t: 'box', x: 0.17, y: 0.25, z: 0.1 },
+    wear: { slot: 'back', clo: 0.05, wind: 0.05, pack: 20, material: 'брезент' }, desc: '+20 кг к тому, что можно унести.' },
+  { id: 'backpack_big', name: 'Экспедиционный рюкзак', mass: 2.2, pocket: true, shape: { t: 'box', x: 0.2, y: 0.33, z: 0.13 },
+    wear: { slot: 'back', clo: 0.1, wind: 0.1, pack: 34, material: 'нейлон' }, desc: '+34 кг к тому, что можно унести.' },
+  { id: 'battery', name: 'Аккумулятор 12 В', mass: 13, pocket: true, shape: { t: 'box', x: 0.13, y: 0.1, z: 0.09 },
+    charges: 70, desc: 'Тяжёлый. Хватит, чтобы запитать рацию.' },
 
   // ---- food ----
   { id: 'stew', name: 'Тушёнка', mass: 0.4, pocket: true, shape: { t: 'cyl', r: 0.045, h: 0.05 },

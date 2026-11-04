@@ -1,6 +1,7 @@
 // Procedural sound: wind, fire crackle, footsteps, chopping and so on.
 // Everything is synthesized with WebAudio, no sound files.
 import * as THREE from 'three';
+import { Music, MusicMood } from './music';
 
 export type SoundName =
   | 'chop' | 'thud' | 'step_snow' | 'step_wood' | 'glass' | 'crack' | 'ice_break'
@@ -17,6 +18,11 @@ export class GameAudio {
   private windLP!: BiquadFilterNode;
   private windGain!: GainNode;
   private gust = 0;
+  private howlBP: BiquadFilterNode[] = [];
+  private howlGain: GainNode[] = [];
+  private rumbleGain!: GainNode;
+  private howlPhase = [Math.random() * 10, Math.random() * 10];
+  music: Music | null = null;
   private crackleLevel = 0;
   private crackleTimer = 0;
   private cracklePan = 0;
@@ -63,6 +69,43 @@ export class GameAudio {
     this.windGain.gain.value = 0;
     this.windSrc.connect(this.windBP).connect(this.windLP).connect(this.windGain).connect(this.master);
     this.windSrc.start();
+    // whistling gusts: narrow resonant bands that slide up and down, left and right
+    for (let i = 0; i < 2; i++) {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      src.loop = true;
+      src.playbackRate.value = 0.9 + i * 0.23;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 14;
+      bp.frequency.value = 500;
+      const gn = ctx.createGain();
+      gn.gain.value = 0;
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = i ? 0.6 : -0.6;
+      src.connect(bp).connect(gn).connect(pan).connect(this.master);
+      src.start(0, i * 0.7);
+      this.howlBP.push(bp);
+      this.howlGain.push(gn);
+    }
+    // low roar of a blizzard
+    const rs = ctx.createBufferSource();
+    rs.buffer = this.noise;
+    rs.loop = true;
+    rs.playbackRate.value = 0.5;
+    const rl = ctx.createBiquadFilter();
+    rl.type = 'lowpass';
+    rl.frequency.value = 140;
+    this.rumbleGain = ctx.createGain();
+    this.rumbleGain.gain.value = 0;
+    rs.connect(rl).connect(this.rumbleGain).connect(this.master);
+    rs.start();
+    this.music = new Music(ctx, this.master);
+    if (new URLSearchParams(location.search).get('music') === '0') this.music.setEnabled(false);
+  }
+
+  setMood(m: MusicMood) {
+    this.music?.setMood(m);
   }
 
   setListener(pos: THREE.Vector3, dir: THREE.Vector3) {
@@ -80,6 +123,17 @@ export class GameAudio {
     this.windGain.gain.setTargetAtTime(g, t, 0.3);
     this.windBP.frequency.setTargetAtTime(250 + level * 900 * gustF, t, 0.4);
     this.windLP.frequency.setTargetAtTime(indoors ? 500 : 4000, t, 0.3);
+    // howling: starts with a fresh breeze, screams in a blizzard
+    const howl = Math.max(0, (wind - 4) / 12);
+    for (let i = 0; i < 2; i++) {
+      this.howlPhase[i] += dt * (0.15 + 0.1 * i) * (0.5 + level);
+      const sweep = 0.5 + 0.5 * Math.sin(this.howlPhase[i]) * Math.sin(this.howlPhase[i] * 0.41 + i);
+      this.howlBP[i].frequency.setTargetAtTime((indoors ? 260 : 380) + sweep * (indoors ? 300 : 700) * (0.6 + howl), t, 0.25);
+      const hg = howl * howl * (indoors ? 0.05 : 0.11) * (0.3 + 0.7 * sweep) * gustF;
+      this.howlGain[i].gain.setTargetAtTime(hg, t, 0.35);
+    }
+    this.rumbleGain.gain.setTargetAtTime(Math.max(0, (wind - 8) / 10) * (indoors ? 0.25 : 0.6), t, 0.8);
+    this.music?.update();
 
     // fire crackle
     let lvl = 0;

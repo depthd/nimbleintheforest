@@ -307,7 +307,7 @@ function check(name, ok, extra = '') {
     g.steps(1);
     g.act('G', 'кострище');
     g.steps(2);
-    const f = G.fires.list.find((x) => x.kind === 'camp');
+    const f = G.fires.list.filter((x) => x.kind === 'camp').sort((a, b) => a.pos.distanceTo(G.player.pos) - b.pos.distanceTo(G.player.pos))[0];
     for (const id of ['bark', 'kindling', 'kindling', 'firewood']) g.give(id, { moisture: 0.05 });
     g.lookAt(f.pos.x, f.pos.y, f.pos.z);
     for (let i = 0; i < 4; i++) g.act('E');

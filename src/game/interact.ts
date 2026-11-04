@@ -363,6 +363,31 @@ export class Interaction {
       case 'trunk':
       case 'railing':
         return;
+      case 'container':
+        if (!e.data.searched) A.push({ key: 'E', label: 'Обыскать', time: 2.5, run: () => G.structures.search(e) });
+        return;
+      case 'radio': {
+        const bat = P.has((x) => x.defId === 'battery' && x.charges > 5);
+        if (!e.data.powered) {
+          if (bat) A.push({ key: 'E', label: 'Подключить аккумулятор', time: 4, run: () => {
+            e.data.powered = true;
+            e.data.charge = bat.charges;
+            P.forget(bat);
+            G.entities.destroy(bat);
+            (e.data.dial.material as THREE.MeshBasicMaterial).color.setHex(0x66ff88);
+            msg('Рация ожила: шипение эфира, огонёк шкалы.', 'good');
+          } });
+          else this.info += ' · нет питания: нужен аккумулятор 12 В';
+        } else if (!G.goal.signalAt) {
+          A.push({ key: 'E', label: 'Передать сигнал бедствия', time: 6, run: () => {
+            G.goal.signalAt = G.time;
+            G.audio.play('click');
+            msg('«…Кряж, вас слышим. Борт вылетит, как позволит погода. Ждите у станции.»', 'good');
+            setTimeout(() => msg('Вертолёт прилетит не раньше чем через 8 часов и только не в метель. Будьте у станции.', 'info'), 3000);
+          } });
+        } else this.info += ' · сигнал передан, ждите вертолёт у станции';
+        return;
+      }
     }
     if (e.kind !== 'item' || !d) return;
     if (e.pinned === 'fire') {
@@ -415,6 +440,10 @@ export class Interaction {
         return `${e.name} · ${e.data.len.toFixed(1)} м · ${this.hpBar(e)}`;
       case 'icehole':
         return `${e.name}${e.data.frozen > 0.6 ? ' · замёрзла' : e.data.frozen > 0.3 ? ' · затягивается льдом' : ''}`;
+      case 'container':
+        return `${e.name}${e.data.searched ? ' · обыскан' : ''}`;
+      case 'radio':
+        return `${e.name}${e.data.powered ? ' · есть питание' : ''}`;
     }
     const d = e.def;
     if (!d) return e.name;
@@ -790,7 +819,7 @@ export class Interaction {
     if (kind === 'match' && eq.moisture > 0.4) chance *= 0.05;
     const air = G.thermal.tAt(G.camera.position);
     if (kind === 'lighter' && air < -15) chance *= clamp(1 - (-15 - air) / 15, 0.15, 1);
-    if (!G.house.zoneAt(G.player.pos)) chance *= 1 - clamp((G.weather.wind - 4) / 14, 0, 0.7);
+    if (!G.house.zoneAt(G.player.pos)) chance *= 1 - clamp((G.weather.wind * (G.structures.shelterAt(G.player.pos)?.wind ?? 1) - 4) / 14, 0, 0.7);
     if (Math.random() < chance) {
       this.flame = { t: kind === 'match' ? 8 : 12, kind, light: G.fx.acquireLight() };
       if (this.flame.light) this.flame.light.color.setHex(0xffb060);

@@ -7,12 +7,12 @@ import { Entity } from './entities';
 import { Slot } from './items';
 import { clamp } from '../core/rng';
 
-const EYE = 1.62;
+const EYE = 1.7;
 const HALF = 0.6;
 const RADIUS = 0.3;
 export const MAX_LIFT = 30;
 export const MAX_DRAG = 90;
-export const MAX_PACK = 40;
+export const MAX_PACK = 16;
 
 export class Player {
   pos = new THREE.Vector3();
@@ -76,8 +76,13 @@ export class Player {
 
   // ---------- inventory ----------
 
+  /** what you can carry: pockets and hands, more with a backpack */
+  maxPack() {
+    return MAX_PACK + (this.worn.get('back')?.def?.wear?.pack ?? 0);
+  }
+
   addToInventory(e: Entity): boolean {
-    if (this.packWeight() + e.mass > MAX_PACK) {
+    if (this.packWeight() + e.mass > this.maxPack()) {
       msg('Рюкзак переполнен', 'warn');
       return false;
     }
@@ -304,9 +309,10 @@ export class Player {
     if (this.sprinting) this.stamina = Math.max(0, this.stamina - dt / 7);
     else this.stamina = Math.min(maxStam, this.stamina + dt / (len > 0 ? 14 : 7));
 
-    let speed = this.crouch ? 1.5 : this.sprinting ? 5.4 : 3.1;
+    // a grown man in winter clothes: ~1.5 m/s walking in snow, ~3.3 m/s running
+    let speed = this.crouch ? 0.9 : this.sprinting ? 3.7 : 1.75;
     const pack = this.packWeight();
-    speed *= clamp(1 - (pack - 18) / 35, 0.45, 1);
+    speed *= clamp(1 - (pack - this.maxPack() * 0.5) / (this.maxPack() * 0.9), 0.45, 1);
     if (this.carried) speed *= this.dragging ? 0.45 : clamp(1 - this.carried.mass / 50, 0.5, 1);
     if (this.wrapped) speed *= 0.72;
     if (B.core < 35) speed *= 0.8;
@@ -316,12 +322,17 @@ export class Player {
     if (outdoors && !G.lake.onIce(this.pos)) speed *= 0.88; // snow
 
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
-    let vx = 0, vz = 0;
+    let tx = 0, tz = 0;
     if (len > 0) {
       const nx = fx / len, nz = fz / len;
-      vx = (nx * cos + nz * sin) * speed;
-      vz = (-nx * sin + nz * cos) * speed;
+      tx = (nx * cos + nz * sin) * speed;
+      tz = (-nx * sin + nz * cos) * speed;
     }
+    // body weight: speed builds up and dies down instead of snapping
+    const acc = 1 - Math.exp(-dt * (this.grounded ? (len > 0 ? 5 : 7) : 0.8));
+    this.hvx += (tx - this.hvx) * acc;
+    this.hvz += (tz - this.hvz) * acc;
+    const vx = this.hvx, vz = this.hvz;
     if (this.grounded && !busy && inp.hit('Space') && this.stamina > 0.1) {
       this.vy = 4.3;
       this.stamina -= 0.08;
@@ -360,8 +371,8 @@ export class Player {
     this.lastActivity = this.moving ? (this.sprinting ? 'sprint' : 'walk') : 'idle';
     if (this.grounded && this.moving) {
       this.stepDist += moved;
-      this.bob += moved * 3.2;
-      const stride = this.sprinting ? 0.85 : 0.65;
+      const stride = this.sprinting ? 1.25 : 0.78;
+      this.bob += (moved * Math.PI) / stride;
       if (this.stepDist > stride) {
         this.stepDist = 0;
         const indoors = !!G.house.zoneAt(this.pos) || (Math.abs(this.pos.x) < 5 && this.pos.z > 3.9 && this.pos.z < 6.1 && Math.abs(this.pos.y - G.house.Y0) < 0.3);
@@ -383,6 +394,9 @@ export class Player {
     }
   }
 
+  private hvx = 0;
+  private hvz = 0;
+
   private land() {
     const drop = this.fallStartY - (this.body.translation().y);
     if (drop > 2.2) {
@@ -400,8 +414,9 @@ export class Player {
     const e = this.eyePos;
     let bobY = 0, bobX = 0;
     if (this.moving && this.grounded) {
-      bobY = Math.sin(this.bob * 2) * 0.035;
-      bobX = Math.cos(this.bob) * 0.02;
+      const k = this.sprinting ? 1.6 : 1;
+      bobY = -Math.abs(Math.sin(this.bob)) * 0.045 * k;
+      bobX = Math.cos(this.bob) * 0.022 * k;
     }
     const sh = G.body.shiver > 20 ? (G.body.shiver / 260) * 0.006 : 0;
     const water = this.water ? Math.sin(performance.now() / 300) * 0.05 : 0;

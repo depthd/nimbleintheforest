@@ -284,6 +284,8 @@ export class Fires {
       if (d.normalize().dot(up) > 0.3) s += 0.4;
     }
     if (G.house.zoneAt(f.pos)) s = 1;
+    const sh = G.structures?.shelterAt(f.pos);
+    if (sh) s = Math.max(s, 1 - sh.wind);
     return clamp(s, 0, 1);
   }
 

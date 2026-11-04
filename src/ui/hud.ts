@@ -1,3 +1,4 @@
+import { itemIcon } from './icons';
 import { BIOME_NAMES } from '../gen/biomes';
 // DOM overlay: status, target prompts, messages, inventory, sleep dialog,
 // debug/parameters panel, pause and death screens.
@@ -191,6 +192,17 @@ export class HUD {
     G.input.enabled = false;
   }
 
+  showEnding() {
+    this.death.style.display = 'flex';
+    const days = (G.time - G.startTime) / 86400;
+    this.death.querySelector('h1')!.textContent = 'Вас забрали';
+    (this.death.querySelector('h1') as HTMLElement).style.color = 'var(--ok)';
+    $('#death-cause').textContent = 'Ми-8 сел у мачты метеостанции. Вы выжили в пепельной зиме.';
+    $('#death-stats').textContent = `Дней в глуши: ${days.toFixed(1)}`;
+    G.input.unlock();
+    G.input.enabled = false;
+  }
+
   // ---------- sleep / wait ----------
 
   openSleep(mode: 'bed' | 'floor' | 'wait', bed?: Entity) {
@@ -291,58 +303,145 @@ export class HUD {
 
   // ---------- inventory ----------
 
+  invSel = 0;
+
   private renderInventory() {
     const P = G.player;
     const groups = new Map<string, Entity[]>();
     for (const e of P.inventory) {
       if (P.isWorn(e)) continue;
-      const wet = e.def?.fuel && e.moisture > 0.3 ? 'w' : '';
-      const k = e.contents || e.charges ? `${e.defId}#${e.id}` : e.defId + wet;
+      const wet = (e.def?.fuel || e.def?.wear) && e.moisture > 0.3 ? 'w' : '';
+      const k = e.contents || e.charges || e.def?.read ? `${e.defId}#${e.id}` : e.defId + wet;
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k)!.push(e);
     }
     const nearFire = G.fires.list.find((f) => f.pos.distanceTo(P.pos) < 2.8);
-    const rows: string[] = [];
+    const all = [...P.inventory];
+    let sel = all.find((x) => x.id === this.invSel) ?? null;
+    const wetTag = (e: Entity) => {
+      if (!e.def?.wear && !e.def?.insul && !e.def?.fuel) return '';
+      const m = e.moisture;
+      if (m < 0.12) return '';
+      return `<i class="wet" style="width:${Math.round(m * 100)}%"></i>`;
+    };
+    const icon = (e: Entity) => {
+      const url = itemIcon(e.defId!, e.params.v ?? 0);
+      return url ? `<img src="${url}" alt="">` : '<span class="noicon">?</span>';
+    };
+    const cards: string[] = [];
     for (const [, list] of groups) {
       const e = list[0];
+      const n = list.length > 1 ? `<b class="n">×${list.length}</b>` : '';
+      const w = list.reduce((a, x) => a + x.mass, 0);
+      cards.push(`<div class="card${sel === e ? ' sel' : ''}${P.equipped === e ? ' eq' : ''}" draggable="true" data-act="select" data-id="${e.id}">${icon(e)}${n}${wetTag(e)}<span class="cn">${e.displayName()}</span><span class="cw">${w < 1 ? Math.round(w * 1000) + ' г' : w.toFixed(1) + ' кг'}</span></div>`);
+    }
+    // the figure with slots around it
+    const pos: Record<Slot, [number, number]> = {
+      head: [50, 2], neck: [50, 17], base: [16, 30], mid: [84, 30], outer: [50, 32], hands: [12, 52], back: [88, 52], legs: [50, 62], socks: [16, 80], feet: [84, 80],
+    };
+    const slots = (Object.keys(SLOT_NAMES) as Slot[]).map((sl) => {
+      const e = P.worn.get(sl);
+      const [x, y] = pos[sl];
+      const inner = e ? `${icon(e)}${wetTag(e)}<span class="cn">${e.name}</span>` : `<span class="empty">${SLOT_NAMES[sl]}</span>`;
+      return `<div class="slotbox${e ? ' full' : ''}${sel && e === sel ? ' sel' : ''}" style="left:${x}%;top:${y}%" data-slot="${sl}" ${e ? `draggable="true" data-act="select" data-id="${e.id}"` : ''} title="${SLOT_NAMES[sl]}">${inner}</div>`;
+    });
+    const { clo, windproof } = G.body.wornClo(P.worn);
+    const pw = P.packWeight();
+    // details of the selected item
+    let details = '<p class="hint">Выберите предмет. Одежду перетащите на фигуру, чтобы надеть, и обратно в рюкзак, чтобы снять.</p>';
+    if (sel) {
+      const e = sel;
       const d = e.def!;
       const btn = (act: string, label: string) => `<button data-act="${act}" data-id="${e.id}">${label}</button>`;
       const b: string[] = [];
+      const worn = P.isWorn(e);
       if (d.tool || d.food || d.cook) b.push(btn('equip', P.equipped === e ? 'Убрать из руки' : 'В руку'));
-      if (d.wear) b.push(btn('wear', 'Надеть'));
+      if (d.wear) b.push(worn ? btn('unwear', 'Снять') : btn('wear', 'Надеть'));
       if (d.food) b.push(btn('eat', 'Съесть'));
+      if (d.read) b.push(btn('read', d.read === 'book' ? 'Читать (1 ч)' : 'Прочитать'));
       if (e.contents && e.contents.water > 0.05) b.push(btn('drink', 'Пить'));
       if (e.contents && e.contents.water > 0.1 && e.contents.temp >= 80 && !e.contents.tea && P.has((x) => x.defId === 'tea')) b.push(btn('tea', 'Заварить чай'));
       if (e.contents && (e.contents.water > 0 || e.contents.snow > 0)) b.push(btn('pour', 'Вылить'));
       if (e.defId === 'kerosene' && P.has((x) => x.defId === 'lamp')) b.push(btn('refill', 'Заправить лампу'));
       if (d.tearInto) b.push(btn('tear', 'Порвать'));
       if (d.fuel && nearFire) b.push(btn('burn', 'В огонь'));
-      b.push(btn('carry', 'В руки'));
-      b.push(btn('drop', 'Выбросить'));
-      const n = list.length > 1 ? ` <span class="count">×${list.length}</span>` : '';
-      const w = list.reduce((s, x) => s + x.mass, 0);
-      const desc = d.desc ? `<div class="desc">${d.desc}</div>` : '';
-      rows.push(`<div class="row${P.equipped === e ? ' eq' : ''}"><div class="name">${e.displayName()}${n}${desc}</div><div class="w">${w < 1 ? Math.round(w * 1000) + ' г' : w.toFixed(1) + ' кг'}</div><div class="btns">${b.join('')}</div></div>`);
+      if (!worn) b.push(btn('carry', 'В руки'), btn('drop', 'Положить'));
+      const stats: string[] = [];
+      const bar = (label: string, v: number, txt: string, bad = false) => `<div class="stat"><span>${label}</span><div class="track"><i class="${bad ? 'bad' : ''}" style="width:${Math.round(Math.min(1, v) * 100)}%"></i></div><b>${txt}</b></div>`;
+      if (d.wear) {
+        stats.push(bar('Тепло', d.wear.clo / 2.2, d.wear.clo.toFixed(2) + ' кло'));
+        stats.push(bar('Ветрозащита', d.wear.wind, Math.round(d.wear.wind * 100) + '%'));
+        const keep = 1 - 0.65 * (d.wear.wetSens ?? 0.6);
+        stats.push(bar('Греет мокрой', keep, Math.round(keep * 100) + '%', keep < 0.5));
+        if (d.wear.dex !== undefined) stats.push(bar('Ловкость рук', d.wear.dex, Math.round(d.wear.dex * 100) + '%', d.wear.dex < 0.5));
+        if (d.wear.pack) stats.push(bar('Вместимость', d.wear.pack / 34, '+' + d.wear.pack + ' кг'));
+      }
+      if (d.insul) stats.push(bar('Тепло', d.insul / 2.2, d.insul.toFixed(2) + ' кло'));
+      if (d.wear || d.insul || d.fuel) stats.push(bar('Влажность', e.moisture, e.moisture < 0.12 ? 'сухое' : Math.round(e.moisture * 100) + '%', e.moisture > 0.3));
+      if (d.food) stats.push(bar('Калории', d.food.kcal / 700, d.food.kcal + ' ккал'));
+      const mtl = d.wear?.material ? `<div class="hint">Материал: ${d.wear.material}</div>` : '';
+      details = `<div class="dhead">${icon(e)}<div><h3>${e.displayName()}</h3><div class="hint">${e.mass < 1 ? Math.round(e.mass * 1000) + ' г' : e.mass.toFixed(1) + ' кг'}${worn ? ' · надето' : ''}</div></div></div>
+        ${d.desc ? `<p class="desc">${d.desc}</p>` : ''}${mtl}${stats.join('')}<div class="btns">${b.join('')}</div>`;
     }
-    const slots = (Object.keys(SLOT_NAMES) as Slot[]).map((s) => {
-      const e = P.worn.get(s);
-      const extra = e ? ` <button data-act="unwear" data-id="${e.id}">Снять</button>` : '';
-      return `<div class="slot"><span>${SLOT_NAMES[s]}</span><b>${e ? e.name : '—'}</b>${extra}</div>`;
-    });
-    if (P.wrapped) slots.push(`<div class="slot"><span>На плечах</span><b>${P.wrapped.name}</b> <button data-act="unwrap" data-id="0">Снять</button></div>`);
-    const { clo, windproof } = G.body.wornClo(P.worn);
-    const pw = P.packWeight();
+    const wrap = P.wrapped ? `<div class="hint">На плечах: ${P.wrapped.name} <button data-act="unwrap" data-id="0">Снять</button></div>` : '';
     this.inv.innerHTML = `
       <div class="inv-col">
-        <h2>Рюкзак <small>${pw.toFixed(1)} / 40 кг${pw > 18 ? ' · тяжело' : ''}</small></h2>
-        <div class="list">${rows.join('') || '<div class="empty">Пусто</div>'}</div>
+        <h2>${P.worn.get('back') ? P.worn.get('back')!.name : 'Карманы'} <small>${pw.toFixed(1)} / ${P.maxPack()} кг${pw > P.maxPack() * 0.5 ? ' · тяжело' : ''}</small></h2>
+        <div class="inv-grid" data-zone="pack">${cards.join('') || '<div class="empty">Пусто</div>'}</div>
+      </div>
+      <div class="inv-col doll-col">
+        <h2>Одежда <small>${clo.toFixed(2)} кло · ветер ${Math.round(windproof * 100)}%</small></h2>
+        <div class="doll">
+          <svg viewBox="0 0 100 160" class="figure"><g fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.25)" stroke-width="0.8">
+            <circle cx="50" cy="16" r="10"/><path d="M38 30 Q50 26 62 30 L70 62 L64 64 L60 44 L60 88 L40 88 L40 44 L36 64 L30 62 Z"/>
+            <path d="M40 88 L60 88 L62 146 L53 146 L50 100 L47 146 L38 146 Z"/></g></svg>
+          ${slots.join('')}
+        </div>
+        ${wrap}
       </div>
       <div class="inv-col side">
-        <h2>Одежда <small>${clo.toFixed(2)} кло · ветрозащита ${Math.round(windproof * 100)}%</small></h2>
-        ${slots.join('')}
-        <p class="hint">Кло — единица теплоизоляции. Мокрая одежда греет хуже. Варежки теплее перчаток, но в них не зажечь спичку.</p>
+        ${details}
         <button class="close" data-act="close" data-id="0">Закрыть [Tab]</button>
       </div>`;
+    this.bindInventoryDrag();
+  }
+
+  private bindInventoryDrag() {
+    const P = G.player;
+    const find = (id: number) => P.inventory.find((x) => x.id === id) ?? null;
+    this.inv.querySelectorAll<HTMLElement>('[draggable="true"]').forEach((el) => {
+      el.addEventListener('dragstart', (ev) => {
+        ev.dataTransfer?.setData('text/plain', el.dataset.id ?? '');
+        const e = find(Number(el.dataset.id));
+        const slot = e?.def?.wear?.slot;
+        if (slot) this.inv.querySelector(`[data-slot="${slot}"]`)?.classList.add('target');
+      });
+      el.addEventListener('dragend', () => this.inv.querySelectorAll('.target').forEach((t) => t.classList.remove('target')));
+    });
+    this.inv.querySelectorAll<HTMLElement>('[data-slot], [data-zone="pack"]').forEach((el) => {
+      el.addEventListener('dragover', (ev) => ev.preventDefault());
+      el.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        const e = find(Number(ev.dataTransfer?.getData('text/plain')));
+        if (!e) return;
+        const slot = el.dataset.slot as Slot | undefined;
+        if (slot) {
+          if (e.def?.wear?.slot !== slot) msg(e.def?.wear ? `Это надевается на: ${SLOT_NAMES[e.def.wear.slot].toLowerCase()}` : 'Это не надеть', 'warn');
+          else P.wear(e);
+        } else if (P.isWorn(e)) P.unwear(e);
+        this.invSel = e.id;
+        this.renderInventory();
+      });
+    });
+    this.inv.querySelectorAll<HTMLElement>('.card, .slotbox.full').forEach((el) => {
+      el.addEventListener('dblclick', () => {
+        const e = find(Number(el.dataset.id));
+        if (!e) return;
+        if (e.def?.wear) P.isWorn(e) ? P.unwear(e) : P.wear(e);
+        else if (e.def?.tool || e.def?.food) P.equip(e);
+        this.renderInventory();
+      });
+    });
   }
 
   private onInvClick(ev: MouseEvent) {
@@ -359,6 +458,10 @@ export class HUD {
       case 'unwrap':
         G.interact.unwrap();
         this.toggleInventory(false);
+        return;
+      case 'select':
+        this.invSel = id;
+        this.renderInventory();
         return;
     }
     if (!e) return;

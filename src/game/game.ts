@@ -13,6 +13,7 @@ import { Forest } from '../world/forest';
 import { House } from '../world/house';
 import { Water } from '../world/water';
 import { Region } from '../gen/region';
+import { Structures } from '../world/structures';
 import { Entities, Entity } from './entities';
 import { Player } from './player';
 import { Body, Env, Activity } from './body';
@@ -88,6 +89,9 @@ export async function startGame(settings: Settings) {
   G.body = new Body();
   G.fires = new Fires();
   G.fires.init();
+  G.goal = { signalAt: 0, rescued: false, heliShown: false };
+  G.structures = new Structures();
+  G.structures.build(new Rng(settings.seed * 31 + 5));
   G.player = new Player();
   const { spawn, yaw } = findSpawn(rng);
   G.player.init(spawn, yaw);
@@ -185,6 +189,10 @@ function handleGlobalKeys() {
   }
   if (inp.hit('KeyZ')) hud.openSleep('floor');
   if (inp.hit('KeyV')) hud.cycleOverlay();
+  if (inp.hit('KeyN') && G.audio.music) {
+    G.audio.music.setEnabled(!G.audio.music.enabled);
+    msg(G.audio.music.enabled ? 'Музыка включена [N]' : 'Музыка выключена [N]', 'info');
+  }
   if (inp.hit('KeyT')) hud.openSleep('wait');
   for (let i = 1; i <= 9; i++) {
     if (inp.hit('Digit' + i)) {
@@ -217,6 +225,14 @@ function bodyEnv(): Env {
     wind = W.wind * (inForest ? 0.65 : 1);
     // porch roof and walls give a little shelter
     if (Math.abs(P.pos.x - 2) < 3 && P.pos.z > 3.9 && P.pos.z < 6.2) wind *= 0.6;
+    // huts, the grotto, the station: out of the wind, and a fire inside warms the air
+    const sh = G.structures.shelterAt(P.pos);
+    if (sh) {
+      wind *= sh.wind;
+      let heat = 0;
+      if (sh.enclosed) for (const f of G.fires.list) if (f.kind === 'camp' && f.burning && G.structures.shelterAt(f.pos) === sh) heat += f.power;
+      air = W.temp + sh.warm + Math.min(30, heat * 2.6);
+    }
   } else {
     air = G.thermal.tAt(chest);
     wind = Math.min(5, G.thermal.draftAt(chest));
@@ -243,7 +259,7 @@ function bodyEnv(): Env {
     lampInHand: eq?.defId === 'lamp' && eq.lit,
     metalTool: metal,
     outdoors: !zone,
-    snowfall: !zone && !underRoof ? W.snow : 0,
+    snowfall: !zone && !underRoof && !G.structures.shelterAt(P.pos) ? W.snow : 0,
     rh,
   };
 }
@@ -361,6 +377,39 @@ function simulate(dtGame: number, dtReal: number) {
   if (G.body.wetness < wet0 && G.house.zoneAt(G.player.pos)) G.thermal.addVapour(G.player.pos.clone().add(new THREE.Vector3(0, 1.1, 0)), (wet0 - G.body.wetness) * 900);
 }
 
+function musicMood() {
+  const B = G.body, W = G.weather;
+  if (B.core < 35.4 || B.condition < 25) return 'danger' as const;
+  const fire = G.fires.nearest(G.player.pos);
+  if (fire.level > 0.2 && fire.pos && fire.pos.distanceTo(G.player.pos) < 4) return 'calm' as const;
+  if (G.sky.daylight < 0.2 && W.cloud < 0.3) return 'wonder' as const;
+  if (W.type === 'blizzard' || G.sky.daylight < 0.25) return 'bleak' as const;
+  return W.cloud < 0.4 ? ('wonder' as const) : ('bleak' as const);
+}
+
+/** The optional goal: after the signal a helicopter comes when the weather allows. */
+function updateGoal() {
+  const g = G.goal;
+  if (!g.signalAt || g.rescued) return;
+  const st = G.structures.station;
+  if (!st) return;
+  const wait = G.time - g.signalAt;
+  if (wait > 8 * 3600 && G.weather.type !== 'blizzard' && G.weather.type !== 'fog') {
+    if (!g.heliShown) {
+      g.heliShown = true;
+      msg('Сквозь ветер — гул винтов. Вертолёт идёт к метеостанции!', 'good');
+    }
+    if (Math.hypot(G.player.pos.x - st.x, G.player.pos.z - st.z) < 60) {
+      g.rescued = true;
+      G.hud.showEnding();
+    } else if (wait > 11 * 3600) {
+      g.signalAt = G.time - 2 * 3600; // they will try again later
+      g.heliShown = false;
+      msg('Вертолёт покружил над хребтом и ушёл. Нужно быть у станции, когда он вернётся.', 'warn');
+    }
+  }
+}
+
 /** Advance time quickly (waiting / debug). */
 function skip(seconds: number) {
   let left = seconds;
@@ -405,6 +454,8 @@ function loop(now: number) {
   G.terrain.update(G.camera.position);
   G.forest.update(G.player.pos);
   G.lake.stream(G.player.pos);
+  G.structures.update(dt);
+  updateGoal();
   G.interact.update(paused ? 0 : dt);
   const indoorAmb = G.sky.daylight > 0.3 ? 0.5 : 0.75;
   G.sky.indoorFactor = THREE.MathUtils.lerp(G.sky.indoorFactor, G.house.zoneAt(G.player.pos) ? indoorAmb : 1, Math.min(1, dt * 2));
@@ -412,7 +463,8 @@ function loop(now: number) {
   G.fx.update(dt);
   G.vm.update(dt);
   G.audio.setListener(G.camera.position, G.player.forward());
-  G.audio.update(dt, G.weather.wind, !!G.house.zoneAt(G.player.pos), G.fires.nearest(G.player.pos));
+  G.audio.update(dt, G.weather.wind * (G.structures.shelterAt(G.player.pos)?.wind ?? 1), !!G.house.zoneAt(G.player.pos) || !!G.structures.shelterAt(G.player.pos), G.fires.nearest(G.player.pos));
+  G.audio.setMood(musicMood());
   G.hud.update(dt);
 
   G.renderer.clear();

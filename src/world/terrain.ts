@@ -99,9 +99,11 @@ vec3 triRock(vec3 p, vec3 n) {
   float peb = bio.a * smoothstep(0.45, 0.7, nz2.a) * (0.6 + 0.4 * nz3.r);
   snow = mix(snow, vec3(0.5, 0.48, 0.45) * (0.7 + 0.5 * nz3.g), peb * 0.75);
   // rock: steep slopes are bare, ledges keep snow; high ground is wind-scoured
-  float rockK = smoothstep(0.3 + 0.12 * nz2.r, 0.46 + 0.08 * nz2.g, slope);
-  rockK = max(rockK, smoothstep(uTreeline + 50.0, uTreeline + 170.0, vWPos.y) * smoothstep(0.12, 0.3, slope) * (0.6 + 0.4 * nz1.g));
-  vec3 rock = triRock(vWPos * 0.09, N) * vec3(0.62, 0.62, 0.66) * (0.75 + 0.35 * nz2.b);
+  float rockK = smoothstep(0.33 + 0.06 * nz2.r, 0.45 + 0.04 * nz2.g, slope);
+  rockK = max(rockK, smoothstep(uTreeline + 60.0, uTreeline + 180.0, vWPos.y) * smoothstep(0.2, 0.34, slope));
+  // snow clings in streaks and gullies even on steep rock
+  rockK *= 1.0 - 0.55 * smoothstep(0.45, 0.7, nz2.a * 0.6 + nz1.b * 0.5) * (1.0 - smoothstep(0.55, 0.8, slope));
+  vec3 rock = triRock(vWPos * 0.06, N) * vec3(1.05, 1.02, 1.0) * (0.85 + 0.3 * nz2.b) + vec3(0.06, 0.065, 0.075);
   vec3 col = mix(snow, rock, rockK);
   // distant forest canopy: dark green-grey seen from afar (the trees themselves stop drawing)
   float farF = smoothstep(uForestFar.x, uForestFar.y, camDist);
@@ -342,7 +344,7 @@ export class Terrain {
   /** Mountains and sea beyond the border, so the horizon is never empty. */
   private buildBackdrop() {
     const R = this.R;
-    const W = 7000, step = 64;
+    const W = 7000, step = 32;
     const x0 = -W, x1 = R.size + W;
     const m = Math.round((x1 - x0) / step) + 1;
     const noise = new Simplex2(() => 0.37);
@@ -363,7 +365,7 @@ export class Terrain {
         const isl = Math.max(0, ridged(noise, gx / 2400, gy / 2400, 4) - 0.62) * 600 * smoothstep(1500, 3000, out);
         h = lerp(edgeH, -40, smoothstep(0, 400, out)) + isl;
       } else {
-        const mount = 260 + 620 * ridged(noise, gx / 1700, gy / 1700, 5) * smoothstep(0, 2500, out);
+        const mount = 180 + 700 * Math.pow(ridged(noise, gx / 2600, gy / 2600, 4), 1.4) * smoothstep(0, 2500, out);
         h = lerp(edgeH, mount, smoothstep(0, 900, out));
       }
       pos.push(gx - R.ox, h, gy - R.oz);

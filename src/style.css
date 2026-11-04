@@ -129,3 +129,34 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 #legend .grad { height: 8px; border-radius: 4px; margin: 5px 0 2px; }
 #legend .ends { display: flex; justify-content: space-between; color: var(--dim); font-size: 11px; }
 #env .draft { color: var(--warn); }
+
+/* inventory: item grid, figure with slots, details */
+#inventory .inv-col.doll-col { flex: 0 0 360px; }
+.inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; overflow-y: auto; align-content: start; flex: 1; padding: 2px; }
+.card { position: relative; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 8px; padding: 4px 4px 6px; text-align: center; cursor: pointer; user-select: none; }
+.card:hover { background: rgba(255, 255, 255, 0.1); }
+.card.sel { border-color: var(--accent); background: rgba(156, 200, 255, 0.12); }
+.card.eq { box-shadow: inset 0 0 0 1px var(--ok); }
+.card img, .slotbox img, .dhead img { width: 64px; height: 64px; display: block; margin: 0 auto; pointer-events: none; }
+.card .n { position: absolute; right: 6px; top: 4px; color: var(--accent); font-size: 12px; }
+.card .cn, .slotbox .cn { display: block; font-size: 11.5px; line-height: 1.2; margin-top: 2px; }
+.card .cw { display: block; font-size: 10.5px; color: var(--dim); }
+.card .wet, .slotbox .wet { position: absolute; left: 6px; bottom: 3px; height: 3px; max-width: calc(100% - 12px); background: #4aa3ff; border-radius: 2px; }
+.noicon { display: block; width: 64px; height: 64px; margin: 0 auto; line-height: 64px; color: var(--dim); }
+.doll { position: relative; flex: 1; min-height: 440px; }
+.doll .figure { position: absolute; left: 50%; top: 4%; height: 92%; transform: translateX(-50%); }
+.slotbox { position: absolute; width: 84px; min-height: 84px; transform: translateX(-50%); background: rgba(0, 0, 0, 0.35); border: 1px dashed rgba(255, 255, 255, 0.25); border-radius: 8px; padding: 3px; text-align: center; cursor: pointer; user-select: none; }
+.slotbox.full { border-style: solid; border-color: var(--line); background: rgba(255, 255, 255, 0.06); }
+.slotbox.sel { border-color: var(--accent); }
+.slotbox.target { border-color: var(--ok); background: rgba(143, 209, 139, 0.18); }
+.slotbox .empty { display: block; line-height: 76px; color: var(--dim); font-size: 12px; }
+.side .dhead { display: flex; gap: 10px; align-items: center; }
+.side .dhead h3 { margin: 0; font-size: 16px; }
+.side .desc { color: var(--dim); font-size: 12.5px; }
+.side .stat { display: grid; grid-template-columns: 96px 1fr 70px; gap: 6px; align-items: center; font-size: 12px; margin: 4px 0; }
+.side .stat span { color: var(--dim); }
+.side .stat .track { height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; }
+.side .stat .track i { display: block; height: 100%; background: var(--ok); }
+.side .stat .track i.bad { background: var(--warn); }
+.side .stat b { font-weight: 500; text-align: right; }
+.side .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

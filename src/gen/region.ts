@@ -56,6 +56,20 @@ export interface Site {
   y: number;
 }
 
+export type PlaceKind = 'hut' | 'station' | 'grotto' | 'car' | 'bridge' | 'logging' | 'cross';
+
+/** a man-made place or trace of people, chosen by rules and built by world/structures */
+export interface Place {
+  kind: PlaceKind;
+  x: number;
+  z: number;
+  y: number;
+  yaw: number;
+  /** how far from the house, 0..1: remote places are less looted */
+  remote: number;
+  data: Record<string, any>;
+}
+
 const COARSE = 8;
 const FINE = 2;
 const PROP_CELL = 64;
@@ -114,6 +128,7 @@ export class Region {
   rocks!: Props;
   pillars: Pillar[] = [];
   sites: { house: Site; tower: Site | null; thin: { x: number; z: number; r: number } | null } = { house: { x: 0, z: 0, y: 0 }, tower: null, thin: null };
+  places: Place[] = [];
   seaSide = 0;
   treeline = 165;
   timings: Record<string, number> = {};
@@ -242,24 +257,37 @@ export class Region {
       const wx = x + 140 * nWarp.fbm(x / 900, y / 900, 3), wy = y + 140 * nWarp.fbm(x / 900 + 40, y / 900 - 13, 3);
       const u = seaU(wx, wy);
       const c = (u - 0.2) * 1.9 + nCont.fbm(wx / 1300, wy / 1300, 4) * 0.42 + nCont2.fbm(wx / 380, wy / 380, 3) * 0.13;
-      const ero = clamp(0.48 + 0.75 * nEro.fbm(wx / 1100, wy / 1100, 3), 0, 1);
-      const r = ridged(nRidge, wx / 700, wy / 700, 5);
+      // landforms: broad massifs separated by long winding valleys, lowlands by the sea
+      const massif = smoothstep(-0.05, 0.45, nEro.fbm(wx / 1500, wy / 1500, 3)) * smoothstep(0.08, 0.55, c);
+      const r = ridged(nRidge, wx / 620, wy / 620, 4);
       let h: number;
       if (c < 0) h = -2.5 - 38 * smoothstep(0, 0.42, -c);
-      else h = 1.6 + 58 * Math.pow(smoothstep(0, 1.25, c), 1.15);
-      const mount = smoothstep(0.1, 0.62, c) * Math.pow(1 - ero, 1.6) * 360 * Math.pow(r, 2.1);
-      const hills = nHill.fbm(wx / 240, wy / 240, 4) * (4 + 22 * (1 - ero)) * smoothstep(-0.05, 0.18, c);
-      h += mount + hills;
-      // plateaus with steps: rivers cut gorges into them
-      const p = smoothstep(0.28, 0.5, nPlat.fbm(wx / 850, wy / 850, 3)) * smoothstep(0.15, 0.35, c) * (1 - smoothstep(0.55, 0.8, mount / 120));
-      if (p > 0) h = lerp(h, terrace(h + 10 * p, 15), p * 0.9);
+      else h = 1.5 + 34 * Math.pow(smoothstep(0, 1.25, c), 1.2);
+      // peaks with clear ridgelines
+      const mount = massif * (40 + 240 * Math.pow(r, 1.35) * (0.75 + 0.25 * r));
+      // long valleys cut through everything except the coast
+      const vn = Math.abs(nHill.fbm(wx / 1250, wy / 1250, 3));
+      const valley = (1 - smoothstep(0.02, 0.16, vn)) * smoothstep(0.05, 0.3, c);
+      // gentle rolling ground in the lowlands
+      const roll = nHill.fbm(wx / 420 + 7, wy / 420, 3) * 7 * smoothstep(-0.05, 0.2, c);
+      h += mount * (1 - 0.85 * valley) + roll - valley * 6;
+      // mesas with sheer cliff bands; rivers cut gorges into them
+      const p = smoothstep(0.32, 0.46, nPlat.fbm(wx / 900, wy / 900, 2)) * smoothstep(0.2, 0.4, c) * (1 - massif * 0.8);
+      if (p > 0) {
+        const step = 22;
+        const k = Math.floor((h + 30 * p) / step);
+        const f = (h + 30 * p) / step - k;
+        h = lerp(h, (k + smoothstep(0.42, 0.58, f)) * step, p);
+      }
+      const ero = 1 - massif;
       // impassable ridges along the land borders
       const eb = 1 - smoothstep(0.02, 0.11, landEdge(x, y));
       if (eb > 0) h += eb * eb * (150 + 160 * ridged(nEdge, x / 300, y / 300, 4));
       const v = j * nc + i;
       ch[v] = h;
       plateau[v] = p;
-      hard[v] = clamp(1 - p * 0.75 - smoothstep(60, 200, h) * 0.3, 0.15, 1);
+      hard[v] = clamp(1 - p * 0.85 - smoothstep(60, 200, h) * 0.3, 0.12, 1);
+      void ero;
     }
     mark('macro', t);
 
@@ -708,6 +736,9 @@ export class Region {
     // thin ice: on the lake nearest to the house, near an inflow if there is one
     this.sites.thin = this.pickThinIce(rng);
 
+    // places of people: huts, the weather station, a grotto, cars, a bridge
+    this.pickPlaces(sub(50));
+
     // ---------- vegetation ----------
     await progress?.('Лес', 0.72);
     t = performance.now();
@@ -716,6 +747,7 @@ export class Region {
     await progress?.('Камни', 0.88);
     t = performance.now();
     this.placeRocks(sub(40));
+    this.clearLogging(sub(51));
     mark('rocks', t);
     this.timings.total = Math.round(performance.now() - t0);
     await yieldFrame();
@@ -887,12 +919,164 @@ export class Region {
   }
 
   private blocked(x: number, z: number) {
-    // keep the house yard, the tower pad and the thin ice free
+    // keep the house yard, the tower pad and other places free
     if (Math.hypot(x, z * 1.1) < 13) return true;
     if (x > 4 && x < 10 && z > -4 && z < 7) return true;
     const t = this.sites.tower;
     if (t && Math.hypot(x - t.x, z - t.z) < 7) return true;
+    for (const p of this.places) {
+      const r = p.data.clear ?? 0;
+      if (r > 0 && Math.hypot(x - p.x, z - p.z) < r) return true;
+    }
     return false;
+  }
+
+  private flatAround(x: number, z: number, r: number) {
+    let mn = Infinity, mx = -Infinity;
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      for (const d of [r * 0.5, r]) {
+        const xx = x + Math.cos(a) * d, zz = z + Math.sin(a) * d;
+        if (!Number.isNaN(this.waterAt(xx, zz))) return Infinity;
+        const h = this.heightAt(xx, zz);
+        mn = Math.min(mn, h);
+        mx = Math.max(mx, h);
+      }
+    }
+    return mx - mn;
+  }
+
+  private farFrom(x: number, z: number, d: number) {
+    if (Math.hypot(x, z) < d) return false;
+    const t = this.sites.tower;
+    if (t && Math.hypot(x - t.x, z - t.z) < d * 0.6) return false;
+    return this.places.every((p) => Math.hypot(p.x - x, p.z - z) > d * (p.kind === 'car' ? 0.2 : 1));
+  }
+
+  private pickPlaces(rng: Rng) {
+    const S = this.size;
+    const maxD = S * 0.62;
+    const add = (kind: PlaceKind, x: number, z: number, yaw: number, data: Record<string, any> = {}) => {
+      const p: Place = { kind, x, z, y: this.heightAt(x, z), yaw, remote: clamp(Math.hypot(x, z) / (S * 0.5), 0, 1), data };
+      this.places.push(p);
+      return p;
+    };
+    // the weather station: the highest reachable flat spot far from the house
+    {
+      let best = -1e9, bx = 0, bz = 0;
+      for (let k = 0; k < 2500; k++) {
+        const x = rng.float(this.minX + 260, this.maxX - 260), z = rng.float(this.minZ + 260, this.maxZ - 260);
+        if (Math.hypot(x, z) < S * 0.3) continue;
+        const h = this.heightAt(x, z);
+        if (this.flatAround(x, z, 9) > 2.5) continue;
+        if (h > best) {
+          best = h;
+          bx = x;
+          bz = z;
+        }
+      }
+      const p = add('station', bx, bz, rng.float(0, Math.PI * 2), { clear: 14 });
+      this.flattenPad(bx, bz, p.y, 7, 13);
+    }
+    // hunters' huts in the forest
+    for (let k = 0, n = 0; k < 3000 && n < 5; k++) {
+      const a = rng.float(0, Math.PI * 2), d = rng.float(260, maxD);
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (!this.inside(x, z, 220) || !this.farFrom(x, z, 330)) continue;
+      const b = this.biomeAt(x, z);
+      if (b === B.Alpine || b === B.Sea || b === B.Water || b === B.Coast) continue;
+      if (this.flatAround(x, z, 7) > 1.6) continue;
+      const p = add('hut', x, z, Math.round(rng.float(0, 4)) * (Math.PI / 2) + rng.float(-0.3, 0.3), { clear: 9 });
+      this.flattenPad(x, z, p.y, 4.5, 9);
+      n++;
+      // an abandoned car next to some of them
+      if (n <= 2) {
+        const ca = rng.float(0, Math.PI * 2);
+        const cx = x + Math.cos(ca) * 9, cz = z + Math.sin(ca) * 9;
+        if (this.flatAround(cx, cz, 3) < 1.2) add('car', cx, cz, rng.float(0, Math.PI * 2), { clear: 4 });
+      }
+    }
+    // the battery for the radio is in one of the cars (or a hut if there is no car)
+    const cars = this.places.filter((p) => p.kind === 'car');
+    const holder = cars.length ? rng.pick(cars) : rng.pick(this.places.filter((p) => p.kind === 'hut'));
+    if (holder) holder.data.battery = true;
+    // a grotto under a cliff
+    for (let k = 0; k < 5000; k++) {
+      const a = rng.float(0, Math.PI * 2), d = rng.float(300, maxD);
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (!this.inside(x, z, 200) || !this.farFrom(x, z, 250)) continue;
+      const sl = this.slopeAt(x, z);
+      if (sl > 0.25) continue;
+      // steep rise behind: find uphill direction
+      const e = 3;
+      const gx = this.heightAt(x + e, z) - this.heightAt(x - e, z), gz = this.heightAt(x, z + e) - this.heightAt(x, z - e);
+      const gl = Math.hypot(gx, gz);
+      if (gl < 1e-3) continue;
+      const ux = gx / gl, uz = gz / gl;
+      const rise = this.heightAt(x + ux * 12, z + uz * 12) - this.heightAt(x, z);
+      if (rise < 7 || this.flatAround(x, z, 4) > 1.5) continue;
+      const p = add('grotto', x, z, Math.atan2(-ux, -uz), { clear: 7 });
+      this.flattenPad(x, z, p.y, 3, 6);
+      break;
+    }
+    // a footbridge over the river nearest to the house
+    {
+      let best: { x: number; z: number; w: number; L: number; dx: number; dz: number } | null = null;
+      let bd = Infinity;
+      for (const r of this.rivers) {
+        for (let i = 2; i < r.x.length - 2; i += 2) {
+          const w = r.width[i];
+          if (w < 3.5 || w > 16) continue;
+          const x = r.x[i], z = r.z[i];
+          const d = Math.hypot(x, z);
+          if (d < 80 || d > 1100 || d > bd || !this.inside(x, z, 150)) continue;
+          const tx = r.x[i + 2] - r.x[i - 2], tz = r.z[i + 2] - r.z[i - 2];
+          const tl = Math.hypot(tx, tz) || 1;
+          const nx = -tz / tl, nz = tx / tl;
+          const half = w / 2 + 4;
+          const ha = this.heightAt(x + nx * half, z + nz * half), hb = this.heightAt(x - nx * half, z - nz * half);
+          if (!Number.isNaN(this.waterAt(x + nx * half, z + nz * half)) || !Number.isNaN(this.waterAt(x - nx * half, z - nz * half))) continue;
+          if (Math.abs(ha - hb) > 2.5 || Math.min(ha, hb) < r.level[i] + 0.8) continue;
+          bd = d;
+          best = { x, z, w, L: r.level[i], dx: nx, dz: nz };
+        }
+      }
+      if (best) add('bridge', best.x, best.z, Math.atan2(best.dx, best.dz), { half: best.w / 2 + 4, level: best.L, nx: best.dx, nz: best.dz, clear: 0 });
+    }
+    // logging sites (filled in after the trees are placed) and a lonely cross
+    for (let k = 0, n = 0; k < 2000 && n < 2; k++) {
+      const a = rng.float(0, Math.PI * 2), d = rng.float(150, maxD * 0.8);
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (!this.inside(x, z, 200) || !this.farFrom(x, z, 250)) continue;
+      const b = this.biomeAt(x, z);
+      if (b !== B.Taiga && b !== B.Pine) continue;
+      if (this.flatAround(x, z, 12) > 4) continue;
+      add('logging', x, z, rng.float(0, 6.28), { clear: 0 });
+      n++;
+    }
+    for (let k = 0; k < 2000; k++) {
+      const a = rng.float(0, Math.PI * 2), d = rng.float(150, 700);
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (!this.inside(x, z, 200) || !this.farFrom(x, z, 120) || this.slopeAt(x, z) > 0.2) continue;
+      if (!Number.isNaN(this.waterAt(x, z))) continue;
+      add('cross', x, z, rng.float(0, 6.28), { clear: 2 });
+      break;
+    }
+  }
+
+  /** logging sites: the trees there are already cut, leaving stumps */
+  private clearLogging(rng: Rng) {
+    for (const p of this.places) {
+      if (p.kind !== 'logging') continue;
+      const stumps: number[][] = [];
+      this.forEachProp(this.trees, p.x, p.z, 20, (i) => {
+        if (rng.chance(0.85)) {
+          this.trees.flags[i] |= 1;
+          stumps.push([this.trees.x[i], this.trees.z[i], this.trees.y[i], this.trees.s[i]]);
+        }
+      });
+      p.data.stumps = stumps;
+    }
   }
 
   private placeVegetation(rng: Rng, clearAt: (x: number, y: number, k: number) => number, nVar: Simplex2) {
