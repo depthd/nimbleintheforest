@@ -307,7 +307,7 @@ export class Player {
     const maxStam = 1 - Math.max(0, B.fatigue - 0.6) * 1.5;
     this.sprinting = wantSprint && this.stamina > 0.05 && len > 0 && !this.dragging;
     if (this.sprinting) this.stamina = Math.max(0, this.stamina - dt / 7);
-    else this.stamina = Math.min(maxStam, this.stamina + dt / (len > 0 ? 14 : 7));
+    else this.stamina = Math.min(maxStam, this.stamina + (dt / (len > 0 ? 14 : 7)) * (G.body.mood > 0.7 ? 1.25 : 1));
 
     // a grown man in winter clothes: ~1.5 m/s walking in snow, ~3.3 m/s running
     let speed = this.crouch ? 0.9 : this.sprinting ? 3.7 : 1.75;

@@ -176,7 +176,10 @@ export class Interaction {
     if (e) this.info = this.describe(e);
     if (t.kind === 'tree') this.info = this.describeTree(t.tree!);
     if (t.kind === 'ground') this.info = G.house.zoneAt(t.point) ? '' : 'Снег';
-    if (t.kind === 'ice') this.info = 'Лёд';
+    if (t.kind === 'ice') {
+      const th = G.region.iceAt(t.point.x, t.point.z);
+      this.info = G.body.skills.has('ice') ? `Лёд · ~${Math.round(th * 100)} см${th < 0.12 ? ' · ТОНКИЙ, не выдержит!' : ''}` : th < 0.12 ? 'Лёд · тёмный, прозрачный' : 'Лёд';
+    }
 
     // --- carrying a physical object ---
     if (carried) {
@@ -403,7 +406,8 @@ export class Interaction {
     }
     if (d.pocket) {
       A.push({ key: 'E', label: `Взять: ${e.name}`, run: () => P.addToInventory(e) });
-      A.push({ key: 'F', label: 'Взять в руки', run: () => P.carry(e) });
+      if (d.read) A.push({ key: 'F', label: d.read === 'book' ? 'Читать' : 'Прочитать', run: () => G.hud.read(e) });
+      else A.push({ key: 'F', label: 'Взять в руки', run: () => P.carry(e) });
       if (d.tearInto) A.push({ key: 'G', label: 'Порвать на растопку', time: 1.5, run: () => this.tear(e) });
     } else if (e.mass <= MAX_LIFT) {
       A.push({ key: 'E', label: `Поднять: ${e.name}`, run: () => P.carry(e) });
@@ -816,6 +820,7 @@ export class Interaction {
     }
     eq.charges--;
     let chance = this.flameQuality(kind);
+    if (G.body.skills.has('fire')) chance = Math.min(1, chance * 1.2);
     if (kind === 'match' && eq.moisture > 0.4) chance *= 0.05;
     const air = G.thermal.tAt(G.camera.position);
     if (kind === 'lighter' && air < -15) chance *= clamp(1 - (-15 - air) / 15, 0.15, 1);
@@ -940,6 +945,9 @@ export class Interaction {
       G.body.sick = 8;
       msg('Сырая рыба — плохая идея…', 'bad');
     } else msg(`Съедено: ${food.name} (+${d.kcal} ккал)`, 'good');
+    // a proper meal is a small joy
+    const joy = food.defId === 'chocolate' ? 0.06 : food.defId === 'fish_cooked' ? 0.1 : d.open ? 0.05 : 0.02;
+    G.body.mood = clamp(G.body.mood + joy, 0, 1);
     G.audio.play('eat');
     G.entities.destroy(food);
   }

@@ -178,6 +178,7 @@ function handleGlobalKeys() {
   }
   if (pressed.has('F3') || pressed.has('Backquote')) hud.toggleDebug();
   if (pressed.has('F1')) hud.toggleHelp();
+  if (hud.readerOpen && (pressed.has('KeyE') || pressed.has('Escape'))) hud.closeReader();
   if (pressed.has('Escape')) {
     if (hud.invOpen) hud.toggleInventory(false);
     if (hud.helpOpen) hud.toggleHelp(false);

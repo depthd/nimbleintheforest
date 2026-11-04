@@ -33,6 +33,10 @@ export class Body {
   water = 1.5;
   fatigue = 0.3;
   wetness = 0;
+  /** 0..1: books, good food, warmth by a fire lift it; cold, wet and hunger wear it down */
+  mood = 0.6;
+  skills = new Set<string>();
+  readBooks = new Set<number>();
   feetWet = 0;
   snow = 0;
   condition = 100;
@@ -144,7 +148,7 @@ export class Body {
     let insul = 1 + 2.5 * gl.clo;
     if (env.handsWarming) {
       teH = this.core - 3;
-      kE *= 2;
+      kE *= this.skills.has('cold') ? 3 : 2;
       insul = 1;
     }
     if (env.lampInHand) teH += 12;
@@ -204,7 +208,16 @@ export class Body {
     this.kcal = Math.max(0, this.kcal - (M * dt) / 4184);
     this.water = Math.max(0, this.water - dt * (0.000024 + 0.00002 * Math.max(0, M / 100 - 1)));
     if (env.sleeping) this.fatigue = clamp(this.fatigue - dt / (7 * 3600), 0, 1);
-    else this.fatigue = clamp(this.fatigue + (dt / (16 * 3600)) * (M > 300 ? 2.2 : 1), 0, 1);
+    else this.fatigue = clamp(this.fatigue + (dt / (16 * 3600)) * (M > 300 ? 2.2 : 1) * (this.mood > 0.7 ? 0.8 : 1), 0, 1);
+    // mood drifts: misery pulls it down, a warm fire lifts it a little
+    {
+      let dm = (0.5 - this.mood) * (dt / (10 * 3600));
+      if (this.core < 36.2) dm -= dt / (6 * 3600);
+      if (this.wetness > 0.4) dm -= dt / (8 * 3600);
+      if (this.kcal < 300) dm -= dt / (8 * 3600);
+      if (env.radiant > 1.5 && this.core > 36.4) dm += dt / (5 * 3600);
+      this.mood = clamp(this.mood + dm, 0, 1);
+    }
     if (this.sick > 0) this.sick = Math.max(0, this.sick - dt / 3600);
 
     // condition
@@ -278,6 +291,8 @@ export class Body {
     if (this.snow > 0.2) s.push({ text: 'Одежда в снегу — отряхнуться [X]', kind: 'warn' });
     if (this.sick > 0) s.push({ text: 'Расстройство желудка', kind: 'bad' });
     if (this.halluc > 0.3) s.push({ text: 'Мутится сознание', kind: 'bad' });
+    if (this.mood > 0.75) s.push({ text: 'Хорошее настроение: меньше устаёте', kind: 'ok' });
+    else if (this.mood < 0.25) s.push({ text: 'Тоска', kind: 'warn' });
     return s;
   }
 }

@@ -1,3 +1,4 @@
+import { NOTES, NOTE_KEYS, NEWSPAPERS, BOOKS } from '../game/lore';
 import { itemIcon } from './icons';
 import { BIOME_NAMES } from '../gen/biomes';
 // DOM overlay: status, target prompts, messages, inventory, sleep dialog,
@@ -48,6 +49,7 @@ export class HUD {
   invOpen = false;
   debugOpen = false;
   helpOpen = false;
+  readerOpen = false;
   sleepOpen = false;
   private tick = 0;
   private sleepPlan: { hours: number; mode: 'bed' | 'floor' | 'wait'; bed?: Entity; left: number; woke?: string } | null = null;
@@ -96,6 +98,7 @@ export class HUD {
     $('#death-restart').addEventListener('click', () => location.reload());
     $('#death-new').addEventListener('click', () => this.newWorld());
     $('#help-close').addEventListener('click', () => this.toggleHelp(false));
+    $('#reader-close').addEventListener('click', () => this.closeReader());
   }
 
   newWorld() {
@@ -106,7 +109,7 @@ export class HUD {
   }
 
   get modal() {
-    return this.invOpen || this.sleepOpen || this.helpOpen || G.dead;
+    return this.invOpen || this.sleepOpen || this.helpOpen || this.readerOpen || G.dead;
   }
 
   message(text: string, kind: 'info' | 'warn' | 'good' | 'bad' = 'info') {
@@ -148,6 +151,60 @@ export class HUD {
     this.debugOpen = !this.debugOpen;
     this.debug.style.display = this.debugOpen ? 'block' : 'none';
     if (this.debugOpen) this.renderDebug(true);
+  }
+
+  closeReader() {
+    this.readerOpen = false;
+    $('#reader').style.display = 'none';
+    this.syncInput();
+  }
+
+  /** Read a note, a newspaper or a book. Books take an hour and need light. */
+  read(e: Entity) {
+    const d = e.def;
+    if (!d?.read) return;
+    const B = G.body;
+    let title = '', body = '', foot = '';
+    if (d.read === 'note') {
+      const t = NOTES[NOTE_KEYS[e.params.t ?? 0]] ?? NOTES.kid;
+      title = t.title;
+      body = t.body;
+    } else if (d.read === 'paper') {
+      if (e.params.t === undefined) e.params.t = e.id % NEWSPAPERS.length;
+      const t = NEWSPAPERS[e.params.t];
+      title = t.title;
+      body = t.body;
+      B.mood = Math.min(1, B.mood + 0.02);
+    } else {
+      if (e.params.t === undefined) e.params.t = e.id % BOOKS.length;
+      const bk = BOOKS[e.params.t];
+      const fire = G.fires.nearest(G.player.pos);
+      const lamp = G.player.equipped?.defId === 'lamp' && G.player.equipped.lit;
+      const light = G.sky.daylight > 0.35 || lamp || (fire.level > 0.1 && fire.pos && fire.pos.distanceTo(G.player.pos) < 3);
+      if (!light) {
+        msg('Слишком темно, чтобы читать. Нужен огонь, лампа или дневной свет.', 'warn');
+        return;
+      }
+      title = bk.title;
+      body = bk.body;
+      const first = !B.readBooks.has(e.params.t);
+      B.readBooks.add(e.params.t);
+      G.skip(3600);
+      B.mood = Math.min(1, B.mood + (first ? 0.3 : 0.12));
+      foot = `Прошёл час. Настроение ${first ? 'заметно ' : ''}лучше.`;
+      if (first && bk.skill && !B.skills.has(bk.skill)) {
+        B.skills.add(bk.skill);
+        foot += ' ' + (bk.tip ?? '');
+        msg(bk.tip ?? 'Новый навык', 'good');
+      }
+    }
+    $('#reader-title').textContent = title;
+    $('#reader-body').textContent = body;
+    $('#reader-foot').textContent = foot;
+    if (this.invOpen) this.toggleInventory(false);
+    this.readerOpen = true;
+    $('#reader').style.display = 'block';
+    this.syncInput();
   }
 
   toggleHelp(open?: boolean) {
@@ -459,6 +516,9 @@ export class HUD {
         G.interact.unwrap();
         this.toggleInventory(false);
         return;
+      case 'read':
+        if (e) this.read(e);
+        return;
       case 'select':
         this.invSel = id;
         this.renderInventory();
@@ -745,6 +805,7 @@ export class HUD {
       this.bar('Вода', B.water / 3, `${B.water.toFixed(1)} л`, k(B.water, 0.6, 0.2)) +
       this.bar('Бодрость', 1 - B.fatigue, `${Math.round((1 - B.fatigue) * 100)}%`, k(1 - B.fatigue, 0.25, 0.1)) +
       this.bar('Выносл.', G.player.stamina, '', k(G.player.stamina, 0.3, 0.1)) +
+      this.bar('Настроение', B.mood, `${Math.round(B.mood * 100)}%`, k(B.mood, 0.3, 0.12)) +
       this.bar('Состояние', B.condition / 100, `${Math.round(B.condition)}%`, k(B.condition, 50, 25)) +
       `<div class="flags">${B.statusList().map((s) => `<span class="${s.kind}">${s.text}</span>`).join('')}</div>`;
     this.status.innerHTML = html;

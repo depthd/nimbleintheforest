@@ -160,3 +160,9 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 .side .stat .track i.bad { background: var(--warn); }
 .side .stat b { font-weight: 500; text-align: right; }
 .side .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+#reader { width: min(620px, calc(100vw - 32px)); background: #e9e2d0; color: #2a2620; border-color: #b8ad92; font-family: Georgia, 'Times New Roman', serif; }
+#reader h2 { font-size: 19px; }
+#reader-body { white-space: pre-wrap; font-size: 15.5px; line-height: 1.55; max-height: 60vh; overflow-y: auto; }
+#reader .hint { color: #6a5f4a; font-family: system-ui, sans-serif; }
+#reader button { color: #2a2620; background: rgba(0, 0, 0, 0.06); border-color: rgba(0, 0, 0, 0.2); }
