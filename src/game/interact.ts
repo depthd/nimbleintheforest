@@ -9,6 +9,7 @@ import type { WindowData } from '../world/house';
 import type { Fire } from './fire';
 import { MAX_DRAG, MAX_LIFT } from './player';
 import { clamp } from '../core/rng';
+import { dryingAt } from './drying';
 
 export type Key = 'E' | 'F' | 'G' | 'LMB' | 'RMB';
 
@@ -459,6 +460,11 @@ export class Interaction {
     }
     if (e.hp < e.maxHp && e.maxHp > 0) s += ` · ${this.hpBar(e)}`;
     if (e.pinned === 'fire') s += ' · на огне';
+    if ((d.wear || d.insul || d.fuel) && e.moisture > 0.12) {
+      const st = dryingAt(e.position(), !!(d.wear || d.insul), false);
+      const hrs = st.rate < 0 ? (e.moisture - 0.1) / (-st.rate * 3600) : Infinity;
+      s += ` · сырое ${Math.round(e.moisture * 100)}% · ${st.why}${hrs < 48 ? ` (~${hrs < 1 ? Math.max(5, Math.round(hrs * 60)) + ' мин' : hrs.toFixed(1) + ' ч'})` : ''} · ${st.T.toFixed(0)}°, влажн. ${Math.round(st.rh * 100)}%`;
+    }
     if (d.cook && e.cook > 0) s += ` · готовность ${Math.round((e.cook / d.cook.time) * 100)}%`;
     return s;
   }

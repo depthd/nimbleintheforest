@@ -121,11 +121,25 @@ export class Player {
     if (!this.inventory.includes(e) && !this.addToInventory(e)) return;
     this.worn.set(w.slot, e);
     if (this.equipped === e) this.equipped = null;
+    this.recalcWetness();
     msg(`Надето: ${e.name}${prev ? ` (снято: ${prev.name})` : ''}`, 'good');
   }
 
   unwear(e: Entity) {
     for (const [k, v] of this.worn) if (v === e) this.worn.delete(k);
+    this.recalcWetness();
+  }
+
+  /** body wetness = warmth-weighted wetness of what you wear */
+  private recalcWetness() {
+    let s = 0, w = 0;
+    for (const x of this.worn.values()) {
+      const d = x.def?.wear;
+      if (!d || d.slot === 'back') continue;
+      s += x.moisture * (d.clo + 0.1);
+      w += d.clo + 0.1;
+    }
+    G.body.wetness = w > 0 ? s / w : 0;
   }
 
   isWorn(e: Entity) {

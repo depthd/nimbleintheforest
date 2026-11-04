@@ -25,6 +25,7 @@ import { Effects } from './effects';
 import { HUD } from '../ui/hud';
 import { Horror } from './horror';
 import { def } from './items';
+import { dryingAt } from './drying';
 
 const STEP = 1 / 60;
 let horror: Horror;
@@ -265,28 +266,30 @@ function bodyEnv(): Env {
   };
 }
 
-/** Wood and matches dry in warm dry air and get damp in cold humid corners. */
+/** Wood, matches and clothes dry in warm dry air and get damp in cold humid corners. */
 function updateMoisture(dtGame: number) {
   const P = G.player;
   for (const e of G.entities.list) {
-    if (e.removed || !(e.def?.fuel || e.defId === 'matches')) continue;
-    const carried = P.inventory.includes(e);
+    if (e.removed) continue;
+    const d = e.def;
+    if (!(d?.fuel || d?.wear || d?.insul || e.defId === 'matches')) continue;
+    if (P.isWorn(e)) continue; // worn clothes follow the body
+    const carried = P.inventory.includes(e) || P.wrapped === e;
     if (!carried && !e.inWorld) continue;
     const p = carried ? P.pos.clone().add(new THREE.Vector3(0, 1, 0)) : e.position();
-    const inside = !!G.house.zoneAt(p);
-    const T = inside ? G.thermal.tAt(p) : G.weather.temp;
-    const rh = inside ? G.thermal.rhAt(p) : 0.85;
-    const pack = carried ? 0.3 : 1;
-    const fire = G.fires.radiantAt(p, inside ? 'ground' : null);
-    if (T > 3 && rh < 0.8) {
-      const rate = ((T - 3) / (20 * 3600 * 8)) * (1 + fire / 4) * (0.85 - rh) * 2 * pack;
-      const before = e.moisture;
-      e.moisture = Math.max(0.03, e.moisture - dtGame * rate);
-      if (inside) G.thermal.addVapour(p, (before - e.moisture) * 400 * e.mass);
-    } else if (inside && rh > 0.88) {
-      e.moisture = Math.min(0.5, e.moisture + ((dtGame * (rh - 0.88)) / 3600) * 0.6 * pack);
-    }
+    const fabric = !!(d?.wear || d?.insul);
+    const st = dryingAt(p, fabric, carried && P.wrapped !== e);
+    const before = e.moisture;
+    const floor = d?.fuel && !fabric ? 0.03 : 0;
+    e.moisture = Math.min(fabric ? 1 : 0.5, Math.max(floor, e.moisture + st.rate * dtGame));
+    if (G.house.zoneAt(p) && e.moisture < before) G.thermal.addVapour(p, (before - e.moisture) * 400 * e.mass);
   }
+}
+
+/** Worn clothes share the body's wetness; putting on dry things makes you drier. */
+function syncWornWetness() {
+  const P = G.player;
+  for (const e of P.worn.values()) if (e.def?.wear && e.def.wear.slot !== 'back') e.moisture = G.body.wetness;
 }
 
 const lampLights = new Map<Entity, THREE.PointLight>();
@@ -374,6 +377,7 @@ function simulate(dtGame: number, dtReal: number) {
   G.body.activity = activity();
   const wet0 = G.body.wetness;
   G.body.update(dtGame, bodyEnv(), G.player.worn);
+  syncWornWetness();
   // drying clothes put water vapour into the room
   if (G.body.wetness < wet0 && G.house.zoneAt(G.player.pos)) G.thermal.addVapour(G.player.pos.clone().add(new THREE.Vector3(0, 1.1, 0)), (wet0 - G.body.wetness) * 900);
 }

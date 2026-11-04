@@ -69,7 +69,7 @@ export class Entity {
   displayName(): string {
     let n = this.name;
     const d = this.def;
-    if (d?.fuel && this.moisture > 0.3) n += ' (сырое)';
+    if ((d?.fuel || d?.wear || d?.insul) && this.moisture > 0.3) n += d?.fuel && !d?.wear && !d?.insul ? ' (сырое)' : ' (мокрое)';
     if (this.defId === 'matches') n += ` (${this.charges})`;
     if (this.defId === 'lighter') n += ` (${this.charges})`;
     if (this.defId === 'nails') n += ` (${this.charges})`;
