@@ -139,6 +139,13 @@ export class Structures {
         case 'cross':
           this.cross(p);
           break;
+        case 'leanto':
+          this.leanto(p);
+          break;
+        case 'fishing':
+          this.hut(p, 99, true);
+          this.fishingExtras(p);
+          break;
       }
     }
   }
@@ -213,12 +220,13 @@ export class Structures {
 
   // ---------- builders ----------
 
-  private hut(p: Place, no: number) {
+  private hut(p: Place, no: number, small = false) {
     const r = this.rng;
     const b = new Builder(p.x, p.y, p.z, p.yaw);
     const wall = mat('logwall', () => new THREE.MeshStandardMaterial({ map: Tex.logWall(), roughness: 0.9 }));
     const roof = mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks(), color: 0x5a4a40, roughness: 0.9 }));
-    const W = 4.4, D = 3.6, H = 2.2, T = 0.2;
+    const W = small ? 3.4 : 4.4, D = small ? 3.0 : 3.6, H = small ? 2.0 : 2.2, T = 0.2;
+    const bx = -W / 2 + 0.2 + 0.95, sx = W / 2 - 0.2 - 0.5;
     b.box(W, 0.3, D, 0, -0.13, 0, M.wood());
     b.box(W, H, T, 0, H / 2, -D / 2 + T / 2, wall, { tex: 1.6 });
     b.box(T, H, D, -W / 2 + T / 2, H / 2, 0, wall, { tex: 1.6 });
@@ -253,12 +261,12 @@ export class Structures {
       b.group.add(m);
     }
     // bunk (things are stashed under it), shelf, a chest
-    const bunk = b.box(1.9, 0.45, 0.85, -0.95, 0.22, -D / 2 + 0.6, M.woodDark());
-    b.box(1.6, 0.05, 0.3, 1.1, 1.3, -D / 2 + 0.35, M.wood());
-    const chest = b.box(0.8, 0.5, 0.45, 1.4, 0.25, -D / 2 + 0.45, M.wood());
-    b.box(0.84, 0.06, 0.49, 1.4, 0.52, -D / 2 + 0.45, M.iron(), { collide: false });
+    const bunk = b.box(1.9, 0.45, 0.85, bx, 0.22, -D / 2 + 0.6, M.woodDark());
+    b.box(1.0, 0.05, 0.3, sx, 1.3, -D / 2 + 0.35, M.wood());
+    const chest = b.box(0.8, 0.5, 0.45, W / 2 - 0.65, 0.25, small ? 0.2 : -D / 2 + 0.45, M.wood());
+    b.box(0.84, 0.06, 0.49, W / 2 - 0.65, 0.52, small ? 0.2 : -D / 2 + 0.45, M.iron(), { collide: false });
     // hearth inside, by the door
-    const hearth = b.world(1.35, 0, 0.9);
+    const hearth = b.world(small ? -0.6 : 1.35, 0, small ? 0.6 : 0.9);
     hearth.y = p.y + 0.02;
     G.fires.makeCampfire(hearth);
     // woodpile and stumps outside
@@ -266,20 +274,78 @@ export class Structures {
     for (let i = 0; i < r.int(1, 3); i++) this.spawn('firewood', b.world(-W / 2 - 0.6, 0.2, 0.6 + i * 0.15), { moisture: 0.12 });
     this.stump(b.world(1.8, 0, D / 2 + 1.6), 0.25);
     this.stump(b.world(2.6, 0, D / 2 + 2.2), 0.2);
-    const ids = this.lootList(p.remote, no === 0 ? ['backpack'] : p.remote > 0.7 && r.chance(0.6) ? ['backpack_big'] : []);
+    const ids = this.lootList(p.remote, small ? ['rod', r.chance(0.5) ? 'auger' : 'fish_raw'] : no === 0 ? ['backpack'] : p.remote > 0.7 && r.chance(0.6) ? ['backpack_big'] : []);
     // a couple of things in sight, the rest stashed in the chest and under the bunk
     r.shuffle(ids);
     const seen = ids.splice(0, Math.min(2, ids.length));
-    this.placeLoot(b, seen, [[1.1, 1.36, -D / 2 + 0.35], [-0.95, 0.5, -D / 2 + 0.6]]);
+    this.placeLoot(b, seen, [[sx, 1.36, -D / 2 + 0.35], [bx, 0.5, -D / 2 + 0.6]]);
     const half = Math.ceil(ids.length / 2);
-    this.container(b, 'Сундук', chest, 1.4, 0.3, -D / 2 + 0.45, ids.slice(0, half));
-    this.container(b, 'Нары · под ними что-то лежит', bunk, -0.95, 0.2, -D / 2 + 0.6, ids.slice(half));
+    this.container(b, 'Сундук', chest, W / 2 - 0.65, 0.3, small ? 0.2 : -D / 2 + 0.45, ids.slice(0, half));
+    this.container(b, 'Нары · под ними что-то лежит', bunk, bx, 0.2, -D / 2 + 0.6, ids.slice(half));
     // notes: the driver's note sits in the hut by the car with the battery
     const car = this.places.find((c) => c.kind === 'car' && c.data.battery && Math.hypot(c.x - p.x, c.z - p.z) < 14);
     const key = car ? 'battery' : r.pick(['hunter', 'wife', 'kid', 'hunter']);
-    this.note(key, b.world(-0.7, 0.5, -D / 2 + 0.55));
+    this.note(key, b.world(bx + 0.3, 0.5, -D / 2 + 0.55));
     if (p.data.battery) this.spawn('battery', b.world(0.2, 0.1, -1.0), { charges: 70 });
-    this.shelters.push({ cx: p.x, cz: p.z, yaw: p.yaw, hx: W / 2 - 0.1, hz: D / 2 - 0.1, y0: p.y, y1: p.y + H + 0.8, shelter: { kind: 'hut', name: 'Заимка', wind: 0.05, warm: 4, enclosed: true, pos: new THREE.Vector3(p.x, p.y, p.z) } });
+    this.shelters.push({ cx: p.x, cz: p.z, yaw: p.yaw, hx: W / 2 - 0.1, hz: D / 2 - 0.1, y0: p.y, y1: p.y + H + 0.8, shelter: { kind: 'hut', name: small ? 'Рыбацкая избушка' : 'Заимка', wind: 0.05, warm: 4, enclosed: true, pos: new THREE.Vector3(p.x, p.y, p.z) } });
+  }
+
+  /** a hunter's lean-to: two forked posts, a ridge pole, a slope of poles and spruce boughs */
+  private leanto(p: Place) {
+    const b = new Builder(p.x, p.y, p.z, p.yaw);
+    const pole = M.barkSpruce();
+    const boughs = mat('leantoBoughs', () => new THREE.MeshStandardMaterial({ color: 0x2c4234, roughness: 1, flatShading: true }));
+    const W = 2.8, Hr = 1.7, depth = 2.0;
+    for (const sx of [-1, 1]) b.box(0.1, Hr, 0.1, (sx * W) / 2, Hr / 2, 0.6, pole, { collide: false });
+    b.box(W + 0.4, 0.1, 0.1, 0, Hr, 0.6, pole, { collide: false });
+    const ang = Math.atan2(Hr, depth);
+    const len = Math.hypot(Hr, depth);
+    // the roof slopes from the ridge down to the ground at the back
+    const roof = b.box(W + 0.3, 0.22, len + 0.1, 0, Hr / 2 + 0.12, 0.6 - depth / 2, boughs, { rx: -ang });
+    void roof;
+    b.box(W + 0.2, 0.1, len, 0, Hr / 2 + 0.26, 0.6 - depth / 2, M.snow(), { rx: -ang, collide: false });
+    // a bed of boughs inside and a fire in front
+    this.spawn('boughs', b.world(-0.5, 0.15, -0.3), { moisture: 0.2 });
+    this.spawn('boughs', b.world(0.5, 0.15, -0.3), { moisture: 0.2 });
+    const fire = b.world(0, 0, 2.0);
+    fire.y = G.terrain.heightAt(fire.x, fire.z);
+    G.fires.makeCampfire(fire);
+    this.stump(b.world(1.3, 0, 2.3), 0.2);
+    for (let i = 0; i < 3; i++) this.spawn('sticks', b.world(-1.6, 0.2 + i * 0.1, 1.6), { moisture: 0.15 });
+    if (this.rng.chance(0.6)) this.placeLoot(b, [this.rng.pick(['matches', 'stew', 'tea', 'crackers', 'newspaper', 'knife'])], [[0.9, 0.05, -0.4]]);
+    this.shelters.push({ cx: b.world(0, 0, 0.1).x, cz: b.world(0, 0, 0.1).z, yaw: p.yaw, hx: W / 2, hz: 0.9, y0: p.y, y1: p.y + Hr, shelter: { kind: 'grotto', name: 'Навес', wind: 0.35, warm: 1, enclosed: false, pos: new THREE.Vector3(p.x, p.y, p.z) } });
+  }
+
+  /** an upturned boat on the shore and old ice holes out on the lake */
+  private fishingExtras(p: Place) {
+    const b = new Builder(p.x, p.y, p.z, p.yaw);
+    const hull = new THREE.CylinderGeometry(0.62, 0.62, 3.6, 12, 1, true, 0, Math.PI);
+    hull.rotateX(Math.PI / 2);
+    hull.rotateZ(Math.PI);
+    hull.scale(1, 0.75, 1);
+    const paint = mat('boatPaint', () => new THREE.MeshStandardMaterial({ color: 0x3f5f6a, roughness: 0.8, side: THREE.DoubleSide }));
+    const boat = new THREE.Mesh(hull, paint);
+    boat.position.set(2.8, 0.45, 2.2);
+    boat.rotation.y = 0.5;
+    boat.castShadow = true;
+    b.group.add(boat);
+    const snow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 3.4), M.snow());
+    snow.position.set(2.8, 0.9, 2.2);
+    snow.rotation.y = 0.5;
+    b.group.add(snow);
+    const col = b.box(1.2, 0.9, 3.6, 2.8, 0.45, 2.2, paint, { ry: 0.5, collide: true });
+    (b.group.children[b.group.children.length - 1] as THREE.Mesh).visible = false;
+    this.container(b, 'Перевёрнутая лодка', col, 2.8, 0.45, 2.2, this.rng.chance(0.5) ? ['rod', 'fish_raw'] : ['matches', 'tea']);
+    // old holes, frozen over
+    const [lx, lz] = p.data.lake as number[];
+    for (let i = 0; i < 3; i++) {
+      const t = 0.25 + i * 0.12;
+      const x = p.x + (lx - p.x) * t + this.rng.float(-3, 3), z = p.z + (lz - p.z) * t + this.rng.float(-3, 3);
+      const L = G.region.waterAt(x, z);
+      if (Number.isNaN(L) || G.region.iceAt(x, z) < 0.2) continue;
+      const h = G.lake.makeHole(new THREE.Vector3(x, L, z), 0.18, 'Старая лунка');
+      h.data.frozen = 1;
+    }
   }
 
   private stump(p: THREE.Vector3, r: number) {

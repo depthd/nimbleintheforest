@@ -222,7 +222,7 @@ export class HUD {
       c.fillText(text, p.x + 8, p.y + 4);
     };
     label(0, 0, 'Дом', '#e05a3a');
-    const names: Record<string, string> = { hut: 'Заимка', station: 'Метеостанция «Кряж»', grotto: 'Грот', car: 'УАЗ', bridge: 'Мост', logging: 'Вырубка', cross: 'Крест' };
+    const names: Record<string, string> = { hut: 'Заимка', station: 'Метеостанция «Кряж»', grotto: 'Грот', car: 'УАЗ', bridge: 'Мост', logging: 'Вырубка', cross: 'Крест', leanto: 'Навес', fishing: 'Рыбацкая избушка' };
     for (const p of R.places) if (G.structures.seen.has(p)) label(p.x, p.z, names[p.kind], '#f0c36a');
     const st = G.structures.station;
     if (st && !G.structures.seen.has(st) && G.region.sites.tower && Math.hypot(G.player.pos.x - G.region.sites.tower.x, G.player.pos.z - G.region.sites.tower.z) < 400) label(st.x, st.z, 'Мачта с красным огнём?', '#ff4a3a');
@@ -862,6 +862,10 @@ export class HUD {
     if (P.carried) {
       lines.push(`<div class="act dim"><span class="key">E/Q</span>положить <span class="key">ПКМ</span>бросить <span class="key">R</span>повернуть <span class="key">колесо</span>ближе/дальше</div>`);
     }
+    if (P.water) {
+      const pick = P.inventory.some((x) => x.defId === 'axe' || x.defId === 'hatchet' || x.defId === 'knife');
+      lines.unshift(`<div class="act"><span class="key">Пробел</span><b>Выбирайтесь на лёд: жмите Пробел снова и снова</b></div><div class="act dim">${pick ? 'Топор/нож в рюкзаке помогает цепляться за лёд' : 'Если в рюкзаке есть топор или нож — выбраться легче'} · каждое промедление — ещё холоднее</div>`);
+    }
     if (I.fishing) lines.unshift(`<div class="act"><span class="key">ЛКМ</span>${I.fishing.bite > 0 ? '<b>КЛЮЁТ! Подсекай!</b>' : 'Рыбалка… ждите поклёвки'}</div>`);
     const html = lines.join('');
     if (this.prompt.dataset.h !== html) {
@@ -869,7 +873,7 @@ export class HUD {
       this.prompt.dataset.h = html;
     }
     if (this.info.textContent !== I.info) this.info.textContent = I.info;
-    const prog = I.timedProgress();
+    const prog = P.water ? Math.min(1, P.water.climb) : I.timedProgress();
     this.progress.style.display = prog >= 0 ? 'block' : 'none';
     if (prog >= 0) (this.progress.firstElementChild as HTMLElement).style.width = `${Math.round(prog * 100)}%`;
     this.cross.className = I.actions.length ? 'active' : '';

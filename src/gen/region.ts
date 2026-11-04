@@ -56,7 +56,7 @@ export interface Site {
   y: number;
 }
 
-export type PlaceKind = 'hut' | 'station' | 'grotto' | 'car' | 'bridge' | 'logging' | 'cross';
+export type PlaceKind = 'hut' | 'station' | 'grotto' | 'car' | 'bridge' | 'logging' | 'cross' | 'leanto' | 'fishing';
 
 /** a man-made place or trace of people, chosen by rules and built by world/structures */
 export interface Place {
@@ -1022,8 +1022,8 @@ export class Region {
     const cars = this.places.filter((p) => p.kind === 'car');
     const holder = cars.length ? rng.pick(cars) : rng.pick(this.places.filter((p) => p.kind === 'hut'));
     if (holder) holder.data.battery = true;
-    // a grotto under a cliff
-    for (let k = 0; k < 5000; k++) {
+    // grottos under cliffs
+    for (let k = 0, ng = 0; k < 9000 && ng < 3; k++) {
       const a = rng.float(0, Math.PI * 2), d = rng.float(300, maxD);
       const x = Math.cos(a) * d, z = Math.sin(a) * d;
       if (!this.inside(x, z, 200) || !this.farFrom(x, z, 250)) continue;
@@ -1037,9 +1037,50 @@ export class Region {
       const ux = gx / gl, uz = gz / gl;
       const rise = this.heightAt(x + ux * 12, z + uz * 12) - this.heightAt(x, z);
       if (rise < 7 || this.flatAround(x, z, 4) > 1.5) continue;
+      if (!this.farFrom(x, z, 400)) continue;
       const p = add('grotto', x, z, Math.atan2(-ux, -uz), { clear: 7 });
       this.flattenPad(x, z, p.y, 3, 6);
-      break;
+      ng++;
+    }
+    // fishermen's huts on lake shores, facing the water
+    {
+      const lakes = [...this.lakes].filter((L) => L.area > 2500).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
+      let nf = 0;
+      for (const L of lakes) {
+        if (nf >= 3) break;
+        const R0 = Math.sqrt(L.area / Math.PI);
+        for (let k = 0; k < 40; k++) {
+          const a = rng.float(0, Math.PI * 2);
+          // walk out from the centre to the first dry ground
+          let sx = NaN, sz = NaN;
+          for (let r = R0 * 0.5; r < R0 * 2.5; r += 1.5) {
+            const x = L.x + Math.cos(a) * r, z = L.z + Math.sin(a) * r;
+            if (Number.isNaN(this.waterAt(x, z))) {
+              sx = L.x + Math.cos(a) * (r + 7);
+              sz = L.z + Math.sin(a) * (r + 7);
+              break;
+            }
+          }
+          if (Number.isNaN(sx) || !this.inside(sx, sz, 200) || !this.farFrom(sx, sz, 200)) continue;
+          if (this.flatAround(sx, sz, 5) > 2.2 || Math.hypot(sx, sz) < 60) continue;
+          const p = add('fishing', sx, sz, Math.atan2(L.x - sx, L.z - sz), { clear: 8, lake: [L.x, L.z, L.level] });
+          this.flattenPad(sx, sz, p.y, 3.5, 7);
+          nf++;
+          break;
+        }
+      }
+    }
+    // hunters' lean-tos of poles and spruce boughs, scattered through the forest
+    for (let k = 0, nl = 0; k < 6000 && nl < 7; k++) {
+      const a = rng.float(0, Math.PI * 2), d = rng.float(150, maxD);
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (!this.inside(x, z, 200) || !this.farFrom(x, z, 260)) continue;
+      const b = this.biomeAt(x, z);
+      if (b !== B.Taiga && b !== B.Pine && b !== B.Birch && b !== B.Burned && b !== B.Tundra) continue;
+      if (this.flatAround(x, z, 3.5) > 1.2) continue;
+      const p = add('leanto', x, z, rng.float(0, Math.PI * 2), { clear: 5 });
+      this.flattenPad(x, z, p.y, 2.5, 5);
+      nl++;
     }
     // a footbridge over the river nearest to the house
     {

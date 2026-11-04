@@ -273,9 +273,11 @@ export class Player {
     const target = new THREE.Vector3(w.hole.x, w.hole.y - 1.3, w.hole.z);
     this.pos.copy(target);
     this.body.setNextKinematicTranslation({ x: target.x, y: target.y + HALF + RADIUS, z: target.z });
-    w.climb = Math.max(0, w.climb - dt * 0.12);
+    // you slide back slowly; an axe or knife bites into the ice like an ice pick
+    w.climb = Math.max(0, w.climb - dt * 0.05);
     if (G.input.hit('Space')) {
-      w.climb += 0.09 * (0.4 + 0.6 * G.body.dex) * (0.5 + 0.5 * this.stamina);
+      const pick = this.inventory.some((x) => x.defId === 'axe' || x.defId === 'hatchet' || x.defId === 'knife') ? 1.5 : 1;
+      w.climb += 0.13 * (0.55 + 0.45 * G.body.dex) * (0.6 + 0.4 * this.stamina) * pick;
       this.stamina = Math.max(0, this.stamina - 0.06);
       G.audio.play('splash', { pos: w.hole, vol: 0.4 });
     }
