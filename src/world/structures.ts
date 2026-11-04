@@ -225,18 +225,18 @@ export class Structures {
     const b = new Builder(p.x, p.y, p.z, p.yaw);
     const wall = mat('logwall', () => new THREE.MeshStandardMaterial({ map: Tex.logWall(), roughness: 0.9 }));
     const roof = mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks(), color: 0x5a4a40, roughness: 0.9 }));
-    const W = small ? 3.4 : 4.4, D = small ? 3.0 : 3.6, H = small ? 2.0 : 2.2, T = 0.2;
+    const W = small ? 3.4 : 4.4, D = small ? 3.0 : 3.6, H = small ? 2.3 : 2.4, T = 0.2;
     const bx = -W / 2 + 0.2 + 0.95, sx = W / 2 - 0.2 - 0.5;
-    b.box(W, 0.3, D, 0, -0.13, 0, M.wood());
+    b.box(W, 0.3, D, 0, -0.15, 0, M.wood());
     b.box(W, H, T, 0, H / 2, -D / 2 + T / 2, wall, { tex: 1.6 });
     b.box(T, H, D, -W / 2 + T / 2, H / 2, 0, wall, { tex: 1.6 });
     b.box(T, H, D, W / 2 - T / 2, H / 2, 0, wall, { tex: 1.6 });
     // front wall with a doorway
-    const dw = 0.95;
+    const dw = 1.05;
     const side = (W - dw) / 2;
     b.box(side, H, T, -W / 2 + side / 2, H / 2, D / 2 - T / 2, wall, { tex: 1.6 });
     b.box(side, H, T, W / 2 - side / 2, H / 2, D / 2 - T / 2, wall, { tex: 1.6 });
-    b.box(dw, H - 1.85, T, 0, 1.85 + (H - 1.85) / 2, D / 2 - T / 2, wall, { tex: 1.6 });
+    b.box(dw, H - 2.05, T, 0, 2.05 + (H - 2.05) / 2, D / 2 - T / 2, wall, { tex: 1.6 });
     // a small window (glass gone, boarded up)
     b.box(0.6, 0.45, 0.04, W / 2 + 0.01, 1.35, 0.4, M.woodDark(), { collide: false });
     // gable roof
@@ -295,7 +295,7 @@ export class Structures {
     const b = new Builder(p.x, p.y, p.z, p.yaw);
     const pole = M.barkSpruce();
     const boughs = mat('leantoBoughs', () => new THREE.MeshStandardMaterial({ color: 0x2c4234, roughness: 1, flatShading: true }));
-    const W = 2.8, Hr = 1.7, depth = 2.0;
+    const W = 3.0, Hr = 2.3, depth = 2.6;
     for (const sx of [-1, 1]) b.box(0.1, Hr, 0.1, (sx * W) / 2, Hr / 2, 0.6, pole, { collide: false });
     b.box(W + 0.4, 0.1, 0.1, 0, Hr, 0.6, pole, { collide: false });
     const ang = Math.atan2(Hr, depth);
@@ -402,10 +402,10 @@ export class Structures {
     b.box(W, H, T, 0, H / 2, -D / 2 + T / 2, wall);
     b.box(T, H, D, -W / 2 + T / 2, H / 2, 0, wall);
     b.box(T, H, D, W / 2 - T / 2, H / 2, 0, wall);
-    const dw = 1.0, side = (W - dw) / 2;
+    const dw = 1.1, side = (W - dw) / 2;
     b.box(side, H, T, -W / 2 + side / 2, H / 2, D / 2 - T / 2, wall);
     b.box(side, H, T, W / 2 - side / 2, H / 2, D / 2 - T / 2, wall);
-    b.box(dw, H - 2, T, 0, 2 + (H - 2) / 2, D / 2 - T / 2, wall);
+    b.box(dw, H - 2.15, T, 0, 2.15 + (H - 2.15) / 2, D / 2 - T / 2, wall);
     b.box(W + 0.4, 0.15, D + 0.4, 0, H + 0.07, 0, M.iron());
     b.box(W + 0.3, 0.12, D + 0.3, 0, H + 0.2, 0, M.snow(), { collide: false });
     // radio desk

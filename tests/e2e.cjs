@@ -374,6 +374,39 @@ function check(name, ok, extra = '') {
   await page.waitForTimeout(1500);
   await shot('08-night-inside');
 
+  // ---- every shelter can be walked into ----
+  const enter = await ev(() => {
+    const g = window.__game;
+    const G = g.G, T = g.THREE;
+    const fails = [];
+    let n = 0;
+    // fresh legs: earlier checks left the player cold and loaded
+    G.player.releaseCarry?.();
+    for (const e of [...G.player.inventory]) if (!G.player.isWorn(e)) G.player.forget(e);
+    Object.assign(G.body, { core: 37, wetness: 0, snow: 0, condition: 100, fatigue: 0.2 });
+    G.settings.weatherLock = 'clear';
+    for (const q of G.region.places) {
+      if (!['hut', 'fishing', 'station', 'leanto', 'grotto'].includes(q.kind)) continue;
+      const f = new T.Vector3(Math.sin(q.yaw), 0, Math.cos(q.yaw));
+      const start = new T.Vector3(q.x, 0, q.z).addScaledVector(f, q.kind === 'station' ? 5 : 4.2);
+      g.teleport(start.x, G.terrain.heightAt(start.x, start.z) + 0.1, start.z);
+      G.forest.update(G.player.pos, true);
+      G.player.yaw = Math.atan2(f.x, f.z);
+      g.steps(5);
+      G.input.keys.add('KeyW');
+      let inside = false;
+      for (let i = 0; i < 400 && !inside; i++) {
+        g.steps(1);
+        inside = !!G.structures.shelterAt(G.player.pos);
+      }
+      G.input.keys.delete('KeyW');
+      n++;
+      if (!inside) fails.push(q.kind);
+    }
+    return { n, fails };
+  });
+  check('walk into every shelter', enter.n >= 6 && enter.fails.length === 0, JSON.stringify(enter));
+
   check('no page errors', errors.length === 0, errors.slice(0, 5).join(' | '));
   await browser.close();
   await server.close();
