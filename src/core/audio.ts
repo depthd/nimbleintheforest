@@ -201,7 +201,11 @@ export class GameAudio {
     o.stop(t + dur + 0.05);
   }
 
+  /** called for every sound with its loudness radius (animals listen to it) */
+  onSound: ((name: SoundName, pos: THREE.Vector3 | undefined) => void) | null = null;
+
   play(name: SoundName, opts: { pos?: THREE.Vector3; vol?: number } = {}) {
+    this.onSound?.(name, opts.pos);
     if (!this.ctx) return;
     let vol = opts.vol ?? 1;
     let pan = 0;

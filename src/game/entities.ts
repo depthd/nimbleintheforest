@@ -5,7 +5,7 @@ import { G, GROUPS_ITEM, GROUPS_STATIC } from './ctx';
 import { def, ItemDef, Shape } from './items';
 import { buildItemMesh } from './meshes';
 
-export type Kind = 'item' | 'window' | 'door' | 'railing' | 'stove' | 'fire' | 'icehole' | 'trunk' | 'doorway' | 'radio' | 'container';
+export type Kind = 'item' | 'window' | 'door' | 'railing' | 'stove' | 'fire' | 'icehole' | 'trunk' | 'doorway' | 'radio' | 'container' | 'animal';
 
 export interface PotContents {
   snow: number; // litres of water-equivalent snow

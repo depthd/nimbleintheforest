@@ -13,6 +13,7 @@ import type { House } from '../world/house';
 import type { Water } from '../world/water';
 import type { Region } from '../gen/region';
 import type { Structures } from '../world/structures';
+import type { Animals } from './animals/animals';
 import type { Entities } from './entities';
 import type { Player } from './player';
 import type { Body } from './body';
@@ -55,6 +56,7 @@ export interface Ctx {
   lake: Water;
   region: Region;
   structures: Structures;
+  animals: Animals;
   /** the optional goal: power the radio, call for rescue */
   goal: { signalAt: number; rescued: boolean; heliShown: boolean };
   entities: Entities;

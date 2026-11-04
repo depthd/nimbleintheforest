@@ -14,6 +14,7 @@ import { House } from '../world/house';
 import { Water } from '../world/water';
 import { Region } from '../gen/region';
 import { Structures } from '../world/structures';
+import { Animals } from './animals/animals';
 import { Entities, Entity } from './entities';
 import { Player } from './player';
 import { Body, Env, Activity } from './body';
@@ -93,6 +94,14 @@ export async function startGame(settings: Settings) {
   G.goal = { signalAt: 0, rescued: false, heliShown: false };
   G.structures = new Structures();
   G.structures.build(new Rng(settings.seed * 31 + 5));
+  G.animals = new Animals();
+  await G.animals.load();
+  // loud work carries far: animals hear it
+  const LOUD: Record<string, number> = { chop: 70, tree_fall: 120, glass: 90, hammer: 70, saw: 45, ice_break: 60, thud: 25, creak: 15 };
+  G.audio.onSound = (name, pos) => {
+    const r = LOUD[name];
+    if (r) G.animals.noise(pos ?? G.player.pos, r);
+  };
   G.player = new Player();
   const { spawn, yaw } = findSpawn(rng);
   G.player.init(spawn, yaw);
@@ -462,6 +471,7 @@ function loop(now: number) {
   G.forest.update(G.player.pos);
   G.lake.stream(G.player.pos);
   G.structures.update(dt);
+  if (!paused && !G.dead) G.animals.update(dt);
   updateGoal();
   G.interact.update(paused ? 0 : dt);
   const indoorAmb = G.sky.daylight > 0.3 ? 0.5 : 0.75;
