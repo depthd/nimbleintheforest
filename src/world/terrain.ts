@@ -50,6 +50,14 @@ function ridged(n: Simplex2, x: number, y: number, oct: number) {
   return s / norm;
 }
 
+/** Boulders, pillars and the backdrop share the ground shader but are not ground:
+ * a negative loose depth keeps the snow-cover and trail masks from discarding them. */
+export function solidGroundGeometry(g: THREE.BufferGeometry) {
+  g.setAttribute('aSnowDepth', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(-1), 1));
+  g.setAttribute('aSnowNormal', g.attributes.normal);
+  return g;
+}
+
 export function makeGroundMaterial(far: boolean, snowSurface = false, packedBase = false) {
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
   m.defines = far ? { FAR_TERRAIN: 1 } : {};
@@ -133,7 +141,8 @@ vec3 triRock(vec3 p, vec3 n) {
   float peb = bio.a * smoothstep(0.45, 0.7, nz2.a) * (0.6 + 0.4 * nz3.r);
   snow = mix(snow, vec3(0.5, 0.48, 0.45) * (0.7 + 0.5 * nz3.g), peb * 0.75);
 #if !defined(SNOW_SURFACE) && !defined(PACKED_SNOW_BASE)
-  if (uWorldSnow > 0.5) {
+  // Trail tiles replace only the ground surface; boulders and pillars opt out.
+  if (uWorldSnow > 0.5 && vLooseDepth >= 0.0) {
     vec2 tile = floor(vWPos.xz / 3.2) - uSnowTileGrid.xy;
     if (texture2D(uSnowTiles, (tile + 0.5) / uSnowTileGrid.zw).r > 0.5) discard;
   }
@@ -517,8 +526,7 @@ export class Terrain {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setIndex(idx);
     g.computeVertexNormals();
-    g.setAttribute('aSnowDepth',new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(-1),1));
-    g.setAttribute('aSnowNormal',g.attributes.normal);
+    solidGroundGeometry(g);
     this.backdrop = new THREE.Mesh(g, this.farMat);
     this.backdrop.frustumCulled = false;
     this.backdrop.name = 'backdrop';

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Props } from '../gen/region';
 import { Sp } from '../gen/biomes';
-import { makeGroundMaterial } from './terrain';
+import { makeGroundMaterial, solidGroundGeometry } from './terrain';
 import type RAPIER_T from '@dimforge/rapier3d-compat';
 import { G, GROUPS_ITEM, GROUPS_STATIC, msg } from '../game/ctx';
 import { Rng, Simplex2, clamp } from '../core/rng';
@@ -226,7 +226,7 @@ export class Forest {
     }
     void rp;
     merged.computeVertexNormals();
-    this.rockMesh = new THREE.InstancedMesh(merged, makeGroundMaterial(false), 3000);
+    this.rockMesh = new THREE.InstancedMesh(solidGroundGeometry(merged), makeGroundMaterial(false), 3000);
     this.rockMesh.castShadow = true;
     this.rockMesh.receiveShadow = true;
     this.rockMesh.count = 0;
@@ -244,7 +244,7 @@ export class Forest {
         gp.setXYZ(k, x * f, y, z * f);
       }
       g.computeVertexNormals();
-      const m = new THREE.Mesh(g, makeGroundMaterial(false));
+      const m = new THREE.Mesh(solidGroundGeometry(g), makeGroundMaterial(false));
       m.position.set(p.x, p.y + p.h / 2 - 1, p.z);
       m.castShadow = m.receiveShadow = true;
       G.scene.add(m);
