@@ -28,6 +28,7 @@ import { Horror } from './horror';
 import { def } from './items';
 import { dryingAt } from './drying';
 import { SnowExperiment } from './snow-experiment';
+import { MotionRecorder } from './motion-recorder';
 
 const STEP = 1 / 60;
 let horror: Horror;
@@ -132,14 +133,16 @@ export async function startGame(settings: Settings) {
   G.sky.update();
 
   if (new URLSearchParams(location.search).get('snow') === '1') G.snow = new SnowExperiment();
+  G.recorder = new MotionRecorder();
 
   window.addEventListener('resize', onResize);
   onResize();
   G.input.onLockChange = (locked) => {
-    if (locked) G.hud.showPause(false);
+    if (locked || G.recorder?.reviewing) G.hud.showPause(false);
     else if (!G.hud.modal && !G.dead) G.hud.showPause(true);
   };
   renderer.domElement.addEventListener('click', () => {
+    if (G.recorder?.reviewing) return;
     if (!G.input.locked && !G.hud.modal) G.hud.resume();
   });
 
@@ -448,19 +451,21 @@ function loop(now: number) {
   last = now;
   if (dt > 0.1) dt = 0.1;
   const inp = G.input;
-  handleGlobalKeys();
-  const paused = G.paused || (!inp.locked && !G.hud.modal && !(window as any).__test);
+  if (!G.recorder?.reviewing) handleGlobalKeys();
+  const paused = G.recorder?.reviewing || G.paused || (!inp.locked && !G.hud.modal && !(window as any).__test);
 
   if (!paused && !G.dead) {
     G.player.look();
     acc += dt;
     let steps = 0;
     while (acc >= STEP && steps < 5) {
+      G.recorder?.beginTick();
       G.player.physics(STEP);
       G.house.updateDoor(STEP);
       G.world.step(G.events);
       G.player.avatar.update(STEP);
       contactEvents();
+      G.recorder?.endTick();
       acc -= STEP;
       steps++;
     }
@@ -472,8 +477,10 @@ function loop(now: number) {
     horror.update(dtGame, dt);
   }
   G.player.renderAlpha = paused || G.dead ? 1 : acc / STEP;
-  G.player.updateCamera(dt);
-  G.snow?.update(paused ? 0 : dt);
+  if (!G.recorder?.reviewing) {
+    G.player.updateCamera(dt);
+    G.snow?.update(paused ? 0 : dt);
+  }
   G.terrain.update(G.camera.position);
   G.forest.update(G.player.pos);
   G.lake.stream(G.player.pos);
@@ -490,11 +497,13 @@ function loop(now: number) {
   G.audio.update(dt, G.weather.wind * (G.structures.shelterAt(G.player.pos)?.wind ?? 1), !!G.house.zoneAt(G.player.pos) || !!G.structures.shelterAt(G.player.pos), G.fires.nearest(G.player.pos));
   G.audio.setMood(musicMood());
   G.hud.update(dt);
+  G.recorder?.present();
 
   G.renderer.clear();
   const avatar = G.player.avatar;
-  G.renderer.render(G.scene, avatar.inspectionView ? avatar.inspectionCamera : G.camera);
-  if (!avatar.inspectionView) G.vm.render(G.renderer);
+  G.renderer.render(G.scene, G.recorder?.reviewing ? G.recorder.camera : avatar.inspectionView ? avatar.inspectionCamera : G.camera);
+  if (!avatar.inspectionView && !G.recorder?.reviewing) G.vm.render(G.renderer);
+  G.recorder?.captureFrame(dt, G.player.renderAlpha);
   inp.endFrame();
 }
 
@@ -580,12 +589,15 @@ function testApi() {
       skip(seconds);
     },
     steps(n: number) {
+      if (G.recorder?.reviewing) return;
       for (let i = 0; i < n; i++) {
+        G.recorder?.beginTick();
         G.player.physics(STEP);
         G.house.updateDoor(STEP);
         G.world.step(G.events);
         G.player.avatar.update(STEP);
         contactEvents();
+        G.recorder?.endTick();
       }
       G.entities.sync();
     },

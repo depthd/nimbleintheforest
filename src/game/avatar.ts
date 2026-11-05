@@ -36,6 +36,7 @@ export class PlayerAvatar {
   private readonly hideUpperBody = { value: 1 };
   private readonly origin = new THREE.Vector3();
   private readonly direction = new THREE.Vector3(0, -1, 0);
+  private diagnosticNodes: THREE.Object3D[] | null = null;
 
   constructor(private player: Player) {
     this.root.name = 'player-avatar';
@@ -143,10 +144,12 @@ export class PlayerAvatar {
       G.R.QueryFilterFlags.EXCLUDE_SENSORS, GROUPS_RAY, p.collider, p.carried?.body ?? p.body);
     // Keep steep normals: locomotion needs to distinguish sliding contact from
     // a walkable floor instead of pinning feet to their last successful ray.
-    if (!hit || hit.normal.y < 0.05) return null;
+    if (!hit || hit.normal.y < 0.05) { G.recorder?.probe(x, z, referenceY, null); return null; }
     const surface = { point: new THREE.Vector3(x, this.origin.y - hit.timeOfImpact + 0.012, z),
       normal: new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z).normalize(), support: hit.collider.handle };
-    return G.snow?.probe(surface) ?? surface;
+    const result = G.snow?.probe(surface) ?? surface;
+    G.recorder?.probe(x, z, referenceY, result);
+    return result;
   };
 
   reset() {
@@ -242,5 +245,24 @@ export class PlayerAvatar {
     return { ...this.motion.snapshot(), inspectionView: this.inspectionView,
       visualFeet: this.visualFeet.map(f => f.toArray()), knees: this.visualKnees.map(k => k.toArray()), reachErrors: [...this.reachErrors],
       boneLengths: this.legs.map(l => ({ thigh: l.thigh.scale.y - 0.025, shin: l.shin.scale.y - 0.025 })) };
+  }
+  private poseNodes() {
+    if (!this.diagnosticNodes) { this.diagnosticNodes = []; this.root.traverse(o => this.diagnosticNodes!.push(o)); }
+    return this.diagnosticNodes;
+  }
+  recordedRig() {
+    const nodes = this.poseNodes();
+    return nodes.map(o => `${nodes.indexOf(o.parent!)}:${o.type}:${o.name}:${o instanceof THREE.Mesh ? o.geometry.type : ''}`);
+  }
+  recordedPose() {
+    const nodes = this.poseNodes(), data = new Float32Array(nodes.length * 11);
+    nodes.forEach((o, i) => { const k = i * 11; o.position.toArray(data, k); o.quaternion.toArray(data, k + 3); o.scale.toArray(data, k + 7); data[k + 10] = o.visible ? 1 : 0; });
+    return data;
+  }
+  applyRecordedPose(data: ArrayLike<number>, firstPerson: boolean) {
+    const nodes = this.poseNodes();
+    if (data.length !== nodes.length * 11) throw new Error('Запись создана для другой модели персонажа.');
+    nodes.forEach((o, i) => { const k = i * 11; o.position.fromArray(data, k); o.quaternion.fromArray(data, k + 3); o.scale.fromArray(data, k + 7); o.visible = !!data[k + 10]; });
+    this.hideUpperBody.value = firstPerson ? 1 : 0;
   }
 }

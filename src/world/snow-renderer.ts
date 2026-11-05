@@ -142,4 +142,5 @@ export class SnowRenderer {
     }
   }
   stats() { return { meshes: this.slots.length + 1, vertices: this.slots.reduce((n, s) => n + s.mesh.geometry.attributes.position.count, 0), updatedVertices: this.updatedVertices }; }
+  refreshAll() { for (const s of this.slots) if (Number.isFinite(s.ix)) this.refresh(s); }
 }

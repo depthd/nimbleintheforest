@@ -15,6 +15,7 @@ const clamp = THREE.MathUtils.clamp;
 const low = [-0.0725, 0, -0.20], high = [0.0725, 0.26, 0.11];
 
 export class SnowField {
+  onRecordedChange?: (change: [number, number, number, number, number, number]) => void;
   readonly thickness: number;
   readonly densityRatio: number;
   readonly variableSurface: boolean;
@@ -112,8 +113,31 @@ export class SnowField {
   }
   private write(ix: number, iz: number, mass: number, compaction: number) {
     const a = this.address(ix, iz), h = this.warm(a.key);
+    const oldMass = h.mass[a.index], oldPacked = h.packed[a.index];
     h.mass[a.index] = mass - this.initialThickness(ix * CELL, iz * CELL);
     h.packed[a.index] = Math.ceil(clamp(compaction, 0, 1) * 255);
+    if (this.onRecordedChange && (oldMass !== h.mass[a.index] || oldPacked !== h.packed[a.index]))
+      this.onRecordedChange([ix, iz, oldMass, oldPacked, h.mass[a.index], h.packed[a.index]]);
+    this.markDirty(ix, iz);
+  }
+  /** Lossless diagnostic state. These APIs do not excavate, deposit or compact. */
+  recordedCells(): [number, number, number, number][] {
+    const cells: [number, number, number, number][] = [];
+    for (const [key, t] of this.tiles) {
+      const [tx, tz] = key.split(',').map(Number);
+      const append = (i: number, mass: number, packed: number) => {
+        if (mass || packed) cells.push([tx * TILE_CELLS + i % TILE_CELLS, tz * TILE_CELLS + Math.floor(i / TILE_CELLS), mass, packed]);
+      };
+      if (t.hot) for (let i = 0; i < COUNT; i++) append(i, t.hot.mass[i], t.hot.packed[i]);
+      else if (t.cold) for (let i = 0; i < t.cold.indices.length; i++) append(t.cold.indices[i], t.cold.mass[i], t.cold.packed[i]);
+    }
+    return cells;
+  }
+  applyRecordedCell(ix: number, iz: number, massDelta: number, packed: number) {
+    const a = this.address(ix, iz), h = this.warm(a.key);
+    h.mass[a.index] = massDelta; h.packed[a.index] = packed; this.markDirty(ix, iz);
+  }
+  private markDirty(ix: number, iz: number) {
     const x = ix * CELL, z = iz * CELL;
     if (!this.dirty) this.dirty = { minX: x, maxX: x, minZ: z, maxZ: z };
     else { this.dirty.minX = Math.min(x, this.dirty.minX); this.dirty.maxX = Math.max(x, this.dirty.maxX);

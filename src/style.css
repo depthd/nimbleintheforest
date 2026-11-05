@@ -178,3 +178,19 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 .snow-panel > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .snow-panel button { font: inherit; padding: 5px 9px; margin: 0; }
 .snow-panel a { color: #c6e1ec; }
+.motion-recorder { position: fixed; z-index: 230; right: 12px; bottom: 12px; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; padding: 10px 12px; border: 1px solid #8ea7b655; border-radius: 10px; background: #17252ff2; color: #edf4f8; font: 13px/1.4 system-ui, sans-serif; box-sizing: border-box; }
+.motion-title { font-weight: 600; margin-bottom: 7px; }
+.motion-title span { float: right; font-size: 11px; font-weight: 400; color: #b5cedb; }
+.motion-recorder.is-recording { border-color: #ee8476; }
+.motion-recorder.is-recording .motion-title span { color: #ffab99; }
+.motion-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.motion-recorder button, .motion-recorder select { padding: 5px 7px; margin: 0; font: inherit; }
+.motion-recorder button:disabled { opacity: .4; cursor: default; }
+.motion-recorder [hidden] { display: none !important; }
+.motion-recorder input[type=range] { width: 100%; margin: 6px 0 10px; }
+.motion-recorder label { display: block; margin: 9px 0; }
+.motion-recorder textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px; background: #0c1923; color: #edf4f8; border: 1px solid #9cb8ca55; border-radius: 4px; font: inherit; resize: vertical; }
+.motion-recorder small { display: block; margin-top: 9px; color: #adc7d4; }
+.motion-recorder p { margin: 9px 0 2px; }
+.motion-notice { color: #d4e8f2; font-size: 12px; margin-top: 6px; }
+body.motion-reviewing .snow-panel { opacity: .4; pointer-events: none; }

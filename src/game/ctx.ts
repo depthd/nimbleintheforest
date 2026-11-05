@@ -24,6 +24,7 @@ import type { ViewModel } from './viewmodel';
 import type { HUD } from '../ui/hud';
 import type { Effects } from './effects';
 import type { SnowExperiment } from './snow-experiment';
+import type { MotionRecorder } from './motion-recorder';
 
 export interface Settings {
   seed: number;
@@ -70,6 +71,7 @@ export interface Ctx {
   hud: HUD;
   fx: Effects;
   snow?: SnowExperiment;
+  recorder?: MotionRecorder;
   paused: boolean;
   sleeping: boolean;
   dead: boolean;
