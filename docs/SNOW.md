@@ -21,6 +21,13 @@ relief. A world tile mask cuts out the permanent surface only where a persistent
 replacement exists. It also cuts out the corresponding shadow caster. There is
 no moving slab and no coarse vertex grid that can swallow a distant boot print.
 
+The closest trail tiles retain the original 2 cm geometry, including every tile
+whose nearest edge is within 3 m. Farther tiles use shared 4 cm and 8 cm templates
+before the distant mesh. Each transition gradually matches the actual triangles
+of the next mesh before switching, including its shadow geometry; the filtered
+texture and fragment normals stay the same. Base and footprint vertex normals
+share their texture reads instead of sampling the same four neighbours twice.
+
 Deformation is filtered with a shared 3×3 kernel and shaded with continuous
 texture normals. Biome/rock selection uses the immutable slope, so a footprint
 wall cannot turn into dark rock. Shadow geometry uses the same displacement and
@@ -100,9 +107,10 @@ existing interaction code.
   uses direct grid reads and a reusable height buffer, avoiding per-vertex
   interpolated material queries and object allocation. Pristine tiles have a fast
   flat-fill path.
-- Ordinary play shares two mesh templates and creates textures only for changed
+- Ordinary play shares four mesh templates and creates textures only for changed
   tiles (57,800 GPU bytes per tile). Distant tiles have 81 vertices; nearby ones
-  have 25,921, with per-tile bounds for view and shadow culling. Geometry complexity
+  have 25,921, with 6,561/1,681-vertex intermediate meshes and per-tile bounds for
+  view and shadow culling. Geometry complexity
   changes with the nearby trail area, not the distance travelled. Far silhouettes
   remain; texture/history storage grows with surviving tracks until weather clears them.
 - No snow colliders or rigid bodies are created per footstep. No physical snow
@@ -198,3 +206,19 @@ and 0.3–0.4 ms with snow. The snow-on p95 was 2.0–4.4 ms. Rare pauses up to 
 also occurred (baseline up to 38.7 ms); these results do not establish a completely
 hitch-free frame time. Use the saved distributions and target hardware before
 expanding the experiment to the whole world.
+
+### Ordinary-world rendering follow-up to 5a91c88
+
+A production-build comparison used Chromium/SwiftShader, seed 42, hour 13,
+clear calm weather, and the same 1,200-tick sprint/turn route (42.34 m). Both runs
+retained the same 15 material tiles, 11,114 changed cells and 867,000 texture bytes.
+At the final position the trail geometry fell from 388,815 to 243,535 vertices
+(37%). Submitted scene triangles, including shadows, fell from 2,527,350 to
+2,239,350; the trail contribution fell from 1,024,000 to 736,000 triangles (28%).
+The simulation's median remained about 0.4 ms per tick and trail-update p95 about
+0.2 ms in these runs. Occasional longer CPU pauses also occurred in the baseline;
+these measurements do not justify changing movement or material physics.
+Software-WebGL frame intervals were slow and variable, so the geometry savings
+are evidence of reduced rendering work, not a promised FPS increase on a player's
+GPU. Browser checks cover the intermediate LOD distances as well as persistence,
+weather burial and ordinary-game interactions.

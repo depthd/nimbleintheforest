@@ -43,7 +43,7 @@ let checks=0;function check(name,ok,data){assert.ok(ok,`${name}: ${JSON.stringif
    const {G,THREE:T}=window.__game,s=G.snow,c=window.__trailCentre;
    const initial=[...s.renderer.entries.values()].map(e=>({key:`${e.x},${e.z}`,texture:e.texture.id}));
    const rows=[];
-   for(const d of [4,10,17.9,18.1,21.9,22.1,45,80,22,4]){
+   for(const d of [4,6,8,10,12,16,17.9,18.1,21.9,22.1,25,45,80,22,4]){
     window.__trailView(d);
     rows.push({d,tiles:s.renderer.entries.size,identities:[...s.renderer.entries.values()].every(e=>initial.some(i=>i.key===`${e.x},${e.z}`&&i.texture===e.texture.id))});
    }return rows;

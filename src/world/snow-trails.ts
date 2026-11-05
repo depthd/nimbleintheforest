@@ -9,19 +9,49 @@ const SIZE = TILE_CELLS + 5, RAW = SIZE + 2;
 const shader = /* glsl */ `
 uniform sampler2D uTrail; uniform vec2 uTrailOrigin; uniform float uTrailBase;
 uniform vec3 uTrailEye;
+uniform float uTrailMorph; uniform float uTrailCoarseStep;
 vec4 trail(vec2 p) { return texture2D(uTrail, (p / 0.04 + 2.5) / 85.0); }
 float detail(vec2 p) { return 1.0 - smoothstep(8.0, 18.0, distance(p + uTrailOrigin, uTrailEye.xz)); }
 float trailHeight(vec2 p, bool relief) { vec4 t = trail(p); return t.r + t.g + (relief ? t.b * detail(p) : 0.0); }
+float trailSurfaceHeight(vec2 p) {
+  float h = trailHeight(p, true);
+  if (uTrailMorph <= 0.0) return h;
+  // Become the next mesh's actual triangles before changing geometry. Sampling
+  // only its bilinear height would still pop along each quad's diagonal.
+  vec2 grid = (p + 0.06) / uTrailCoarseStep, f = fract(grid);
+  vec2 a = floor(grid) * uTrailCoarseStep - 0.06;
+  float b = trailHeight(a + vec2(uTrailCoarseStep, 0.0), true);
+  float c = trailHeight(a + vec2(0.0, uTrailCoarseStep), true);
+  float coarse;
+  if (f.x + f.y <= 1.0) {
+    float v = trailHeight(a, true);
+    coarse = v + (b-v)*f.x + (c-v)*f.y;
+  } else {
+    float v = trailHeight(a + vec2(uTrailCoarseStep), true);
+    coarse = v + (c-v)*(1.0-f.x) + (b-v)*(1.0-f.y);
+  }
+  return mix(h, coarse, uTrailMorph);
+}
 vec3 trailNormal(vec2 p, bool relief) {
   float e = 0.025;
   vec4 a=trail(p+vec2(e,0)), b=trail(p-vec2(e,0)), c=trail(p+vec2(0,e)), d=trail(p-vec2(0,e));
   float dx = a.r+a.g-b.r-b.g + (relief ? a.b-b.b : 0.0);
   float dz = c.r+c.g-d.r-d.g + (relief ? c.b-d.b : 0.0);
   return normalize(vec3(-dx, 2.0*e, -dz));
+}
+void trailVertexNormals(vec2 p, out vec3 reliefNormal, out vec3 baseNormal) {
+  // Shadow bias needs the relief normal; biome selection needs the immutable
+  // base normal. Reuse their four samples instead of fetching the texture twice.
+  float e = 0.025;
+  vec4 a=trail(p+vec2(e,0)), b=trail(p-vec2(e,0)), c=trail(p+vec2(0,e)), d=trail(p-vec2(0,e));
+  float dx = a.r+a.g-b.r-b.g, dz = c.r+c.g-d.r-d.g;
+  baseNormal = normalize(vec3(-dx, 2.0*e, -dz));
+  reliefNormal = normalize(vec3(-(dx+(a.b-b.b)), 2.0*e, -(dz+(c.b-d.b))));
 }`;
 class TrailMesh extends THREE.Mesh { boundingSphere = new THREE.Sphere(); }
 interface Entry { x: number; z: number; signature: string; exposure: number; base: number;
   mesh: TrailMesh; texture: THREE.DataTexture; pixels: Uint16Array;
+  morph: { value: number }; coarseStep: { value: number };
   active: Uint8Array; activeCount: number; minY: number; maxY: number; }
 
 export class SnowTrailRenderer {
@@ -32,6 +62,8 @@ export class SnowTrailRenderer {
   private packed = new Float32Array(RAW * RAW);
   private empty = new Map<string, { signature: string; exposure: number }>();
   private fine = this.geometry(160);
+  private medium = this.geometry(80);
+  private coarse = this.geometry(40);
   private far = this.geometry(8);
   private eye = { value: new THREE.Vector3() };
   private previousField: SnowField;
@@ -73,16 +105,17 @@ export class SnowTrailRenderer {
     const texture = new THREE.DataTexture(pixels, SIZE, SIZE, THREE.RGBAFormat, THREE.HalfFloatType);
     texture.magFilter = texture.minFilter = THREE.LinearFilter;
     const base = this.field.baseHeight(x * TILE_SIZE, z * TILE_SIZE);
+    const morph = { value: 0 }, coarseStep = { value: (TILE_SIZE + 0.12) / 80 };
     const uniforms = { uTrail: { value: texture }, uTrailOrigin: { value: new THREE.Vector2(x * TILE_SIZE, z * TILE_SIZE) },
-      uTrailBase: { value: base }, uTrailEye: this.eye };
+      uTrailBase: { value: base }, uTrailEye: this.eye, uTrailMorph: morph, uTrailCoarseStep: coarseStep };
     const material = makeGroundMaterial(false, true), compile = material.onBeforeCompile;
     material.polygonOffset = true; material.polygonOffsetFactor = -1; material.polygonOffsetUnits = -1;
     material.onBeforeCompile = (sh, renderer) => {
       compile.call(material, sh, renderer); Object.assign(sh.uniforms, uniforms);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + shader)
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y = uTrailBase + trailHeight(position.xz, true);')
-        .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nobjectNormal = trailNormal(position.xz, true);')
-        .replace('vWNorm = normalize(mat3(modelMatrix) * wn3);', 'vWNorm = trailNormal(position.xz, false);');
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y = uTrailBase + trailSurfaceHeight(position.xz);')
+        .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nvec3 trailBaseNormal; trailVertexNormals(position.xz, objectNormal, trailBaseNormal);')
+        .replace('vWNorm = normalize(mat3(modelMatrix) * wn3);', 'vWNorm = trailBaseNormal;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + shader)
         .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize(mat3(viewMatrix) * trailNormal(vWPos.xz - uTrailOrigin, true));')
         .replace('  // rock: steep slopes', `  vec4 contactSnow = trail(vWPos.xz - uTrailOrigin);
@@ -91,19 +124,19 @@ export class SnowTrailRenderer {
   snow *= 1.0 - contactSnow.a * 0.025;
   // rock: steep slopes`);
     };
-    material.customProgramCacheKey = () => 'persistent-snow-trail-v1';
+    material.customProgramCacheKey = () => 'persistent-snow-trail-v2';
     const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
     depth.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, uniforms);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + shader)
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y = uTrailBase + trailHeight(position.xz, true);');
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y = uTrailBase + trailSurfaceHeight(position.xz);');
     };
-    depth.customProgramCacheKey = () => 'snow-trail-depth-v1';
+    depth.customProgramCacheKey = () => 'snow-trail-depth-v2';
     const mesh = new TrailMesh(this.fine, material); mesh.position.set(x * TILE_SIZE, 0, z * TILE_SIZE);
     mesh.receiveShadow = mesh.castShadow = true; mesh.customDepthMaterial = depth;
     // Geometry is shared; shader displacement has per-tile bounds.
     this.group.add(mesh);
-    return { x, z, base, mesh, pixels, texture,
+    return { x, z, base, mesh, pixels, texture, morph, coarseStep,
       active: new Uint8Array(SIZE * SIZE), activeCount: 0, minY: Infinity, maxY: -Infinity, signature: '', exposure: -Infinity };
   }
   private refresh(e: Entry, dirty?: SnowRect) {
@@ -158,9 +191,23 @@ export class SnowTrailRenderer {
       let e = this.entries.get(key);
       if (!e) { e = this.create(x, z); this.entries.set(key, e); }
       const distance = Math.hypot((x + 0.5) * TILE_SIZE - position.x, (z + 0.5) * TILE_SIZE - position.z);
-      // Both meshes are exactly flat at the switch. Texture shape persists at
-      // every distance, so a boot never falls between coarse geometry vertices.
-      e.mesh.geometry = distance < 22 ? this.fine : this.far;
+      // Keep the original 2 cm mesh near the boots. Away from the viewer, morph
+      // to 4/8 cm meshes before swapping them; footprint shading stays in the
+      // same texture at every distance. Include the tile radius so its nearest
+      // edge keeps full detail within 3 m of the viewer.
+      const near = Math.max(0, distance - TILE_SIZE / Math.SQRT2);
+      if (near < 6) {
+        e.mesh.geometry = this.fine; e.coarseStep.value = (TILE_SIZE + 0.12) / 80;
+        e.morph.value = THREE.MathUtils.smoothstep(near, 3, 6);
+      } else if (near < 12) {
+        e.mesh.geometry = this.medium; e.coarseStep.value = (TILE_SIZE + 0.12) / 40;
+        e.morph.value = THREE.MathUtils.smoothstep(near, 8, 12);
+      } else if (distance < 22) {
+        e.mesh.geometry = this.coarse; e.coarseStep.value = (TILE_SIZE + 0.12) / 8;
+        e.morph.value = THREE.MathUtils.smoothstep(distance, 18, 22);
+      } else {
+        e.mesh.geometry = this.far; e.morph.value = 0;
+      }
       e.mesh.castShadow = distance < 22;
       const changed = e.signature !== signature;
       const weather = this.field.weatherExposure - e.exposure > 0.0001;

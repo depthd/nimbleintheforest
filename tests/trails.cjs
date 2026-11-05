@@ -41,4 +41,17 @@ test('incremental trail updates equal complete reconstruction; fresh tracks retu
  f.advanceWeather(7200,storm);for(let i=0;i<20;i++)r.update(eye);assert.equal(r.entries.size,0);
  press(f);r.update(eye);assert.ok(r.entries.size>0);
 });
+test('a long trail reduces distant geometry without losing material or its textures',()=>{
+ const f=make(),r=new rendererModule.exports.SnowTrailRenderer(f,{minX:-100,minZ:-100,maxX:100,maxZ:100}),eye=new THREE.Vector3();
+ for(let x=0;x<48;x+=.48)press(f,x);
+ r.update(eye);
+ const entries=[...r.entries.values()],fullDetail=entries.length*25921;
+ assert.ok(r.stats().vertices<fullDetail*.4,'distant history must not use the close boot mesh');
+ const original=entries.map(e=>({e,texture:e.texture,pixels:e.pixels.slice()})),cells=f.recordedCells();
+ // The viewer is directly over the first print: retain its original detail.
+ assert.equal(r.entries.get('0,0').mesh.geometry.attributes.position.count,25921);
+ for(const x of [8,12,18,22,48,80,0])r.update(new THREE.Vector3(x,0,0));
+ assert.equal(r.entries.size,entries.length);assert.deepEqual(f.recordedCells(),cells);
+ for(const {e,texture,pixels} of original){assert.equal(e.texture,texture);assert.deepEqual(e.pixels,pixels)}
+});
 console.log(`${count} trail lifetime checks passed`);
