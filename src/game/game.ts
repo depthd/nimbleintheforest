@@ -506,6 +506,7 @@ function loop(now: number) {
   G.renderer.render(G.scene, G.recorder?.reviewing ? G.recorder.camera : avatar.inspectionView ? avatar.inspectionCamera : G.camera);
   if (!avatar.inspectionView && !G.recorder?.reviewing) G.vm.render(G.renderer);
   G.recorder?.captureFrame(dt, G.player.renderAlpha);
+  G.hud.performance.frame(now);
   inp.endFrame();
 }
 

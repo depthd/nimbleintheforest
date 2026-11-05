@@ -11,6 +11,7 @@ import type { Entity } from '../game/entities';
 import { WEATHER_NAMES, WeatherType } from '../world/weather';
 import { clamp } from '../core/rng';
 import { Tex } from '../core/textures';
+import { PerformanceMonitor } from './performance';
 
 const $ = (sel: string) => document.querySelector(sel) as HTMLElement;
 const KEY_LABEL: Record<string, string> = { E: 'E', F: 'F', G: 'G', LMB: 'ЛКМ', RMB: 'ПКМ' };
@@ -29,6 +30,7 @@ function fmtTime(t: number) {
 
 export class HUD {
   root: HTMLElement;
+  readonly performance: PerformanceMonitor;
   private msgs: HTMLElement;
   private prompt: HTMLElement;
   private info: HTMLElement;
@@ -83,6 +85,11 @@ export class HUD {
     const frostTex = Tex.frost();
     this.frost.style.backgroundImage = `url(${(frostTex.image as HTMLCanvasElement).toDataURL()})`;
     this.root.style.display = 'block';
+    this.performance = new PerformanceMonitor(this.root);
+    this.performance.onChange = enabled => {
+      const checkbox = this.debug.querySelector<HTMLInputElement>('#dbg-performance');
+      if (checkbox) checkbox.checked = enabled;
+    };
     this.inv.addEventListener('click', (e) => this.onInvClick(e));
     this.debug.addEventListener('input', (e) => this.onDebugInput(e));
     this.debug.addEventListener('click', (e) => this.onDebugClick(e));
@@ -713,6 +720,7 @@ export class HUD {
       const wopts = ['auto', ...Object.keys(WEATHER_NAMES)].map((k) => `<option value="${k}" ${(S.weatherLock ?? 'auto') === k ? 'selected' : ''}>${k === 'auto' ? 'Авто' : WEATHER_NAMES[k as WeatherType]}</option>`).join('');
       this.debug.innerHTML = `
         <h3>Параметры мира <small>F3</small></h3>
+        <label class="chk"><input type="checkbox" id="dbg-performance" ${this.performance.enabled ? 'checked' : ''}> FPS и график времени кадра [F4]</label>
         <label>Средняя температура <b id="dbg-bt">${S.baseTemp}°C</b><input type="range" id="dbg-base" min="-40" max="0" step="1" value="${S.baseTemp}"></label>
         <label>Скорость времени <b id="dbg-ts">×${S.timeScale}</b><input type="range" id="dbg-scale" min="1" max="120" step="1" value="${S.timeScale}"></label>
         <label>Погода <select id="dbg-weather">${wopts}</select></label>
@@ -762,6 +770,7 @@ export class HUD {
   private onDebugInput(ev: Event) {
     const t = ev.target as HTMLInputElement;
     const S = G.settings;
+    if (t.id === 'dbg-performance') this.performance.setEnabled(t.checked);
     if (t.id === 'dbg-base') {
       S.baseTemp = Number(t.value);
       $('#dbg-bt').textContent = `${S.baseTemp}°C`;
