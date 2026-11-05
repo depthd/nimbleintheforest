@@ -216,7 +216,7 @@ export class Locomotion {
       this.runLaunches = 0;
       this.runWait = 0;
       // Lift the trailing leg first; preserve the current contact of the other.
-      const lag = this.feet.map(f => this.position.clone().sub(f.position).dot(this.velocity));
+      const lag = this.feet.map(f => f.swinging ? -Infinity : this.position.clone().sub(f.position).dot(this.velocity));
       this.nextFoot = lag[0] > lag[1] ? 0 : 1;
     }
     this.runActive = wantRun;
@@ -256,8 +256,10 @@ export class Locomotion {
         if (!f.grounded) this.followBody(f, travel, dt, probe, false);
       }
       for (const f of this.feet) if (f.swinging) this.advanceFoot(f, dt, probe);
-      if (this.runActive) this.planRun(dt, probe);
-      else this.planStep(input, probe);
+      if (!this.planRecovery(probe)) {
+        if (this.runActive) this.planRun(dt, probe);
+        else this.planStep(input, probe);
+      }
     }
     const forward = new THREE.Vector3(-Math.sin(this.bodyYaw), 0, -Math.cos(this.bodyYaw));
     for (const f of this.feet) {
@@ -306,10 +308,23 @@ export class Locomotion {
     if (hit?.snowDepth !== undefined && Math.abs(hit.point.y - f.position.y) < 0.09) f.position.y = hit.point.y;
     const pose = footPose(f);
     const ankle = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation).add(pose.position);
+    const hip = this.hip(f);
+    const horizontalReach = Math.hypot(ankle.x - hip.x, ankle.z - hip.z);
     if (!isSupport(hit) || Math.abs(hit.point.y - f.position.y) > 0.09 ||
-      (f.support !== undefined && hit.support !== f.support) || ankle.distanceTo(this.hip(f)) > THIGH + SHIN + 0.06) {
+      (f.support !== undefined && hit.support !== f.support) || ankle.distanceTo(hip) > THIGH + SHIN + 0.06 ||
+      horizontalReach > 0.52 + this.crouch * 0.12) {
       this.releaseFoot(f);
     }
+  }
+
+  private planRecovery(probe: GroundProbe) {
+    const f = this.feet.find(f => f.needsPlant && !f.swinging);
+    if (!f) return false;
+    // A released support must find ground now, even if the other foot is still
+    // recovering or a running cadence timer has not expired.
+    const duration = 0.16;
+    const target = this.restPoint(f).addScaledVector(this.velocity, duration);
+    return this.beginStep(f, target, this.bodyYaw + f.sign * 0.025, duration, 'walk', 0, probe);
   }
 
   private limitFootReach() {
@@ -318,7 +333,9 @@ export class Locomotion {
       const ankle = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation).add(pose.position);
       if (ankle.distanceTo(hip) <= THIGH + SHIN - 0.005) continue;
       const reachable = ankle.sub(hip).setLength(THIGH + SHIN - 0.015).add(hip);
-      this.releaseFoot(f);
+      // An airborne swing can bend towards a reachable pose without abandoning
+      // its landing. Cancelling it here used to strand a boot above the ground.
+      if (!f.swinging) this.releaseFoot(f);
       const offset = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(footRotation(f));
       f.position.copy(reachable).sub(offset);
     }
@@ -342,8 +359,10 @@ export class Locomotion {
       if (this.turning) desired = this.feet[0].yaw + wrapAngle(this.feet[1].yaw - this.feet[0].yaw) * 0.5;
     }
     const error = wrapAngle(desired - this.bodyYaw);
-    const amount = error * (1 - Math.exp(-dt * (moving ? 8 : 12)));
-    const maxRate = moving ? 2.5 : 1.8;
+    const amount = error * (1 - Math.exp(-dt * (moving ? 14 : 12)));
+    // A fixed slow turn cap lets a running mouse circle lap the pelvis. Catch
+    // up faster as the error grows; standing turns still follow planted feet.
+    const maxRate = moving ? 2.5 + Math.min(9.5, Math.abs(error) * 6) : 1.8;
     this.bodyYaw = wrapAngle(this.bodyYaw + clamp(amount, -dt * maxRate, dt * maxRate));
     const twist = wrapAngle(input.yaw - this.bodyYaw);
     this.chestYaw = THREE.MathUtils.damp(this.chestYaw, clamp(twist * 0.3, -0.3, 0.3), 10, dt);
@@ -515,10 +534,11 @@ export class Locomotion {
     f.normal.lerp(f.targetNormal, Math.min(1, dt * 14)).normalize();
     if (t < 1) return;
     // Recheck the destination: a door, plank, or ice surface may have disappeared.
-    const hit = probe(f.target.x, f.target.z, this.position.y);
+    const hit = probe(f.position.x, f.position.z, this.position.y);
     f.grounded = isSupport(hit);
     if (isSupport(hit)) {
       f.position.copy(hit.point);
+      f.target.copy(hit.point);
       f.normal.copy(hit.normal);
       f.support = hit.support;
       this.contact(f, false);
@@ -532,19 +552,26 @@ export class Locomotion {
 
   private separateFeet(f: FootState, target: THREE.Vector3) {
     const right = new THREE.Vector3(Math.cos(this.bodyYaw), 0, -Math.sin(this.bodyYaw));
-    if (this.speed < 0.16 || Math.abs(this.velocity.dot(right)) < this.speed * 0.25) return;
+    if (this.speed < 0.16) return;
+    const sideways = Math.abs(this.velocity.dot(right)) / this.speed;
+    const weight = THREE.MathUtils.smoothstep(sideways, 0.1, 0.35);
+    if (weight === 0) return;
     const other = this.feet[f.sign < 0 ? 1 : 0];
     const gap = target.clone().sub(other.position).dot(right) * f.sign;
     // Side steps close and open the stance; the trailing foot never lands across
     // the support leg. This also keeps diagonal swings clear of the other boot.
-    if (gap < 0.18) target.addScaledVector(right, f.sign * (0.18 - gap));
+    // Blend the constraint: switching it on at one lateral-speed threshold
+    // used to move a boot sideways by half a metre in a single tick.
+    if (gap < 0.18) target.addScaledVector(right, f.sign * Math.min(0.2, 0.18 - gap) * weight);
   }
 
   private updatePelvis(dt: number) {
     let height = 0.99 - this.crouch * 0.4 - this.runBlend * 0.035;
     if (this.feet.every(f => f.swinging)) height += this.runBlend * 0.025;
-    // Lower the pelvis on uneven ground instead of lengthening either leg.
+    // Supports may lower the pelvis on uneven ground. A recovering leg bends
+    // within reach instead of pulling the entire body down after an old target.
     for (const f of this.feet) {
+      if (!f.grounded) continue;
       const hip = this.position.clone().add(new THREE.Vector3(f.sign * (0.115 + this.crouch * 0.02), 0, 0)
         .applyAxisAngle(up, this.bodyYaw));
       const pose = footPose(f);

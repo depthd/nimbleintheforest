@@ -34,16 +34,20 @@ function check(name, ok, data) { assert.ok(ok, `${name}: ${JSON.stringify(data)}
 
     const turns = await ev(() => {
       const g = window.__game, { G } = g, s = G.snow, result = [];
-      for (const snow of [false, true]) for (const mode of ['quarter', 'reverse', 'zigzag']) {
+      for (const snow of [false, true]) for (const mode of ['quarter', 'reverse', 'zigzag', 'circle', 'fast-circle']) {
         s.setEnabled(snow); G.player.stamina = 1; G.player.winded = false;
         g.teleport(40, s.baseY + (snow ? s.field.support(40, 66) : 0) + 0.05, 66);
         G.player.yaw = 0; g.steps(120); G.input.keys.add('KeyW'); G.input.keys.add('ShiftLeft');
-        let peak = 0, high = 0, longest = 0, bothHigh = 0, rootPeak = 0, reach = 0;
+        let peak = 0, high = 0, longest = 0, bothHigh = 0, rootPeak = 0, reach = 0, minHip = 1, unplanned = 0;
+        const air = [0, 0];
         for (let i = 0; i < 360; i++) {
           if (i === 240) G.input.keys.clear();
           if (i >= 60 && i < 240) {
-            G.player.yaw = mode === 'reverse' ? Math.PI : mode === 'quarter' ? Math.PI / 2 : (Math.floor((i - 60) / 30) % 2 ? Math.PI / 2 : -Math.PI / 2);
-            if (Math.floor(i / 30) % 2) G.input.keys.add('KeyD'); else G.input.keys.delete('KeyD');
+            if (mode.includes('circle')) G.player.yaw += mode === 'circle' ? 0.07 : 0.14;
+            else {
+              G.player.yaw = mode === 'reverse' ? Math.PI : mode === 'quarter' ? Math.PI / 2 : (Math.floor((i - 60) / 30) % 2 ? Math.PI / 2 : -Math.PI / 2);
+              if (Math.floor(i / 30) % 2) G.input.keys.add('KeyD'); else G.input.keys.delete('KeyD');
+            }
           }
           g.steps(1); const a = g.animation();
           const heights = a.visualFeet.map(p => p[1] - s.terrain.heightAt(p[0], p[2]));
@@ -51,13 +55,33 @@ function check(name, ok, data) { assert.ok(ok, `${name}: ${JSON.stringify(data)}
           longest = Math.max(longest, high); if (Math.min(...heights) > 0.55) bothHigh++;
           reach = Math.max(reach, ...a.reachErrors);
           rootPeak = Math.max(rootPeak, G.player.pos.y - s.terrain.heightAt(G.player.pos.x, G.player.pos.z));
+          minHip = Math.min(minHip, a.hipHeight);
+          G.player.avatar.motion.feet.forEach((f, j) => {
+            air[j] = !f.swinging && !f.grounded ? air[j] + 1 / 60 : 0;
+            unplanned = Math.max(unplanned, air[j]);
+          });
         }
-        G.input.keys.clear(); result.push({ snow, mode, peak, longestHighSeconds: longest / 60, bothHigh, rootPeak, reach });
+        G.input.keys.clear(); result.push({ snow, mode, peak, longestHighSeconds: longest / 60, bothHigh, rootPeak, reach, minHip, unplanned });
       }
       return result;
     });
     check('quick sprint turns/strafe/reversal do not leave rendered boots flying above the body', turns.every(t => t.peak < 0.85 && t.longestHighSeconds < 0.25 && t.bothHigh < 10 && t.reach < 0.025), turns);
+    check('continuous mouse circles while sprinting do not squat or strand a released boot',
+      turns.filter(t => t.mode.includes('circle')).every(t => t.minHip > 0.78 && t.unplanned < 0.034), turns.filter(t => t.mode.includes('circle')));
     fs.writeFileSync(path.join(OUT, 'turns.json'), JSON.stringify(turns, null, 2));
+
+    await ev(() => {
+      const g = window.__game, { G } = g, s = G.snow; s.enabled = true; s.reset(); g.steps(90);
+      G.input.keys.add('KeyW'); G.input.keys.add('ShiftLeft'); G.player.avatar.inspectionView = 1;
+    });
+    for (let i = 0; i < 4; i++) {
+      await ev(() => {
+        const g = window.__game;
+        for (let j = 0; j < 30; j++) { g.G.player.yaw += 0.12; g.steps(1); }
+      });
+      await shot(`continuous-circle-${i}`);
+    }
+    await ev(() => window.__game.G.input.keys.clear());
 
     const samples = await ev(() => {
       const g = window.__game, { G, THREE: T } = g, s = G.snow; s.enabled = true; s.reset(); g.steps(90);

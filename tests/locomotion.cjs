@@ -281,4 +281,42 @@ test('two-bone IK preserves lengths, bends forward and stays finite at singulari
   assert.ok(knee.toArray().every(Number.isFinite));
 });
 
+for (const recording of require('./fixtures/motion-circles.json').cases) {
+  test(`${recording.name}: continuous sprint turns retain reach and recover released feet`, () => {
+    const { m, input } = fixture();
+    input.position.set(0, 0.018, 0); input.yaw = recording.initialYaw;
+    let depth = 0.17;
+    const snow = (x, z) => ({ point: new THREE.Vector3(x, input.position.y - 0.018, z),
+      normal: new THREE.Vector3(0, 1, 0), support: 1, snowDepth: depth });
+    m.reset(input, snow);
+    m.update(dt, input, snow);
+    const unplannedAir = [0, 0];
+    let minHip = 1, maxAir = 0, maxMotion = 0, drift = 0, reach = 0;
+    for (const [x, y, z, yaw, pitch, sprint, snowDepth] of recording.ticks) {
+      input.position.set(x, y, z); input.yaw = yaw; input.pitch = pitch;
+      input.sprinting = !!sprint; depth = snowDepth;
+      const before = m.feet.map(f => ({ p: f.position.clone(), stance: f.grounded }));
+      m.update(dt, input, snow);
+      minHip = Math.min(minHip, m.hipHeight);
+      for (const [i, f] of m.feet.entries()) {
+        unplannedAir[i] = !f.grounded && !f.swinging ? unplannedAir[i] + dt : 0;
+        maxAir = Math.max(maxAir, unplannedAir[i]);
+        maxMotion = Math.max(maxMotion, f.position.distanceTo(f.previous));
+        if (before[i].stance && f.grounded) drift = Math.max(drift,
+          Math.hypot(f.position.x - before[i].p.x, f.position.z - before[i].p.z));
+        const hip = m.position.clone().add(new THREE.Vector3(f.sign * 0.115, m.hipHeight, 0)
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), m.bodyYaw));
+        const pose = footPose(f), ankle = pose.position.clone().add(
+          new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation));
+        reach = Math.max(reach, solveLeg(hip, ankle, new THREE.Vector3(0, 0, -1), new THREE.Vector3()));
+      }
+    }
+    const detail = JSON.stringify({ minHip, maxAir, maxMotion, drift, reach });
+    assert.ok(minHip > 0.8, `deep squat on flat ground: ${detail}`);
+    assert.ok(maxAir <= dt + 1e-8, `boot stranded outside its swing: ${detail}`);
+    assert.ok(maxMotion < 0.24, `one-frame boot jump: ${detail}`);
+    assert.ok(drift < 1e-8 && reach < 0.01, detail);
+  });
+}
+
 console.log(`\n${count} locomotion checks passed`);

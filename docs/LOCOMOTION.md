@@ -25,6 +25,9 @@ During locomotion the pelvis follows the view with a limited bias towards travel
 Backward movement preserves a forward-facing body. Head and chest pitch share the
 view tilt. Head yaw/pitch have anatomical limits; rapid mouse turns keep the camera
 responsive while the body catches up.
+While moving, its turn-rate limit increases with facing error. A constant slow
+cap cannot keep up with continuous mouse circles and used to leave the pelvis
+facing opposite to travel for several steps. Standing turn limits are unchanged.
 
 ## Feet
 
@@ -65,9 +68,18 @@ There are no walking contacts during sliding. KCC slide physics itself is unchan
 
 Planted anchors are rechecked for collider identity, surface height, slope and reach.
 Lost or unreachable supports release the foot, which can plant again on valid ground.
+Supports also have a horizontal reach limit, so a rapidly turning body releases
+the rear anchor before being pulled into a deep squat. A released grounded foot
+starts a short recovery immediately, independent of the other swing and running
+timer. Starting a run selects an available leg rather than waiting on a leg that
+is already airborne.
 A reach bound also runs after pose updates. Finally, render-time IK returns a resolved
 ankle within the two-bone chain; both meshes and the boot use it. An invalid old anchor
 therefore cannot stretch the shin, even in interpolated frames before the next tick.
+The reach bound preserves an active swing's progress and landing. Only planted
+supports lower the pelvis; airborne legs bend within reach instead. Lateral boot
+separation blends continuously with travel direction and bounds its correction;
+touchdown probes the actual corrected boot position.
 
 `motion.contacts` contains the events from the current physics tick only:
 `side`, world `position`, `normal`, `speed`, `landing`, and monotonic `serial`.
@@ -109,6 +121,17 @@ Additional checks enforce an upright neutral pose, sensible running cadence and
 stride length, and the running flight phase.
 Regressions cover continuous sliding on a steep slope, a missing floor while the
 controller still claims contact, and unreachable IK targets.
+`tests/fixtures/motion-circles.json` adds two measured root/view/sprint trajectories
+from the reported continuous-turn failures, with recording metadata and notes
+removed. They check squat depth, stranded airborne feet, one-tick boot jumps,
+horizontal support drift and anatomical reach. The previous gait fails these
+regressions. The original recordings were also replayed with their complete
+initial states and snow journals for diagnosis and browser pose comparison.
+
+`npm run test:snow-slopes` includes continuous sprint circles at 4.2 and 8.4
+radians/second, with snow enabled and disabled, and sequential rendered circle
+frames as well as hill traversal. This covers sustained mouse turning in addition
+to the older quarter-turn, reversal and zigzag cases.
 
 `npm run test:movement` starts Vite on 5201 and tests the real physics/controller
 in Chromium. It checks anchor drift and reach, actual footstep calls, jumping,
