@@ -141,7 +141,9 @@ export class PlayerAvatar {
     const p = this.player;
     const hit = G.world.castRayAndGetNormal(new G.R.Ray(this.origin, this.direction), 1.3, true,
       G.R.QueryFilterFlags.EXCLUDE_SENSORS, GROUPS_RAY, p.collider, p.carried?.body ?? p.body);
-    if (!hit || hit.normal.y < 0.48) return null;
+    // Keep steep normals: locomotion needs to distinguish sliding contact from
+    // a walkable floor instead of pinning feet to their last successful ray.
+    if (!hit || hit.normal.y < 0.05) return null;
     return { point: new THREE.Vector3(x, this.origin.y - hit.timeOfImpact + 0.012, z),
       normal: new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z).normalize(), support: hit.collider.handle };
   };
@@ -195,9 +197,15 @@ export class PlayerAvatar {
       const hip = origin.clone().addScaledVector(right, f.sign * (0.115 + m.crouch * 0.02));
       hip.y += hipY;
       const knee = this.visualKnees[i];
-      this.reachErrors[i] = solveLeg(hip, ankle, forward.clone().addScaledVector(right, f.sign * 0.12), knee);
+      const resolved = new THREE.Vector3();
+      this.reachErrors[i] = solveLeg(hip, ankle, forward.clone().addScaledVector(right, f.sign * 0.12), knee, resolved);
+      // Last line of defence, including between physics ticks: both bones keep
+      // their anatomical length and the boot follows the resolved ankle.
+      const correction = resolved.clone().sub(ankle);
+      leg.boot.position.add(correction);
+      sole.add(correction);
       this.segment(leg.thigh, hip, knee, origin, 0.105);
-      this.segment(leg.shin, knee, ankle, origin, 0.082);
+      this.segment(leg.shin, knee, resolved, origin, 0.082);
       leg.knee.position.copy(knee).sub(origin);
       const relative = sole.clone().sub(hip).dot(forward);
       const arm = this.arms[i];
@@ -229,6 +237,7 @@ export class PlayerAvatar {
 
   snapshot() {
     return { ...this.motion.snapshot(), inspectionView: this.inspectionView,
-      visualFeet: this.visualFeet.map(f => f.toArray()), knees: this.visualKnees.map(k => k.toArray()), reachErrors: [...this.reachErrors] };
+      visualFeet: this.visualFeet.map(f => f.toArray()), knees: this.visualKnees.map(k => k.toArray()), reachErrors: [...this.reachErrors],
+      boneLengths: this.legs.map(l => ({ thigh: l.thigh.scale.y - 0.025, shin: l.shin.scale.y - 0.025 })) };
   }
 }

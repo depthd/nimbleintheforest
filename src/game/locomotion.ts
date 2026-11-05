@@ -9,6 +9,8 @@ export const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = THREE.MathUtils.clamp;
 const up = new THREE.Vector3(0, 1, 0);
 const down = new THREE.Vector3(0, -1, 0);
+const SUPPORT_Y = Math.cos(53 * Math.PI / 180);
+const isSupport = (surface: FootSurface | null): surface is FootSurface => !!surface && surface.normal.y >= SUPPORT_Y;
 
 export interface FootSurface {
   point: THREE.Vector3;
@@ -53,6 +55,7 @@ export class FootState {
   roll = 0;
   startRoll = 0;
   grounded = false;
+  needsPlant = false;
   support: number | undefined;
   constructor(public readonly side: 'left' | 'right', public readonly sign: number) {}
   get swinging() { return this.progress < 1; }
@@ -109,6 +112,7 @@ export class Locomotion {
   stepSerial = 0;
   turning = false;
   runBlend = 0;
+  sliding = false;
   active = true;
   private ready = false;
   private wasGrounded = false;
@@ -135,6 +139,7 @@ export class Locomotion {
     this.turning = false;
     this.runActive = false;
     this.runBlend = 0;
+    this.sliding = false;
     this.runWait = 0;
     this.wasGrounded = false;
     this.suppressLanding = true;
@@ -154,8 +159,9 @@ export class Locomotion {
       f.progress = 1;
       f.kind = 'walk';
       f.roll = f.startRoll = 0;
-      f.grounded = !!hit;
-      f.support = hit?.support;
+      f.grounded = isSupport(hit);
+      f.needsPlant = !f.grounded;
+      f.support = f.grounded ? hit?.support : undefined;
     }
   }
 
@@ -188,6 +194,7 @@ export class Locomotion {
     this.sinceStep += dt;
     const vx = (input.position.x - this.position.x) / dt;
     const vz = (input.position.z - this.position.z) / dt;
+    const travel = input.position.clone().sub(this.position);
     this.position.copy(input.position);
     this.velocity.lerp(new THREE.Vector3(vx, 0, vz), 1 - Math.exp(-dt * 18));
     const lastSpeed = this.speed;
@@ -195,7 +202,15 @@ export class Locomotion {
     this.acceleration = (this.speed - lastSpeed) / dt;
     this.crouch = THREE.MathUtils.damp(this.crouch, input.crouch ? 1 : 0, 12, dt);
     this.active = !input.suspended;
-    const wantRun = input.sprinting && this.speed > (this.runActive ? 2.0 : 2.2) && input.grounded && !input.suspended;
+    const surface = probe(this.position.x, this.position.z, this.position.y);
+    const nearby = !!surface && Math.abs(surface.point.y - this.position.y) < 0.65;
+    this.sliding = !input.suspended && nearby && (input.grounded || travel.y / dt < 0.5)
+      && surface!.normal.y < (this.sliding ? Math.cos(49 * Math.PI / 180) : SUPPORT_Y);
+    const noSupport = input.grounded && !nearby && !this.feet.some(f => {
+      const rest = this.restPoint(f);
+      return isSupport(probe(rest.x, rest.z, this.position.y));
+    });
+    const wantRun = input.sprinting && this.speed > (this.runActive ? 2.0 : 2.2) && input.grounded && !input.suspended && !this.sliding && !noSupport;
     if (wantRun && !this.runActive) {
       this.runLaunches = 0;
       this.runWait = 0;
@@ -207,18 +222,12 @@ export class Locomotion {
     this.runBlend = THREE.MathUtils.damp(this.runBlend, wantRun ? 1 : 0, 8, dt);
     this.updateFacing(dt, input);
 
-    if (!input.grounded || input.suspended) {
+    if (!input.grounded || input.suspended || this.sliding || noSupport) {
       if (input.suspended) this.suppressLanding = true;
       // No phantom footsteps in the air, in water, or while sleeping/dead.
       for (const f of this.feet) {
-        const target = this.restPoint(f);
-        target.y += 0.09 + (input.sprinting ? 0.08 : 0);
-        f.position.lerp(target, 1 - Math.exp(-dt * 12));
-        f.yaw += wrapAngle(this.bodyYaw - f.yaw) * (1 - Math.exp(-dt * 10));
-        f.normal.lerp(up, 1 - Math.exp(-dt * 10)).normalize();
-        f.progress = 1;
-        f.grounded = false;
-        f.support = undefined;
+        this.releaseFoot(f);
+        this.followBody(f, travel, dt, probe, this.sliding);
       }
       this.wasGrounded = false;
     } else {
@@ -226,11 +235,12 @@ export class Locomotion {
         for (const f of this.feet) {
           const rest = this.restPoint(f);
           const hit = probe(rest.x, rest.z, this.position.y);
-          if (hit) {
+          if (isSupport(hit)) {
             f.position.copy(hit.point);
             f.normal.copy(hit.normal);
             f.yaw = this.bodyYaw;
             f.grounded = true;
+            f.needsPlant = false;
             f.support = hit.support;
           }
           f.progress = 1;
@@ -240,6 +250,10 @@ export class Locomotion {
         this.suppressLanding = false;
       }
       this.wasGrounded = true;
+      for (const f of this.feet) if (!f.swinging) {
+        if (f.grounded) this.validateSupport(f, probe);
+        if (!f.grounded) this.followBody(f, travel, dt, probe, false);
+      }
       for (const f of this.feet) if (f.swinging) this.advanceFoot(f, dt, probe);
       if (this.runActive) this.planRun(dt, probe);
       else this.planStep(input, probe);
@@ -251,7 +265,60 @@ export class Locomotion {
       f.roll = f.grounded && this.speed > 0.2 ? -clamp((trailing - 0.12) * 1.65, 0, 0.4 + this.runBlend * 0.3) : 0;
     }
     this.updatePelvis(dt);
+    this.limitFootReach();
     this.lastPitch = input.pitch;
+  }
+
+  private hip(f: FootState) {
+    return this.position.clone().add(new THREE.Vector3(f.sign * (0.115 + this.crouch * 0.02), this.hipHeight, 0)
+      .applyAxisAngle(up, this.bodyYaw));
+  }
+
+  private releaseFoot(f: FootState) {
+    f.grounded = false;
+    f.needsPlant = true;
+    f.support = undefined;
+    f.progress = 1;
+    f.roll = f.startRoll = 0;
+    for (let i = this.contacts.length - 1; i >= 0; i--) if (this.contacts[i].side === f.side) this.contacts.splice(i, 1);
+  }
+
+  private followBody(f: FootState, travel: THREE.Vector3, dt: number, probe: GroundProbe, sliding: boolean) {
+    const target = this.restPoint(f);
+    const hit = sliding ? probe(target.x, target.z, this.position.y) : null;
+    if (hit && Math.abs(hit.point.y - this.position.y) < 0.65) {
+      target.copy(hit.point).addScaledVector(hit.normal, 0.02);
+      f.normal.lerp(hit.normal, 1 - Math.exp(-dt * 14)).normalize();
+    } else {
+      target.y += 0.09;
+      f.normal.lerp(up, 1 - Math.exp(-dt * 10)).normalize();
+    }
+    // An unplanted foot travels WITH the pelvis; damping an old world point
+    // would leave a long elastic lag during a fast slide or fall.
+    f.position.add(travel).lerp(target, 1 - Math.exp(-dt * 14));
+    f.yaw += wrapAngle(this.bodyYaw - f.yaw) * (1 - Math.exp(-dt * 10));
+  }
+
+  private validateSupport(f: FootState, probe: GroundProbe) {
+    const hit = probe(f.position.x, f.position.z, this.position.y);
+    const pose = footPose(f);
+    const ankle = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation).add(pose.position);
+    if (!isSupport(hit) || Math.abs(hit.point.y - f.position.y) > 0.09 ||
+      (f.support !== undefined && hit.support !== f.support) || ankle.distanceTo(this.hip(f)) > THIGH + SHIN + 0.06) {
+      this.releaseFoot(f);
+    }
+  }
+
+  private limitFootReach() {
+    for (const f of this.feet) {
+      const hip = this.hip(f), pose = footPose(f);
+      const ankle = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation).add(pose.position);
+      if (ankle.distanceTo(hip) <= THIGH + SHIN - 0.005) continue;
+      const reachable = ankle.sub(hip).setLength(THIGH + SHIN - 0.015).add(hip);
+      this.releaseFoot(f);
+      const offset = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(footRotation(f));
+      f.position.copy(reachable).sub(offset);
+    }
   }
 
   private updateFacing(dt: number, input: MotionInput) {
@@ -306,7 +373,7 @@ export class Locomotion {
       const offset = rest.clone().sub(f.position).setY(0);
       const lag = moving ? offset.dot(this.velocity) / Math.max(this.speed, 0.01) : offset.length();
       const twist = Math.abs(wrapAngle(this.bodyYaw - f.yaw));
-      const need = moving ? lag / (0.12 + this.speed * 0.025) : Math.max(offset.length() / 0.14, twist / 0.33);
+      const need = f.needsPlant ? 2 : moving ? lag / (0.12 + this.speed * 0.025) : Math.max(offset.length() / 0.14, twist / 0.33);
       const reach = offset.length() / 0.48;
       let score = Math.max(need, reach) + (i === this.nextFoot ? 0.05 : 0);
       if (moving && sideways && this.sinceStep > 0.5) score = Math.max(score, 1.1);
@@ -375,7 +442,7 @@ export class Locomotion {
   private beginStep(f: FootState, target: THREE.Vector3, yaw: number, duration: number,
     kind: FootState['kind'], leadTime: number, probe: GroundProbe) {
     const hit = probe(target.x, target.z, this.position.y);
-    if (!hit) return false; // ledge: don't invent a floating support
+    if (!isSupport(hit)) return false; // steep face / ledge is not a planted support
     f.start.copy(f.position);
     f.target.copy(hit.point);
     f.startYaw = f.yaw;
@@ -396,6 +463,7 @@ export class Locomotion {
     f.lift = Math.min(f.lift, 0.4);
     f.progress = 0;
     f.grounded = false;
+    f.needsPlant = false;
     this.sinceStep = 0;
     this.nextStepAfter = duration * 0.95;
     this.nextFoot = f.sign < 0 ? 1 : 0;
@@ -411,7 +479,7 @@ export class Locomotion {
       const target = this.restPoint(f).addScaledVector(this.velocity, f.duration * (1 - t) + f.leadTime);
       this.separateFeet(f, target);
       const hit = probe(target.x, target.z, this.position.y);
-      if (hit) {
+      if (isSupport(hit)) {
         f.target.lerp(hit.point, 1 - Math.exp(-dt * 20));
         f.targetNormal.copy(hit.normal);
         f.targetYaw += wrapAngle(this.bodyYaw + f.sign * 0.035 - f.targetYaw) * (1 - Math.exp(-dt * 12));
@@ -426,7 +494,7 @@ export class Locomotion {
         offset.setLength(0.39);
         const target = futureRoot.add(offset);
         const hit = probe(target.x, target.z, this.position.y);
-        if (hit) f.target.lerp(hit.point, 1 - Math.exp(-dt * 24));
+        if (isSupport(hit)) f.target.lerp(hit.point, 1 - Math.exp(-dt * 24));
       }
     }
     const s = f.kind === 'run'
@@ -444,13 +512,13 @@ export class Locomotion {
     if (t < 1) return;
     // Recheck the destination: a door, plank, or ice surface may have disappeared.
     const hit = probe(f.target.x, f.target.z, this.position.y);
-    f.grounded = !!hit;
-    if (hit) {
+    f.grounded = isSupport(hit);
+    if (isSupport(hit)) {
       f.position.copy(hit.point);
       f.normal.copy(hit.normal);
       f.support = hit.support;
       this.contact(f, false);
-    }
+    } else this.releaseFoot(f);
   }
 
   private contact(f: FootState, landing: boolean) {
@@ -491,6 +559,7 @@ export class Locomotion {
       position: this.position.toArray(),
       chestPitch: this.chestPitch, headPitch: this.headPitch, viewPitch: this.lastPitch,
       speed: this.speed, hipHeight: this.hipHeight, crouch: this.crouch, turning: this.turning, runBlend: this.runBlend,
+      sliding: this.sliding,
       stepSerial: this.stepSerial,
       feet: this.feet.map(f => ({ side: f.side, position: f.position.toArray(), normal: f.normal.toArray(),
         yaw: f.yaw, phase: f.swinging ? 'swing' : f.grounded ? 'stance' : 'air', progress: f.progress, kind: f.kind, roll: f.roll, support: f.support })),
@@ -499,12 +568,13 @@ export class Locomotion {
 }
 
 /** Analytic two-bone IK. Pole points forwards, so knees never flip backwards. */
-export function solveLeg(hip: THREE.Vector3, ankle: THREE.Vector3, forward: THREE.Vector3, knee: THREE.Vector3) {
+export function solveLeg(hip: THREE.Vector3, ankle: THREE.Vector3, forward: THREE.Vector3, knee: THREE.Vector3, resolvedAnkle?: THREE.Vector3) {
   const axis = ankle.clone().sub(hip);
   const rawLength = axis.length();
   const d = clamp(rawLength, 0.06, THIGH + SHIN - 0.001);
   axis.normalize();
   if (rawLength < 1e-6) axis.copy(down);
+  resolvedAnkle?.copy(hip).addScaledVector(axis, d);
   const pole = forward.clone().addScaledVector(axis, -forward.dot(axis));
   if (pole.lengthSq() < 1e-5) pole.copy(up).addScaledVector(axis, -axis.y);
   pole.normalize();

@@ -239,6 +239,56 @@ for (const file of fs.readdirSync(OUT)) {
     await shot('04-stairs');
 
     result = await ev(() => {
+      const g = window.__game, { G, THREE: T } = g, s = window.__stage;
+      window.__resetMovement();
+      const angle = 65 * Math.PI / 180, x = s.x + 10, centreY = s.y + 12;
+      const body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed());
+      G.world.createCollider(G.R.ColliderDesc.cuboid(2, 0.2, 12).setTranslation(x, centreY, s.z)
+        .setRotation({ x: Math.sin(angle / 2), y: 0, z: 0, w: Math.cos(angle / 2) }), body);
+      const mesh = new T.Mesh(new T.BoxGeometry(4, 0.4, 24), new T.MeshStandardMaterial({ color: 0xa9b9c6, roughness: 1 }));
+      mesh.position.set(x, centreY, s.z); mesh.rotation.x = angle;
+      mesh.castShadow = mesh.receiveShadow = true; G.scene.add(mesh); window.__movementFixtures.push(mesh);
+      G.player.yaw = Math.PI;
+      const z = s.z - 3;
+      g.teleport(x, centreY + 0.2 / Math.cos(angle) - Math.tan(angle) * (z - s.z) + 0.1, z);
+      G.input.keys.add('KeyW');
+      const start = G.player.pos.clone();
+      let sliding = 0, falseSteps = 0, maxThigh = 0, maxShin = 0, maxDistance = 0, air = 0;
+      const frames = [];
+      // Real KCC contact on a 65-degree ramp, followed by leaving its end.
+      for (let i = 0; i < 600; i++) {
+        g.steps(1); const a = g.animation();
+        if (a.sliding) { sliding++; falseSteps += G.player.avatar.motion.contacts.length; }
+        if (!G.player.grounded) air++;
+        for (const b of a.boneLengths) { maxThigh = Math.max(maxThigh, b.thigh); maxShin = Math.max(maxShin, b.shin); }
+        for (const f of a.visualFeet) maxDistance = Math.max(maxDistance, new T.Vector3(...f).distanceTo(G.player.pos));
+        if (i % 30 === 0) frames.push(a);
+      }
+      G.input.keys.clear();
+      const distance = G.player.pos.distanceTo(start);
+      G.player.avatar.inspectionView = 1;
+      return { sliding, falseSteps, maxThigh, maxShin, maxDistance, air, distance, frames };
+    });
+    fs.writeFileSync(path.join(OUT, 'steep-slide-trace.json'), JSON.stringify(result, null, 2));
+    check('steep-slope sliding and subsequent fall never stretch either leg or emit walking contacts',
+      result.sliding >= 20 && result.distance > 3 && result.air > 5 && result.falseSteps === 0 &&
+      result.maxThigh < 0.461 && result.maxShin < 0.451 && result.maxDistance < 1.25,
+      { sliding: result.sliding, distance: result.distance, air: result.air, falseSteps: result.falseSteps,
+        thigh: result.maxThigh, shin: result.maxShin, maxFootDistance: result.maxDistance });
+    await shot('05-after-slide');
+
+    result = await ev(() => {
+      const g = window.__game; window.__resetMovement();
+      // Even corrupt/stale anchors between fixed ticks must not elongate meshes.
+      g.G.player.avatar.motion.feet.forEach((f, i) => f.position.add(new g.THREE.Vector3(i ? 20 : -20, 15, -30)));
+      const result = g.animation();
+      window.__resetMovement();
+      return result;
+    });
+    check('render-time IK bounds both bones even for stale anchors before the next physics tick',
+      result.reachErrors.every(e => e > 10) && result.boneLengths.every(b => Math.abs(b.thigh - 0.46) < 1e-6 && Math.abs(b.shin - 0.45) < 1e-6));
+
+    result = await ev(() => {
       const g = window.__game; window.__resetMovement();
       g.G.input.keys.add('KeyW'); g.G.input.keys.add('ShiftLeft');
       g.steps(120);

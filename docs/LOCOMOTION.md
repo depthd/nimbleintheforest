@@ -57,6 +57,18 @@ orient boots. The pelvis lowers on uneven ground to keep the two-bone legs withi
 reach. Knees have a forward pole to avoid flipping. This animation does not add
 colliders for the visible limbs or change KCC dimensions.
 
+Steep sliding contact is not a planted walking support. The probe retains steep
+normals; the animation enters sliding on slopes steeper than 53 degrees and recovers
+below 49 degrees, with hysteresis. Sliding and airborne feet travel with the body
+before blending their pose, rather than damping towards an old world-space anchor.
+There are no walking contacts during sliding. KCC slide physics itself is unchanged.
+
+Planted anchors are rechecked for collider identity, surface height, slope and reach.
+Lost or unreachable supports release the foot, which can plant again on valid ground.
+A reach bound also runs after pose updates. Finally, render-time IK returns a resolved
+ankle within the two-bone chain; both meshes and the boot use it. An invalid old anchor
+therefore cannot stretch the shin, even in interpolated frames before the next tick.
+
 `motion.contacts` contains the events from the current physics tick only:
 `side`, world `position`, `normal`, `speed`, `landing`, and monotonic `serial`.
 One contact drives one positioned footstep sound. Initial placement and teleport
@@ -93,10 +105,14 @@ this change does not introduce a shorter collision capsule.
 directional movement, stop, airborne contacts, crouch, slopes, teleport and IK.
 Additional checks enforce an upright neutral pose, sensible running cadence and
 stride length, and the running flight phase.
+Regressions cover continuous sliding on a steep slope, a missing floor while the
+controller still claims contact, and unreachable IK targets.
 
 `npm run test:movement` starts Vite on 5201 and tests the real physics/controller
 in Chromium. It checks anchor drift and reach, actual footstep calls, jumping,
-blocked movement, slope normals, stair clearance and F6 keyboard input. It records
+blocked movement, slope normals, stair clearance and F6 keyboard input. It also runs
+an actual 65-degree KCC slide and subsequent fall, measures rendered bone lengths,
+and deliberately corrupts foot anchors to exercise the render-time reach limit. It records
 traces and sequential first-person/side, running, turning and shadow frames in
 ignored `test-results/movement/`.
 Playwright must be available, as for the pre-existing `tests/e2e.cjs`. Set

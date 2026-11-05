@@ -210,6 +210,63 @@ test('teleport resets feet without a step or a stretched limb', () => {
   assert.equal(m.contacts.length, 0, 'teleport was treated as an impact');
 });
 
+test('steep sliding releases old world anchors and follows the body without footsteps', () => {
+  const angle = 65 * Math.PI / 180;
+  const normal = new THREE.Vector3(-Math.sin(angle), Math.cos(angle), 0);
+  const slope = (x, z) => ({ point: new THREE.Vector3(x, x * Math.tan(angle), z), normal });
+  const { m, input } = fixture(slope);
+  const serial = m.stepSerial;
+  for (let i = 0; i < 180; i++) {
+    input.position.x -= 0.025;
+    input.position.y = input.position.x * Math.tan(angle) + 0.03;
+    input.grounded = true; // KCC can still report contact while surfing a slope.
+    m.update(dt, input, slope);
+    assert.equal(m.sliding, true);
+    assert.equal(m.stepSerial, serial, 'sliding emitted walking contacts');
+    for (const f of m.feet) {
+      assert.equal(f.grounded, false);
+      const hip = input.position.clone().add(new THREE.Vector3(f.sign * 0.115, m.hipHeight, 0)
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), m.bodyYaw));
+      const pose = footPose(f);
+      const ankle = pose.position.clone().add(new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation));
+      assert.ok(ankle.distanceTo(hip) <= THIGH + SHIN, `detached foot ${ankle.distanceTo(hip)}`);
+    }
+  }
+  input.position.set(0, 0.03, 0);
+  m.update(dt, input, flat);
+  assert.equal(m.sliding, false);
+});
+
+test('missing ground cannot leave a foot pinned to the previous floor', () => {
+  let available = true;
+  const probe = (x, z) => available ? flat(x, z) : null;
+  const { m, input } = fixture(probe);
+  available = false;
+  const serial = m.stepSerial;
+  for (let i = 0; i < 120; i++) {
+    input.position.z += 0.08;
+    input.position.y -= 0.03;
+    // Deliberately contradictory controller contact: no surface under either foot.
+    m.update(dt, input, probe);
+    for (const f of m.feet) {
+      assert.equal(f.grounded, false);
+      assert.ok(f.position.distanceTo(input.position) < 1.2);
+    }
+  }
+  assert.equal(m.stepSerial, serial);
+});
+
+test('unreachable IK targets still produce two fixed-length bones and a reachable boot', () => {
+  for (const ankle of [new THREE.Vector3(20, 8, -10), new THREE.Vector3(0, -30, 0)]) {
+    const hip = new THREE.Vector3(0, 1, 0), knee = new THREE.Vector3(), resolved = new THREE.Vector3();
+    const error = solveLeg(hip, ankle, new THREE.Vector3(0, 0, -1), knee, resolved);
+    assert.ok(error > 1);
+    assert.ok(Math.abs(hip.distanceTo(knee) - THIGH) < 1e-6);
+    assert.ok(Math.abs(knee.distanceTo(resolved) - SHIN) < 1e-6);
+    assert.ok(resolved.distanceTo(hip) <= THIGH + SHIN);
+  }
+});
+
 test('two-bone IK preserves lengths, bends forward and stays finite at singularities', () => {
   for (const ankle of [new THREE.Vector3(0, ANKLE, 0), new THREE.Vector3(0, 0.4, -0.3),
     new THREE.Vector3(0.1, 0.15, 0.35)]) {
