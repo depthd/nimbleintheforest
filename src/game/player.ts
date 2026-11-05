@@ -6,6 +6,7 @@ import { G, GROUPS_HELD, GROUPS_ITEM, GROUPS_PLAYER, GR_ITEM, GR_STATIC, groups,
 import { Entity } from './entities';
 import { Slot } from './items';
 import { clamp } from '../core/rng';
+import { PlayerAvatar } from './avatar';
 
 const EYE = 1.7;
 const HALF = 0.6;
@@ -27,6 +28,7 @@ export class Player {
   body!: RAPIER_T.RigidBody;
   collider!: RAPIER_T.Collider;
   kcc!: RAPIER_T.KinematicCharacterController;
+  avatar!: PlayerAvatar;
   inventory: Entity[] = [];
   worn = new Map<Slot, Entity>();
   equipped: Entity | null = null;
@@ -38,8 +40,6 @@ export class Player {
   wrapped: Entity | null = null;
   handsWarming = false;
   water: { hole: THREE.Vector3; climb: number } | null = null;
-  private stepDist = 0;
-  private bob = 0;
   private fallStartY = 0;
   private breathT = 0;
   lastActivity: 'idle' | 'walk' | 'sprint' = 'idle';
@@ -48,6 +48,7 @@ export class Player {
   init(spawn: THREE.Vector3, yaw: number) {
     const R = G.R;
     this.pos.copy(spawn);
+    this.prevPos.copy(spawn);
     this.yaw = yaw;
     this.body = G.world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(spawn.x, spawn.y + HALF + RADIUS, spawn.z));
     this.collider = G.world.createCollider(R.ColliderDesc.capsule(HALF, RADIUS).setCollisionGroups(GROUPS_PLAYER).setFriction(0), this.body);
@@ -60,6 +61,8 @@ export class Player {
     this.kcc.setApplyImpulsesToDynamicBodies(true);
     this.kcc.setCharacterMass(80);
     this.fallStartY = spawn.y;
+    this.avatar = new PlayerAvatar(this);
+    this.avatar.reset();
   }
 
   /** position at the previous physics step, for smooth rendering between steps */
@@ -295,9 +298,12 @@ export class Player {
     this.prevPos.copy(p);
     this.camY = NaN;
     this.vy = 0;
+    this.hvx = this.hvz = 0;
+    this.moving = this.sprinting = this.grounded = false;
     this.body.setTranslation({ x: p.x, y: p.y + HALF + RADIUS, z: p.z }, true);
     this.body.setNextKinematicTranslation({ x: p.x, y: p.y + HALF + RADIUS, z: p.z });
     this.fallStartY = p.y;
+    this.avatar?.reset();
   }
 
   // ---------- per frame ----------
@@ -401,16 +407,6 @@ export class Player {
     this.pos.set(px, ny - HALF - RADIUS, pz);
     this.moving = moved > dt * 0.5;
     this.lastActivity = this.moving ? (this.sprinting ? 'sprint' : 'walk') : 'idle';
-    if (this.grounded && this.moving) {
-      this.stepDist += moved;
-      const stride = this.sprinting ? 1.25 : 0.78;
-      this.bob += (moved * Math.PI) / stride;
-      if (this.stepDist > stride) {
-        this.stepDist = 0;
-        const indoors = !!G.house.zoneAt(this.pos) || (Math.abs(this.pos.x) < 5 && this.pos.z > 3.9 && this.pos.z < 6.1 && Math.abs(this.pos.y - G.house.Y0) < 0.3);
-        G.audio.play(indoors ? 'step_wood' : 'step_snow', { vol: this.crouch ? 0.4 : 1 });
-      }
-    }
     // stepped or slid into open water
     const wl = G.lake.levelAt(this.pos.x, this.pos.z);
     if (!Number.isNaN(wl) && this.pos.y < wl - 0.45) {
@@ -447,15 +443,18 @@ export class Player {
     // between physics steps: interpolate, so fast movement doesn't stutter
     const a = THREE.MathUtils.clamp(this.renderAlpha, 0, 1);
     const ip = this.prevPos.clone().lerp(this.pos, a);
-    const eyeY = ip.y + (this.crouch ? 1.05 : EYE);
+    const motion = this.avatar.motion;
+    const eyeY = ip.y + EYE - motion.crouch * (EYE - 1.05);
     // steps over rocks and bumps are eased instead of snapping the view
     if (Number.isNaN(this.camY) || Math.abs(this.camY - eyeY) > 1.5) this.camY = eyeY;
     else this.camY += (eyeY - this.camY) * Math.min(1, dtReal * 18);
     // head bob fades in and out instead of switching on and off
     const want = this.moving && this.grounded ? (this.sprinting ? 1.5 : 1) : 0;
     this.bobAmp += (want - this.bobAmp) * Math.min(1, dtReal * 6);
-    const bobY = -(1 - Math.cos(this.bob * 2)) * 0.5 * 0.04 * this.bobAmp;
-    const bobX = Math.cos(this.bob) * 0.02 * this.bobAmp;
+    // Small translation follows actual foot swings; looking remains immediate.
+    const lift = motion.feet.map(f => f.swinging ? Math.sin(f.progress * Math.PI) : 0);
+    const bobY = -Math.max(...lift) * 0.018 * this.bobAmp;
+    const bobX = (lift[0] - lift[1]) * 0.012 * this.bobAmp;
     e.x = ip.x;
     e.z = ip.z;
     e.y = this.camY;
@@ -466,6 +465,7 @@ export class Player {
     cam.rotation.y = this.yaw;
     cam.rotation.x = this.pitch + (Math.random() - 0.5) * sh * 2;
     cam.rotation.z = 0;
+    this.avatar.render(a, dtReal);
     // breath vapour in cold air
     this.breathT -= dtReal;
     const air = G.thermal.tAt(cam.position);

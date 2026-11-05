@@ -8,6 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test:locomotion": "node tests/locomotion.cjs",
+    "test:movement": "node tests/movement.cjs",
     "test:e2e": "node tests/e2e.cjs"
   },
   "dependencies": {

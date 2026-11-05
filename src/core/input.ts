@@ -20,10 +20,10 @@ export class Input {
     this.el = el;
     window.addEventListener('keydown', (e) => {
       if (e.repeat) {
-        if (['Tab', 'F1', 'F3'].includes(e.code)) e.preventDefault();
+        if (['Tab', 'F1', 'F3', 'F6'].includes(e.code)) e.preventDefault();
         return;
       }
-      if (['Tab', 'F1', 'F3', 'Space'].includes(e.code) || (e.ctrlKey && e.code === 'KeyW')) e.preventDefault();
+      if (['Tab', 'F1', 'F3', 'F6', 'Space'].includes(e.code) || (e.ctrlKey && e.code === 'KeyW')) e.preventDefault();
       this.keys.add(e.code);
       this.pressed.add(e.code);
     });

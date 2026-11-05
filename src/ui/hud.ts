@@ -722,6 +722,7 @@ export class HUD {
         <label class="chk"><input type="checkbox" id="dbg-horror" ${S.horror ? 'checked' : ''}> Жуть по ночам</label>
         <div class="row2"><select id="dbg-item">${opts}</select><button data-dbg="spawn">Создать</button></div>
         <div class="row2"><button data-dbg="tp-house">К дому</button><button data-dbg="tp-lake">К озеру</button><button data-dbg="tp-forest">В лес</button><button data-dbg="heal">Вылечить</button></div>
+        <div class="row2"><button data-dbg="avatar">Осмотр походки [F6]</button></div>
         <div id="dbg-live"></div>`;
     }
     const live = this.debug.querySelector('#dbg-live') as HTMLElement;
@@ -739,6 +740,9 @@ export class HUD {
       : '';
     const fires = G.fires.list.map((f) => `<div>${G.fires.describe(f)}<br><small>${f.fuel.map((x) => `${x.name}${x.burning ? '🔥' : ''}${x.moisture > 0.3 ? '💧' : ''} ${Math.round(x.remaining / 60)}м`).join(', ') || '—'} · угли ${Math.round(f.embers * 100)}%</small></div>`).join('');
     live.innerHTML = `
+      <h4>Походка</h4>
+      <div>Скорость ${P.avatar.motion.speed.toFixed(2)} м/с · поворот головы ${(P.avatar.motion.headYaw * 180 / Math.PI).toFixed(0)}°<br>
+      ${P.avatar.motion.feet.map(f => `${f.side === 'left' ? 'Левая' : 'Правая'}: ${f.swinging ? 'перенос' : f.grounded ? 'опора' : 'в воздухе'}`).join(' · ')}</div>
       <h4>Тело</h4>
       <table>
         <tr><td>Ядро</td><td>${B.core.toFixed(2)}°C</td><td>Руки ${B.hands.toFixed(1)}° · ноги ${B.feet.toFixed(1)}°</td></tr>
@@ -778,6 +782,9 @@ export class HUD {
     if (!a) return;
     const P = G.player;
     switch (a) {
+      case 'avatar':
+        msg(P.avatar.cycleInspection() + ' [F6]', 'info');
+        break;
       case 'h1':
         G.skip(3600);
         break;

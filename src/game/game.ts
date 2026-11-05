@@ -188,6 +188,7 @@ function handleGlobalKeys() {
   }
   if (pressed.has('F3') || pressed.has('Backquote')) hud.toggleDebug();
   if (pressed.has('F1')) hud.toggleHelp();
+  if (pressed.has('F6')) msg(P.avatar.cycleInspection() + ' [F6]', 'info');
   if (pressed.has('KeyM') && !G.dead) hud.toggleMap();
   if (hud.readerOpen && (pressed.has('KeyE') || pressed.has('Escape'))) hud.closeReader();
   if (pressed.has('Escape')) {
@@ -445,7 +446,7 @@ function loop(now: number) {
   if (dt > 0.1) dt = 0.1;
   const inp = G.input;
   handleGlobalKeys();
-  const paused = !inp.locked && !G.hud.modal && !(window as any).__test;
+  const paused = G.paused || (!inp.locked && !G.hud.modal && !(window as any).__test);
 
   if (!paused && !G.dead) {
     G.player.look();
@@ -455,6 +456,7 @@ function loop(now: number) {
       G.player.physics(STEP);
       G.house.updateDoor(STEP);
       G.world.step(G.events);
+      G.player.avatar.update(STEP);
       contactEvents();
       acc -= STEP;
       steps++;
@@ -486,8 +488,9 @@ function loop(now: number) {
   G.hud.update(dt);
 
   G.renderer.clear();
-  G.renderer.render(G.scene, G.camera);
-  G.vm.render(G.renderer);
+  const avatar = G.player.avatar;
+  G.renderer.render(G.scene, avatar.inspectionView ? avatar.inspectionCamera : G.camera);
+  if (!avatar.inspectionView) G.vm.render(G.renderer);
   inp.endFrame();
 }
 
@@ -498,6 +501,10 @@ function testApi() {
   return {
     G,
     THREE,
+    /** Deterministic frame-by-frame inspection; rendering and UI keep running. */
+    setManualStepping(enabled: boolean) {
+      G.paused = enabled;
+    },
     lookAt(x: number, y: number, z: number) {
       const e = P().eyePos;
       const dx = x - e.x, dy = y - e.y, dz = z - e.z;
@@ -573,9 +580,14 @@ function testApi() {
         G.player.physics(STEP);
         G.house.updateDoor(STEP);
         G.world.step(G.events);
+        G.player.avatar.update(STEP);
         contactEvents();
       }
       G.entities.sync();
+    },
+    animation() {
+      P().avatar.render(1, 0);
+      return P().avatar.snapshot();
     },
     state() {
       const B = G.body;

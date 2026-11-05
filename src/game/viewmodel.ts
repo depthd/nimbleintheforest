@@ -83,7 +83,9 @@ export class ViewModel {
     this.flame.visible = !!flameOn || !!(eq?.defId === 'lamp' && eq.lit);
     // base pose
     const p = G.player;
-    const bob = p.moving ? Math.sin(this.t * (p.sprinting ? 11 : 7)) * 0.012 : Math.sin(this.t * 1.5) * 0.004;
+    const feet = p.avatar.motion.feet;
+    const swing = feet.map(f => f.swinging ? Math.sin(f.progress * Math.PI) : 0);
+    const bob = p.moving ? (swing[0] - swing[1]) * 0.012 : Math.sin(this.t * 1.5) * 0.004;
     const id = eq?.defId ?? '';
     const long = ['axe', 'hatchet', 'hammer', 'prybar', 'shovel', 'auger', 'rod'].includes(id);
     let x = 0.3, y = -0.3 + bob, z = -0.55;
