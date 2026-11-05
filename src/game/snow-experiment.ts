@@ -9,12 +9,14 @@ import { SnowRenderer } from '../world/snow-renderer';
 import { footPose } from './locomotion';
 import type { FootSurface } from './locomotion';
 import type { Entity } from './entities';
+import { SnowTestTerrain, SNOW_HILLS } from '../world/snow-test-terrain';
 
 export class SnowExperiment {
   readonly baseY = G.terrain.heightAt(40, 40) + 35;
   readonly bounds = { minX: 30, maxX: 50, minZ: 8, maxZ: 72 };
   readonly spawn = new THREE.Vector3(40, this.baseY + 0.15, 64);
   readonly treasure = new THREE.Vector3(41.1, this.baseY + 0.025, 61.5);
+  readonly terrain = new SnowTestTerrain(this.baseY, this.bounds);
   field!: SnowField;
   renderer!: SnowRenderer;
   enabled = true;
@@ -31,11 +33,13 @@ export class SnowExperiment {
   private uiTime = 0;
   constructor() {
     const body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed());
-    const bed = G.world.createCollider(G.R.ColliderDesc.cuboid(10, 0.15, 32)
-      .setTranslation(40, this.baseY - 0.15, 40).setCollisionGroups(GROUPS_STATIC), body);
+    const bed = G.world.createCollider(G.R.ColliderDesc.trimesh(this.terrain.positions, this.terrain.indices)
+      .setCollisionGroups(GROUPS_STATIC), body);
     this.baseHandle = bed.handle;
     const base = new THREE.Mesh(new THREE.BoxGeometry(20, 0.3, 64), new THREE.MeshStandardMaterial({ color: 0x9aa9b5, roughness: 1 }));
-    base.position.set(40, this.baseY - 0.15, 40); base.receiveShadow = true; G.scene.add(base);
+    base.position.set(40, this.baseY - 0.155, 40); base.receiveShadow = true; G.scene.add(base);
+    const relief = new THREE.Mesh(this.terrain.geometry(), new THREE.MeshStandardMaterial({ color: 0x77818a, roughness: 1 }));
+    relief.receiveShadow = relief.castShadow = true; G.scene.add(relief);
     // Low wooden edges and a crossing plank offer actual solid supports to step on.
     const wood = new THREE.MeshStandardMaterial({ color: 0x514b40, roughness: 0.95 });
     const box = (x: number, z: number, sx: number, sz: number, top: number) => {
@@ -56,20 +60,23 @@ export class SnowExperiment {
     this.panel = document.createElement('div'); this.panel.className = 'snow-panel';
     this.panel.innerHTML = `<strong>Испытание снега</strong><span class="snow-status"></span>
       <p>WASD — идти · Shift — бег · F6 — сменить вид<br>ЛКМ — раскопать · ПКМ — высыпать · E — взять<br>Для копания удобен вид от первого лица.<br>Нож слева от колышка. Esc — курсор.</p>
-      <div><button data-snow="kind">Плотный снег</button><button data-snow="reset">Сначала</button><button data-snow="toggle">Без снега</button><a href="./">Обычная игра</a></div>`;
+      <div><button data-snow="kind">Плотный снег</button><button data-snow="reset">Сначала</button><button data-snow="toggle">Без снега</button><a href="./">Обычная игра</a></div>
+      <div style="margin-top:8px">Горки: ${SNOW_HILLS.map((h, i) => `<button data-hill="${i}">${h.label}</button>`).join('')}</div>`;
     document.body.appendChild(this.panel); this.status = this.panel.querySelector('.snow-status')!;
     this.panel.querySelector('[data-snow="kind"]')!.addEventListener('click', () => {
-      this.firm = !this.firm; this.reset();
+      this.firm = !this.firm; this.reset(true);
       this.panel.querySelector('[data-snow="kind"]')!.textContent = this.firm ? 'Рыхлый снег' : 'Плотный снег';
     });
     this.panel.querySelector('[data-snow="reset"]')!.addEventListener('click', () => this.reset());
-    this.panel.querySelector('[data-snow="toggle"]')!.addEventListener('click', () => this.setEnabled(!this.enabled));
+    this.panel.querySelector('[data-snow="toggle"]')!.addEventListener('click', () => this.setEnabled(!this.enabled, true));
+    this.panel.querySelectorAll<HTMLButtonElement>('[data-hill]').forEach(button => button.addEventListener('click', () => this.visitHill(Number(button.dataset.hill))));
     document.getElementById('legend')!.style.display = 'none';
     document.getElementById('env')!.style.display = 'none';
     this.reset();
   }
   contains(x: number, z: number) { return x > this.bounds.minX + 0.15 && x < this.bounds.maxX - 0.15 && z > this.bounds.minZ + 0.15 && z < this.bounds.maxZ - 0.15; }
-  reset() {
+  reset(keepPlace = false) {
+    const old = keepPlace ? { position: G.player.pos.clone(), yaw: G.player.yaw, pitch: G.player.pitch, view: G.player.avatar.inspectionView } : null;
     if (this.renderer) {
       // Only an explicit reset replaces GPU resources, never walking/streaming.
       G.scene.remove(this.renderer.group);
@@ -78,7 +85,7 @@ export class SnowExperiment {
       materials.forEach(m => m.dispose());
     }
     this.field = new SnowField({ thickness: 0.28, densityRatio: this.firm ? 1.25 : 2.6,
-      base: () => this.baseY, contains: (x, z) => this.contains(x, z) });
+      base: this.terrain.heightAt, coverage: this.terrain.retentionAt, contains: (x, z) => this.contains(x, z) });
     this.renderer = new SnowRenderer(this.field, this.baseY, this.bounds);
     this.renderer.group.visible = this.enabled; G.scene.add(this.renderer.group);
     this.carriedSnow = 0; this.resetBoots();
@@ -92,28 +99,44 @@ export class SnowExperiment {
     G.player.stamina = 1; G.player.winded = false;
     G.player.teleport(this.spawn.clone().setY(this.baseY + (this.enabled ? this.field.support(40, 64) : 0) + 0.05));
     G.player.avatar.inspectionView = 1;
+    if (old && this.contains(old.position.x, old.position.z)) {
+      const { x, z } = old.position;
+      G.player.yaw = old.yaw; G.player.pitch = old.pitch; G.player.avatar.inspectionView = old.view;
+      G.player.teleport(new THREE.Vector3(x, this.terrain.heightAt(x, z) + (this.enabled ? this.field.support(x, z) : 0) + 0.05, z));
+    }
     this.renderer.update(G.player.pos);
     this.uiTime = 1;
   }
-  setEnabled(enabled: boolean) {
+  setEnabled(enabled: boolean, keepPlace = false) {
     this.enabled = enabled; this.renderer.group.visible = enabled; this.resetBoots();
     this.panel.querySelector('[data-snow="toggle"]')!.textContent = enabled ? 'Без снега' : 'Вернуть снег';
-    G.player.teleport(this.spawn.clone().setY(this.baseY + (enabled ? this.field.support(40, 64) : 0) + 0.05));
+    const p = keepPlace && this.contains(G.player.pos.x, G.player.pos.z) ? G.player.pos.clone() : this.spawn.clone();
+    G.player.teleport(p.setY(this.terrain.heightAt(p.x, p.z) + (enabled ? this.field.support(p.x, p.z) : 0) + 0.05));
     this.uiTime = 1;
   }
   resetBoots() { this.lastBoots = null; }
+  visitHill(index: number) {
+    const hill = SNOW_HILLS[index];
+    if (!hill) return;
+    const x = hill.x, z = hill.z + hill.rz + 1;
+    G.player.yaw = 0; G.player.pitch = -0.25;
+    G.player.teleport(new THREE.Vector3(x, this.terrain.heightAt(x, z) + (this.enabled ? this.field.support(x, z) : 0) + 0.05, z));
+    G.player.stamina = 1; G.player.winded = false;
+    this.renderer.update(G.player.pos);
+  }
   probe(surface: FootSurface): FootSurface {
     if (!this.enabled || surface.support !== this.baseHandle || !this.contains(surface.point.x, surface.point.z)) return surface;
     const { x, z } = surface.point;
-    const depth = this.field.sample(x, z).height - this.field.support(x, z);
-    return { point: new THREE.Vector3(x, this.baseY + this.field.support(x, z) + 0.012, z),
-      normal: new THREE.Vector3(0, 1, 0), support: surface.support, snowDepth: depth };
+    const depth = Math.max(0, this.field.sample(x, z).height - this.field.support(x, z));
+    return { point: new THREE.Vector3(x, this.terrain.heightAt(x, z) + this.field.support(x, z) + 0.012, z),
+      normal: surface.normal, support: surface.support, snowDepth: depth };
   }
   movement(x: number, z: number, y: number) {
-    if (!this.enabled || !this.contains(x, z) || y < this.baseY - 0.15 || y > this.baseY + 0.9) return null;
+    const ground = this.terrain.heightAt(x, z);
+    if (!this.enabled || !this.contains(x, z) || y < ground - 0.15 || y > ground + 0.9 || this.terrain.normalAt(x, z).y < Math.cos(48 * Math.PI / 180)) return null;
     const support = this.field.support(x, z);
     const depth = Math.max(0, this.field.sample(x, z).height - support);
-    return { height: this.baseY + support + 0.03, speed: 1 / (1 + depth * 3) };
+    return { height: ground + support + 0.03, speed: 1 / (1 + depth * 3) };
   }
   step() {
     if (!this.enabled || G.player.water || G.sleeping || G.dead) { this.resetBoots(); return; }
@@ -127,9 +150,10 @@ export class SnowExperiment {
     if (!this.enabled) return null;
     const inside = (d: number) => {
       const x = origin.x + direction.x * d, z = origin.z + direction.z * d, y = origin.y + direction.y * d;
-      if (!this.contains(x, z) || y < this.baseY - 0.01) return false;
+      const ground = this.terrain.heightAt(x, z);
+      if (!this.contains(x, z) || y < ground - 0.01) return false;
       const h = this.field.sample(x, z).height;
-      return h > 0.004 && y <= this.baseY + h;
+      return h > 0.004 && y <= ground + h;
     };
     for (let d = 0; d <= reach; d += 0.025) if (inside(d)) {
       let lo = Math.max(0, d - 0.025), hi = d;
@@ -148,7 +172,7 @@ export class SnowExperiment {
       const snow = this.raycast(origin, direction, 2.6);
       const hit = G.world.castRay(new G.R.Ray(origin, direction), 2.6, true, undefined, GROUPS_RAY, G.player.collider);
       const point = snow && (!hit || snow.distance < hit.timeOfImpact) ? snow.point : hit ? origin.clone().addScaledVector(direction, hit.timeOfImpact) : null;
-      if (point && this.contains(point.x, point.z) && point.y < this.baseY + 0.7) {
+      if (point && this.contains(point.x, point.z) && point.y < this.terrain.heightAt(point.x, point.z) + 0.7) {
         if (G.input.lmb && this.enabled) this.carriedSnow += this.field.remove(point.x, point.z, 0.3, 0.09);
         else if (this.enabled && this.carriedSnow > 0) { const volume = Math.min(this.carriedSnow, 0.012); this.carriedSnow -= this.field.add(point.x, point.z, 0.3, volume); }
         G.audio.play('snow_scoop', { pos: point, vol: 0.5 }); this.cooldown = 0.3;

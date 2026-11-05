@@ -12,6 +12,7 @@
     "test:movement": "node tests/movement.cjs",
     "test:snow": "node tests/snow.cjs",
     "test:snow-browser": "node tests/snow-browser.cjs",
+    "test:snow-slopes": "node tests/snow-slopes.cjs",
     "test:e2e": "node tests/e2e.cjs"
   },
   "dependencies": {

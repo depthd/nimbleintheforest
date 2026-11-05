@@ -1,7 +1,7 @@
 # Snow experiment
 
-Open `?snow=1` (also linked from the start screen). This is a separate, flat test
-bed inside the existing world, using the actual player controller, gait, IK,
+Open `?snow=1` (also linked from the start screen). This is a separate test
+bed with flat ground and three small hills, using the actual player controller, gait, IK,
 rendering and interaction. It is not yet a snow/weather rollout over the map.
 
 WASD walks, Shift runs, Space jumps, F6 cycles first person / side / front. Escape
@@ -57,6 +57,34 @@ Reload persistence, world terrain coverage, temperature/moisture/crust, snowfall
 melting, slope transport and finished shovel/particle effects are subsequent work.
 This height layer cannot represent tunnels or overhanging crust.
 
+## Hills and slope coverage
+
+The test bed now has a 0.65 m gentle hill, a 1.05 m medium hill and a 1.5 m hill
+with steep sides. Buttons under the usual controls move to their approaches.
+Density and snow-on/off buttons keep that position for comparison; Reset returns
+to the original start.
+
+`snow-test-terrain.ts` bakes one immutable 20 cm relief grid. The visible base,
+Rapier trimesh and height queries use the same triangles. Snow retention is baked
+from that base alone, independently of footprints and excavation. The common
+28 cm thickness is multiplied by a smooth retention curve: full through 15°, 55%
+at 35°, 6% at 55°, zero at 65°. These are initial tuning values. Crests and flatter
+shoulders retain more snow than steep sides. There is no automatic downslope flow.
+
+Mutable quantities remain sparse deltas from this immutable initial quantity;
+compression/digging/deposition still conserve the same material. Near geometry and
+the static distant cover both follow the relief. Thin coverage blends into the
+substrate colour; less than 2.5 cm shows the solid base in the rendering. The small
+remaining physical layer still participates in support/interaction. The existing
+50-mesh snow pool stays fixed; the solid relief and distant grid are built once.
+
+`npm run test:snow-slopes` checks real uphill/downhill walking, slope-aligned feet,
+steep-face sliding, matching collision heights, hill buttons and position-preserving
+comparisons. It also spot-checks quarter turns, reversals and zigzag/strafe while
+sprinting with snow enabled/disabled, measuring the final rendered feet and IK.
+The reported long foot lift was not reproduced in these six cases; this is a
+targeted check, not a claim that every possible animation transition is covered.
+
 ## Verification
 
 `npm run test:snow` checks conservation, compaction saturation including loaded
@@ -85,7 +113,7 @@ SNOW_BENCH_ONLY=1 NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/
 Use one browser at a time for performance comparisons. The harness closes its
 browser on interruption as well as normal completion.
 
-### First measured prototype (cloud Chromium / software WebGL)
+### First measured flat prototype, 805c515 (cloud Chromium / software WebGL)
 
 The 14 material/rendering checks and 12 browser snow checks passed, as did the
 existing 19 locomotion and 29 browser movement checks. On the real

@@ -124,4 +124,62 @@ test('a local boot updates a small dirty rectangle, and shared tile edges agree'
   const b = fine.find(m => m.position.x === 3.2 && m.position.z === 0);
   for (let row = 0; row <= 80; row++) assert.equal(a.geometry.attributes.position.getY(row * 81 + 80), b.geometry.attributes.position.getY(row * 81));
 });
+const terrainModule = new Module(__filename);
+terrainModule._compile(buildSync({ entryPoints: [path.join(__dirname, '../src/world/snow-test-terrain.ts')],
+  bundle: true, platform: 'node', format: 'cjs', write: false, external: ['three'] }).outputFiles[0].text, __filename);
+const { SnowTestTerrain, snowRetention, SNOW_HILLS } = terrainModule.exports;
+const bounds = { minX: 30, maxX: 50, minZ: 8, maxZ: 72 };
+const ground = new SnowTestTerrain(10, bounds);
+test('slope retention decreases continuously, keeping flats and exposing steep faces', () => {
+  let last = 1;
+  for (let degrees = 0; degrees <= 90; degrees += 0.1) {
+    const value = snowRetention(degrees);
+    assert.ok(value <= last + 1e-8 && value >= 0 && last - value < 0.005);
+    last = value;
+  }
+  assert.equal(snowRetention(0), 1); assert.equal(snowRetention(15), 1); assert.equal(snowRetention(65), 0);
+  const faces = SNOW_HILLS.map(h => ground.retentionAt(h.x + h.rx / 2, h.z));
+  assert.ok(faces[0] > 0.9 && faces[1] < 0.65 && faces[2] < 0.06, JSON.stringify(faces));
+});
+test('hill thickness derives from the immutable base; digging cannot change its slope rule', () => {
+  const f = new SnowField({ thickness: 0.28, densityRatio: 2.6, base: ground.heightAt, coverage: ground.retentionAt });
+  const x = 47.2, z = 51, initial = f.sample(x, z).height, cover = ground.retentionAt(x, z);
+  assert.ok(initial < 0.2 && initial > 0.1, initial);
+  const p = pose(x, ground.heightAt(x, z) + f.support(x, z) + 0.012, z);
+  p.rotation.setFromUnitVectors(new THREE.Vector3(0, 1, 0), ground.normalAt(x, z));
+  f.sweepBoot(p, p);
+  assert.ok(Math.abs(f.massChange()) < 0.00002);
+  let volume = 0;
+  for (let i = 0; i < 10; i++) volume += f.remove(x, z, 0.3, 0.1);
+  assert.equal(f.sample(x, z).height, 0);
+  assert.equal(ground.retentionAt(x, z), cover);
+  f.add(x, z, 0.3, volume);
+  assert.ok(Math.abs(f.massChange()) < 0.00003);
+  assert.equal(f.stats().tiles <= 4, true);
+});
+test('near and far snow both follow hills; streaming retains the fixed mesh pool', () => {
+  const f = new SnowField({ thickness: 0.28, densityRatio: 2.6, base: ground.heightAt, coverage: ground.retentionAt });
+  const r = new SnowRenderer(f, 10, bounds); r.update(new THREE.Vector3(40, 10, 24));
+  let compared = 0;
+  for (const mesh of r.group.children) {
+    const p = mesh.geometry.attributes.position;
+    if (mesh.rotation.x !== 0 || p.count !== 81 ** 2) continue;
+    for (let i = 0; i < p.count; i += 101) {
+      const x = mesh.position.x + p.getX(i), z = mesh.position.z + p.getZ(i);
+      const expected = ground.heightAt(x, z) + f.sample(x, z).height;
+      assert.ok(Math.abs(expected - p.getY(i)) < 0.00002, `${expected} vs ${p.getY(i)}`); compared++;
+    }
+  }
+  assert.ok(compared > 100);
+  const far = r.group.children.at(-1), p = far.geometry.attributes.position;
+  for (let i = 0; i < p.count; i += 103) {
+    const x = far.position.x + p.getX(i), z = far.position.z - p.getY(i);
+    const expected = ground.heightAt(x, z) + f.initialThickness(x, z);
+    assert.ok(Math.abs(far.position.y + p.getZ(i) - expected) < 0.00002);
+  }
+  const pool = new Set(r.group.children.map(o => o.geometry));
+  r.update(new THREE.Vector3(46, 10, 51));
+  assert.ok(r.group.children.every(o => pool.has(o.geometry)));
+  assert.equal(f.stats().tiles, 0);
+});
 console.log(`\n${checks} snow checks passed`);

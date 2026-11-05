@@ -110,10 +110,13 @@ NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium n
 колышка. ЛКМ убирает снег, ПКМ возвращает выкопанное, E берёт открытый предмет.
 F6 меняет ракурс; для прицеливания при копании удобен вид от первого лица.
 Esc освобождает курсор для кнопок смены снега, сброса и сравнения без снега.
+На площадке есть три небольшие горки. Кнопки «Пологая», «Средняя», «Крутая»
+переносят к ним; на крутых боках снег тоньше. Сползание снега не моделируется.
 
 ```bash
 npm run test:snow
 NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium npm run test:snow-browser
+NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium npm run test:snow-slopes
 ```
 
 Ограничения прототипа, устройство слоя, бюджеты памяти/геометрии и метод замеров:

@@ -17,18 +17,25 @@ const low = [-0.0725, 0, -0.20], high = [0.0725, 0.26, 0.11];
 export class SnowField {
   readonly thickness: number;
   readonly densityRatio: number;
+  readonly variableSurface: boolean;
   private tiles = new Map<string, Tile>();
   private age = 0;
   private dirty: SnowRect | null = null;
   private base: (x: number, z: number) => number;
+  private coverage: (x: number, z: number) => number;
   private contains: (x: number, z: number) => boolean;
   constructor(options: { thickness: number; densityRatio: number;
-    base?: (x: number, z: number) => number; contains?: (x: number, z: number) => boolean }) {
+    base?: (x: number, z: number) => number; coverage?: (x: number, z: number) => number;
+    contains?: (x: number, z: number) => boolean }) {
     this.thickness = options.thickness;
     this.densityRatio = Math.max(1.01, options.densityRatio);
     this.base = options.base ?? (() => 0);
+    this.coverage = options.coverage ?? (() => 1);
+    this.variableSurface = !!options.coverage;
     this.contains = options.contains ?? (() => true);
   }
+  baseHeight(x: number, z: number) { return this.base(x, z); }
+  initialThickness(x: number, z: number) { return this.thickness * this.coverage(x, z); }
 
   private address(ix: number, iz: number) {
     const tx = Math.floor(ix / TILE_CELLS), tz = Math.floor(iz / TILE_CELLS);
@@ -44,7 +51,7 @@ export class SnowField {
       while (lo < hi) { const mid = (lo + hi) >>> 1; if (c.indices[mid] < a.index) lo = mid + 1; else hi = mid; }
       if (c.indices[lo] === a.index) { delta = c.mass[lo]; compaction = c.packed[lo] / 255; }
     }
-    const mass = Math.max(0, this.thickness + delta);
+    const mass = Math.max(0, this.initialThickness(ix * CELL, iz * CELL) + delta);
     return { mass, compaction, height: mass / (1 + compaction * (this.densityRatio - 1)) };
   }
   sample(x: number, z: number) {
@@ -71,7 +78,7 @@ export class SnowField {
       while (lo < hi) { const m = (lo + hi) >>> 1; if (c.indices[m] < index) lo = m + 1; else hi = m; }
       if (c.indices[lo] === index) { delta = c.mass[lo]; packed = c.packed[lo]; }
     }
-    return packedOnly ? packed / 255 : Math.max(0, this.thickness + delta) / (1 + packed / 255 * (this.densityRatio - 1));
+    return packedOnly ? packed / 255 : Math.max(0, this.initialThickness(ix * CELL, iz * CELL) + delta) / (1 + packed / 255 * (this.densityRatio - 1));
   }
   hasChangesNear(tx: number, tz: number) {
     for (let z = tz - 1; z <= tz + 1; z++) for (let x = tx - 1; x <= tx + 1; x++)
@@ -105,7 +112,7 @@ export class SnowField {
   }
   private write(ix: number, iz: number, mass: number, compaction: number) {
     const a = this.address(ix, iz), h = this.warm(a.key);
-    h.mass[a.index] = mass - this.thickness;
+    h.mass[a.index] = mass - this.initialThickness(ix * CELL, iz * CELL);
     h.packed[a.index] = Math.ceil(clamp(compaction, 0, 1) * 255);
     const x = ix * CELL, z = iz * CELL;
     if (!this.dirty) this.dirty = { minX: x, maxX: x, minZ: z, maxZ: z };
