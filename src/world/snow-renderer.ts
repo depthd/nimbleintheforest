@@ -3,6 +3,7 @@ import { CELL, TILE_CELLS, TILE_SIZE, SnowField } from './snow-field';
 import type { SnowRect } from './snow-field';
 
 interface Slot { mesh: THREE.Mesh; step: number; cells: number; ix: number; iz: number; heights: Float32Array }
+interface SnowRenderOptions { far?: boolean; material?: THREE.MeshStandardMaterial; fadeEdges?: boolean }
 /** Fixed GPU pool: nine detailed tiles, sixteen medium, twenty-four coarse.
  * Trails live in SnowField. Walking farther cannot create more meshes/materials. */
 export class SnowRenderer {
@@ -13,13 +14,17 @@ export class SnowRenderer {
   private centre = new THREE.Vector2(Infinity, Infinity);
   private near = { value: new THREE.Vector4() };
   private boundsUniform: { value: THREE.Vector4 };
+  get patchBounds() { return this.near.value; }
   updatedVertices = 0;
-  constructor(public field: SnowField, readonly baseY: number, readonly bounds: SnowRect) {
+  constructor(public field: SnowField, readonly baseY: number, readonly bounds: SnowRect, private options: SnowRenderOptions = {}) {
     this.group.name = 'snow-experiment';
     this.boundsUniform = { value: new THREE.Vector4(bounds.minX, bounds.minZ, bounds.maxX, bounds.maxZ) };
     const material = (far: boolean) => {
-      const m = new THREE.MeshStandardMaterial({ color: 0xf2f7ff, roughness: 0.96, vertexColors: true });
-      m.onBeforeCompile = sh => {
+      const m = !far && options.material ? options.material : new THREE.MeshStandardMaterial({ color: 0xf2f7ff, roughness: 0.96, vertexColors: true });
+      m.vertexColors = true;
+      const compile = m.onBeforeCompile, key = m.customProgramCacheKey();
+      m.onBeforeCompile = (sh, renderer) => {
+        compile.call(m, sh, renderer);
         sh.uniforms.uSnowBounds = this.boundsUniform;
         sh.uniforms.uSnowNear = this.near;
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vSnowWorld; attribute float snowDepth; varying float vSnowDepth;')
@@ -33,7 +38,7 @@ export class SnowRenderer {
           if (vSnowDepth < 0.025) discard;
           ${far ? 'if (vSnowWorld.x >= uSnowNear.x && vSnowWorld.z >= uSnowNear.y && vSnowWorld.x <= uSnowNear.z && vSnowWorld.z <= uSnowNear.w) discard;' : ''}`);
       };
-      m.customProgramCacheKey = () => far ? 'snow-far-v2' : 'snow-near-v2';
+      m.customProgramCacheKey = () => key + (far ? 'snow-far-v2' : 'snow-near-v2');
       return m;
     };
     this.material = material(false); this.farMaterial = material(true);
@@ -54,6 +59,7 @@ export class SnowRenderer {
       mesh.castShadow = false;
       this.group.add(mesh); this.slots.push({ mesh, step, cells, ix: Infinity, iz: Infinity, heights: new Float32Array((cells + 3) ** 2) });
     }
+    if (options.far === false) return;
     const width = bounds.maxX - bounds.minX, depth = bounds.maxZ - bounds.minZ;
     const farGeo = new THREE.PlaneGeometry(width, depth, field.variableSurface ? Math.ceil(width / 0.4) : 1, field.variableSurface ? Math.ceil(depth / 0.4) : 1);
     const farColor = new THREE.BufferAttribute(new Float32Array(farGeo.attributes.position.count * 3).fill(1), 3);
@@ -83,6 +89,7 @@ export class SnowRenderer {
     const dirty = this.field.takeDirty();
     if (this.centre.x !== ix || this.centre.y !== iz) {
       this.centre.set(ix, iz);
+      this.near.value.set((ix - 3) * TILE_SIZE, (iz - 3) * TILE_SIZE, (ix + 4) * TILE_SIZE, (iz + 4) * TILE_SIZE);
       const wanted: { ix: number; iz: number; step: number }[] = [];
       for (let z = -3; z <= 3; z++) for (let x = -3; x <= 3; x++) {
         const r = Math.max(Math.abs(x), Math.abs(z)); wanted.push({ ix: ix + x, iz: iz + z, step: r <= 1 ? 1 : r === 2 ? 4 : 8 });
@@ -95,7 +102,7 @@ export class SnowRenderer {
         s.ix = w.ix; s.iz = w.iz; s.mesh.position.set(w.ix * TILE_SIZE, 0, w.iz * TILE_SIZE);
         retained.add(s); this.refresh(s);
       }
-      this.near.value.set((ix - 3) * TILE_SIZE, (iz - 3) * TILE_SIZE, (ix + 4) * TILE_SIZE, (iz + 4) * TILE_SIZE);
+      if (this.options.fadeEdges) for (const s of retained) if (s.step === 8) this.refresh(s);
     }
     if (dirty) for (const s of this.slots) this.refresh(s, dirty);
   }
@@ -119,13 +126,21 @@ export class SnowRenderer {
     }
     const stride = n + 2, h = s.heights;
     const gx = s.ix * TILE_CELLS, gz = s.iz * TILE_CELLS;
-    for (let b = b0 - 1; b <= b1 + 1; b++) for (let a = a0 - 1; a <= a1 + 1; a++)
-      h[(b + 1) * stride + a + 1] = this.field.baseHeight((gx + a * s.step) * CELL, (gz + b * s.step) * CELL) + this.field.gridValue(gx + a * s.step, gz + b * s.step);
+    const fade = (x: number, z: number) => {
+      if (!this.options.fadeEdges) return 1;
+      const b = this.near.value;
+      return THREE.MathUtils.smoothstep(Math.min(x - b.x, z - b.y, b.z - x, b.w - z), 0, TILE_SIZE);
+    };
+    for (let b = b0 - 1; b <= b1 + 1; b++) for (let a = a0 - 1; a <= a1 + 1; a++) {
+      const x = (gx + a * s.step) * CELL, z = (gz + b * s.step) * CELL;
+      const thickness = this.field.gridValue(gx + a * s.step, gz + b * s.step) * fade(x, z);
+      h[(b + 1) * stride + a + 1] = this.field.baseHeight(x, z) + thickness;
+      if (b >= b0 && b <= b1 && a >= a0 && a <= a1) depths.setX(b * n + a, thickness);
+    }
     for (let b = b0; b <= b1; b++) for (let a = a0; a <= a1; a++) {
       const i = b * n + a, hi = (b + 1) * stride + a + 1;
       const packed = this.field.gridValue(gx + a * s.step, gz + b * s.step, true);
-      const thickness = this.field.gridValue(gx + a * s.step, gz + b * s.step);
-      depths.setX(i, thickness);
+      const thickness = depths.getX(i);
       p.setY(i, h[hi]);
       const dx = h[hi + 1] - h[hi - 1], dz = h[hi + stride] - h[hi - stride];
       const len = Math.hypot(dx, 2 * spacing, dz);
@@ -136,11 +151,16 @@ export class SnowRenderer {
       color.setXYZ(i, THREE.MathUtils.lerp(0.207, shade * (1 - packed * 0.06), snow), THREE.MathUtils.lerp(0.236, shade, snow), THREE.MathUtils.lerp(0.254, 1, snow));
       this.updatedVertices++;
     }
+    if (!dirty) {
+      g.computeBoundingBox();
+      g.boundingBox!.min.y -= 1; g.boundingBox!.max.y += 2;
+      g.boundingSphere = g.boundingBox!.getBoundingSphere(new THREE.Sphere());
+    }
     for (const attr of [p, normal, color, depths]) {
       for (let b = b0; b <= b1; b++) attr.addUpdateRange((b * n + a0) * attr.itemSize, (a1 - a0 + 1) * attr.itemSize);
       attr.needsUpdate = true;
     }
   }
-  stats() { return { meshes: this.slots.length + 1, vertices: this.slots.reduce((n, s) => n + s.mesh.geometry.attributes.position.count, 0), updatedVertices: this.updatedVertices }; }
+  stats() { return { meshes: this.group.children.length, vertices: this.slots.reduce((n, s) => n + s.mesh.geometry.attributes.position.count, 0), updatedVertices: this.updatedVertices }; }
   refreshAll() { for (const s of this.slots) if (Number.isFinite(s.ix)) this.refresh(s); }
 }

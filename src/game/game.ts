@@ -28,6 +28,7 @@ import { Horror } from './horror';
 import { def } from './items';
 import { dryingAt } from './drying';
 import { SnowExperiment } from './snow-experiment';
+import { WorldSnow } from './world-snow';
 import { MotionRecorder } from './motion-recorder';
 
 const STEP = 1 / 60;
@@ -132,7 +133,8 @@ export async function startGame(settings: Settings) {
   G.weather.update(0, 0);
   G.sky.update();
 
-  if (new URLSearchParams(location.search).get('snow') === '1') G.snow = new SnowExperiment();
+  G.snow = new URLSearchParams(location.search).get('snow') === '1' ? new SnowExperiment() : new WorldSnow();
+  if (!G.snow.isExperiment) G.player.avatar.reset();
   G.recorder = new MotionRecorder();
 
   window.addEventListener('resize', onResize);

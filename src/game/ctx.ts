@@ -24,6 +24,7 @@ import type { ViewModel } from './viewmodel';
 import type { HUD } from '../ui/hud';
 import type { Effects } from './effects';
 import type { SnowExperiment } from './snow-experiment';
+import type { WorldSnow } from './world-snow';
 import type { MotionRecorder } from './motion-recorder';
 
 export interface Settings {
@@ -70,7 +71,7 @@ export interface Ctx {
   vm: ViewModel;
   hud: HUD;
   fx: Effects;
-  snow?: SnowExperiment;
+  snow?: SnowExperiment | WorldSnow;
   recorder?: MotionRecorder;
   paused: boolean;
   sleeping: boolean;

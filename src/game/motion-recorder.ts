@@ -115,7 +115,7 @@ export class MotionRecorder {
     if (this.watched) this.watched.onRecordedChange = undefined;
     this.watched = null; this.changes.clear(); this.resetSnow = undefined;
     this.ring = new MotionRing(this.snowState()); this.sequence = 0; this.ticks = []; this.tick = null;
-    this.context = { seed: G.settings.seed, settings: { ...G.settings }, snowScene: !!G.snow,
+    this.context = { seed: G.settings.seed, settings: { ...G.settings }, snowScene: !!G.snow?.isExperiment,
       createdAt: new Date().toISOString(), buildAsset: document.querySelector<HTMLScriptElement>('script[type="module"][src]')?.getAttribute('src') ?? '',
       viewport: [innerWidth, innerHeight, devicePixelRatio], userAgent: navigator.userAgent };
     this.started = performance.now() / 1000; this.data = null; this.recording = true;
@@ -266,7 +266,7 @@ export class MotionRecorder {
   }
   load(recording: MotionRecording) {
     const data = validateRecording(recording);
-    if (data.context.seed !== G.settings.seed || data.context.settings?.size !== G.settings.size || data.context.snowScene !== !!G.snow)
+    if (data.context.seed !== G.settings.seed || data.context.settings?.size !== G.settings.size || data.context.snowScene !== !!G.snow?.isExperiment)
       throw new Error(`Откройте тот же мир: seed ${data.context.seed}, ${data.context.snowScene ? 'испытание снега' : 'обычная игра'}, и снова загрузите файл.`);
     if (JSON.stringify(data.rig) !== JSON.stringify(G.player.avatar.recordedRig())) throw new Error('Запись сделана для другой версии модели персонажа.');
     if (this.recording) this.stop();

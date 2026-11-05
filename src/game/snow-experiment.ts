@@ -12,6 +12,7 @@ import type { Entity } from './entities';
 import { SnowTestTerrain, SNOW_HILLS } from '../world/snow-test-terrain';
 
 export class SnowExperiment {
+  readonly isExperiment = true;
   readonly baseY = G.terrain.heightAt(40, 40) + 35;
   readonly bounds = { minX: 30, maxX: 50, minZ: 8, maxZ: 72 };
   readonly spawn = new THREE.Vector3(40, this.baseY + 0.15, 64);

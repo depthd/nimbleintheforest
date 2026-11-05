@@ -3,7 +3,8 @@ import type { Settings } from './game/ctx';
 import { G } from './game/ctx';
 
 const params = new URLSearchParams(location.search);
-// Snow is an explicit experiment; the ordinary world keeps its current rules.
+// The old laboratory remains available for diagnostics. Ordinary play now uses
+// the same snow material in the generated world, with normal survival settings.
 if (params.get('snow') === '1') {
   for (const [key, value] of Object.entries({ seed: '42', hour: '13', weather: 'clear', nocold: '1', horror: '0', scale: '0' }))
     if (!params.has(key)) params.set(key, value);

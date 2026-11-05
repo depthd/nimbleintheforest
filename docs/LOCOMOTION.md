@@ -86,13 +86,13 @@ touchdown probes the actual corrected boot position.
 One contact drives one positioned footstep sound. Initial placement and teleport
 are silent; jumping, swimming and sleep cannot emit walking contacts.
 
-The opt-in snow experiment is described in [SNOW.md](SNOW.md). It consumes the
+The world snow and diagnostic laboratory are described in [SNOW.md](SNOW.md). They consume the
 continuous `feet[].previous` and
 `feet[].position` trajectory, `footPose` (including toe-off rotation), and contacts. Do not create marks from a
 distance timer. The current probe interface is the place to add snow support depth
 and strength. In the experiment it returns loaded snow support on the test bed;
-solid floors, steps and rocks still take precedence. The ordinary world still
-uses solid surfaces.
+solid floors, steps and rocks still take precedence. Ordinary play now uses the
+same continuous boot sweeps on the generated forest terrain.
 
 ## Rendering and inspection
 

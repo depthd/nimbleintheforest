@@ -47,6 +47,11 @@ export class Interaction {
   private iceWork: { pos: THREE.Vector3; hp: number } | null = null;
   private ray = new THREE.Vector3();
 
+  private hasSnow(point: THREE.Vector3) {
+    const s = G.snow;
+    return !s || s.isExperiment || (s.contains(point.x, point.z) && s.field.sample(point.x, point.z).height > 0.004);
+  }
+
   // ---------- targeting ----------
 
   private computeTarget() {
@@ -182,12 +187,12 @@ export class Interaction {
 
     if (e) this.info = this.describe(e);
     if (t.kind === 'tree') this.info = this.describeTree(t.tree!);
-    if (t.kind === 'ground') this.info = G.house.zoneAt(t.point) ? '' : 'Снег';
+    if (t.kind === 'ground') this.info = G.house.zoneAt(t.point) ? '' : this.hasSnow(t.point) ? 'Снег' : 'Земля';
     if (t.kind === 'ice') {
       const th = G.region.iceAt(t.point.x, t.point.z);
       this.info = G.body.skills.has('ice') ? `Лёд · ~${Math.round(th * 100)} см${th < 0.12 ? ' · ТОНКИЙ, не выдержит!' : ''}` : th < 0.12 ? 'Лёд · тёмный, прозрачный' : 'Лёд';
     }
-    if (t.kind === 'ground' && G.snow?.contains(t.point.x, t.point.z) && t.point.y > G.snow.baseY - 0.02) {
+    if (t.kind === 'ground' && G.snow?.isExperiment && G.snow.contains(t.point.x, t.point.z) && t.point.y > G.snow.baseY - 0.02) {
       this.info = 'Снег · ЛКМ — раскопать · ПКМ — высыпать';
       return A;
     }
@@ -208,12 +213,19 @@ export class Interaction {
 
     // --- tool / item in hand (LMB/RMB) ---
     if (eq) this.toolActions(A, eq, tg, t, e, fire);
+    if (!eq && t.kind === 'ground' && G.snow && !G.snow.isExperiment && G.snow.contains(t.point.x, t.point.z)) {
+      const snow = G.snow, point = t.point.clone();
+      if (snow.field.sample(point.x, point.z).mass > 0.001)
+        A.push({ key: 'LMB', label: 'Разгрести снег', run: () => snow.dig(point) });
+      if (snow.carriedSnow > 0.00001)
+        A.push({ key: 'RMB', label: 'Высыпать снег', run: () => snow.deposit(point) });
+    }
 
     // --- context actions (E/F/G) ---
     if (e) this.entityActions(A, e, fire);
     else if (t.kind === 'tree') this.treeActions(A, t.tree!);
     else if (t.kind === 'ground' && !G.house.zoneAt(t.point)) {
-      if (!tg.includes('pot')) A.push({ key: 'F', label: 'Съесть снег', time: 1.5, run: () => this.eatSnow() });
+      if (!tg.includes('pot') && this.hasSnow(t.point)) A.push({ key: 'F', label: 'Съесть снег', time: 1.5, run: () => this.eatSnow() });
       A.push({ key: 'G', label: 'Сложить кострище здесь', time: 2, run: () => this.makeCampfire(t.point) });
     } else if (t.kind === 'ice') {
       A.push({ key: 'G', label: 'Сложить кострище на льду', time: 2, run: () => this.makeCampfire(t.point) });
@@ -252,7 +264,7 @@ export class Interaction {
       if (e?.kind === 'icehole') {
         if (e.data.frozen > 0.6) this.info = 'Лунка замёрзла — нужен топор или ледобур';
         else if (!full) A.push({ key: 'LMB', label: 'Набрать воды', time: 1.2, run: () => this.fillWater(eq) });
-      } else if ((t.kind === 'ground' && !G.house.zoneAt(t.point)) || t.kind === 'ice') {
+      } else if ((t.kind === 'ground' && !G.house.zoneAt(t.point) && this.hasSnow(t.point)) || t.kind === 'ice') {
         if (!full) A.push({ key: 'LMB', label: 'Набрать снега', time: 1, run: () => this.scoopSnow(eq) });
         else this.info = 'Котелок полон';
       }
@@ -596,6 +608,7 @@ export class Interaction {
 
   private isAutoRepeat() {
     const eq = G.player.equipped;
+    if (!eq && !G.player.carried && this.target.kind === 'ground' && G.snow && !G.snow.isExperiment) return true;
     const t = tags(eq);
     return t.includes('axe') || t.includes('saw') || t.includes('blunt');
   }

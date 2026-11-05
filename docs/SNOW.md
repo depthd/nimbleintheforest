@@ -1,8 +1,30 @@
-# Snow experiment
+# Mutable snow
+
+Snow is enabled in ordinary play, on the generated forest terrain. `WorldSnow`
+uses the same mass/compaction field and continuous boot sweeps as the laboratory.
+The immutable 2 m terrain triangles are sampled exactly; slope retention is cached
+in one byte per terrain vertex. Water and sheltered floors are excluded. Solid
+wood, rocks and ice still use their real collider surfaces and existing rules.
+
+With empty hands, hold LMB to move snow aside and use RMB to return the finite
+quantity collected. These are ordinary contextual actions: equipped tools retain
+their controls, and eating snow, filling pots and making fires remain available.
+The snow ray hides buried items until a visible route to them is excavated.
+
+Only a 22.4 m square around the player has detailed snow geometry: 49 recycled
+meshes and 69,009 grid vertices, with the existing nine fine / sixteen medium /
+twenty-four coarse tiles. No map-sized 40 cm mesh is built. Outside that patch,
+the existing terrain shader supplies the distant snow. The outer ring blends into
+it; inside the patch the terrain shader draws the bare substrate beneath the
+upper layer. The same biome shader shades the detailed layer, retaining needles,
+burned ground and shore colour. Changed cells remain sparse when travelling.
+
+## Laboratory
 
 Open `?snow=1` (also linked from the start screen). This is a separate test
 bed with flat ground and three small hills, using the actual player controller, gait, IK,
-rendering and interaction. It is not yet a snow/weather rollout over the map.
+rendering and interaction. The laboratory remains separate from ordinary survival
+settings and is no longer required to play with deformable snow.
 
 WASD walks, Shift runs, Space jumps, F6 cycles first person / side / front. Escape
 releases the pointer for the powder/firm, reset and no-snow comparison buttons.
@@ -50,10 +72,11 @@ existing interaction code.
   interpolated material queries and object allocation. Pristine tiles have a fast
   flat-fill path.
 - No snow colliders or rigid bodies are created per footstep. No physical snow
-  particles. The optional experiment does no snow work in the ordinary game.
+  particles. Ordinary play uses the bounded near pool rather than a whole-map mesh.
 
-Old trails remain for the page's lifetime, with coarse distant representation.
-Reload persistence, world terrain coverage, temperature/moisture/crust, snowfall,
+Old trails remain for the page's lifetime and return when the near pool revisits
+them. The distant terrain uses the simplified undisturbed cover.
+Reload persistence, temperature/moisture/crust, snowfall,
 melting, slope transport and finished shovel/particle effects are subsequent work.
 This height layer cannot represent tunnels or overhanging crust.
 
@@ -86,6 +109,11 @@ The reported long foot lift was not reproduced in these six cases; this is a
 targeted check, not a claim that every possible animation transition is covered.
 
 ## Verification
+
+`npm run test:world-snow` opens ordinary play without `?snow=1`: forest footprints,
+actual collider/terrain agreement, digging to reveal and collect a real item,
+finite redeposition, survival/tool actions, indoor floors, water, bounded streaming
+and recordings of ordinary-game snow. It saves normal forest gameplay images.
 
 `npm run test:snow` checks conservation, compaction saturation including loaded
 support feedback, complete drag paths, rotation/extraction/flight, timestep

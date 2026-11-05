@@ -429,7 +429,7 @@ export class Player {
       return;
     }
     // thin ice
-    const onSnowBed = G.snow?.contains(this.pos.x, this.pos.z) && this.pos.y > G.snow.baseY - 0.2;
+    const onSnowBed = G.snow?.isExperiment && G.snow.contains(this.pos.x, this.pos.z) && this.pos.y > G.snow.baseY - 0.2;
     if (!onSnowBed && G.lake.onThin(this.pos) && this.grounded) {
       G.lake.thinBroken = true;
       this.fallThroughIce(this.pos.clone());

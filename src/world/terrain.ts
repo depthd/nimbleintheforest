@@ -29,6 +29,8 @@ export const groundUniforms = {
   uSunDir: { value: new THREE.Vector3(0, 1, 0) },
   uGlint: { value: 1 },
   uForestFar: { value: new THREE.Vector2(380, 620) },
+  uWorldSnow: { value: 0 },
+  uSnowPatch: { value: new THREE.Vector4() },
 };
 
 function ridged(n: Simplex2, x: number, y: number, oct: number) {
@@ -45,9 +47,10 @@ function ridged(n: Simplex2, x: number, y: number, oct: number) {
   return s / norm;
 }
 
-export function makeGroundMaterial(far: boolean) {
+export function makeGroundMaterial(far: boolean, snowSurface = false) {
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
   m.defines = far ? { FAR_TERRAIN: 1 } : {};
+  if (snowSurface) m.defines.SNOW_SURFACE = 1;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, groundUniforms);
     sh.vertexShader = sh.vertexShader
@@ -64,6 +67,7 @@ varying vec3 vWPos;
 varying vec3 vWNorm;
 uniform vec2 uOrigin; uniform float uSize; uniform sampler2D uBiome; uniform sampler2D uWaterTex; uniform sampler2D uNoise; uniform sampler2D uRock;
 uniform float uTreeline; uniform vec2 uNearCenter; uniform vec2 uNearHalf; uniform vec3 uSunDir; uniform float uGlint; uniform vec2 uForestFar;
+uniform float uWorldSnow; uniform vec4 uSnowPatch;
 vec3 triRock(vec3 p, vec3 n) {
   vec3 w = pow(abs(n), vec3(4.0)); w /= (w.x + w.y + w.z);
   return texture2D(uRock, p.yz).rgb * w.x + texture2D(uRock, p.xz).rgb * w.y + texture2D(uRock, p.xy).rgb * w.z;
@@ -98,6 +102,14 @@ vec3 triRock(vec3 p, vec3 n) {
   // shore: pebbles and grey sand where the snow is thin
   float peb = bio.a * smoothstep(0.45, 0.7, nz2.a) * (0.6 + 0.4 * nz3.r);
   snow = mix(snow, vec3(0.5, 0.48, 0.45) * (0.7 + 0.5 * nz3.g), peb * 0.75);
+#ifndef SNOW_SURFACE
+  // Nearby this mesh is the immutable substrate below the mutable layer.
+  // Outside that small patch it keeps drawing the existing distant snow.
+  float edge = min(min(vWPos.x - uSnowPatch.x, vWPos.z - uSnowPatch.y), min(uSnowPatch.z - vWPos.x, uSnowPatch.w - vWPos.z));
+  float exposedBase = uWorldSnow * smoothstep(0.0, 3.2, edge);
+  vec3 soil = mix(vec3(0.18, 0.17, 0.15), vec3(0.30, 0.28, 0.24), nz2.r);
+  snow = mix(snow, soil, exposedBase);
+#endif
   // rock: steep slopes are bare, ledges keep snow; high ground is wind-scoured
   float rockK = smoothstep(0.33 + 0.06 * nz2.r, 0.45 + 0.04 * nz2.g, slope);
   rockK = max(rockK, smoothstep(uTreeline + 60.0, uTreeline + 180.0, vWPos.y) * smoothstep(0.2, 0.34, slope));
@@ -139,7 +151,7 @@ vec3 triRock(vec3 p, vec3 n) {
 #include <opaque_fragment>`,
       );
   };
-  m.customProgramCacheKey = () => (far ? 'ground-far' : 'ground');
+  m.customProgramCacheKey = () => (far ? 'ground-far' : snowSurface ? 'ground-snow-surface' : 'ground');
   return m;
 }
 
