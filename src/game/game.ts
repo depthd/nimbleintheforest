@@ -27,6 +27,7 @@ import { HUD } from '../ui/hud';
 import { Horror } from './horror';
 import { def } from './items';
 import { dryingAt } from './drying';
+import { SnowExperiment } from './snow-experiment';
 
 const STEP = 1 / 60;
 let horror: Horror;
@@ -129,6 +130,8 @@ export async function startGame(settings: Settings) {
   G.thermal.init();
   G.weather.update(0, 0);
   G.sky.update();
+
+  if (new URLSearchParams(location.search).get('snow') === '1') G.snow = new SnowExperiment();
 
   window.addEventListener('resize', onResize);
   onResize();
@@ -470,6 +473,7 @@ function loop(now: number) {
   }
   G.player.renderAlpha = paused || G.dead ? 1 : acc / STEP;
   G.player.updateCamera(dt);
+  G.snow?.update(paused ? 0 : dt);
   G.terrain.update(G.camera.position);
   G.forest.update(G.player.pos);
   G.lake.stream(G.player.pos);

@@ -56,6 +56,12 @@ export class Interaction {
     const R = G.R;
     const hit = G.world.castRayAndGetNormal(new R.Ray(origin, dir), REACH, true, undefined, GROUPS_RAY, G.player.collider, G.player.carried?.body ?? undefined);
     const t = this.target;
+    const snow = G.snow?.raycast(origin, dir, REACH);
+    if (snow && (!hit || snow.distance < hit.timeOfImpact)) {
+      t.kind = 'ground'; t.entity = undefined; t.tree = undefined;
+      t.point.copy(snow.point); t.normal.set(0, 1, 0); t.dist = snow.distance;
+      return;
+    }
     if (!hit) {
       t.kind = 'none';
       t.entity = undefined;
@@ -180,6 +186,10 @@ export class Interaction {
     if (t.kind === 'ice') {
       const th = G.region.iceAt(t.point.x, t.point.z);
       this.info = G.body.skills.has('ice') ? `Лёд · ~${Math.round(th * 100)} см${th < 0.12 ? ' · ТОНКИЙ, не выдержит!' : ''}` : th < 0.12 ? 'Лёд · тёмный, прозрачный' : 'Лёд';
+    }
+    if (t.kind === 'ground' && G.snow?.contains(t.point.x, t.point.z) && t.point.y > G.snow.baseY - 0.02) {
+      this.info = 'Снег · ЛКМ — раскопать · ПКМ — высыпать';
+      return A;
     }
 
     // --- carrying a physical object ---

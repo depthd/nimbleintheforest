@@ -3,6 +3,11 @@ import type { Settings } from './game/ctx';
 import { G } from './game/ctx';
 
 const params = new URLSearchParams(location.search);
+// Snow is an explicit experiment; the ordinary world keeps its current rules.
+if (params.get('snow') === '1') {
+  for (const [key, value] of Object.entries({ seed: '42', hour: '13', weather: 'clear', nocold: '1', horror: '0', scale: '0' }))
+    if (!params.has(key)) params.set(key, value);
+}
 const el = (id: string) => document.getElementById(id) as HTMLInputElement;
 
 const seedInput = el('st-seed');
@@ -51,4 +56,4 @@ async function go() {
 document.getElementById('st-go')!.addEventListener('click', go);
 if (params.get('preview') === 'map') import('./preview').then((m) => m.previewMap(params));
 else if (params.get('preview') === 'animals') import('./preview_animals').then((m) => m.previewAnimals(params));
-else if (params.get('autostart') === '1' || params.get('test') === '1') go();
+else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1') go();

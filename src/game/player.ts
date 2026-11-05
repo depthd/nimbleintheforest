@@ -363,6 +363,8 @@ export class Player {
     if (B.frostFeet > 0.3) speed *= 1 - B.frostFeet * 0.3;
     const outdoors = !G.house.zoneAt(this.pos);
     if (outdoors && !G.lake.onIce(this.pos)) speed *= 0.88; // snow
+    const snow = G.snow?.movement(this.pos.x, this.pos.z, this.pos.y);
+    if (snow) speed *= snow.speed;
 
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     let tx = 0, tz = 0;
@@ -395,9 +397,17 @@ export class Player {
     );
     const mv = this.kcc.computedMovement();
     const t = this.body.translation();
-    const nx = t.x + mv.x, ny = t.y + mv.y, nz = t.z + mv.z;
+    const nx = t.x + mv.x, nz = t.z + mv.z;
+    let ny = t.y + mv.y;
+    const snowSupport = G.snow?.movement(nx, nz, this.pos.y);
+    const supportedBySnow = !!snowSupport && this.vy <= 0 &&
+      this.pos.y >= snowSupport.height - 0.2 && ny - HALF - RADIUS <= snowSupport.height + (this.grounded ? 0.06 : 0.001);
+    // Small changes of loaded support are settling, not repeated airborne/landing
+    // transitions. Keep solid steps authoritative when Rapier finds one above it.
+    if (supportedBySnow) ny = this.kcc.computedGrounded()
+      ? Math.max(ny, snowSupport!.height + HALF + RADIUS) : snowSupport!.height + HALF + RADIUS;
     const wasGrounded = this.grounded;
-    this.grounded = this.kcc.computedGrounded();
+    this.grounded = this.kcc.computedGrounded() || supportedBySnow;
     if (this.grounded) {
       if (!wasGrounded) this.land();
       if (this.vy < 0) this.vy = 0;
@@ -419,7 +429,8 @@ export class Player {
       return;
     }
     // thin ice
-    if (G.lake.onThin(this.pos) && this.grounded) {
+    const onSnowBed = G.snow?.contains(this.pos.x, this.pos.z) && this.pos.y > G.snow.baseY - 0.2;
+    if (!onSnowBed && G.lake.onThin(this.pos) && this.grounded) {
       G.lake.thinBroken = true;
       this.fallThroughIce(this.pos.clone());
       const h = G.lake.makeHole(new THREE.Vector3(this.pos.x, 0, this.pos.z), 1.0, 'Полынья');

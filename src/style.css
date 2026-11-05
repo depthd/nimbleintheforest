@@ -170,3 +170,11 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 #mapview { inset: 0; background: rgba(6, 9, 14, 0.88); align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
 #map-canvas { width: min(90vh, 92vw); height: min(90vh, 92vw); border-radius: 8px; box-shadow: 0 0 30px #000; }
 #mapview .maplegend { color: var(--dim); font-size: 13px; }
+.snow-start { color: #d5e7ee; margin-top: 14px; text-underline-offset: 4px; }
+.snow-panel { position: fixed; top: 12px; left: 12px; z-index: 210; max-width: min(470px, calc(100vw - 24px)); padding: 12px 16px; border: 1px solid #a6c6d744; border-radius: 10px; background: #172832df; color: #edf5fa; font: 13px/1.5 system-ui, sans-serif; }
+.snow-panel strong { display: block; font-size: 16px; }
+.snow-status { display: block; color: #c6e1ec; margin: 3px 0; }
+.snow-panel p { margin: 7px 0 10px; }
+.snow-panel > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.snow-panel button { font: inherit; padding: 5px 9px; margin: 0; }
+.snow-panel a { color: #c6e1ec; }

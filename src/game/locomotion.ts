@@ -16,6 +16,7 @@ export interface FootSurface {
   point: THREE.Vector3;
   normal: THREE.Vector3;
   support?: number;
+  snowDepth?: number;
 }
 export type GroundProbe = (x: number, z: number, referenceY: number) => FootSurface | null;
 export interface MotionInput {
@@ -301,6 +302,8 @@ export class Locomotion {
 
   private validateSupport(f: FootState, probe: GroundProbe) {
     const hit = probe(f.position.x, f.position.z, this.position.y);
+    // Settling in a compressible layer is vertical; the planted x/z anchor stays put.
+    if (hit?.snowDepth !== undefined && Math.abs(hit.point.y - f.position.y) < 0.09) f.position.y = hit.point.y;
     const pose = footPose(f);
     const ankle = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation).add(pose.position);
     if (!isSupport(hit) || Math.abs(hit.point.y - f.position.y) > 0.09 ||
@@ -461,6 +464,7 @@ export class Locomotion {
       if (ground) f.lift = Math.max(f.lift, (ground.point.y + 0.035 - path.y) / Math.sin(t * Math.PI) ** 1.3);
     }
     f.lift = Math.min(f.lift, 0.4);
+    if (hit.snowDepth) f.lift = Math.min(0.4, Math.max(f.lift, hit.snowDepth + 0.10));
     f.progress = 0;
     f.grounded = false;
     f.needsPlant = false;

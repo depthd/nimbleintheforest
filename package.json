@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test:locomotion": "node tests/locomotion.cjs",
     "test:movement": "node tests/movement.cjs",
+    "test:snow": "node tests/snow.cjs",
+    "test:snow-browser": "node tests/snow-browser.cjs",
     "test:e2e": "node tests/e2e.cjs"
   },
   "dependencies": {

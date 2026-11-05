@@ -81,8 +81,8 @@ export class PlayerAvatar {
     // Rounded jacket, cuffs, pockets and zip: useful silhouette without an asset dependency.
     const coat = mesh(this.chest, new THREE.CylinderGeometry(0.235, 0.225, 0.43, 12), jacket, [1, 1, 0.72], [0, 0.21, 0]);
     hide(coat); // upper torso must not occlude the first-person view looking down
-    mesh(this.chest, new THREE.CylinderGeometry(0.225, 0.225, 0.12, 12), jacket, [1, 1, 0.72], [0, 0.06, 0]);
-    mesh(this.chest, new THREE.CylinderGeometry(0.227, 0.227, 0.045, 12), trim, [1, 1, 0.73], [0, 0.015, 0]);
+    hide(mesh(this.chest, new THREE.CylinderGeometry(0.225, 0.225, 0.12, 12), jacket, [1, 1, 0.72], [0, 0.06, 0]));
+    hide(mesh(this.chest, new THREE.CylinderGeometry(0.227, 0.227, 0.045, 12), trim, [1, 1, 0.73], [0, 0.015, 0]));
     hide(mesh(this.chest, unitBox, trim, [0.012, 0.4, 0.015], [0, 0.21, -0.169]));
     for (const sign of [-1, 1]) {
       hide(mesh(this.chest, unitBox, jacket, [0.12, 0.115, 0.023], [sign * 0.13, 0.12, -0.143]));
@@ -144,17 +144,20 @@ export class PlayerAvatar {
     // Keep steep normals: locomotion needs to distinguish sliding contact from
     // a walkable floor instead of pinning feet to their last successful ray.
     if (!hit || hit.normal.y < 0.05) return null;
-    return { point: new THREE.Vector3(x, this.origin.y - hit.timeOfImpact + 0.012, z),
+    const surface = { point: new THREE.Vector3(x, this.origin.y - hit.timeOfImpact + 0.012, z),
       normal: new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z).normalize(), support: hit.collider.handle };
+    return G.snow?.probe(surface) ?? surface;
   };
 
   reset() {
+    G.snow?.resetBoots();
     this.motion.reset(this.input(), this.probe);
     this.inspectionReady = false;
   }
 
   update(dt: number) {
     this.motion.update(dt, this.input(), this.probe);
+    G.snow?.step();
     for (const contact of this.motion.contacts) {
       const pos = contact.position;
       const indoors = !!G.house.zoneAt(pos) || (Math.abs(pos.x) < 5 && pos.z > 3.9 && pos.z < 6.1 && Math.abs(pos.y - G.house.Y0) < 0.3);

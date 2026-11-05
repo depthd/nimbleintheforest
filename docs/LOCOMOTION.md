@@ -74,11 +74,13 @@ therefore cannot stretch the shin, even in interpolated frames before the next t
 One contact drives one positioned footstep sound. Initial placement and teleport
 are silent; jumping, swimming and sleep cannot emit walking contacts.
 
-For future deformable snow, consume the continuous `feet[].previous` and
+The opt-in snow experiment is described in [SNOW.md](SNOW.md). It consumes the
+continuous `feet[].previous` and
 `feet[].position` trajectory, `footPose` (including toe-off rotation), and contacts. Do not create marks from a
 distance timer. The current probe interface is the place to add snow support depth
-and strength; it currently queries solid surfaces only. No snow deformation exists
-in this change.
+and strength. In the experiment it returns loaded snow support on the test bed;
+solid floors, steps and rocks still take precedence. The ordinary world still
+uses solid surfaces.
 
 ## Rendering and inspection
 
