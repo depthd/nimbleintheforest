@@ -31,6 +31,8 @@ export const groundUniforms = {
   uForestFar: { value: new THREE.Vector2(380, 620) },
   uWorldSnow: { value: 0 },
   uSnowPatch: { value: new THREE.Vector4() },
+  uSnowTiles: { value: null as THREE.Texture | null },
+  uSnowTileGrid: { value: new THREE.Vector4() },
 };
 
 function ridged(n: Simplex2, x: number, y: number, oct: number) {
@@ -67,7 +69,7 @@ varying vec3 vWPos;
 varying vec3 vWNorm;
 uniform vec2 uOrigin; uniform float uSize; uniform sampler2D uBiome; uniform sampler2D uWaterTex; uniform sampler2D uNoise; uniform sampler2D uRock;
 uniform float uTreeline; uniform vec2 uNearCenter; uniform vec2 uNearHalf; uniform vec3 uSunDir; uniform float uGlint; uniform vec2 uForestFar;
-uniform float uWorldSnow; uniform vec4 uSnowPatch;
+uniform float uWorldSnow; uniform vec4 uSnowPatch; uniform sampler2D uSnowTiles; uniform vec4 uSnowTileGrid;
 vec3 triRock(vec3 p, vec3 n) {
   vec3 w = pow(abs(n), vec3(4.0)); w /= (w.x + w.y + w.z);
   return texture2D(uRock, p.yz).rgb * w.x + texture2D(uRock, p.xz).rgb * w.y + texture2D(uRock, p.xy).rgb * w.z;
@@ -103,12 +105,10 @@ vec3 triRock(vec3 p, vec3 n) {
   float peb = bio.a * smoothstep(0.45, 0.7, nz2.a) * (0.6 + 0.4 * nz3.r);
   snow = mix(snow, vec3(0.5, 0.48, 0.45) * (0.7 + 0.5 * nz3.g), peb * 0.75);
 #ifndef SNOW_SURFACE
-  // Nearby this mesh is the immutable substrate below the mutable layer.
-  // Outside that small patch it keeps drawing the existing distant snow.
-  float edge = min(min(vWPos.x - uSnowPatch.x, vWPos.z - uSnowPatch.y), min(uSnowPatch.z - vWPos.x, uSnowPatch.w - vWPos.z));
-  float exposedBase = uWorldSnow * smoothstep(0.0, 3.2, edge);
-  vec3 soil = mix(vec3(0.18, 0.17, 0.15), vec3(0.30, 0.28, 0.24), nz2.r);
-  snow = mix(snow, soil, exposedBase);
+  if (uWorldSnow > 0.5) {
+    vec2 tile = floor(vWPos.xz / 3.2) - uSnowTileGrid.xy;
+    if (texture2D(uSnowTiles, (tile + 0.5) / uSnowTileGrid.zw).r > 0.5) discard;
+  }
 #endif
   // rock: steep slopes are bare, ledges keep snow; high ground is wind-scoured
   float rockK = smoothstep(0.33 + 0.06 * nz2.r, 0.45 + 0.04 * nz2.g, slope);
@@ -166,6 +166,8 @@ interface Slot {
 }
 
 export class Terrain {
+  private snowHeightAt: ((x: number, z: number) => number) | null = null;
+  private snowDepthMaterial: THREE.MeshDepthMaterial | null = null;
   R: Region;
   size: number;
   n: number;
@@ -190,6 +192,29 @@ export class Terrain {
 
   heightAt(x: number, z: number) {
     return this.R.heightAt(x, z);
+  }
+  enableSnow(height: (x: number, z: number) => number) {
+    this.snowHeightAt = height;
+    // The permanent surface includes the upper layer everywhere. There is no
+    // camera-centred slab to move or appear under an existing trail.
+    for (const s of this.slots) for (const g of s.geos) if (g) {
+      const p = g.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + height(p.getX(i) + s.ci * CH * 2 - this.R.ox, p.getZ(i) + s.cj * CH * 2 - this.R.oz));
+      p.needsUpdate = true;
+    }
+    const far = this.far.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < far.count; i++) far.setY(i, far.getY(i) + height(far.getX(i), far.getZ(i)));
+    far.needsUpdate = true;
+    const depth = this.snowDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+    depth.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, { uSnowTiles: groundUniforms.uSnowTiles, uSnowTileGrid: groundUniforms.uSnowTileGrid });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vTilePosition;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvTilePosition = (modelMatrix * vec4(transformed,1.0)).xz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vTilePosition; uniform sampler2D uSnowTiles; uniform vec4 uSnowTileGrid;')
+        .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (texture2D(uSnowTiles,(floor(vTilePosition/3.2)-uSnowTileGrid.xy+0.5)/uSnowTileGrid.zw).r>0.5) discard;');
+    };
+    depth.customProgramCacheKey = () => 'terrain-snow-cutout-depth-v1';
+    for (const s of this.slots) if (s.mesh) s.mesh.customDepthMaterial = depth;
   }
 
   build() {
@@ -286,7 +311,7 @@ export class Terrain {
     const span = s;
     const setV = (o: number, a: number, b: number, drop: number) => {
       const i = i0 + a * s, j = j0 + b * s;
-      const h = hAt(i, j);
+      const h = hAt(i, j) + (this.snowHeightAt?.(i * 2 - this.R.ox, j * 2 - this.R.oz) ?? 0);
       pos[o * 3] = a * s * 2;
       pos[o * 3 + 1] = h - drop;
       pos[o * 3 + 2] = b * s * 2;
@@ -441,6 +466,7 @@ export class Terrain {
         s.mesh = new THREE.Mesh(s.geos[lod]!, this.mat);
         s.mesh.position.set(x0, 0, z0);
         s.mesh.receiveShadow = true;
+        if (this.snowDepthMaterial) s.mesh.customDepthMaterial = this.snowDepthMaterial;
         s.mesh.name = 'terrain';
         this.group.add(s.mesh);
       }

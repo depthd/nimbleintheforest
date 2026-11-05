@@ -1,11 +1,11 @@
 // Portable diagnostic data only. Imported recordings are data, never code.
-export type SnowCell = [number, number, number, number]; // ix, iz, quantity delta, packed density
-export type SnowChange = [number, number, number, number, number, number]; // ix,iz,old delta,density,new delta,density
-export interface RecordedSnow { enabled: boolean; thickness: number; ratio: number; cells: SnowCell[] }
+export type SnowCell = [number, number, number, number, number?]; // optional weather exposure at contact
+export type SnowChange = [number, number, number, number, number, number, number?, number?];
+export interface RecordedSnow { enabled: boolean; thickness: number; ratio: number; cells: SnowCell[]; weatherExposure?: number }
 export interface MotionFrame {
   id: number; t: number; dt: number; alpha: number; pose: number[] | Float32Array; camera: number[]; view: number;
   input: any; player: any; animation: any; ticks: any[];
-  snow: { enabled: boolean; reset?: RecordedSnow; changes: SnowChange[] } | null;
+  snow: { enabled: boolean; reset?: RecordedSnow; changes: SnowChange[]; weatherExposure?: number } | null;
 }
 export interface MotionRecording {
   format: 'nimble-motion'; version: 1; context: any; rig: string[];
@@ -36,7 +36,8 @@ export class MotionRing {
   }
   private resetSnow(state: RecordedSnow | null) {
     this.cells.clear();
-    this.snow = state ? { enabled: state.enabled, thickness: state.thickness, ratio: state.ratio } : null;
+    this.snow = state ? { enabled: state.enabled, thickness: state.thickness, ratio: state.ratio,
+      ...(state.weatherExposure !== undefined ? { weatherExposure: state.weatherExposure } : {}) } : null;
     if (state) for (const c of state.cells) this.cells.set(`${c[0]},${c[1]}`, [...c]);
   }
   push(frame: MotionFrame) {
@@ -46,9 +47,10 @@ export class MotionRing {
       if (old.snow?.reset) this.resetSnow(old.snow.reset);
       if (old.snow && this.snow) {
         this.snow.enabled = old.snow.enabled;
+        this.snow.weatherExposure = old.snow.weatherExposure ?? this.snow.weatherExposure;
         for (const c of old.snow.changes) {
           const key = `${c[0]},${c[1]}`;
-          if (!c[4] && !c[5]) this.cells.delete(key); else this.cells.set(key, [c[0], c[1], c[4], c[5]]);
+          if (!c[4] && !c[5]) this.cells.delete(key); else this.cells.set(key, c.length > 6 ? [c[0], c[1], c[4], c[5], c[7] ?? 0] : [c[0], c[1], c[4], c[5]]);
         }
       }
     }
@@ -77,7 +79,8 @@ export function validateRecording(value: any): MotionRecording {
   const snow = (s: any) => {
     if (s === null) return;
     if (!s || typeof s.enabled !== 'boolean' || typeof s.thickness !== 'number' || typeof s.ratio !== 'number' || !(s.thickness > 0 && s.thickness < 10) || !(s.ratio >= 1 && s.ratio < 20) || !Array.isArray(s.cells) || s.cells.length > 500_000) fail();
-    for (const c of s.cells) if (!Array.isArray(c) || c.length !== 4 || !Number.isInteger(c[0]) || !Number.isInteger(c[1]) || Math.abs(c[0]) > 1e7 || Math.abs(c[1]) > 1e7 || typeof c[2] !== 'number' || Math.abs(c[2]) > 1e4 || !Number.isInteger(c[3]) || c[3] < 0 || c[3] > 255) fail();
+    if (s.weatherExposure !== undefined && (typeof s.weatherExposure !== 'number' || s.weatherExposure < 0)) fail();
+    for (const c of s.cells) if (!Array.isArray(c) || ![4, 5].includes(c.length) || (c[4] !== undefined && (typeof c[4] !== 'number' || c[4] < 0)) || !Number.isInteger(c[0]) || !Number.isInteger(c[1]) || Math.abs(c[0]) > 1e7 || Math.abs(c[1]) > 1e7 || typeof c[2] !== 'number' || Math.abs(c[2]) > 1e4 || !Number.isInteger(c[3]) || c[3] < 0 || c[3] > 255) fail();
   };
   snow(value.initialSnow);
   let lastId = -1, lastTime = -Infinity;
@@ -89,9 +92,10 @@ export function validateRecording(value: any): MotionRecording {
       ![0, 1, 2].includes(f.view) || !Array.isArray(f.ticks) || f.ticks.length > 300 || !f.player || !Array.isArray(f.player.pos) || f.player.pos.length !== 3 || !f.player.pos.every(x => typeof x === 'number') || !f.animation) fail();
     for (const key of ['hipHeight', 'bodyYaw']) if (f.animation[key] !== undefined && typeof f.animation[key] !== 'number') fail();
     if (f.snow) {
+      if (f.snow.weatherExposure !== undefined && (typeof f.snow.weatherExposure !== 'number' || f.snow.weatherExposure < 0)) fail();
       if (typeof f.snow.enabled !== 'boolean' || !Array.isArray(f.snow.changes) || f.snow.changes.length > 500_000) fail();
       if (f.snow.reset) snow(f.snow.reset);
-      for (const c of f.snow.changes) if (!Array.isArray(c) || c.length !== 6 || !c.every(x => typeof x === 'number') || !Number.isInteger(c[0]) || !Number.isInteger(c[1]) || Math.abs(c[0]) > 1e7 || Math.abs(c[1]) > 1e7 || Math.abs(c[2]) > 1e4 || Math.abs(c[4]) > 1e4 || !Number.isInteger(c[3]) || !Number.isInteger(c[5]) || c[3] < 0 || c[3] > 255 || c[5] < 0 || c[5] > 255) fail();
+      for (const c of f.snow.changes) if (!Array.isArray(c) || ![6, 8].includes(c.length) || !c.every(x => typeof x === 'number') || (c.length === 8 && (c[6] < 0 || c[7] < 0)) || !Number.isInteger(c[0]) || !Number.isInteger(c[1]) || Math.abs(c[0]) > 1e7 || Math.abs(c[1]) > 1e7 || Math.abs(c[2]) > 1e4 || Math.abs(c[4]) > 1e4 || !Number.isInteger(c[3]) || !Number.isInteger(c[5]) || c[3] < 0 || c[3] > 255 || c[5] < 0 || c[5] > 255) fail();
     }
     lastId = f.id; lastTime = f.t;
   }

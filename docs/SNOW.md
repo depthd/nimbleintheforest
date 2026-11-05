@@ -11,13 +11,42 @@ quantity collected. These are ordinary contextual actions: equipped tools retain
 their controls, and eating snow, filling pots and making fires remain available.
 The snow ray hides buried items until a visible route to them is excavated.
 
-Only a 22.4 m square around the player has detailed snow geometry: 49 recycled
-meshes and 69,009 grid vertices, with the existing nine fine / sixteen medium /
-twenty-four coarse tiles. No map-sized 40 cm mesh is built. Outside that patch,
-the existing terrain shader supplies the distant snow. The outer ring blends into
-it; inside the patch the terrain shader draws the bare substrate beneath the
-upper layer. The same biome shader shades the detailed layer, retaining needles,
-burned ground and shore colour. Changed cells remain sparse when travelling.
+The permanent terrain includes the undisturbed upper layer everywhere. Changed
+3.2 m tiles use `snow-trails.ts`, independent of the camera's tile. Their filtered
+height/compaction textures remain at every view distance. Nearby geometry samples
+that texture at 2 cm; relief fades continuously from 8 to 18 m, while the same
+footprint normals and colour remain visible farther away. At 22 m the geometry
+switches to a shared coarse mesh, after both versions have become identical flat
+relief. A world tile mask cuts out the permanent surface only where a persistent
+replacement exists. It also cuts out the corresponding shadow caster. There is
+no moving slab and no coarse vertex grid that can swallow a distant boot print.
+
+Deformation is filtered with a shared 3×3 kernel and shaded with continuous
+texture normals. Biome/rock selection uses the immutable slope, so a footprint
+wall cannot turn into dark rock. Shadow geometry uses the same displacement and
+viewer position. Small edge overlaps close raster cracks between the two surfaces.
+
+## Track weathering
+
+`SnowField.advanceWeather(gameSeconds, weather)` accumulates transported snow:
+up to 4 mm per game minute from snowfall, plus 0.25 mm per minute per m/s of wind
+above 4 m/s. Each changed cell records its exposure at its last contact. A smooth
+depth-dependent curve fills hollows and wears down rims; a thin fresh cover hides
+surface compaction earlier. Clear calm weather does not expire tracks on a timer.
+At the normal ×12 clock, heavy snowfall/blizzard typically covers footprints over
+a few real minutes; lighter weather takes longer. These are initial game values.
+
+Queries evaluate weather history analytically, including archived/offscreen cells.
+Pause stops game time; sleep/wait advances it. Rendering refreshes weathered
+textures in small increments (0.1 mm exposure threshold); fully covered tile
+geometry and material storage are reclaimed only after relief has returned to the
+surrounding surface. New contacts become fresh without rejuvenating older cells.
+This is track infilling/redistribution within the fixed upper layer, not a model
+of the whole world's snowpack gaining unlimited depth or melting.
+
+`sweepContact` accepts a contact outline (width, front/back extent, rounding,
+shoulder and height); `sweepBoot` supplies the existing human boot. Paws/hooves can
+use this same material, lifetime and renderer. Animal movement is not changed here.
 
 ## Laboratory
 
@@ -64,19 +93,22 @@ existing interaction code.
 - 4 cm material grid, 3.2 m storage tiles. Pristine space needs no detailed arrays.
 - At most 32 tiles keep dense mutable arrays. Older tiles store only changed
   indices, material quantities and compaction; reading them does not unpack them.
-- One fixed rendering pool: nine fine, sixteen medium and twenty-four coarse
+- The laboratory keeps its fixed rendering pool: nine fine, sixteen medium and twenty-four coarse
   tiles, plus a cheap distant cover. 69,009 pooled grid vertices; 50 meshes total.
   Traversing farther reuses their geometries and materials.
 - Deformation updates only its dirty rectangle plus the normal border. Streaming
   uses direct grid reads and a reusable height buffer, avoiding per-vertex
   interpolated material queries and object allocation. Pristine tiles have a fast
   flat-fill path.
+- Ordinary play shares two mesh templates and creates textures only for changed
+  tiles (57,800 GPU bytes per tile). Distant tiles have 81 vertices; nearby ones
+  have 25,921, with per-tile bounds for view and shadow culling. Geometry complexity
+  changes with the nearby trail area, not the distance travelled. Far silhouettes
+  remain; texture/history storage grows with surviving tracks until weather clears them.
 - No snow colliders or rigid bodies are created per footstep. No physical snow
-  particles. Ordinary play uses the bounded near pool rather than a whole-map mesh.
+  particles or whole-map fine mesh.
 
-Old trails remain for the page's lifetime and return when the near pool revisits
-them. The distant terrain uses the simplified undisturbed cover.
-Reload persistence, temperature/moisture/crust, snowfall,
+Reload persistence, temperature/moisture/crust, whole-pack accumulation,
 melting, slope transport and finished shovel/particle effects are subsequent work.
 This height layer cannot represent tunnels or overhanging crust.
 
@@ -109,6 +141,12 @@ The reported long foot lift was not reproduced in these six cases; this is a
 targeted check, not a claim that every possible animation transition is covered.
 
 ## Verification
+
+`npm run test:trails` checks continuous lifetime, calm-weather persistence,
+weather rates, independent contact ages, archived history, cleanup and configurable
+paw-sized contact sweeps. `test:trails-browser` checks actual walking, unchanged
+trail textures across distance/LOD boundaries, and fixed-camera images of gradual
+infilling/whitening and final restoration, plus the ordinary game weather hook.
 
 `npm run test:world-snow` opens ordinary play without `?snow=1`: forest footprints,
 actual collider/terrain agreement, digging to reveal and collect a real item,

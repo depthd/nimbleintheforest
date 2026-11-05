@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { G } from './ctx';
 import { SnowField } from '../world/snow-field';
 import type { BootPose } from '../world/snow-field';
-import { SnowRenderer } from '../world/snow-renderer';
+import { SnowTrailRenderer } from '../world/snow-trails';
 import { WorldSnowTerrain } from '../world/snow-terrain';
-import { makeGroundMaterial, groundUniforms } from '../world/terrain';
+import { groundUniforms } from '../world/terrain';
 import { footPose } from './locomotion';
 import type { FootSurface } from './locomotion';
 
@@ -14,7 +14,7 @@ export class WorldSnow {
   readonly bounds = { minX: G.region.minX, minZ: G.region.minZ, maxX: G.region.maxX, maxZ: G.region.maxZ };
   readonly terrain: WorldSnowTerrain;
   readonly field: SnowField;
-  readonly renderer: SnowRenderer;
+  readonly renderer: SnowTrailRenderer;
   carriedSnow = 0;
   bootMs = 0;
   renderMs = 0;
@@ -24,6 +24,7 @@ export class WorldSnow {
   private roofX = Infinity;
   private roofZ = Infinity;
   private nearbyRoofs: typeof G.structures.shelters = [];
+  private weatherTime = G.time;
 
   constructor() {
     // A roof lookup visits only shelters in this 64 m neighbourhood.
@@ -39,11 +40,10 @@ export class WorldSnow {
     this.terrain = new WorldSnowTerrain(G.region, (x, z) => this.contains(x, z));
     this.field = new SnowField({ thickness: 0.28, densityRatio: 2.6, base: this.terrain.heightAt,
       coverage: this.terrain.retentionAt, contains: (x, z) => this.contains(x, z) });
-    this.renderer = new SnowRenderer(this.field, 0, this.bounds,
-      { far: false, fadeEdges: true, material: makeGroundMaterial(false, true) });
+    this.renderer = new SnowTrailRenderer(this.field, this.bounds);
     this.renderer.group.name = 'world-snow'; G.scene.add(this.renderer.group);
     groundUniforms.uWorldSnow.value = 1;
-    groundUniforms.uSnowPatch.value = this.renderer.patchBounds;
+    G.terrain.enableSnow((x,z) => this.field.initialThickness(x,z));
     this.renderer.update(G.player.pos);
   }
   contains(x: number, z: number) {
@@ -109,6 +109,8 @@ export class WorldSnow {
     this.cooldown = 0.3; G.audio.play('snow_scoop', { pos: point, vol: 0.5 });
   }
   update(dt: number) {
+    const elapsed = Math.max(0, G.time - this.weatherTime); this.weatherTime = G.time;
+    this.field.advanceWeather(elapsed, G.weather);
     this.cooldown = Math.max(0, this.cooldown - dt);
     const start = performance.now(); this.renderer.update(G.player.pos); this.renderMs = performance.now() - start;
   }

@@ -1,0 +1,179 @@
+// Persistent world tiles. Distance changes relief continuously, never the trail's
+// footprint. Far tiles retain the same filtered material texture and lighting.
+import * as THREE from 'three';
+import { CELL, TILE_CELLS, TILE_SIZE, SnowField } from './snow-field';
+import type { SnowRect } from './snow-field';
+import { makeGroundMaterial, groundUniforms } from './terrain';
+
+const SIZE = TILE_CELLS + 5, RAW = SIZE + 2;
+const shader = /* glsl */ `
+uniform sampler2D uTrail; uniform vec2 uTrailOrigin; uniform float uTrailBase;
+uniform vec3 uTrailEye;
+vec4 trail(vec2 p) { return texture2D(uTrail, (p / 0.04 + 2.5) / 85.0); }
+float detail(vec2 p) { return 1.0 - smoothstep(8.0, 18.0, distance(p + uTrailOrigin, uTrailEye.xz)); }
+float trailHeight(vec2 p, bool relief) { vec4 t = trail(p); return t.r + t.g + (relief ? t.b * detail(p) : 0.0); }
+vec3 trailNormal(vec2 p, bool relief) {
+  float e = 0.025;
+  vec4 a=trail(p+vec2(e,0)), b=trail(p-vec2(e,0)), c=trail(p+vec2(0,e)), d=trail(p-vec2(0,e));
+  float dx = a.r+a.g-b.r-b.g + (relief ? a.b-b.b : 0.0);
+  float dz = c.r+c.g-d.r-d.g + (relief ? c.b-d.b : 0.0);
+  return normalize(vec3(-dx, 2.0*e, -dz));
+}`;
+class TrailMesh extends THREE.Mesh { boundingSphere = new THREE.Sphere(); }
+interface Entry { x: number; z: number; signature: string; exposure: number; base: number;
+  mesh: TrailMesh; texture: THREE.DataTexture; pixels: Uint16Array;
+  active: Uint8Array; activeCount: number; minY: number; maxY: number; }
+
+export class SnowTrailRenderer {
+  readonly group = new THREE.Group();
+  private entries = new Map<string, Entry>();
+  // Refreshes are sequential; scratch stencils are shared by every trail tile.
+  private raw = new Float32Array(RAW * RAW);
+  private packed = new Float32Array(RAW * RAW);
+  private empty = new Map<string, { signature: string; exposure: number }>();
+  private fine = this.geometry(160);
+  private far = this.geometry(8);
+  private eye = { value: new THREE.Vector3() };
+  private previousField: SnowField;
+  private mask: THREE.DataTexture;
+  private maskPixels: Uint8Array;
+  private origin: THREE.Vector2;
+  private width: number;
+  updatedVertices = 0;
+  constructor(public field: SnowField, bounds: SnowRect) {
+    this.previousField = field;
+    this.origin = new THREE.Vector2(Math.floor(bounds.minX / TILE_SIZE), Math.floor(bounds.minZ / TILE_SIZE));
+    this.width = Math.ceil(bounds.maxX / TILE_SIZE) - this.origin.x + 1;
+    const height = Math.ceil(bounds.maxZ / TILE_SIZE) - this.origin.y + 1;
+    this.maskPixels = new Uint8Array(this.width * height);
+    this.mask = new THREE.DataTexture(this.maskPixels, this.width, height, THREE.RedFormat);
+    this.mask.magFilter = this.mask.minFilter = THREE.NearestFilter; this.mask.needsUpdate = true;
+    groundUniforms.uSnowTiles.value = this.mask;
+    groundUniforms.uSnowTileGrid.value.set(this.origin.x, this.origin.y, this.width, height);
+    this.group.name = 'snow-trails';
+  }
+  private geometry(cells: number) {
+    // Cover the multisample footprint of pixels straddling the terrain cutout.
+    // Texture guard samples extend 8 cm beyond each edge; 6 cm of overlap avoids
+    // uncovered MSAA samples at distant/grazing views without stretching the UVs.
+    const g = new THREE.PlaneGeometry(TILE_SIZE + 0.12, TILE_SIZE + 0.12, cells, cells);
+    g.rotateX(-Math.PI / 2); g.translate(TILE_SIZE / 2, 0, TILE_SIZE / 2); return g;
+  }
+  private signature(x: number, z: number) {
+    let s = '';
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) s += `${this.field.tileRevision(x + dx, z + dz)},`;
+    return s;
+  }
+  private setMask(e: Entry, visible: boolean) {
+    const i = (e.z - this.origin.y) * this.width + e.x - this.origin.x;
+    if (this.maskPixels[i] !== +visible * 255) { this.maskPixels[i] = +visible * 255; this.mask.needsUpdate = true; }
+  }
+  private create(x: number, z: number): Entry {
+    const pixels = new Uint16Array(SIZE * SIZE * 4);
+    const texture = new THREE.DataTexture(pixels, SIZE, SIZE, THREE.RGBAFormat, THREE.HalfFloatType);
+    texture.magFilter = texture.minFilter = THREE.LinearFilter;
+    const base = this.field.baseHeight(x * TILE_SIZE, z * TILE_SIZE);
+    const uniforms = { uTrail: { value: texture }, uTrailOrigin: { value: new THREE.Vector2(x * TILE_SIZE, z * TILE_SIZE) },
+      uTrailBase: { value: base }, uTrailEye: this.eye };
+    const material = makeGroundMaterial(false, true), compile = material.onBeforeCompile;
+    material.polygonOffset = true; material.polygonOffsetFactor = -1; material.polygonOffsetUnits = -1;
+    material.onBeforeCompile = (sh, renderer) => {
+      compile.call(material, sh, renderer); Object.assign(sh.uniforms, uniforms);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + shader)
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y = uTrailBase + trailHeight(position.xz, true);')
+        .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nobjectNormal = trailNormal(position.xz, true);')
+        .replace('vWNorm = normalize(mat3(modelMatrix) * wn3);', 'vWNorm = trailNormal(position.xz, false);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + shader)
+        .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize(mat3(viewMatrix) * trailNormal(vWPos.xz - uTrailOrigin, true));')
+        .replace('  // rock: steep slopes', `  vec4 contactSnow = trail(vWPos.xz - uTrailOrigin);
+  vec3 earth = mix(vec3(0.18,0.17,0.15), vec3(0.30,0.28,0.24), nz2.r);
+  snow = mix(earth, snow, smoothstep(0.005,0.035,contactSnow.g + contactSnow.b));
+  snow *= 1.0 - contactSnow.a * 0.025;
+  // rock: steep slopes`);
+    };
+    material.customProgramCacheKey = () => 'persistent-snow-trail-v1';
+    const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+    depth.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, uniforms);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + shader)
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y = uTrailBase + trailHeight(position.xz, true);');
+    };
+    depth.customProgramCacheKey = () => 'snow-trail-depth-v1';
+    const mesh = new TrailMesh(this.fine, material); mesh.position.set(x * TILE_SIZE, 0, z * TILE_SIZE);
+    mesh.receiveShadow = mesh.castShadow = true; mesh.customDepthMaterial = depth;
+    // Geometry is shared; shader displacement has per-tile bounds.
+    this.group.add(mesh);
+    return { x, z, base, mesh, pixels, texture,
+      active: new Uint8Array(SIZE * SIZE), activeCount: 0, minY: Infinity, maxY: -Infinity, signature: '', exposure: -Infinity };
+  }
+  private refresh(e: Entry, dirty?: SnowRect) {
+    const gx = e.x * TILE_CELLS, gz = e.z * TILE_CELLS;
+    const x0 = dirty ? Math.max(0, Math.floor(dirty.minX / CELL - gx) + 1) : 0;
+    const x1 = dirty ? Math.min(SIZE - 1, Math.ceil(dirty.maxX / CELL - gx) + 3) : SIZE - 1;
+    const z0 = dirty ? Math.max(0, Math.floor(dirty.minZ / CELL - gz) + 1) : 0;
+    const z1 = dirty ? Math.min(SIZE - 1, Math.ceil(dirty.maxZ / CELL - gz) + 3) : SIZE - 1;
+    if (x0 > x1 || z0 > z1) { e.signature = this.signature(e.x,e.z); return e.activeCount > 0; }
+    for (let z = z0; z <= z1 + 2; z++) for (let x = x0; x <= x1 + 2; x++) {
+      const ix = gx + x - 3, iz = gz + z - 3, state = this.field.gridState(ix, iz), i = z * RAW + x;
+      this.raw[i] = state.height - this.field.initialThickness(ix * CELL, iz * CELL);
+      this.packed[i] = state.surfaceCompaction;
+    }
+    if (!dirty) { e.minY = Infinity; e.maxY = -Infinity; }
+    const weights = [0.25, 0.5, 0.25];
+    for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
+      let delta = 0, packed = 0;
+      for (let dz = 0; dz < 3; dz++) for (let dx = 0; dx < 3; dx++) {
+        const i = (z + dz) * RAW + x + dx, weight = weights[dx] * weights[dz];
+        delta += this.raw[i] * weight; packed += this.packed[i] * weight;
+      }
+      const wx = (gx + x - 2) * CELL, wz = (gz + z - 2) * CELL, i = (z * SIZE + x) * 4;
+      const values = [this.field.baseHeight(wx, wz) - e.base, this.field.initialThickness(wx, wz), delta, packed];
+      e.minY = Math.min(e.minY, e.base + values[0] + values[1] + Math.min(0, delta));
+      e.maxY = Math.max(e.maxY, e.base + values[0] + values[1] + Math.max(0, delta));
+      for (let k = 0; k < 4; k++) e.pixels[i + k] = THREE.DataUtils.toHalfFloat(values[k]);
+      const active = +(x >= 2 && x <= SIZE - 3 && z >= 2 && z <= SIZE - 3 && (Math.abs(delta) > 0.00005 || packed > 0.001));
+      const index = z * SIZE + x; e.activeCount += active - e.active[index]; e.active[index] = active;
+    }
+    e.texture.needsUpdate = true; if (!dirty) e.exposure = this.field.weatherExposure; e.signature = this.signature(e.x, e.z);
+    new THREE.Box3(new THREE.Vector3(-0.06,e.minY-0.1,-0.06),new THREE.Vector3(TILE_SIZE+0.06,e.maxY+0.1,TILE_SIZE+0.06)).getBoundingSphere(e.mesh.boundingSphere);
+    e.mesh.visible = e.activeCount > 0; this.setMask(e, e.mesh.visible); this.updatedVertices += (x1-x0+1)*(z1-z0+1);
+    return e.mesh.visible;
+  }
+  private remove(key: string, e: Entry) {
+    this.setMask(e, false); this.group.remove(e.mesh); (e.mesh.material as THREE.Material).dispose();
+    e.mesh.customDepthMaterial?.dispose(); e.texture.dispose(); this.entries.delete(key);
+  }
+  update(position: THREE.Vector3) {
+    this.eye.value.copy(position); this.updatedVertices = 0;
+    if (this.previousField !== this.field) {
+      for (const [k, e] of this.entries) this.remove(k, e);
+      this.empty.clear(); this.previousField = this.field;
+    }
+    const dirty = this.field.takeDirty();
+    const wanted = new Set<string>(); let weatherBudget = 1;
+    this.field.visitTiles((x, z) => {
+      const key = `${x},${z}`, signature = this.signature(x, z); wanted.add(key);
+      const oldEmpty = this.empty.get(key);
+      if (oldEmpty?.signature === signature && this.field.weatherExposure >= oldEmpty.exposure) return;
+      let e = this.entries.get(key);
+      if (!e) { e = this.create(x, z); this.entries.set(key, e); }
+      const distance = Math.hypot((x + 0.5) * TILE_SIZE - position.x, (z + 0.5) * TILE_SIZE - position.z);
+      // Both meshes are exactly flat at the switch. Texture shape persists at
+      // every distance, so a boot never falls between coarse geometry vertices.
+      e.mesh.geometry = distance < 22 ? this.fine : this.far;
+      e.mesh.castShadow = distance < 22;
+      const changed = e.signature !== signature;
+      const weather = this.field.weatherExposure - e.exposure > 0.0001;
+      if (changed || (weather && weatherBudget-- > 0)) {
+        if (!this.refresh(e, e.signature && !weather ? dirty ?? undefined : undefined)) {
+          this.empty.set(key, { signature: e.signature, exposure: e.exposure });
+          this.remove(key, e); this.field.forgetWeatheredTile(x, z);
+        }
+      }
+    });
+    for (const [key, e] of this.entries) if (!wanted.has(key)) this.remove(key, e);
+  }
+  refreshAll() { for (const e of this.entries.values()) this.refresh(e); }
+  stats() { return { meshes: this.entries.size, vertices: Array.from(this.entries.values()).reduce((n,e) => n + e.mesh.geometry.attributes.position.count, 0),
+    updatedVertices: this.updatedVertices, texturesBytes: this.entries.size * SIZE * SIZE * 8 }; }
+}

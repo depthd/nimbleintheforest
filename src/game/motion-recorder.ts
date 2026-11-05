@@ -85,7 +85,7 @@ export class MotionRecorder {
   private message(text: string) { this.notice.textContent = text; }
   private snowState(): RecordedSnow | null {
     const s = G.snow;
-    return s ? { enabled: s.enabled, thickness: s.field.thickness, ratio: s.field.densityRatio, cells: s.field.recordedCells() } : null;
+    return s ? { enabled: s.enabled, thickness: s.field.thickness, ratio: s.field.densityRatio, cells: s.field.recordedCells(), weatherExposure: s.field.weatherExposure } : null;
   }
   private watchSnow() {
     const field = G.snow?.field ?? null;
@@ -96,7 +96,7 @@ export class MotionRecorder {
       this.resetSnow = this.snowState()!; this.changes.clear();
       field.onRecordedChange = c => {
         const key = `${c[0]},${c[1]}`, old = this.changes.get(key);
-        if (old) { old[4] = c[4]; old[5] = c[5]; } else this.changes.set(key, c);
+        if (old) { old[4] = c[4]; old[5] = c[5]; old[7] = c[7]; } else this.changes.set(key, c);
       };
     }
   }
@@ -149,7 +149,7 @@ export class MotionRecorder {
       id: this.sequence++, t: performance.now() / 1000 - this.started, dt, alpha, pose: a.recordedPose(),
       camera: [...c.position.toArray(), ...c.quaternion.toArray(), c.fov, c.aspect, c.near, c.far], view: a.inspectionView,
       input: this.inputState(), player: this.playerState(), animation: a.snapshot(), ticks: this.ticks,
-      snow: G.snow ? { enabled: G.snow.enabled, reset: this.resetSnow, changes: [...this.changes.values()] } : null,
+      snow: G.snow ? { enabled: G.snow.enabled, reset: this.resetSnow, changes: [...this.changes.values()], weatherExposure: G.snow.field.weatherExposure } : null,
     };
     this.ring.push(frame); this.ticks = []; this.changes.clear(); this.resetSnow = undefined;
     this.status.textContent = `● ${Math.min(20, frame.t).toFixed(1)} с · F8 — разобрать`;
@@ -193,6 +193,7 @@ export class MotionRecorder {
     const field = new SnowField({ thickness: state.thickness, densityRatio: state.ratio, base: s.terrain.heightAt, coverage: s.terrain.retentionAt,
       contains: (x, z) => s.contains(x, z) });
     for (const c of state.cells) field.applyRecordedCell(...c);
+    field.weatherExposure = state.weatherExposure ?? 0;
     return field;
   }
   private seekSnow(index: number) {
@@ -203,13 +204,14 @@ export class MotionRecorder {
       this.replayField = this.makeSnow(this.data.initialSnow); this.snowCursor = -1; fresh = true;
     }
     if (index < this.snowCursor) {
-      for (let i = this.snowCursor; i > index; i--) for (const c of frames[i].snow?.changes ?? []) this.replayField.applyRecordedCell(c[0], c[1], c[2], c[3]);
+      for (let i = this.snowCursor; i > index; i--) for (const c of frames[i].snow?.changes ?? []) this.replayField.applyRecordedCell(c[0], c[1], c[2], c[3], c[6] ?? 0);
     } else for (let i = this.snowCursor + 1; i <= index; i++) {
       const state = frames[i].snow;
       if (state?.reset) { this.replayField = this.makeSnow(state.reset); fresh = true; }
-      for (const c of state?.changes ?? []) this.replayField.applyRecordedCell(c[0], c[1], c[4], c[5]);
+      for (const c of state?.changes ?? []) this.replayField.applyRecordedCell(c[0], c[1], c[4], c[5], c[7] ?? 0);
     }
     this.snowCursor = index;
+    this.replayField.weatherExposure = frames[index].snow?.weatherExposure ?? this.data.initialSnow.weatherExposure ?? 0;
     G.snow.renderer.field = this.replayField; G.snow.renderer.group.visible = frames[index].snow?.enabled ?? false;
     G.snow.renderer.update(new THREE.Vector3().fromArray(frames[index].player.pos));
     if (fresh) G.snow.renderer.refreshAll();

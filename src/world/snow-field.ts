@@ -8,19 +8,22 @@ export const TILE_SIZE = CELL * TILE_CELLS;
 const COUNT = TILE_CELLS * TILE_CELLS;
 export interface BootPose { position: THREE.Vector3; rotation: THREE.Quaternion }
 export interface SnowRect { minX: number; minZ: number; maxX: number; maxZ: number }
-interface Hot { mass: Float32Array; packed: Uint8Array; age: number }
-interface Cold { indices: Uint16Array; mass: Float32Array; packed: Uint8Array }
-interface Tile { hot?: Hot; cold?: Cold }
+interface Hot { mass: Float32Array; packed: Uint8Array; exposure: Float32Array; age: number }
+interface Cold { indices: Uint16Array; mass: Float32Array; packed: Uint8Array; exposure: Float32Array }
+interface Tile { hot?: Hot; cold?: Cold; revision: number }
+export interface ContactShape { halfWidth: number; front: number; back: number; height: number; rounding: number; shoulder: number }
+export const BOOT_SHAPE: ContactShape = { halfWidth: 0.0725, front: 0.20, back: 0.11, height: 0.26, rounding: 0.025, shoulder: 0.035 };
 const clamp = THREE.MathUtils.clamp;
-const low = [-0.0725, 0, -0.20], high = [0.0725, 0.26, 0.11];
 
 export class SnowField {
-  onRecordedChange?: (change: [number, number, number, number, number, number]) => void;
+  onRecordedChange?: (change: [number, number, number, number, number, number, number, number]) => void;
+  weatherExposure = 0; // cumulative metres of snow transport; independent of camera/rendering
   readonly thickness: number;
   readonly densityRatio: number;
   readonly variableSurface: boolean;
   private tiles = new Map<string, Tile>();
   private age = 0;
+  private revision = 0;
   private dirty: SnowRect | null = null;
   private base: (x: number, z: number) => number;
   private coverage: (x: number, z: number) => number;
@@ -44,24 +47,65 @@ export class SnowField {
   }
   private read(ix: number, iz: number) {
     const a = this.address(ix, iz), t = this.tiles.get(a.key);
-    let delta = 0, compaction = 0;
-    if (t?.hot) { delta = t.hot.mass[a.index]; compaction = t.hot.packed[a.index] / 255; }
+    let delta = 0, compaction = 0, exposure = 0;
+    if (t?.hot) { delta = t.hot.mass[a.index]; compaction = t.hot.packed[a.index] / 255; exposure = t.hot.exposure[a.index]; }
     else if (t?.cold) {
       const c = t.cold;
       let lo = 0, hi = c.indices.length;
       while (lo < hi) { const mid = (lo + hi) >>> 1; if (c.indices[mid] < a.index) lo = mid + 1; else hi = mid; }
-      if (c.indices[lo] === a.index) { delta = c.mass[lo]; compaction = c.packed[lo] / 255; }
+      if (c.indices[lo] === a.index) { delta = c.mass[lo]; compaction = c.packed[lo] / 255; exposure = c.exposure[lo]; }
     }
-    const mass = Math.max(0, this.initialThickness(ix * CELL, iz * CELL) + delta);
-    return { mass, compaction, height: mass / (1 + compaction * (this.densityRatio - 1)) };
+    return this.weathered(ix, iz, delta, compaction, exposure);
+  }
+  private weathered(ix: number, iz: number, delta: number, compaction: number, exposure: number) {
+    const initial = this.initialThickness(ix * CELL, iz * CELL);
+    let mass = Math.max(0, initial + delta), height = mass / (1 + compaction * (this.densityRatio - 1));
+    const dose = Math.max(0, this.weatherExposure - exposure);
+    if (dose > 0 && (delta || compaction)) {
+      // Shallow rims disappear first. Deeper hollows take more transported snow;
+      // smoothstep has zero speed at both ends, without a lifetime cutoff.
+      const fill = THREE.MathUtils.smoothstep(dose, 0, Math.max(0.03, Math.abs(initial - height)));
+      height = THREE.MathUtils.lerp(height, initial, fill);
+      mass = THREE.MathUtils.lerp(mass, initial, fill);
+      compaction = height > 1e-8 ? clamp((mass / height - 1) / (this.densityRatio - 1), 0, 1) : 0;
+    }
+    return { mass, compaction, height, surfaceCompaction: compaction * Math.exp(-dose / 0.012) };
+  }
+  gridState(ix: number, iz: number) { return this.read(ix, iz); }
+  /** Game seconds, not frame count or distance. Calm clear weather preserves tracks. */
+  advanceWeather(seconds: number, weather: { snow: number; wind: number }) {
+    const snowfall = clamp(weather.snow, 0, 1) * 0.004 / 60;
+    const drift = Math.max(0, weather.wind - 4) * 0.00025 / 60;
+    this.weatherExposure += Math.max(0, seconds) * (snowfall + drift);
+  }
+  visitTiles(run: (tx: number, tz: number, revision: number) => void) {
+    for (const [key, t] of this.tiles) { const [x, z] = key.split(',').map(Number); run(x, z, t.revision); }
+  }
+  tileRevision(x: number, z: number) { return this.tiles.get(`${x},${z}`)?.revision ?? 0; }
+  forgetWeatheredTile(tx: number, tz: number) {
+    const key = `${tx},${tz}`, t = this.tiles.get(key);
+    if (!t || this.weatherExposure === 0) return false;
+    const ids = t.hot ? Array.from({ length: COUNT }, (_, i) => i).filter(i => t.hot!.mass[i] || t.hot!.packed[i]) : Array.from(t.cold!.indices);
+    for (const i of ids) {
+      const x = tx * TILE_CELLS + i % TILE_CELLS, z = tz * TILE_CELLS + Math.floor(i / TILE_CELLS);
+      const s = this.read(x, z);
+      if (Math.abs(s.height - this.initialThickness(x * CELL, z * CELL)) > 1e-6 || s.compaction > 1e-5) return false;
+    }
+    for (let k = 0; k < ids.length; k++) {
+      const i = ids[k];
+      this.onRecordedChange?.([tx * TILE_CELLS + i % TILE_CELLS, tz * TILE_CELLS + Math.floor(i / TILE_CELLS),
+        t.hot ? t.hot.mass[i] : t.cold!.mass[k], t.hot ? t.hot.packed[i] : t.cold!.packed[k], 0, 0,
+        t.hot ? t.hot.exposure[i] : t.cold!.exposure[k], 0]);
+    }
+    this.tiles.delete(key); return true;
   }
   sample(x: number, z: number) {
     const gx = x / CELL, gz = z / CELL, ix = Math.floor(gx), iz = Math.floor(gz);
     const u = gx - ix, v = gz - iz;
     const a = this.read(ix, iz), b = this.read(ix + 1, iz), c = this.read(ix, iz + 1), d = this.read(ix + 1, iz + 1);
-    const mix = (key: 'mass' | 'height' | 'compaction') =>
+    const mix = (key: 'mass' | 'height' | 'compaction' | 'surfaceCompaction') =>
       (a[key] * (1 - u) + b[key] * u) * (1 - v) + (c[key] * (1 - u) + d[key] * u) * v;
-    return { height: mix('height'), mass: mix('mass'), compaction: mix('compaction') };
+    return { height: mix('height'), mass: mix('mass'), compaction: mix('compaction'), surfaceCompaction: mix('surfaceCompaction') };
   }
   /** Effective support under a person's load. The solid base is the lower bound. */
   support(x: number, z: number) { return this.sample(x, z).mass / this.densityRatio; }
@@ -69,6 +113,7 @@ export class SnowField {
   /** Allocation-free grid reads for mesh streaming. Rendering must not perform
    * four interpolated material queries for every vertex and normal neighbour. */
   gridValue(ix: number, iz: number, packedOnly = false): number {
+    if (this.weatherExposure > 0) { const s = this.read(ix, iz); return packedOnly ? s.compaction : s.height; }
     const tx = Math.floor(ix / TILE_CELLS), tz = Math.floor(iz / TILE_CELLS);
     const index = (iz - tz * TILE_CELLS) * TILE_CELLS + ix - tx * TILE_CELLS;
     const t = this.tiles.get(`${tx},${tz}`);
@@ -89,7 +134,7 @@ export class SnowField {
 
   private warm(key: string) {
     let t = this.tiles.get(key);
-    if (!t) { t = {}; this.tiles.set(key, t); }
+    if (!t) { t = { revision: 0 }; this.tiles.set(key, t); }
     if (!t.hot) {
       // Only mutations warm tiles. Reading old trails never expands cold storage.
       if ([...this.tiles.values()].filter(t => t.hot).length >= 32) {
@@ -98,13 +143,13 @@ export class SnowField {
         if (oldest?.hot) {
           const h = oldest.hot, ids: number[] = [];
           for (let i = 0; i < COUNT; i++) if (h.mass[i] !== 0 || h.packed[i] !== 0) ids.push(i);
-          oldest.cold = { indices: Uint16Array.from(ids), mass: Float32Array.from(ids, i => h.mass[i]), packed: Uint8Array.from(ids, i => h.packed[i]) };
+          oldest.cold = { indices: Uint16Array.from(ids), mass: Float32Array.from(ids, i => h.mass[i]), packed: Uint8Array.from(ids, i => h.packed[i]), exposure: Float32Array.from(ids, i => h.exposure[i]) };
           oldest.hot = undefined;
         }
       }
-      const h = { mass: new Float32Array(COUNT), packed: new Uint8Array(COUNT), age: ++this.age };
+      const h = { mass: new Float32Array(COUNT), packed: new Uint8Array(COUNT), exposure: new Float32Array(COUNT), age: ++this.age };
       if (t.cold) for (let i = 0; i < t.cold.indices.length; i++) {
-        const k = t.cold.indices[i]; h.mass[k] = t.cold.mass[i]; h.packed[k] = t.cold.packed[i];
+        const k = t.cold.indices[i]; h.mass[k] = t.cold.mass[i]; h.packed[k] = t.cold.packed[i]; h.exposure[k] = t.cold.exposure[i];
       }
       t.hot = h; t.cold = undefined;
     }
@@ -113,29 +158,32 @@ export class SnowField {
   }
   private write(ix: number, iz: number, mass: number, compaction: number) {
     const a = this.address(ix, iz), h = this.warm(a.key);
-    const oldMass = h.mass[a.index], oldPacked = h.packed[a.index];
+    const oldMass = h.mass[a.index], oldPacked = h.packed[a.index], oldExposure = h.exposure[a.index];
     h.mass[a.index] = mass - this.initialThickness(ix * CELL, iz * CELL);
     h.packed[a.index] = Math.ceil(clamp(compaction, 0, 1) * 255);
-    if (this.onRecordedChange && (oldMass !== h.mass[a.index] || oldPacked !== h.packed[a.index]))
-      this.onRecordedChange([ix, iz, oldMass, oldPacked, h.mass[a.index], h.packed[a.index]]);
+    h.exposure[a.index] = this.weatherExposure;
+    if (oldMass === h.mass[a.index] && oldPacked === h.packed[a.index] && oldExposure === h.exposure[a.index]) return;
+    this.tiles.get(a.key)!.revision = ++this.revision;
+    if (this.onRecordedChange)
+      this.onRecordedChange([ix, iz, oldMass, oldPacked, h.mass[a.index], h.packed[a.index], oldExposure, h.exposure[a.index]]);
     this.markDirty(ix, iz);
   }
   /** Lossless diagnostic state. These APIs do not excavate, deposit or compact. */
-  recordedCells(): [number, number, number, number][] {
-    const cells: [number, number, number, number][] = [];
+  recordedCells(): [number, number, number, number, number][] {
+    const cells: [number, number, number, number, number][] = [];
     for (const [key, t] of this.tiles) {
       const [tx, tz] = key.split(',').map(Number);
-      const append = (i: number, mass: number, packed: number) => {
-        if (mass || packed) cells.push([tx * TILE_CELLS + i % TILE_CELLS, tz * TILE_CELLS + Math.floor(i / TILE_CELLS), mass, packed]);
+      const append = (i: number, mass: number, packed: number, exposure: number) => {
+        if (mass || packed) cells.push([tx * TILE_CELLS + i % TILE_CELLS, tz * TILE_CELLS + Math.floor(i / TILE_CELLS), mass, packed, exposure]);
       };
-      if (t.hot) for (let i = 0; i < COUNT; i++) append(i, t.hot.mass[i], t.hot.packed[i]);
-      else if (t.cold) for (let i = 0; i < t.cold.indices.length; i++) append(t.cold.indices[i], t.cold.mass[i], t.cold.packed[i]);
+      if (t.hot) for (let i = 0; i < COUNT; i++) append(i, t.hot.mass[i], t.hot.packed[i], t.hot.exposure[i]);
+      else if (t.cold) for (let i = 0; i < t.cold.indices.length; i++) append(t.cold.indices[i], t.cold.mass[i], t.cold.packed[i], t.cold.exposure[i]);
     }
     return cells;
   }
-  applyRecordedCell(ix: number, iz: number, massDelta: number, packed: number) {
+  applyRecordedCell(ix: number, iz: number, massDelta: number, packed: number, exposure = 0) {
     const a = this.address(ix, iz), h = this.warm(a.key);
-    h.mass[a.index] = massDelta; h.packed[a.index] = packed; this.markDirty(ix, iz);
+    h.mass[a.index] = massDelta; h.packed[a.index] = packed; h.exposure[a.index] = exposure; this.tiles.get(a.key)!.revision = ++this.revision; this.markDirty(ix, iz);
   }
   private markDirty(ix: number, iz: number) {
     const x = ix * CELL, z = iz * CELL;
@@ -148,6 +196,9 @@ export class SnowField {
   /** Sweep the whole oriented boot, including heel lift and its toe pivot.
    * Subdivision follows travel/rotation, not elapsed time or walked distance. */
   sweepBoot(from: BootPose, to: BootPose) {
+    this.sweepContact(from, to, BOOT_SHAPE);
+  }
+  sweepContact(from: BootPose, to: BootPose, shape: ContactShape) {
     const travel = from.position.distanceTo(to.position);
     if (travel > 2) return; // teleport/reset is not a snow-cutting movement
     const angle = from.rotation.angleTo(to.rotation);
@@ -156,10 +207,11 @@ export class SnowField {
     for (let k = 0; k <= steps; k++) {
       position.lerpVectors(from.position, to.position, k / steps);
       rotation.slerpQuaternions(from.rotation, to.rotation, k / steps);
-      this.press(position, rotation);
+      this.press(position, rotation, shape);
     }
   }
-  private press(position: THREE.Vector3, rotation: THREE.Quaternion) {
+  private press(position: THREE.Vector3, rotation: THREE.Quaternion, shape: ContactShape) {
+    const low = [-shape.halfWidth, 0, -shape.front], high = [shape.halfWidth, shape.height, shape.back];
     const inv = rotation.clone().invert();
     const vertical = new THREE.Vector3(0, 1, 0).applyQuaternion(inv).toArray();
     // Bound the x/z projection of all eight box corners.
@@ -191,17 +243,17 @@ export class SnowField {
       // Rounded boot outline with a one-cell soft shoulder. The target depends
       // on material quantity, not its current height, so repeated idle contact
       // does not progressively erase this shoulder.
-      const qx = Math.abs(local.x) - (0.0725 - 0.022);
-      const qz = Math.abs(local.z + 0.045) - (0.155 - 0.022);
-      const signed = Math.hypot(Math.max(0, qx), Math.max(0, qz)) + Math.min(0, Math.max(qx, qz)) - 0.022;
+      const qx = Math.abs(local.x) - (shape.halfWidth - shape.rounding);
+      const qz = Math.abs(local.z + (shape.front - shape.back) / 2) - ((shape.front + shape.back) / 2 - shape.rounding);
+      const signed = Math.hypot(Math.max(0, qx), Math.max(0, qz)) + Math.min(0, Math.max(qx, qz)) - shape.rounding;
       if (signed >= 0) continue;
-      const blend = THREE.MathUtils.smoothstep(-signed, 0, CELL * 0.65);
+      const blend = THREE.MathUtils.smoothstep(-signed, 0, shape.shoulder);
       const target = Math.max(0.002, bottom + (s.mass - bottom) * (1 - blend));
       if (target >= s.height - 0.0008) continue;
       // A small amount moves to the lip; the rest of the depression is compaction.
       // The lip gets the same mass removed here, not an arbitrary visual mound.
       const moved = Math.min(s.mass, (s.height - target) * 0.12 * (1 - s.compaction));
-      edge.set(Math.sign(local.x || 1) * 0.13, 0, clamp(local.z, -0.22, 0.13)).applyQuaternion(rotation).add(position);
+      edge.set(Math.sign(local.x || 1) * (shape.halfWidth + CELL * 1.4), 0, clamp(local.z, -shape.front - CELL, shape.back + CELL)).applyQuaternion(rotation).add(position);
       const ex = Math.round(edge.x / CELL), ez = Math.round(edge.z / CELL);
       const canDeposit = (ex !== ix || ez !== iz) && this.contains(ex * CELL, ez * CELL);
       const mass = s.mass - (canDeposit ? moved : 0);
@@ -256,9 +308,9 @@ export class SnowField {
   stats() {
     let bytes = 0, hotTiles = 0, modifiedCells = 0, raisedCells = 0;
     for (const t of this.tiles.values()) {
-      if (t.hot) { hotTiles++; bytes += t.hot.mass.byteLength + t.hot.packed.byteLength;
+      if (t.hot) { hotTiles++; bytes += t.hot.mass.byteLength + t.hot.packed.byteLength + t.hot.exposure.byteLength;
         for (let i = 0; i < COUNT; i++) { if (t.hot.mass[i] || t.hot.packed[i]) modifiedCells++; if (t.hot.mass[i] > 0.001) raisedCells++; }
-      } else { const c = t.cold!; bytes += c.indices.byteLength + c.mass.byteLength + c.packed.byteLength;
+      } else { const c = t.cold!; bytes += c.indices.byteLength + c.mass.byteLength + c.packed.byteLength + c.exposure.byteLength;
         modifiedCells += c.indices.length; for (const d of c.mass) if (d > 0.001) raisedCells++; }
     }
     return { tiles: this.tiles.size, hotTiles, bytes, modifiedCells, raisedCells };

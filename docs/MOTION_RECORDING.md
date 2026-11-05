@@ -32,6 +32,9 @@ The file is local; this tool has no upload service or automatic network sending.
 - Snow's initial sparse material state and coalesced reversible cell changes,
   including preset resets. Rolling eviction advances the initial snow state so
   the first retained frame still replays correctly.
+  Optional cell contact exposures and frame weather exposure preserve gradual
+  track burial when seeking forward/backward. Older four-value cells and six-value
+  journals still load; new recordings add a fifth cell value and two journal values.
 - Scene settings, viewport, build asset identifier, selected frame and notes.
 
 The viewer applies saved transforms; it does not run the gait solver again and
