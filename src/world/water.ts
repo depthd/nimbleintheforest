@@ -27,13 +27,13 @@ function makeIceMaterial(sea: boolean) {
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, waterUniforms, { uWaterTex: groundUniforms.uWaterTex, uOrigin: groundUniforms.uOrigin, uSize: groundUniforms.uSize });
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float aIce;\nvarying float vIce;\nvarying vec3 vWPos;')
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#ifdef SEA\nvIce = 0.0;\n#else\nvIce = aIce;\n#endif');
+      .replace('#include <common>', '#include <common>\nattribute float aIce; attribute float aBank;\nvarying float vBank; varying float vIce;\nvarying vec3 vWPos;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#ifdef SEA\nvIce = 0.0;vBank=0.0;\n#else\nvIce = aIce;vBank=aBank;\n#endif');
     sh.fragmentShader = sh.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
-varying float vIce; varying vec3 vWPos;
+varying float vIce; varying float vBank; varying vec3 vWPos;
 uniform vec3 uSkyTop; uniform vec3 uSkyHorizon; uniform vec3 uSunDir; uniform vec3 uSunColor; uniform float uTime; uniform sampler2D uNoise;
 uniform sampler2D uWaterTex; uniform vec2 uOrigin; uniform float uSize;`,
       )
@@ -58,13 +58,17 @@ uniform sampler2D uWaterTex; uniform vec2 uOrigin; uniform float uSize;`,
   float thin = 1.0 - smoothstep(0.06, 0.16, iceT);
   bare = mix(bare, vec3(0.12, 0.17, 0.21), thin * 0.8);
   vec3 iceCol = mix(bare, vec3(0.9, 0.93, 0.96) * (0.95 + 0.06 * n3.b), snowK);
+  // Shallow frozen margins meet the permanent packed bank continuously, rather
+  // than cutting a flat grey polygon into the surrounding snow.
+  float bankSnow=smoothstep(0.1,0.85,vBank)*isIce;
+  iceCol=mix(iceCol,vec3(0.78,0.86,0.93)*(0.96+0.05*n3.r),bankSnow);
   vec3 waterCol = vec3(0.015, 0.03, 0.045);
   diffuseColor.rgb = mix(waterCol, iceCol, isIce);
 `,
       )
       .replace(
         '#include <roughnessmap_fragment>',
-        '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.06, mix(0.18, 0.92, snowK), isIce);',
+        '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.06, mix(0.18, 0.92, max(snowK,bankSnow)), isIce);',
       )
       .replace(
         '#include <opaque_fragment>',
@@ -295,6 +299,7 @@ export class Water {
     }
     const pos: number[] = [];
     const ice: number[] = [];
+    const bank: number[] = [];
     const idx: number[] = [];
     const vid = new Int32Array(m * m).fill(-1);
     const x0 = ci * CH * 2 - R.ox, z0 = cj * CH * 2 - R.oz;
@@ -304,6 +309,8 @@ export class Water {
         vid[k] = pos.length / 3;
         pos.push(a * 2, lvl[k] + 0.03, b * 2);
         ice.push(iceV[k]);
+        const ground=R.h[(cj*CH+b)*nf+ci*CH+a];
+        bank.push(clamp((ground-lvl[k]+0.8)/0.8,0,1));
       }
       return vid[k];
     };
@@ -317,6 +324,7 @@ export class Water {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('aIce', new THREE.Float32BufferAttribute(ice, 1));
+    g.setAttribute('aBank',new THREE.Float32BufferAttribute(bank,1));
     const nrm = new Float32Array(pos.length);
     for (let i = 1; i < nrm.length; i += 3) nrm[i] = 1;
     g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));

@@ -1,5 +1,6 @@
 // Weather: outdoor temperature, wind, snowfall, fog. Includes the snow particles.
 import * as THREE from 'three';
+import { snowCoverShader, snowCoverUniforms } from './snow-cover';
 import { G, hourOf } from '../game/ctx';
 import { Rng, Simplex2, clamp, lerp } from '../core/rng';
 import { Tex } from '../core/textures';
@@ -129,11 +130,6 @@ export class Weather {
       u.intensity.value = this.snow;
       u.light.value = lerp(0.12, 1, G.sky?.daylight ?? 1);
       u.pxScale.value = (G.renderer.domElement.height * 0.5) * G.camera.projectionMatrix.elements[5];
-      const hb = G.house?.bounds;
-      if (hb) {
-        u.houseMin.value.copy(hb.min);
-        u.houseMax.value.copy(hb.max);
-      }
     }
   }
 
@@ -161,6 +157,7 @@ export class Weather {
       transparent: true,
       depthWrite: false,
       uniforms: {
+        ...snowCoverUniforms,
         time: { value: 0 },
         camPos: { value: new THREE.Vector3() },
         windVel: { value: new THREE.Vector3() },
@@ -168,14 +165,13 @@ export class Weather {
         light: { value: 1 },
         box: { value: BOX },
         map: { value: Tex.flake() },
-        houseMin: { value: new THREE.Vector3(1e9, 1e9, 1e9) },
-        houseMax: { value: new THREE.Vector3(-1e9, -1e9, -1e9) },
         pxScale: { value: 500 },
       },
       vertexShader: /* glsl */ `
+        ${snowCoverShader}
         attribute float rnd;
         uniform float time; uniform vec3 camPos; uniform vec3 windVel; uniform float intensity;
-        uniform float box; uniform vec3 houseMin; uniform vec3 houseMax; uniform float pxScale;
+        uniform float box; uniform float pxScale;
         varying float vAlpha;
         void main() {
           vec3 vel = windVel * (0.7 + rnd * 0.6) + vec3(sin(time * (0.5 + rnd) + rnd * 30.0) * 0.4, -(0.8 + rnd * 0.9), cos(time * 0.7 + rnd * 20.0) * 0.4);
@@ -183,8 +179,7 @@ export class Weather {
           vec3 base = camPos - vec3(box * 0.5);
           p = mod(p - base, box) + base;
           float vis = step(rnd, intensity);
-          bool inside = all(greaterThan(p, houseMin)) && all(lessThan(p, houseMax));
-          if (inside) vis = 0.0;
+          if (snowCover(p).x <= 0.001) vis = 0.0;
           vec4 mv = modelViewMatrix * vec4(p, 1.0);
           gl_Position = projectionMatrix * mv;
           float d = -mv.z;

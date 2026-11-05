@@ -3,7 +3,9 @@
 Snow is enabled in ordinary play, on the generated forest terrain. `WorldSnow`
 uses the same mass/compaction field and continuous boot sweeps as the laboratory.
 The immutable 2 m terrain triangles are sampled exactly; slope retention is cached
-in one byte per terrain vertex. Water and sheltered floors are excluded. Solid
+in one byte per terrain vertex. A permanent frozen base supports the finite loose
+layer. Roof and floor rules come from the shared [snow-cover registry](SNOW_COVER.md),
+including rendered surfaces, contact permissions, shadows and snowfall. Solid
 wood, rocks and ice still use their real collider surfaces and existing rules.
 
 With empty hands, hold LMB to move snow aside and use RMB to return the finite
@@ -11,7 +13,7 @@ quantity collected. These are ordinary contextual actions: equipped tools retain
 their controls, and eating snow, filling pots and making fires remain available.
 The snow ray hides buried items until a visible route to them is excavated.
 
-The permanent terrain includes the undisturbed upper layer everywhere. Changed
+The permanent terrain has separate packed and undisturbed loose surfaces. Changed
 3.2 m tiles use `snow-trails.ts`, independent of the camera's tile. Their filtered
 height/compaction textures remain at every view distance. Nearby geometry samples
 that texture at 2 cm; relief fades continuously from 8 to 18 m, while the same
@@ -28,9 +30,11 @@ of the next mesh before switching, including its shadow geometry; the filtered
 texture and fragment normals stay the same. Base and footprint vertex normals
 share their texture reads instead of sampling the same four neighbours twice.
 
-Deformation is filtered with a shared 3×3 kernel and shaded with continuous
+Boot deformation is filtered with a shared 3×3 kernel; deep uncompressed
+excavations blend into a wider 5×5 filter. Both are shaded with continuous
 texture normals. Biome/rock selection uses the immutable slope, so a footprint
-wall cannot turn into dark rock. Shadow geometry uses the same displacement and
+wall cannot turn into dark rock. Empty pixels reveal the persistent frozen base,
+and shadow geometry uses the same displacement and
 viewer position. Small edge overlaps close raster cracks between the two surfaces.
 
 ## Track weathering
@@ -115,6 +119,8 @@ existing interaction code.
   remain; texture/history storage grows with surviving tracks until weather clears them.
 - No snow colliders or rigid bodies are created per footstep. No physical snow
   particles or whole-map fine mesh.
+- Roof/shore boundaries locally refine the static upper layer. The packed base
+  uses the original terrain triangles; both layers share the building masks.
 
 Reload persistence, temperature/moisture/crust, whole-pack accumulation,
 melting, slope transport and finished shovel/particle effects are subsequent work.

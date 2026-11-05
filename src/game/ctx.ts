@@ -26,6 +26,7 @@ import type { Effects } from './effects';
 import type { SnowExperiment } from './snow-experiment';
 import type { WorldSnow } from './world-snow';
 import type { MotionRecorder } from './motion-recorder';
+import type { SnowCover } from '../world/snow-cover';
 
 export interface Settings {
   seed: number;
@@ -52,6 +53,7 @@ export interface Ctx {
   audio: GameAudio;
   input: Input;
   terrain: Terrain;
+  snowCover: SnowCover;
   sky: Sky;
   weather: Weather;
   forest: Forest;

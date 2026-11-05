@@ -29,6 +29,7 @@ import { def } from './items';
 import { dryingAt } from './drying';
 import { SnowExperiment } from './snow-experiment';
 import { WorldSnow } from './world-snow';
+import { SnowCover } from '../world/snow-cover';
 import { MotionRecorder } from './motion-recorder';
 
 const STEP = 1 / 60;
@@ -76,6 +77,7 @@ export async function startGame(settings: Settings) {
   if (loadText) loadText.textContent = 'Строим мир…';
   await new Promise((r) => setTimeout(r, 0));
   G.region = region;
+  G.snowCover = new SnowCover({ minX: region.minX, minZ: region.minZ, maxX: region.maxX, maxZ: region.maxZ });
   G.terrain = new Terrain(region);
   G.terrain.build();
   G.weather = new Weather(rng);
@@ -268,7 +270,6 @@ function bodyEnv(): Env {
   const se = G.hud.sleepEnv();
   const eq = P.equipped;
   const metal = !!eq && ['axe', 'saw', 'hammer', 'prybar', 'auger', 'shovel', 'pot', 'bucket'].includes(eq.defId);
-  const underRoof = Math.abs(P.pos.x - 2) < 2.7 && P.pos.z > 3.9 && P.pos.z < 6.1;
   return {
     air,
     wind,
@@ -281,7 +282,7 @@ function bodyEnv(): Env {
     lampInHand: eq?.defId === 'lamp' && eq.lit,
     metalTool: metal,
     outdoors: !zone,
-    snowfall: !zone && !underRoof && !G.structures.shelterAt(P.pos) ? W.snow : 0,
+    snowfall: G.snowCover.roofAt(P.pos.x, P.pos.z, P.eyePos.y) ? 0 : W.snow,
     rh,
   };
 }

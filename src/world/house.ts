@@ -80,6 +80,7 @@ export class House {
     const roofMat = mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks(), color: 0x5a4a40, roughness: 0.9 }));
 
     // foundation & floors
+    G.snowCover.add({ name: 'Пол дома', kind: 'floor', x: 0, z: 0, hx: HX, hz: HZ, y: Y0 });
     const plinthH = 1.3;
     this.solid(2 * HX + 0.2, plinthH, 2 * HZ + 0.2, 0, -0.2 - plinthH / 2, 0, stoneMat, 1.2);
     this.solid(2 * HX, 0.2, 2 * HZ, 0, -0.1, 0, this.floorMat, 1.5);
@@ -215,6 +216,7 @@ export class House {
     const drop = (RIDGE - WALL_TOP) * (run / HZ);
     const len = Math.hypot(run, drop);
     const ang = Math.atan2(drop, run);
+    G.snowCover.add({ name: 'Крыша дома', kind: 'roof', x: 0, z: 0, hx: HX + 0.6, hz: run + 0.05*Math.cos(ang)+0.08*Math.sin(ang), y: this.Y0 + RIDGE + 0.3 });
     for (const s of [-1, 1]) {
       const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), s * ang);
       const cz = (s * run) / 2;
@@ -559,6 +561,8 @@ export class House {
 
   private makePorch() {
     const pz0 = HZ, pz1 = HZ + 2.0, px0 = -0.6, px1 = 4.6;
+    G.snowCover.add({ name: 'Пол крыльца', kind: 'floor', x: (px0+px1)/2, z: (pz0+pz1)/2, hx: (px1-px0)/2, hz: (pz1-pz0)/2, y: this.Y0 });
+    G.snowCover.add({ name: 'Крыша крыльца', kind: 'roof', x: (px0+px1)/2, z: (pz0+pz1)/2+0.1, hx: (px1-px0+0.4)/2, hz: 1.2*Math.cos(0.2), y: this.Y0+3.1 });
     this.solid(px1 - px0, 0.2, pz1 - pz0, (px0 + px1) / 2, -0.1, (pz0 + pz1) / 2, this.floorMat, 1.5);
     this.solid(px1 - px0 + 0.1, 0.9, pz1 - pz0, (px0 + px1) / 2, -0.65, (pz0 + pz1) / 2, mat('stoneplinth', () => new THREE.MeshStandardMaterial({ map: Tex.stone() })), 1.2, false);
     // steps (visual) + ramp collider
@@ -595,6 +599,8 @@ export class House {
     const x0 = HX + 0.3, x1 = HX + 1.8;
     const z0 = -2.6, z1 = 1.6;
     const gy = T.heightAt((x0 + x1) / 2, (z0 + z1) / 2) - this.Y0;
+    G.snowCover.add({ name: 'Крыша дровника', kind: 'roof', x: (x0+x1)/2+0.1, z: (z0+z1)/2, hx: Math.cos(0.35), hz: (z1-z0+0.6)/2, y: this.Y0+gy+2.9 });
+    G.snowCover.add({ name: 'Настил дровника', kind: 'floor', x: (x0+x1)/2, z: (z0+z1)/2, hx: 0.65, hz: (z1-z0)/2, y: this.Y0+gy+0.06 });
     for (const z of [z0, z1]) this.solid(0.12, 2.3, 0.12, x1, gy + 1.15, z, M.woodDark(), 1.2);
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.35);
     this.solid(2.0, 0.08, z1 - z0 + 0.6, (x0 + x1) / 2 + 0.1, gy + 2.5, (z0 + z1) / 2, mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks() })), 1.5, true, q);

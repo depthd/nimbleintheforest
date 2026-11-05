@@ -12,6 +12,8 @@
     "test:movement": "node tests/movement.cjs",
     "test:snow": "node tests/snow.cjs",
     "test:trails": "node tests/trails.cjs",
+    "test:snow-cover": "node tests/snow-cover.cjs",
+    "test:snow-cover-browser": "node tests/snow-cover-browser.cjs",
     "test:trails-browser": "node tests/trails-browser.cjs",
     "test:snow-browser": "node tests/snow-browser.cjs",
     "test:snow-slopes": "node tests/snow-slopes.cjs",

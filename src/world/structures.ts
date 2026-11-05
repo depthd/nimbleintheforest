@@ -226,6 +226,8 @@ export class Structures {
     const wall = mat('logwall', () => new THREE.MeshStandardMaterial({ map: Tex.logWall(), roughness: 0.9 }));
     const roof = mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks(), color: 0x5a4a40, roughness: 0.9 }));
     const W = small ? 3.4 : 4.4, D = small ? 3.0 : 3.6, H = small ? 2.3 : 2.4, T = 0.2;
+    G.snowCover.add({ name: small ? 'Крыша рыбацкой избушки' : 'Крыша заимки', kind: 'roof', x:p.x, z:p.z, hx:(W+0.6)/2, hz:D/2+0.4, yaw:p.yaw, y:p.y+H+1.4 });
+    G.snowCover.add({ name: 'Пол избушки', kind:'floor', x:p.x, z:p.z, hx:W/2, hz:D/2, yaw:p.yaw, y:p.y });
     const bx = -W / 2 + 0.2 + 0.95, sx = W / 2 - 0.2 - 0.5;
     b.box(W, 0.3, D, 0, -0.15, 0, M.wood());
     b.box(W, H, T, 0, H / 2, -D / 2 + T / 2, wall, { tex: 1.6 });
@@ -296,6 +298,8 @@ export class Structures {
     const pole = M.barkSpruce();
     const boughs = mat('leantoBoughs', () => new THREE.MeshStandardMaterial({ color: 0x2c4234, roughness: 1, flatShading: true }));
     const W = 3.0, Hr = 2.3, depth = 2.6;
+    const cover = b.world(0, 0, 0.6-depth/2);
+    G.snowCover.add({ name:'Крыша навеса', kind:'roof', x:cover.x, z:cover.z, hx:(W+0.3)/2, hz:depth/2+0.05, yaw:p.yaw, y:p.y+Hr+0.4 });
     for (const sx of [-1, 1]) b.box(0.1, Hr, 0.1, (sx * W) / 2, Hr / 2, 0.6, pole, { collide: false });
     b.box(W + 0.4, 0.1, 0.1, 0, Hr, 0.6, pole, { collide: false });
     const ang = Math.atan2(Hr, depth);
@@ -362,6 +366,8 @@ export class Structures {
     const b = new Builder(x, y, z, 0);
     const wood = M.woodDark();
     const TOP = 10;
+    G.snowCover.add({ name:'Крыша вышки', kind:'roof', x, z, hx:2.4, hz:2.4, y:y+TOP+2.5 });
+    G.snowCover.add({ name:'Настил вышки', kind:'floor', x, z, hx:2.1, hz:2.1, y:y+TOP });
     // legs and braces
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.2, TOP + 0.2, 0.2, sx * 1.8, TOP / 2, sz * 1.8, wood);
     for (let k = 0; k < 4; k++) {
@@ -398,6 +404,8 @@ export class Structures {
     const b = new Builder(p.x, p.y, p.z, p.yaw);
     const wall = mat('stationwall', () => new THREE.MeshStandardMaterial({ map: Tex.planks(), color: 0x9aa4ac, roughness: 0.85 }));
     const W = 6, D = 4.4, H = 2.6, T = 0.2;
+    G.snowCover.add({ name:'Крыша метеостанции', kind:'roof', x:p.x, z:p.z, hx:(W+0.4)/2, hz:(D+0.4)/2, yaw:p.yaw, y:p.y+H+0.3 });
+    G.snowCover.add({ name:'Пол метеостанции', kind:'floor', x:p.x, z:p.z, hx:W/2, hz:D/2, yaw:p.yaw, y:p.y+0.02 });
     b.box(W, 0.3, D, 0, -0.13, 0, M.wood());
     b.box(W, H, T, 0, H / 2, -D / 2 + T / 2, wall);
     b.box(T, H, D, -W / 2 + T / 2, H / 2, 0, wall);
@@ -452,6 +460,7 @@ export class Structures {
   }
 
   private grotto(p: Place) {
+    G.snowCover.add({ name:'Свод грота', kind:'roof', x:p.x, z:p.z, hx:4.8, hz:3.7, yaw:p.yaw, y:p.y+3.8, ellipse:true });
     const b = new Builder(p.x, p.y, p.z, p.yaw);
     // a hollow dome of rock opening downhill (+z)
     const g = new THREE.SphereGeometry(4.2, 18, 10, Math.PI * 0.18, Math.PI * 1.64, 0, Math.PI / 2);

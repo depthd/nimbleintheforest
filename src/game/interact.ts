@@ -188,6 +188,7 @@ export class Interaction {
     if (e) this.info = this.describe(e);
     if (t.kind === 'tree') this.info = this.describeTree(t.tree!);
     if (t.kind === 'ground') this.info = G.house.zoneAt(t.point) ? '' : this.hasSnow(t.point) ? 'Снег' : 'Земля';
+    if (t.kind === 'ground' && G.snow && !G.snow.isExperiment && !this.hasSnow(t.point) && G.snow.packedBase(t.point.x, t.point.z)) this.info = 'Плотный снег';
     if (t.kind === 'ice') {
       const th = G.region.iceAt(t.point.x, t.point.z);
       this.info = G.body.skills.has('ice') ? `Лёд · ~${Math.round(th * 100)} см${th < 0.12 ? ' · ТОНКИЙ, не выдержит!' : ''}` : th < 0.12 ? 'Лёд · тёмный, прозрачный' : 'Лёд';

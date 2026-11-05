@@ -20,48 +20,28 @@ export class WorldSnow {
   renderMs = 0;
   private lastBoots: BootPose[] | null = null;
   private cooldown = 0;
-  private roofs = new Map<string, typeof G.structures.shelters>();
-  private roofX = Infinity;
-  private roofZ = Infinity;
-  private nearbyRoofs: typeof G.structures.shelters = [];
   private weatherTime = G.time;
 
   constructor() {
-    // A roof lookup visits only shelters in this 64 m neighbourhood.
-    for (const b of G.structures.shelters) {
-      if (b.shelter.kind === 'tower') continue;
-      const radius = Math.hypot(b.hx, b.hz);
-      for (let z = Math.floor((b.cz - radius) / 64); z <= Math.floor((b.cz + radius) / 64); z++)
-        for (let x = Math.floor((b.cx - radius) / 64); x <= Math.floor((b.cx + radius) / 64); x++) {
-          const key = `${x},${z}`, list = this.roofs.get(key) ?? [];
-          list.push(b); this.roofs.set(key, list);
-        }
-    }
-    this.terrain = new WorldSnowTerrain(G.region, (x, z) => this.contains(x, z));
+    G.snowCover.upload();
+    this.terrain = new WorldSnowTerrain(G.region, (x,z) => G.snowCover.looseAt(x,z,this.terrain.heightAt(x,z)));
     this.field = new SnowField({ thickness: 0.28, densityRatio: 2.6, base: this.terrain.heightAt,
       coverage: this.terrain.retentionAt, contains: (x, z) => this.contains(x, z) });
     this.renderer = new SnowTrailRenderer(this.field, this.bounds);
     this.renderer.group.name = 'world-snow'; G.scene.add(this.renderer.group);
     groundUniforms.uWorldSnow.value = 1;
-    G.terrain.enableSnow((x,z) => this.field.initialThickness(x,z));
+    G.terrain.enableSnow((x,z) => this.field.initialThickness(x,z), (x,z,size) => G.snowCover.detailedAt(x,z,size) || this.terrain.detailedAt(x,z,size));
     this.renderer.update(G.player.pos);
   }
   contains(x: number, z: number) {
     if (!G.region.inside(x, z, 0.1)) return false;
-    const water = G.region.waterAt(x, z);
-    if (!Number.isNaN(water) && G.region.heightAt(x, z) < water + 0.03) return false;
-    const b = G.house.bounds;
-    if (x > b.min.x - 0.15 && x < b.max.x + 0.15 && z > b.min.z - 0.15 && z < b.max.z + 0.15) return false;
-    if (Math.abs(x) < 2.4 && z > 3.8 && z < 6.3) return false;
-    const rx = Math.floor(x / 64), rz = Math.floor(z / 64);
-    if (rx !== this.roofX || rz !== this.roofZ) {
-      this.roofX = rx; this.roofZ = rz; this.nearbyRoofs = this.roofs.get(`${rx},${rz}`) ?? [];
-    }
-    for (const r of this.nearbyRoofs) {
-      const dx = x - r.cx, dz = z - r.cz, c = Math.cos(r.yaw), s = Math.sin(r.yaw);
-      if (Math.abs(dx * c - dz * s) < r.hx && Math.abs(dx * s + dz * c) < r.hz) return false;
-    }
-    return true;
+    const water = this.terrain.waterLevelAt(x, z);
+    if (Number.isFinite(water) && this.terrain.heightAt(x, z) <= water) return false;
+    return G.snowCover.looseAt(x,z,this.terrain.heightAt(x,z)) > 0.0001;
+  }
+  packedBase(x: number, z: number) {
+    const base=this.terrain.heightAt(x,z), water=this.terrain.waterLevelAt(x,z);
+    return G.region.inside(x,z,0.1) && (!Number.isFinite(water) || base>water) && !G.snowCover.floorAt(x,z,base) && this.terrain.substrateAt(x,z)>0.03;
   }
   resetBoots() { this.lastBoots = null; }
   probe(surface: FootSurface): FootSurface {

@@ -4,8 +4,9 @@ import * as THREE from 'three';
 import { CELL, TILE_CELLS, TILE_SIZE, SnowField } from './snow-field';
 import type { SnowRect } from './snow-field';
 import { makeGroundMaterial, groundUniforms } from './terrain';
+import { snowCoverShader, snowCoverUniforms } from './snow-cover';
 
-const SIZE = TILE_CELLS + 5, RAW = SIZE + 2;
+const SIZE = TILE_CELLS + 5, RAW = SIZE + 4;
 const shader = /* glsl */ `
 uniform sampler2D uTrail; uniform vec2 uTrailOrigin; uniform float uTrailBase;
 uniform vec3 uTrailEye;
@@ -45,7 +46,9 @@ void trailVertexNormals(vec2 p, out vec3 reliefNormal, out vec3 baseNormal) {
   float e = 0.025;
   vec4 a=trail(p+vec2(e,0)), b=trail(p-vec2(e,0)), c=trail(p+vec2(0,e)), d=trail(p-vec2(0,e));
   float dx = a.r+a.g-b.r-b.g, dz = c.r+c.g-d.r-d.g;
-  baseNormal = normalize(vec3(-dx, 2.0*e, -dz));
+  // Biome/rock selection follows the original terrain, not the snow's shore
+  // taper. Otherwise even a gentle coverage edge can turn into a dark rock wall.
+  baseNormal = normalize(vec3(-(a.r-b.r), 2.0*e, -(c.r-d.r)));
   reliefNormal = normalize(vec3(-(dx+(a.b-b.b)), 2.0*e, -(dz+(c.b-d.b))));
 }`;
 class TrailMesh extends THREE.Mesh { boundingSphere = new THREE.Sphere(); }
@@ -119,19 +122,25 @@ export class SnowTrailRenderer {
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + shader)
         .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize(mat3(viewMatrix) * trailNormal(vWPos.xz - uTrailOrigin, true));')
         .replace('  // rock: steep slopes', `  vec4 contactSnow = trail(vWPos.xz - uTrailOrigin);
-  vec3 earth = mix(vec3(0.18,0.17,0.15), vec3(0.30,0.28,0.24), nz2.r);
-  snow = mix(earth, snow, smoothstep(0.005,0.035,contactSnow.g + contactSnow.b));
+  if(contactSnow.g+contactSnow.b<0.002)discard;
+  // The immutable terrain collider is the top of the old, frozen snowpack.
+  // Empty hands move only the loose layer; they cannot expose a grey void.
+  vec3 packedSnow = vec3(0.78,0.86,0.93) * (0.96 + 0.05 * nz3.r);
+  snow = mix(packedSnow, snow, smoothstep(0.005,0.05,contactSnow.g + contactSnow.b)*smoothstep(0.005,0.20,contactSnow.g));
   snow *= 1.0 - contactSnow.a * 0.025;
   // rock: steep slopes`);
     };
-    material.customProgramCacheKey = () => 'persistent-snow-trail-v2';
+    material.customProgramCacheKey = () => 'persistent-snow-trail-v3';
     const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
     depth.onBeforeCompile = sh => {
-      Object.assign(sh.uniforms, uniforms);
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + shader)
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y = uTrailBase + trailSurfaceHeight(position.xz);');
+      Object.assign(sh.uniforms, uniforms, snowCoverUniforms);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vSnowTrailWorld;\n' + shader)
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.y = uTrailBase + trailSurfaceHeight(position.xz);')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvSnowTrailWorld=(modelMatrix*vec4(transformed,1.0)).xyz;');
+      sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vSnowTrailWorld; uniform sampler2D uTrail; uniform vec2 uTrailOrigin;\n'+snowCoverShader)
+        .replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nvec2 cover=snowCover(vSnowTrailWorld);if(cover.y>0.5 || cover.x<=0.001)discard;\nvec4 materialSnow=texture2D(uTrail,((vSnowTrailWorld.xz-uTrailOrigin)/0.04+2.5)/85.0);if(materialSnow.g+materialSnow.b<0.002)discard;');
     };
-    depth.customProgramCacheKey = () => 'snow-trail-depth-v2';
+    depth.customProgramCacheKey = () => 'snow-trail-depth-v3';
     const mesh = new TrailMesh(this.fine, material); mesh.position.set(x * TILE_SIZE, 0, z * TILE_SIZE);
     mesh.receiveShadow = mesh.castShadow = true; mesh.customDepthMaterial = depth;
     // Geometry is shared; shader displacement has per-tile bounds.
@@ -141,24 +150,29 @@ export class SnowTrailRenderer {
   }
   private refresh(e: Entry, dirty?: SnowRect) {
     const gx = e.x * TILE_CELLS, gz = e.z * TILE_CELLS;
-    const x0 = dirty ? Math.max(0, Math.floor(dirty.minX / CELL - gx) + 1) : 0;
-    const x1 = dirty ? Math.min(SIZE - 1, Math.ceil(dirty.maxX / CELL - gx) + 3) : SIZE - 1;
-    const z0 = dirty ? Math.max(0, Math.floor(dirty.minZ / CELL - gz) + 1) : 0;
-    const z1 = dirty ? Math.min(SIZE - 1, Math.ceil(dirty.maxZ / CELL - gz) + 3) : SIZE - 1;
+    const x0 = dirty ? Math.max(0, Math.floor(dirty.minX / CELL - gx)) : 0;
+    const x1 = dirty ? Math.min(SIZE - 1, Math.ceil(dirty.maxX / CELL - gx) + 4) : SIZE - 1;
+    const z0 = dirty ? Math.max(0, Math.floor(dirty.minZ / CELL - gz)) : 0;
+    const z1 = dirty ? Math.min(SIZE - 1, Math.ceil(dirty.maxZ / CELL - gz) + 4) : SIZE - 1;
     if (x0 > x1 || z0 > z1) { e.signature = this.signature(e.x,e.z); return e.activeCount > 0; }
-    for (let z = z0; z <= z1 + 2; z++) for (let x = x0; x <= x1 + 2; x++) {
-      const ix = gx + x - 3, iz = gz + z - 3, state = this.field.gridState(ix, iz), i = z * RAW + x;
+    for (let z = z0; z <= z1 + 4; z++) for (let x = x0; x <= x1 + 4; x++) {
+      const ix = gx + x - 4, iz = gz + z - 4, state = this.field.gridState(ix, iz), i = z * RAW + x;
       this.raw[i] = state.height - this.field.initialThickness(ix * CELL, iz * CELL);
       this.packed[i] = state.surfaceCompaction;
     }
     if (!dirty) { e.minY = Infinity; e.maxY = -Infinity; }
-    const weights = [0.25, 0.5, 0.25];
+    const weights = [0.25, 0.5, 0.25], wide=[1/16,4/16,6/16,4/16,1/16];
     for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
       let delta = 0, packed = 0;
       for (let dz = 0; dz < 3; dz++) for (let dx = 0; dx < 3; dx++) {
-        const i = (z + dz) * RAW + x + dx, weight = weights[dx] * weights[dz];
+        const i = (z + dz + 1) * RAW + x + dx + 1, weight = weights[dx] * weights[dz];
         delta += this.raw[i] * weight; packed += this.packed[i] * weight;
       }
+      // Excavation needs a broader round rim than a narrow compressed boot.
+      // Smooth only uncompressed hollows; boot outlines retain their 3x3 filter.
+      const centre=(z+2)*RAW+x+2;
+      const excavation=THREE.MathUtils.smoothstep(-this.raw[centre],.04,.16)*(1-THREE.MathUtils.smoothstep(this.packed[centre],.05,.25));
+      if(excavation>0){let rounded=0;for(let dz=0;dz<5;dz++)for(let dx=0;dx<5;dx++)rounded+=this.raw[(z+dz)*RAW+x+dx]*wide[dx]*wide[dz];delta=THREE.MathUtils.lerp(delta,rounded,excavation);}
       const wx = (gx + x - 2) * CELL, wz = (gz + z - 2) * CELL, i = (z * SIZE + x) * 4;
       const values = [this.field.baseHeight(wx, wz) - e.base, this.field.initialThickness(wx, wz), delta, packed];
       e.minY = Math.min(e.minY, e.base + values[0] + values[1] + Math.min(0, delta));

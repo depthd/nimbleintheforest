@@ -10,6 +10,7 @@ import type { Region } from '../gen/region';
 import { Simplex2, clamp, lerp, smoothstep } from '../core/rng';
 import { Tex } from '../core/textures';
 import { noiseTexture } from '../core/noisetex';
+import { snowCoverShader, snowCoverUniforms } from './snow-cover';
 
 const CH = 64; // fine cells per chunk side
 const STEPS = [1, 2, 4, 8];
@@ -49,24 +50,35 @@ function ridged(n: Simplex2, x: number, y: number, oct: number) {
   return s / norm;
 }
 
-export function makeGroundMaterial(far: boolean, snowSurface = false) {
+export function makeGroundMaterial(far: boolean, snowSurface = false, packedBase = false) {
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
   m.defines = far ? { FAR_TERRAIN: 1 } : {};
   if (snowSurface) m.defines.SNOW_SURFACE = 1;
+  if (packedBase) m.defines.PACKED_SNOW_BASE = 1;
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, groundUniforms);
+    Object.assign(sh.uniforms, groundUniforms, snowCoverUniforms);
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNorm;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNorm;\n#ifndef SNOW_SURFACE\nattribute float aSnowDepth; attribute vec3 aSnowNormal; varying float vLooseDepth;\n#endif')
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n#if !defined(SNOW_SURFACE) && !defined(PACKED_SNOW_BASE)\nobjectNormal=aSnowNormal;\n#endif')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifndef SNOW_SURFACE\nvLooseDepth=aSnowDepth;\n#ifndef PACKED_SNOW_BASE\ntransformed.y+=max(0.0,aSnowDepth);\n#endif\n#endif')
       .replace(
         '#include <worldpos_vertex>',
-        '#include <worldpos_vertex>\nvec4 wp4 = vec4(transformed, 1.0);\nvec3 wn3 = objectNormal;\n#ifdef USE_INSTANCING\nwp4 = instanceMatrix * wp4;\nwn3 = mat3(instanceMatrix) * wn3;\n#endif\nvWPos = (modelMatrix * wp4).xyz;\nvWNorm = normalize(mat3(modelMatrix) * wn3);',
+        '#include <worldpos_vertex>\nvec4 wp4 = vec4(transformed, 1.0);\nvec3 wn3 = normal;\n#ifdef USE_INSTANCING\nwp4 = instanceMatrix * wp4;\nwn3 = mat3(instanceMatrix) * wn3;\n#endif\nvWPos = (modelMatrix * wp4).xyz;\nvWNorm = normalize(mat3(modelMatrix) * wn3);',
       );
     sh.fragmentShader = sh.fragmentShader
+      // This Three.js version rotates its PCF kernel using screen-pixel noise.
+      // On clean snow it becomes visible hatching; a stable kernel keeps the
+      // same five hardware-filtered samples without the per-pixel rotation.
+      .replace('#include <shadowmap_pars_fragment>',THREE.ShaderChunk.shadowmap_pars_fragment.replace('float phi = interleavedGradientNoise( gl_FragCoord.xy ) * PI2;','float phi = 0.0;'))
       .replace(
         '#include <common>',
         /* glsl */ `#include <common>
 varying vec3 vWPos;
 varying vec3 vWNorm;
+#ifndef SNOW_SURFACE
+varying float vLooseDepth;
+#endif
+${snowCoverShader}
 uniform vec2 uOrigin; uniform float uSize; uniform sampler2D uBiome; uniform sampler2D uWaterTex; uniform sampler2D uNoise; uniform sampler2D uRock;
 uniform float uTreeline; uniform vec2 uNearCenter; uniform vec2 uNearHalf; uniform vec3 uSunDir; uniform float uGlint; uniform vec2 uForestFar;
 uniform float uWorldSnow; uniform vec4 uSnowPatch; uniform sampler2D uSnowTiles; uniform vec4 uSnowTileGrid;
@@ -81,6 +93,22 @@ vec3 triRock(vec3 p, vec3 n) {
 #ifdef FAR_TERRAIN
   if (abs(vWPos.x - uNearCenter.x) < uNearHalf.x && abs(vWPos.z - uNearCenter.y) < uNearHalf.y) discard;
 #endif
+  if (uSnowCoverEnabled>0.5) {
+#ifndef SNOW_SURFACE
+    if (vLooseDepth>=0.0) {
+#endif
+      vec2 shelter=snowCover(vWPos);
+      if (shelter.y>0.5) discard;
+#ifndef PACKED_SNOW_BASE
+      if (shelter.x<=0.001) discard;
+#ifndef SNOW_SURFACE
+      if (vLooseDepth<0.003) discard;
+#endif
+#endif
+#ifndef SNOW_SURFACE
+    }
+#endif
+  }
   vec2 uvB = (vWPos.xz + uOrigin) / uSize;
   vec4 bio = texture2D(uBiome, uvB);
   vec3 N = normalize(vWNorm);
@@ -104,13 +132,21 @@ vec3 triRock(vec3 p, vec3 n) {
   // shore: pebbles and grey sand where the snow is thin
   float peb = bio.a * smoothstep(0.45, 0.7, nz2.a) * (0.6 + 0.4 * nz3.r);
   snow = mix(snow, vec3(0.5, 0.48, 0.45) * (0.7 + 0.5 * nz3.g), peb * 0.75);
-#ifndef SNOW_SURFACE
+#if !defined(SNOW_SURFACE) && !defined(PACKED_SNOW_BASE)
   if (uWorldSnow > 0.5) {
     vec2 tile = floor(vWPos.xz / 3.2) - uSnowTileGrid.xy;
     if (texture2D(uSnowTiles, (tile + 0.5) / uSnowTileGrid.zw).r > 0.5) discard;
   }
 #endif
   // rock: steep slopes are bare, ledges keep snow; high ground is wind-scoured
+#ifdef PACKED_SNOW_BASE
+  snow=vec3(0.78,0.86,0.93)*(0.96+0.05*nz3.r);
+#elif !defined(SNOW_SURFACE)
+  if(uSnowCoverEnabled>0.5 && vLooseDepth>=0.0) {
+    vec3 packedSnow=vec3(0.78,0.86,0.93)*(0.96+0.05*nz3.r);
+    snow=mix(packedSnow,snow,smoothstep(0.005,0.05,vLooseDepth)*smoothstep(0.005,0.20,vLooseDepth));
+  }
+#endif
   float rockK = smoothstep(0.33 + 0.06 * nz2.r, 0.45 + 0.04 * nz2.g, slope);
   rockK = max(rockK, smoothstep(uTreeline + 60.0, uTreeline + 180.0, vWPos.y) * smoothstep(0.2, 0.34, slope));
   // snow clings in streaks and gullies even on steep rock
@@ -151,7 +187,7 @@ vec3 triRock(vec3 p, vec3 n) {
 #include <opaque_fragment>`,
       );
   };
-  m.customProgramCacheKey = () => (far ? 'ground-far' : snowSurface ? 'ground-snow-surface' : 'ground');
+  m.customProgramCacheKey = () => (far ? 'ground-far' : snowSurface ? 'ground-snow-surface' : 'ground') + (packedBase ? '-packed-v2' : '-cover-v2');
   return m;
 }
 
@@ -159,6 +195,7 @@ interface Slot {
   ci: number;
   cj: number;
   mesh: THREE.Mesh | null;
+  base?: THREE.Mesh;
   geos: (THREE.BufferGeometry | null)[];
   lod: number;
   minY: number;
@@ -167,7 +204,10 @@ interface Slot {
 
 export class Terrain {
   private snowHeightAt: ((x: number, z: number) => number) | null = null;
+  private snowDetailedAt: ((x: number,z: number,size: number) => boolean) | null = null;
   private snowDepthMaterial: THREE.MeshDepthMaterial | null = null;
+  private packedDepthMaterial: THREE.MeshDepthMaterial | null = null;
+  private packedMaterial: THREE.MeshStandardMaterial | null = null;
   R: Region;
   size: number;
   n: number;
@@ -193,28 +233,55 @@ export class Terrain {
   heightAt(x: number, z: number) {
     return this.R.heightAt(x, z);
   }
-  enableSnow(height: (x: number, z: number) => number) {
+  enableSnow(height: (x: number, z: number) => number, detailed?: (x:number,z:number,size:number)=>boolean) {
     this.snowHeightAt = height;
-    // The permanent surface includes the upper layer everywhere. There is no
-    // camera-centred slab to move or appear under an existing trail.
-    for (const s of this.slots) for (const g of s.geos) if (g) {
-      const p = g.attributes.position as THREE.BufferAttribute;
-      for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + height(p.getX(i) + s.ci * CH * 2 - this.R.ox, p.getZ(i) + s.cj * CH * 2 - this.R.oz));
-      p.needsUpdate = true;
-    }
-    const far = this.far.geometry.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < far.count; i++) far.setY(i, far.getY(i) + height(far.getX(i), far.getZ(i)));
-    far.needsUpdate = true;
-    const depth = this.snowDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
-    depth.onBeforeCompile = sh => {
-      Object.assign(sh.uniforms, { uSnowTiles: groundUniforms.uSnowTiles, uSnowTileGrid: groundUniforms.uSnowTileGrid });
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vTilePosition;')
-        .replace('#include <project_vertex>', '#include <project_vertex>\nvTilePosition = (modelMatrix * vec4(transformed,1.0)).xz;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vTilePosition; uniform sampler2D uSnowTiles; uniform vec4 uSnowTileGrid;')
-        .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (texture2D(uSnowTiles,(floor(vTilePosition/3.2)-uSnowTileGrid.xy+0.5)/uSnowTileGrid.zw).r>0.5) discard;');
+    this.snowDetailedAt = detailed ?? null;
+    this.packedMaterial = makeGroundMaterial(false,false,true);
+    const depth=(packed:boolean)=>{
+      const material=new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+      material.onBeforeCompile=sh=>{
+        Object.assign(sh.uniforms,snowCoverUniforms,{uSnowTiles:groundUniforms.uSnowTiles,uSnowTileGrid:groundUniforms.uSnowTileGrid});
+        sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float aSnowDepth; varying float vLooseDepth; varying vec3 vSnowWorld;')
+          .replace('#include <begin_vertex>',`#include <begin_vertex>\nvLooseDepth=aSnowDepth; ${packed?'':'transformed.y+=max(0.0,aSnowDepth);'}`)
+          .replace('#include <project_vertex>','#include <project_vertex>\nvSnowWorld=(modelMatrix*vec4(transformed,1.0)).xyz;');
+        sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying float vLooseDepth; varying vec3 vSnowWorld; uniform sampler2D uSnowTiles; uniform vec4 uSnowTileGrid;\n'+snowCoverShader)
+          .replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+            vec2 cover=snowCover(vSnowWorld); if(cover.y>0.5)discard;
+            ${packed?'':`if(vLooseDepth<0.003 || cover.x<=0.001)discard;
+              if(texture2D(uSnowTiles,(floor(vSnowWorld.xz/3.2)-uSnowTileGrid.xy+0.5)/uSnowTileGrid.zw).r>0.5)discard;`}`);
+      };
+      material.customProgramCacheKey=()=>packed?'terrain-packed-depth-v1':'terrain-loose-depth-v2';return material;
     };
-    depth.customProgramCacheKey = () => 'terrain-snow-cutout-depth-v1';
-    for (const s of this.slots) if (s.mesh) s.mesh.customDepthMaterial = depth;
+    this.snowDepthMaterial=depth(false);this.packedDepthMaterial=depth(true);
+    // Both surfaces share immutable positions. Only the loose material applies
+    // aSnowDepth; the packed surface remains below it and fills excavated areas.
+    for (const s of this.slots) {
+      for(let lod=0;lod<s.geos.length;lod++) if(s.geos[lod]) {this.disposeGeometry(s.geos[lod]!);s.geos[lod]=this.makeGeometry(s.ci,s.cj,lod);}
+      if(s.mesh){s.mesh.geometry=s.geos[s.lod]!;s.mesh.customDepthMaterial=this.snowDepthMaterial;this.attachBase(s);}
+    }
+    this.snowAttributes(this.far.geometry,0,0,false);
+    const farBase=new THREE.Mesh(this.far.geometry,makeGroundMaterial(true,false,true));
+    farBase.frustumCulled=false;farBase.name='packed-snow-far';this.far.add(farBase);
+  }
+  private attachBase(s:Slot) {
+    if(!this.packedMaterial || !s.mesh || s.base)return;
+    s.base=new THREE.Mesh(s.mesh.geometry.userData.packedGeometry ?? s.mesh.geometry,this.packedMaterial);s.base.name='packed-snow';
+    s.base.receiveShadow=true;s.base.castShadow=s.lod<=1;s.base.customDepthMaterial=this.packedDepthMaterial!;
+    s.mesh.add(s.base);
+  }
+  private disposeGeometry(g:THREE.BufferGeometry) { (g.userData.packedGeometry as THREE.BufferGeometry | undefined)?.dispose();g.dispose(); }
+  private snowAttributes(g:THREE.BufferGeometry,offsetX:number,offsetZ:number,normals=true) {
+    const p=g.attributes.position,n=g.attributes.normal,depth=new Float32Array(p.count),normal=Float32Array.from(n.array);
+    for(let i=0;i<p.count;i++) {
+      const x=p.getX(i)+offsetX,z=p.getZ(i)+offsetZ;
+      depth[i]=this.snowHeightAt?.(x,z) ?? 0;
+      if(normals && this.snowHeightAt) {
+        const e=.1,dx=(this.snowHeightAt(x+e,z)-this.snowHeightAt(x-e,z))/(2*e),dz=(this.snowHeightAt(x,z+e)-this.snowHeightAt(x,z-e))/(2*e);
+        const nx=n.getX(i)/Math.max(.01,n.getY(i))-dx,nz=n.getZ(i)/Math.max(.01,n.getY(i))-dz,len=Math.hypot(nx,1,nz);
+        normal[i*3]=nx/len;normal[i*3+1]=1/len;normal[i*3+2]=nz/len;
+      }
+    }
+    g.setAttribute('aSnowDepth',new THREE.BufferAttribute(depth,1));g.setAttribute('aSnowNormal',new THREE.BufferAttribute(normal,3));
   }
 
   build() {
@@ -304,14 +371,18 @@ export class Terrain {
     const s = STEPS[lod];
     const m = CH / s + 1;
     const H = this.R.h, nf = this.n + 1;
-    const pos = new Float32Array((m * m + 4 * m) * 3);
-    const nrm = new Float32Array((m * m + 4 * m) * 3);
+    const pos = new Array<number>((m * m + 4 * m) * 3).fill(0);
+    const nrm = new Array<number>(pos.length).fill(0);
     const i0 = ci * CH, j0 = cj * CH;
-    const hAt = (i: number, j: number) => H[clamp(j, 0, this.n) * nf + clamp(i, 0, this.n)];
+    const hAt = (i: number, j: number) => {
+      i=clamp(i,0,this.n-1e-7);j=clamp(j,0,this.n-1e-7);
+      const ix=Math.floor(i),iz=Math.floor(j),u=i-ix,v=j-iz,k=iz*nf+ix;
+      return u+v<=1?H[k]+(H[k+1]-H[k])*u+(H[k+nf]-H[k])*v:H[k+nf+1]+(H[k+nf]-H[k+nf+1])*(1-u)+(H[k+1]-H[k+nf+1])*(1-v);
+    };
     const span = s;
-    const setV = (o: number, a: number, b: number, drop: number) => {
+    const setV = (o: number, a: number, b: number, drop: number, height?:number) => {
       const i = i0 + a * s, j = j0 + b * s;
-      const h = hAt(i, j) + (this.snowHeightAt?.(i * 2 - this.R.ox, j * 2 - this.R.oz) ?? 0);
+      const h = height ?? hAt(i, j);
       pos[o * 3] = a * s * 2;
       pos[o * 3 + 1] = h - drop;
       pos[o * 3 + 2] = b * s * 2;
@@ -331,13 +402,39 @@ export class Terrain {
       setV(base + 2 * m + k, m - 1 - k, m - 1, drop);
       setV(base + 3 * m + k, 0, m - 1 - k, drop);
     }
+    let index: THREE.BufferAttribute | number[] = this.indices[lod];
+    let packed:THREE.BufferGeometry | undefined;
+    if(this.snowDetailedAt) {
+      // The immutable base remains the original terrain triangles: refining its
+      // collinear vertices would spend GPU work without changing its surface.
+      packed=new THREE.BufferGeometry();
+      packed.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));packed.setAttribute('normal',new THREE.Float32BufferAttribute(nrm,3));
+      packed.setAttribute('aSnowDepth',new THREE.BufferAttribute(new Float32Array(pos.length/3),1));packed.setIndex(this.indices[lod]);
+      const indices:number[]=[],sub=lod===0?8:4,originX=ci*CH*2-this.R.ox,originZ=cj*CH*2-this.R.oz;
+      for(let b=0;b<m-1;b++)for(let a=0;a<m-1;a++) {
+        const v=b*m+a;
+        if(!this.snowDetailedAt(originX+a*s*2,originZ+b*s*2,s*2)) {indices.push(v,v+m,v+1,v+1,v+m,v+m+1);continue;}
+        const grid:number[]=[];
+        const h00=pos[v*3+1],h10=pos[(v+1)*3+1],h01=pos[(v+m)*3+1],h11=pos[(v+m+1)*3+1];
+        for(let z=0;z<=sub;z++)for(let x=0;x<=sub;x++) {
+          const u=x/sub,w=z/sub,id=pos.length/3;
+          const h=u+w<=1?h00+(h10-h00)*u+(h01-h00)*w:h11+(h01-h11)*(1-u)+(h10-h11)*(1-w);
+          setV(id,a+u,b+w,0,h);grid.push(id);
+          if(x && z){const k=z*(sub+1)+x,aa=grid[k-sub-2],bb=grid[k-sub-1],cc=grid[k-1],dd=grid[k];indices.push(aa,cc,bb,bb,cc,dd);}
+        }
+      }
+      const skirts=this.indices[lod].array;for(let i=(m-1)*(m-1)*6;i<skirts.length;i++)indices.push(skirts[i]);
+      index=indices;
+    }
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-    g.setIndex(this.indices[lod]);
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    g.setIndex(index);
+    this.snowAttributes(g,ci*CH*2-this.R.ox,cj*CH*2-this.R.oz);
     const slot = this.slots[cj * this.cpc + ci];
     g.boundingBox = new THREE.Box3(new THREE.Vector3(0, slot.minY, 0), new THREE.Vector3(CH * 2, slot.maxY, CH * 2));
     g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere());
+    if(packed){packed.boundingBox=g.boundingBox;packed.boundingSphere=g.boundingSphere;g.userData.packedGeometry=packed;}
     return g;
   }
 
@@ -371,6 +468,7 @@ export class Terrain {
     }
     g.computeVertexNormals();
     g.computeBoundingSphere();
+    this.snowAttributes(g,0,0,false);
     this.far = new THREE.Mesh(g, this.farMat);
     this.far.receiveShadow = false;
     this.far.frustumCulled = false;
@@ -419,6 +517,8 @@ export class Terrain {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setIndex(idx);
     g.computeVertexNormals();
+    g.setAttribute('aSnowDepth',new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(-1),1));
+    g.setAttribute('aSnowNormal',g.attributes.normal);
     this.backdrop = new THREE.Mesh(g, this.farMat);
     this.backdrop.frustumCulled = false;
     this.backdrop.name = 'backdrop';
@@ -440,6 +540,10 @@ export class Terrain {
       const inNear = s.ci >= i0 && s.ci <= i1 && s.cj >= j0 && s.cj <= j1;
       if (!inNear) {
         if (s.mesh) s.mesh.visible = false;
+        // Refined shore/roof geometry is local rendering data. Long journeys
+        // must not retain every detailed mesh from previously visited regions.
+        if(s.mesh && s.lod<2){this.group.remove(s.mesh);s.mesh=null;s.base=undefined;s.lod=-1;}
+        for(let l=0;l<2;l++)if(s.geos[l]){this.disposeGeometry(s.geos[l]!);s.geos[l]=null;}
         continue;
       }
       const x0 = s.ci * cs - R.ox, z0 = s.cj * cs - R.oz;
@@ -469,17 +573,19 @@ export class Terrain {
         if (this.snowDepthMaterial) s.mesh.customDepthMaterial = this.snowDepthMaterial;
         s.mesh.name = 'terrain';
         this.group.add(s.mesh);
+        this.attachBase(s);
       }
       if (s.lod !== lod) {
         s.mesh.geometry = s.geos[lod]!;
         s.lod = lod;
         s.mesh.castShadow = lod <= 1;
+        if(s.base){s.base.geometry=s.geos[lod]!.userData.packedGeometry ?? s.geos[lod]!;s.base.castShadow=lod<=1;}
       }
       s.mesh.visible = true;
       // free detailed geometry of chunks far away
       if (want >= 2) {
         for (let l = 0; l < 2; l++) if (s.geos[l] && l !== lod) {
-          s.geos[l]!.dispose();
+          this.disposeGeometry(s.geos[l]!);
           s.geos[l] = null;
         }
       }
