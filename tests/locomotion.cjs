@@ -8,7 +8,7 @@ const source = buildSync({ entryPoints: [path.join(__dirname, '../src/game/locom
   bundle: true, platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
 const compiled = new Module(__filename);
 compiled._compile(source, __filename);
-const { Locomotion, solveLeg, wrapAngle, ANKLE, THIGH, SHIN } = compiled.exports;
+const { Locomotion, solveLeg, footPose, wrapAngle, ANKLE, THIGH, SHIN } = compiled.exports;
 const dt = 1 / 60;
 const flat = (x, z) => ({ point: new THREE.Vector3(x, 0, z), normal: new THREE.Vector3(0, 1, 0) });
 let count = 0;
@@ -37,6 +37,19 @@ test('idle feet stay planted and silent; breathing cannot create steps', () => {
   m.feet.forEach((f, i) => assert.ok(f.position.distanceTo(anchors[i]) < 1e-9));
 });
 
+test('standing ankles sit below hips instead of reaching in front of a displaced torso', () => {
+  const { m, step } = fixture(); step(90);
+  for (const f of m.feet) {
+    const hip = new THREE.Vector3(f.sign * 0.115, m.hipHeight, 0);
+    const pose = footPose(f);
+    const ankle = pose.position.clone().add(new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation));
+    assert.ok(Math.abs(ankle.z - hip.z) < 0.01);
+    const knee = new THREE.Vector3();
+    solveLeg(hip, ankle, new THREE.Vector3(0, 0, -1), knee);
+    assert.ok(Math.abs(knee.z - hip.z) < 0.13, `permanently bent-forward knee ${knee.z}`);
+  }
+});
+
 test('small look turns the head without turning hips or feet', () => {
   const { m, input, step } = fixture();
   input.yaw = 0.55;
@@ -60,9 +73,56 @@ test('large look smoothly turns the body and replants feet instead of spinning s
     last = m.bodyYaw;
   }
   assert.ok(Math.abs(wrapAngle(m.bodyYaw - input.yaw)) < 0.15);
-  assert.ok(maxSpeed <= 2.81);
+  assert.ok(maxSpeed <= 1.81);
   assert.ok(plantedRotation < 1e-9);
   assert.ok(m.stepSerial >= 2);
+});
+
+test('running lengthens the stride instead of accelerating walking into a shuffle', () => {
+  const traces = [];
+  for (const [speed, sprinting] of [[1.7, false], [4.5, true]]) {
+    const { m, input, step } = fixture(); input.sprinting = sprinting;
+    const contacts = []; let flight = 0, maxReach = 0, minHip = 1;
+    for (let i = 0; i < 480; i++) {
+      step(1, 0, -speed);
+      if (i < 120) continue;
+      contacts.push(...m.contacts.map(c => ({ t: i * dt, z: c.position.z })));
+      if (m.feet.every(f => f.swinging)) flight++;
+      minHip = Math.min(minHip, m.hipHeight);
+      for (const f of m.feet) {
+        const hip = input.position.clone().add(new THREE.Vector3(f.sign * 0.115, m.hipHeight, 0));
+        const pose = footPose(f);
+        const ankle = pose.position.clone().add(new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation));
+        maxReach = Math.max(maxReach, solveLeg(hip, ankle, new THREE.Vector3(0, 0, -1), new THREE.Vector3()));
+      }
+    }
+    const cadence = (contacts.length - 1) / (contacts.at(-1).t - contacts[0].t);
+    const stride = Math.abs(contacts.at(-1).z - contacts[0].z) / (contacts.length - 1);
+    traces.push({ cadence, stride, flight, minHip, maxReach });
+  }
+  const [walk, run] = traces;
+  assert.ok(run.cadence >= 2.8 && run.cadence <= 3.6, JSON.stringify(run));
+  assert.ok(run.cadence < walk.cadence * 1.25, JSON.stringify(traces));
+  assert.ok(run.stride > walk.stride * 1.9, JSON.stringify(traces));
+  assert.ok(run.flight > 30 && walk.flight === 0);
+  assert.ok(run.minHip > 0.9 && run.maxReach < 0.01, JSON.stringify(run));
+});
+
+test('toe-off raises the heel while the toe contact stays fixed', () => {
+  const { m, input, step } = fixture(); input.sprinting = true;
+  let rolled = 0;
+  for (let i = 0; i < 240; i++) {
+    step(1, 0, -4.5);
+    for (const f of m.feet) if (f.grounded && !f.swinging && f.roll < -0.1) {
+      const pose = footPose(f), toe = new THREE.Vector3(0, 0, -0.18);
+      const actual = toe.clone().applyQuaternion(pose.rotation).add(pose.position);
+      const expected = toe.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), f.yaw).add(f.position);
+      assert.ok(actual.distanceTo(expected) < 1e-7);
+      assert.ok(pose.position.y > f.position.y + 0.01);
+      rolled++;
+    }
+  }
+  assert.ok(rolled > 20);
 });
 
 for (const [name, vx, vz, sprinting] of [['forward', 0, -1.7, false], ['backward', 0, 1.7, false],

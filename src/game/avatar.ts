@@ -3,12 +3,11 @@
 import * as THREE from 'three';
 import { G, GROUPS_RAY } from './ctx';
 import { Tex } from '../core/textures';
-import { ANKLE, Locomotion, solveLeg, wrapAngle } from './locomotion';
+import { ANKLE, Locomotion, footPose, solveLeg, wrapAngle } from './locomotion';
 import type { FootSurface, MotionInput } from './locomotion';
 import type { Player } from './player';
 
 const up = new THREE.Vector3(0, 1, 0);
-const yAxis = new THREE.Vector3(0, 1, 0);
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const jointGeo = new THREE.SphereGeometry(1, 12, 8);
 const limbGeo = new THREE.CylinderGeometry(0.86, 1, 1, 12);
@@ -76,9 +75,9 @@ export class PlayerAvatar {
       m.material = material;
     };
     this.root.add(this.pelvis);
-    mesh(this.pelvis, jointGeo, pants, [0.215, 0.135, 0.145], [0, 0, 0.08]);
+    mesh(this.pelvis, jointGeo, pants, [0.215, 0.135, 0.145]);
     this.pelvis.add(this.chest);
-    this.chest.position.set(0, 0.035, 0.08);
+    this.chest.position.set(0, 0.035, 0);
     // Rounded jacket, cuffs, pockets and zip: useful silhouette without an asset dependency.
     const coat = mesh(this.chest, new THREE.CylinderGeometry(0.235, 0.225, 0.43, 12), jacket, [1, 1, 0.72], [0, 0.21, 0]);
     hide(coat); // upper torso must not occlude the first-person view looking down
@@ -181,8 +180,7 @@ export class PlayerAvatar {
     const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
     const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
     const hipY = THREE.MathUtils.lerp(m.previousHipHeight, m.hipHeight, a);
-    this.pelvis.position.copy(forward).multiplyScalar(-0.14);
-    this.pelvis.position.y = hipY;
+    this.pelvis.position.set(0, hipY, 0);
     this.pelvis.rotation.y = yaw;
     this.chest.rotation.set(m.chestPitch, m.chestYaw, 0, 'YXZ');
     this.head.rotation.set(m.headPitch, m.headYaw, 0, 'YXZ');
@@ -190,15 +188,12 @@ export class PlayerAvatar {
       const f = m.feet[i], leg = this.legs[i];
       const sole = this.visualFeet[i].lerpVectors(f.previous, f.position, a);
       const footYaw = f.previousYaw + wrapAngle(f.yaw - f.previousYaw) * a;
-      const tilt = new THREE.Quaternion().setFromUnitVectors(up, f.normal);
-      leg.boot.position.copy(sole).sub(origin);
-      leg.boot.quaternion.copy(tilt).multiply(new THREE.Quaternion().setFromAxisAngle(yAxis, footYaw));
-      // Toe clearance while swinging; the support pose itself stays flat on its normal.
-      if (f.swinging) leg.boot.rotateX(-Math.sin(f.progress * Math.PI * 2) * 0.13);
-      const ankle = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(leg.boot.quaternion).add(sole);
+      const pose = footPose(f, footYaw, sole);
+      leg.boot.position.copy(pose.position).sub(origin);
+      leg.boot.quaternion.copy(pose.rotation);
+      const ankle = new THREE.Vector3(0, ANKLE, 0.025).applyQuaternion(pose.rotation).add(pose.position);
       const hip = origin.clone().addScaledVector(right, f.sign * (0.115 + m.crouch * 0.02));
       hip.y += hipY;
-      hip.addScaledVector(forward, -0.14);
       const knee = this.visualKnees[i];
       this.reachErrors[i] = solveLeg(hip, ankle, forward.clone().addScaledVector(right, f.sign * 0.12), knee);
       this.segment(leg.thigh, hip, knee, origin, 0.105);
@@ -207,9 +202,9 @@ export class PlayerAvatar {
       const relative = sole.clone().sub(hip).dot(forward);
       const arm = this.arms[i];
       const holding = !!this.player.equipped || !!this.player.carried || this.player.handsWarming;
-      const armSwing = THREE.MathUtils.clamp(-relative * 1.3, -0.65, 0.65);
+      const armSwing = THREE.MathUtils.clamp(-relative * (1.3 + m.runBlend * 0.35), -0.7, 0.7);
       arm.shoulder.rotation.x = holding ? 0.65 : armSwing;
-      arm.elbow.rotation.x = holding ? 0.8 : 0.2 + Math.abs(armSwing) * 0.25;
+      arm.elbow.rotation.x = holding ? 0.8 : 0.2 + m.runBlend * 0.8 + Math.abs(armSwing) * 0.25;
     }
     if (this.inspectionView) {
       const target = origin.clone().add(new THREE.Vector3(0, this.player.crouch ? 0.62 : 0.92, 0));

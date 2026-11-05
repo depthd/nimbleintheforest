@@ -73,8 +73,13 @@ export class Player {
   winded = false;
   private bobAmp = 0;
 
+  private get eyeOffset() {
+    const yaw = this.avatar?.motion.bodyYaw ?? this.yaw;
+    return new THREE.Vector3(-Math.sin(yaw) * 0.12, 0, -Math.cos(yaw) * 0.12);
+  }
+
   get eyePos() {
-    return new THREE.Vector3(this.pos.x, this.pos.y + (this.crouch ? 1.05 : EYE) + (this.water ? 0 : 0), this.pos.z);
+    return new THREE.Vector3(this.pos.x, this.pos.y + (this.crouch ? 1.05 : EYE), this.pos.z).add(this.eyeOffset);
   }
 
   forward(out = new THREE.Vector3()) {
@@ -455,8 +460,9 @@ export class Player {
     const lift = motion.feet.map(f => f.swinging ? Math.sin(f.progress * Math.PI) : 0);
     const bobY = -Math.max(...lift) * 0.018 * this.bobAmp;
     const bobX = (lift[0] - lift[1]) * 0.012 * this.bobAmp;
-    e.x = ip.x;
-    e.z = ip.z;
+    const eyeOffset = this.eyeOffset;
+    e.x = ip.x + eyeOffset.x;
+    e.z = ip.z + eyeOffset.z;
     e.y = this.camY;
     const sh = G.body.shiver > 20 ? (G.body.shiver / 260) * 0.006 : 0;
     const water = this.water ? Math.sin(performance.now() / 300) * 0.05 : 0;

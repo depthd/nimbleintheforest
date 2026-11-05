@@ -6,6 +6,11 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 const OUT = process.argv[2] || path.join(__dirname, '../test-results/movement');
 fs.mkdirSync(OUT, { recursive: true });
+for (const file of fs.readdirSync(OUT)) {
+  if (file === 'result.json' || /^(walk-side|run-side|turn-side|run-shadow|walk-first)-\d+\.png$/.test(file)) {
+    fs.unlinkSync(path.join(OUT, file));
+  }
+}
 
 (async () => {
   const { createServer } = await import('vite');
@@ -45,14 +50,15 @@ fs.mkdirSync(OUT, { recursive: true });
       const stage = { x: 40, z: 40, y: G.terrain.heightAt(40, 40) + 35 };
       window.__stage = stage;
       const body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed());
-      G.world.createCollider(G.R.ColliderDesc.cuboid(12, 0.1, 12).setTranslation(stage.x, stage.y - 0.1, stage.z), body);
-      const mesh = new T.Mesh(new T.BoxGeometry(24, 0.2, 24), new T.MeshStandardMaterial({ color: 0xc8cdd0, roughness: 1 }));
+      G.world.createCollider(G.R.ColliderDesc.cuboid(30, 0.1, 30).setTranslation(stage.x, stage.y - 0.1, stage.z), body);
+      const mesh = new T.Mesh(new T.BoxGeometry(60, 0.2, 60), new T.MeshStandardMaterial({ color: 0xc8cdd0, roughness: 1 }));
       mesh.position.set(stage.x, stage.y - 0.1, stage.z);
       mesh.receiveShadow = true;
       G.scene.add(mesh);
-      const grid = new T.GridHelper(24, 48, 0x7c8a91, 0xa7b0b5);
+      const grid = new T.GridHelper(60, 120, 0x7c8a91, 0xa7b0b5);
       grid.position.set(stage.x, stage.y + 0.002, stage.z);
       G.scene.add(grid);
+      window.__movementFixtures = [mesh, grid];
       window.__stepSounds = [];
       const play = G.audio.play.bind(G.audio);
       G.audio.play = (name, opts = {}) => {
@@ -105,7 +111,7 @@ fs.mkdirSync(OUT, { recursive: true });
       return { state: last, rate, drift, sounds: window.__stepSounds.length };
     });
     check('large turn uses smooth pelvis rotation and real repositioning steps',
-      Math.abs(result.state.bodyYaw - 2.6) < 0.15 && result.rate <= 2.81 && result.drift < 1e-5 && result.sounds >= 2,
+      Math.abs(result.state.bodyYaw - 2.6) < 0.15 && result.rate <= 1.81 && result.drift < 1e-5 && result.sounds >= 2,
       { rate: result.rate, drift: result.drift, steps: result.sounds });
     await shot('02-turn-finished');
 
@@ -187,6 +193,7 @@ fs.mkdirSync(OUT, { recursive: true });
       const rampMesh = new T.Mesh(new T.BoxGeometry(3.2, 0.3, 8), new T.MeshStandardMaterial({ color: 0xa5afb6, roughness: 1 }));
       rampMesh.position.set(x, s.y + 0.8, s.z); rampMesh.rotation.x = angle;
       rampMesh.castShadow = rampMesh.receiveShadow = true; G.scene.add(rampMesh);
+      window.__movementFixtures.push(rampMesh);
       g.teleport(x, s.y + 0.8 + 0.15 / Math.cos(angle) - Math.tan(angle) * 2.5 + 0.05, s.z + 2.5);
       g.steps(60); G.input.keys.add('KeyW');
       let contacts = 0, tilted = 0, reach = 0;
@@ -211,6 +218,7 @@ fs.mkdirSync(OUT, { recursive: true });
         G.world.createCollider(G.R.ColliderDesc.cuboid(1.5, h / 2, 0.325).setTranslation(s.x - 5, s.y + h / 2, z), body);
         const mesh = new T.Mesh(new T.BoxGeometry(3, h, 0.65), new T.MeshStandardMaterial({ color: 0x969fa8 }));
         mesh.position.set(s.x - 5, s.y + h / 2, z); mesh.receiveShadow = true; G.scene.add(mesh);
+        window.__movementFixtures.push(mesh);
       }
       g.teleport(s.x - 5, s.y + 0.05, s.z + 1.2);
       g.steps(60); G.input.keys.add('KeyW');
@@ -230,22 +238,91 @@ fs.mkdirSync(OUT, { recursive: true });
       { raisedContacts: result.raisedContacts, reach: result.reach, penetration: result.penetration });
     await shot('04-stairs');
 
+    result = await ev(() => {
+      const g = window.__game; window.__resetMovement();
+      g.G.input.keys.add('KeyW'); g.G.input.keys.add('ShiftLeft');
+      g.steps(120);
+      const contacts = []; let flight = 0, reach = 0, minHip = 1, lowestPose = null;
+      for (let i = 0; i < 180; i++) {
+        g.steps(1); const s = g.animation();
+        contacts.push(...g.G.player.avatar.motion.contacts.map(c => ({ t: i / 60, z: c.position.z })));
+        if (s.feet.every(f => f.phase === 'swing')) flight++;
+        reach = Math.max(reach, ...s.reachErrors);
+        if (s.hipHeight < minHip) { minHip = s.hipHeight; lowestPose = { ...s, grounded: g.G.player.grounded, vy: g.G.player.vy }; }
+      }
+      g.G.input.keys.clear();
+      const cadence = (contacts.length - 1) / (contacts.at(-1).t - contacts[0].t);
+      const stride = Math.abs(contacts.at(-1).z - contacts[0].z) / (contacts.length - 1);
+      return { cadence, stride, flight, reach, minHip, lowestPose };
+    });
+    fs.writeFileSync(path.join(OUT, 'steady-run-trace.json'), JSON.stringify(result, null, 2));
+    check('steady running has long strides and a controlled cadence, not a fast walking loop',
+      result.cadence >= 2.8 && result.cadence <= 3.6 && result.stride > 1.15 && result.flight > 20 && result.reach < 0.025 && result.minHip > 0.8,
+      { cadence: result.cadence, stride: result.stride, flight: result.flight, reach: result.reach, minHip: result.minHip });
+
+    await ev(() => {
+      const g = window.__game; window.__resetMovement(); g.G.player.avatar.inspectionView = 1;
+      // A clear animation inspection stage: keep actual light/shadows and all
+      // physics, but skip drawing distant world geometry for these pose sequences.
+      window.__captureLayers = [];
+      for (const root of g.G.scene.children) {
+        if (root === g.G.player.avatar.root || root === g.G.camera || root.isLight ||
+          window.__movementFixtures.includes(root) || root.material?.uniforms?.sunDir) continue;
+        root.traverse(o => { window.__captureLayers.push([o, o.layers.mask]); o.layers.set(3); });
+      }
+    });
+    await shot('05-upright-idle');
+
+    for (const [name, running] of [['walk-side', false], ['run-side', true]]) {
+      await ev(running => {
+        const g = window.__game; window.__resetMovement(); g.G.player.avatar.inspectionView = 1;
+        g.G.input.keys.add('KeyW'); if (running) g.G.input.keys.add('ShiftLeft'); g.steps(100);
+      }, running);
+      for (let i = 0; i < (running ? 16 : 8); i++) {
+        await ev(() => window.__game.steps(5));
+        await shot(`${name}-${String(i).padStart(2, '0')}`);
+      }
+    }
     await ev(() => {
       const g = window.__game; window.__resetMovement();
-      g.G.player.avatar.inspectionView = 1;
-      g.G.input.keys.add('KeyW');
-      g.steps(90);
+      g.G.player.avatar.inspectionView = 1; g.G.player.yaw = 2.6;
     });
     for (let i = 0; i < 12; i++) {
-      await ev(() => window.__game.steps(5));
-      await shot(`walk-side-${String(i).padStart(2, '0')}`);
+      await ev(() => window.__game.steps(12));
+      await shot(`turn-side-${String(i).padStart(2, '0')}`);
     }
+    await ev(() => {
+      const g = window.__game; window.__resetMovement();
+      const avatar = g.G.player.avatar;
+      avatar.inspectionView = 1;
+      const draw = avatar.render.bind(avatar);
+      window.__restoreAvatarRender = draw;
+      avatar.render = (alpha, dt) => {
+        draw(alpha, dt);
+        const dir = g.G.sky.sunDir.clone().setY(0).normalize().multiplyScalar(-1);
+        const target = g.G.player.pos.clone().addScaledVector(dir, 2);
+        avatar.inspectionCamera.fov = 62;
+        avatar.inspectionCamera.position.copy(target).add(new g.THREE.Vector3(1.5, 6, 1.5));
+        avatar.inspectionCamera.lookAt(target); avatar.inspectionCamera.updateProjectionMatrix();
+      };
+      g.G.input.keys.add('KeyW'); g.G.input.keys.add('ShiftLeft'); g.steps(100);
+    });
+    for (let i = 0; i < 8; i++) {
+      await ev(() => window.__game.steps(8));
+      await shot(`run-shadow-${String(i).padStart(2, '0')}`);
+    }
+    await ev(() => {
+      const a = window.__game.G.player.avatar; a.render = window.__restoreAvatarRender;
+      a.inspectionCamera.fov = 48;
+      for (const [object, mask] of window.__captureLayers) object.layers.mask = mask;
+    });
+
     await ev(() => {
       const g = window.__game; window.__resetMovement();
       g.G.player.avatar.inspectionView = 0; g.G.player.pitch = -1.35;
       g.G.input.keys.add('KeyW'); g.steps(90);
     });
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       await ev(() => window.__game.steps(5));
       await shot(`walk-first-${String(i).padStart(2, '0')}`);
     }
