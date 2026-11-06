@@ -247,6 +247,8 @@ export class Entities {
   sync() {
     for (const e of this.list) {
       if (!e.body || !e.obj) continue;
+      // parts of structures and stumps don't move
+      if (e.kind === 'part' || e.kind === 'stump') continue;
       if (e.body.isSleeping()) continue;
       this.syncOne(e);
       const t = e.body.translation();

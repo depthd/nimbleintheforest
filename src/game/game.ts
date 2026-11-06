@@ -294,7 +294,7 @@ function bodyEnv(): Env {
 function updateMoisture(dtGame: number) {
   const P = G.player;
   for (const e of G.entities.list) {
-    if (e.removed) continue;
+    if (e.removed || e.kind === 'part' || e.kind === 'stump') continue;
     const d = e.def;
     if (!(d?.fuel || d?.wear || d?.insul || e.defId === 'matches')) continue;
     if (P.isWorn(e)) continue; // worn clothes follow the body
