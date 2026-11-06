@@ -291,8 +291,9 @@ export function buildWoodObject(p: WoodPiece, crown?: CrownSource): THREE.Group 
     }
     add(mergeGeometries(parts)!, needlesMat());
   } else if (p.needles > 0) {
-    // a bough: flat sprays of needles along the outer two thirds
+    // a bough: flat sprays of needles along the outer two thirds, drawn as one mesh
     const n = Math.max(1, Math.round(p.len / 0.35));
+    const parts: THREE.BufferGeometry[] = [];
     for (let i = 0; i < n; i++) {
       const t = 0.3 + (0.7 * (i + 0.5)) / n;
       const len = (p.len / n) * 1.5;
@@ -301,8 +302,9 @@ export function buildWoodObject(p: WoodPiece, crown?: CrownSource): THREE.Group 
       c.scale(1, 0.3, 1);
       c.rotateX((i % 2) * 0.5 - 0.25);
       c.translate(t * p.len - p.len / 2, 0, 0);
-      add(c, needlesMat());
+      parts.push(c.toNonIndexed());
     }
+    add(parts.length === 1 ? parts[0] : mergeGeometries(parts)!, needlesMat());
   }
   if (crown && p.crown) {
     for (const w of p.whorls) for (const part of crown(p, w.band)) add(part.geo, part.mat);

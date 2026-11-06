@@ -493,6 +493,7 @@ function loop(now: number) {
   }
   G.terrain.update(G.camera.position);
   G.forest.update(G.player.pos);
+  G.entities.cull(dt, G.camera.position);
   G.lake.stream(G.player.pos);
   G.structures.update(dt);
   if (!paused && !G.dead) G.animals.update(dt);

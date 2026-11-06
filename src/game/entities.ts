@@ -244,6 +244,21 @@ export class Entities {
     e.obj.quaternion.set(r.x, r.y, r.z, r.w);
   }
 
+  private cullT = 0;
+
+  /** Small loose things far away are not drawn (felling and limbing leave many). */
+  cull(dt: number, eye: THREE.Vector3) {
+    this.cullT -= dt;
+    if (this.cullT > 0) return;
+    this.cullT = 0.5;
+    const p = new THREE.Vector3();
+    for (const e of this.list) {
+      if (e.kind !== 'item' || !e.obj || !e.inWorld || !e.body) continue;
+      const far = e.mass < 5 ? 70 : e.mass < 40 ? 160 : 400;
+      e.obj.visible = e.position(p).distanceToSquared(eye) < far * far;
+    }
+  }
+
   sync() {
     for (const e of this.list) {
       if (!e.body || !e.obj) continue;
