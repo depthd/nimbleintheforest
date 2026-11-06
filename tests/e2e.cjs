@@ -178,24 +178,13 @@ function check(name, ok, extra = '') {
       g.swing();
       n++;
     }
-    g.steps(240);
-    const trunk = G.entities.list.find((e) => e.kind === 'trunk' && !e.removed);
-    if (!trunk) return { fell: !tr.alive, n, acts };
-    const tp = trunk.position();
-    g.teleport(tp.x + 1.2, G.terrain.heightAt(tp.x + 1.2, tp.z) + 0.05, tp.z);
-    g.steps(20);
-    g.lookAt(tp.x, tp.y, tp.z);
-    const acts2 = g.actions();
-    let m = 0;
-    while (!trunk.removed && m < 120) {
-      g.swing();
-      m++;
-    }
-    g.steps(60);
-    return { fell: !tr.alive, n, m, trunkGone: trunk.removed, logs: g.find('log').length, acts, acts2 };
+    g.steps(600);
+    const trunk = G.entities.list.find((e) => e.data?.wood && e.defId === 'trunk' && !e.removed);
+    const stump = G.entities.list.find((e) => e.kind === 'stump' && !e.removed);
+    return { fell: !tr.alive, n, acts, trunk: !!trunk, branches: trunk ? trunk.data.wood.whorls.length : 0, stump: stump ? +stump.data.wood.len.toFixed(2) : 0, info: trunk ? g.actions().info : '' };
   });
   check('fell a tree', tree.fell, JSON.stringify(tree));
-  check('cut trunk into logs', tree.trunkGone, JSON.stringify(tree.acts2 || {}));
+  check('felled tree lies as a trunk with branches, a stump remains', tree.trunk && tree.branches > 0 && tree.stump > 0.2, JSON.stringify(tree));
   await shot('05-tree');
 
   // ---- drill an ice hole and take water ----

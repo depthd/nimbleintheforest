@@ -4,8 +4,10 @@ import type RAPIER_T from '@dimforge/rapier3d-compat';
 import { G, GROUPS_ITEM, GROUPS_STATIC } from './ctx';
 import { def, ItemDef, Shape } from './items';
 import { buildItemMesh } from './meshes';
+import { attachColliders, isPocket, woodMass, woodObject } from './wood/wood';
+import { category, defaultPiece, maxRadius, pieceName, WOOD_IDS, type WoodPiece } from './wood/piece';
 
-export type Kind = 'item' | 'window' | 'door' | 'railing' | 'stove' | 'fire' | 'icehole' | 'trunk' | 'doorway' | 'radio' | 'container' | 'animal';
+export type Kind = 'item' | 'window' | 'door' | 'railing' | 'stove' | 'fire' | 'icehole' | 'trunk' | 'stump' | 'part' | 'doorway' | 'radio' | 'container' | 'animal';
 
 export interface PotContents {
   snow: number; // litres of water-equivalent snow
@@ -50,11 +52,17 @@ export class Entity {
   }
 
   get mass(): number {
+    if (this.data.wood) return woodMass(this);
     const d = this.def;
     if (!d) return this.data.mass ?? 100;
     let m = d.mass;
     if (this.contents) m += this.contents.snow + this.contents.water;
     return m;
+  }
+
+  /** fits into the backpack (by size, the weight is checked separately) */
+  get pocket(): boolean {
+    return isPocket(this);
   }
 
   position(out = new THREE.Vector3()): THREE.Vector3 {
@@ -107,6 +115,8 @@ export interface SpawnOpts {
   vel?: THREE.Vector3;
   angvel?: THREE.Vector3;
   sleep?: boolean;
+  /** a wood piece with its real size (logs, sticks, boards...) */
+  wood?: WoodPiece;
 }
 
 export class Entities {
@@ -127,15 +137,26 @@ export class Entities {
       e.hp = d.chop.hp;
       e.maxHp = d.chop.hp;
     }
+    const wood = opts.wood ?? (WOOD_IDS.has(id) ? defaultPiece(id, e.params) : null);
+    if (wood) {
+      e.data.wood = wood;
+      e.defId = category(wood);
+      e.name = pieceName(wood);
+      if (opts.moisture === undefined && (wood.sp === 'dead' || wood.sp === 'burnt')) e.moisture = Math.min(e.moisture, 0.15);
+    }
     this.list.push(e);
     this.placeInWorld(e, pos, opts.quat, opts.vel, opts.angvel, opts.sleep);
     return e;
   }
 
+  add(e: Entity) {
+    if (!this.list.includes(e)) this.list.push(e);
+  }
+
   /** Create mesh+body for an item at a position. */
   placeInWorld(e: Entity, pos: THREE.Vector3, quat?: THREE.Quaternion, vel?: THREE.Vector3, angvel?: THREE.Vector3, sleep = false) {
     const d = e.def!;
-    if (!e.obj) e.obj = buildItemMesh(e.defId, e.params);
+    if (!e.obj) e.obj = e.data.wood ? woodObject(e) : buildItemMesh(e.defId, e.params);
     e.obj.userData.entity = e;
     G.scene.add(e.obj);
     const R = G.R;
@@ -143,17 +164,21 @@ export class Entities {
       .setTranslation(pos.x, pos.y, pos.z)
       .setLinearDamping(0.15)
       .setAngularDamping(0.6)
-      .setCcdEnabled(d.mass < 4);
+      .setCcdEnabled(e.mass < 4 || (!!e.data.wood && e.mass > 60));
     if (quat) bd.setRotation({ x: quat.x, y: quat.y, z: quat.z, w: quat.w });
     if (sleep) bd.setSleeping(true);
     const body = G.world.createRigidBody(bd);
-    const cd = colliderFor(d.shape).setMass(Math.max(0.05, e.mass)).setFriction(0.8).setRestitution(0.05).setCollisionGroups(GROUPS_ITEM);
-    const col = G.world.createCollider(cd, body);
+    e.body = body;
+    e.colliders = [];
+    if (e.data.wood) attachColliders(e, body);
+    else {
+      const cd = colliderFor(d.shape).setMass(Math.max(0.05, e.mass)).setFriction(0.8).setRestitution(0.05).setCollisionGroups(GROUPS_ITEM);
+      const col = G.world.createCollider(cd, body);
+      e.colliders = [col];
+      this.byCollider.set(col.handle, e);
+    }
     if (vel) body.setLinvel({ x: vel.x, y: vel.y, z: vel.z }, true);
     if (angvel) body.setAngvel({ x: angvel.x, y: angvel.y, z: angvel.z }, true);
-    e.body = body;
-    e.colliders = [col];
-    this.byCollider.set(col.handle, e);
     e.inWorld = true;
     e.pinned = null;
     this.syncOne(e);
@@ -183,7 +208,7 @@ export class Entities {
   /** Pin an item to a fixed spot without physics (stove top, bed, window). */
   pin(e: Entity, where: string, pos: THREE.Vector3, quat?: THREE.Quaternion, parent?: THREE.Object3D) {
     if (e.inWorld) this.removeFromWorld(e);
-    if (!e.obj) e.obj = buildItemMesh(e.defId, e.params);
+    if (!e.obj) e.obj = e.data.wood ? woodObject(e) : buildItemMesh(e.defId, e.params);
     e.obj.userData.entity = e;
     (parent ?? G.scene).add(e.obj);
     e.obj.position.copy(pos);
@@ -195,7 +220,9 @@ export class Entities {
     e.obj.getWorldPosition(wp);
     const wq = new THREE.Quaternion();
     e.obj.getWorldQuaternion(wq);
-    const cd = colliderFor(e.def!.shape).setTranslation(wp.x, wp.y, wp.z).setRotation({ x: wq.x, y: wq.y, z: wq.z, w: wq.w }).setCollisionGroups(GROUPS_STATIC);
+    const wood = e.data.wood as WoodPiece | undefined;
+    const shape: Shape = wood ? { t: 'box', x: wood.len / 2, y: Math.max(0.01, wood.form === 'sawn' ? wood.t / 2 : maxRadius(wood) * 0.8), z: Math.max(0.01, wood.form === 'sawn' ? wood.w / 2 : maxRadius(wood) * 0.8) } : e.def!.shape;
+    const cd = colliderFor(shape).setTranslation(wp.x, wp.y, wp.z).setRotation({ x: wq.x, y: wq.y, z: wq.z, w: wq.w }).setCollisionGroups(GROUPS_STATIC);
     const col = G.world.createCollider(cd);
     e.colliders = [col];
     this.byCollider.set(col.handle, e);

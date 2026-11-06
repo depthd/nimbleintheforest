@@ -1,6 +1,10 @@
 import { renderRegionMap, mapXY } from './map';
 import { NOTES, NOTE_KEYS, NEWSPAPERS, BOOKS } from '../game/lore';
 import { itemIcon } from './icons';
+import { woodOf } from '../game/wood/wood';
+import { pieceSize, stacksByWeight } from '../game/wood/piece';
+
+const STACK_NAMES: Record<string, string> = { sticks: 'Хворост', boughs: 'Лапник', firewood: 'Дрова', kindling: 'Щепа' };
 import { BIOME_NAMES } from '../gen/biomes';
 // DOM overlay: status, target prompts, messages, inventory, sleep dialog,
 // debug/parameters panel, pause and death screens.
@@ -487,11 +491,16 @@ export class HUD {
       return url ? `<img src="${url}" alt="">` : '<span class="noicon">?</span>';
     };
     const cards: string[] = [];
+    const groupOf = new Map<Entity, Entity[]>();
     for (const [, list] of groups) {
       const e = list[0];
-      const n = list.length > 1 ? `<b class="n">×${list.length}</b>` : '';
+      for (const x of list) groupOf.set(x, list);
+      // small wood is one stack by weight; boards and poles are counted
+      const byWeight = !!woodOf(e) && stacksByWeight(e.defId);
+      const n = list.length > 1 && !byWeight ? `<b class="n">×${list.length}</b>` : '';
       const w = list.reduce((a, x) => a + x.mass, 0);
-      cards.push(`<div class="card${sel === e ? ' sel' : ''}${P.equipped === e ? ' eq' : ''}" draggable="true" data-act="select" data-id="${e.id}">${icon(e)}${n}${wetTag(e)}<span class="cn">${e.displayName()}</span><span class="cw">${w < 1 ? Math.round(w * 1000) + ' г' : w.toFixed(1) + ' кг'}</span></div>`);
+      const name = byWeight ? (STACK_NAMES[e.defId] ?? e.def?.name ?? e.name) + (e.moisture > 0.3 ? ' (сырое)' : '') : e.displayName();
+      cards.push(`<div class="card${sel === e || (sel && groupOf.get(sel) === list) ? ' sel' : ''}${P.equipped === e ? ' eq' : ''}" draggable="true" data-act="select" data-id="${e.id}">${icon(e)}${n}${wetTag(e)}<span class="cn">${name}</span><span class="cw">${w < 1 ? Math.round(w * 1000) + ' г' : w.toFixed(1) + ' кг'}</span></div>`);
     }
     // the figure with slots around it
     const pos: Record<Slot, [number, number]> = {
@@ -538,6 +547,13 @@ export class HUD {
       if (d.wear || d.insul || d.fuel) stats.push(bar('Влажность', e.moisture, e.moisture < 0.12 ? 'сухое' : Math.round(e.moisture * 100) + '%', e.moisture > 0.3));
       if (d.food) stats.push(bar('Калории', d.food.kcal / 700, d.food.kcal + ' ккал'));
       const mtl = d.wear?.material ? `<div class="hint">Материал: ${d.wear.material}</div>` : '';
+      const wp = woodOf(e);
+      if (wp) {
+        const list = groupOf.get(e) ?? [e];
+        const rows = list.slice(0, 14).map((x) => `<div class="hint">${x === e ? '▸ ' : ''}${x.name} · ${pieceSize(woodOf(x)!)} · ${x.mass < 1 ? Math.round(x.mass * 1000) + ' г' : x.mass.toFixed(1) + ' кг'}</div>`);
+        if (list.length > 14) rows.push(`<div class="hint">…и ещё ${list.length - 14}</div>`);
+        stats.push(`<div class="pieces">${rows.join('')}</div>`);
+      }
       details = `<div class="dhead">${icon(e)}<div><h3>${e.displayName()}</h3><div class="hint">${e.mass < 1 ? Math.round(e.mass * 1000) + ' г' : e.mass.toFixed(1) + ' кг'}${worn ? ' · надето' : ''}</div></div></div>
         ${d.desc ? `<p class="desc">${d.desc}</p>` : ''}${mtl}${stats.join('')}<div class="btns">${b.join('')}</div>`;
     }

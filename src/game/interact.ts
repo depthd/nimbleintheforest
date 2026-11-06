@@ -10,6 +10,9 @@ import type { Fire } from './fire';
 import { MAX_DRAG, MAX_LIFT } from './player';
 import { clamp } from '../core/rng';
 import { dryingAt } from './drying';
+import { chopLabelFor, describeWood, hitPiece, spawnPiece, woodOf } from './wood/wood';
+import { pieceSize } from './wood/piece';
+import { TREE_NAMES } from '../world/forest';
 
 export type Key = 'E' | 'F' | 'G' | 'LMB' | 'RMB';
 
@@ -24,6 +27,8 @@ export interface Target {
   kind: 'entity' | 'tree' | 'ground' | 'ice' | 'static' | 'none';
   entity?: Entity;
   tree?: Tree;
+  /** the collider that was hit (a branch whorl of a trunk, a part of a structure) */
+  collider?: number;
   point: THREE.Vector3;
   normal: THREE.Vector3;
   dist: number;
@@ -77,6 +82,7 @@ export class Interaction {
     t.normal.set(hit.normal.x, hit.normal.y, hit.normal.z);
     t.dist = hit.timeOfImpact;
     const h = hit.collider.handle;
+    t.collider = h;
     const e = G.entities.byCollider.get(h);
     const tree = G.forest.isTreeTarget(h);
     t.entity = undefined;
@@ -157,7 +163,7 @@ export class Interaction {
     for (let i = 0; i < n; i++) {
       const p = G.player.eyePos.add(G.player.forward().multiplyScalar(0.6));
       const e = G.entities.spawnItem(id, p, opts);
-      if (def(id).pocket && G.player.addToInventory(e)) continue;
+      if (e.pocket && G.player.addToInventory(e)) continue;
     }
   }
 
@@ -208,7 +214,7 @@ export class Interaction {
       if (isBlanket && e?.kind === 'doorway' && !e.data.cover) A.push({ key: 'E', label: 'Завесить проём', time: 1.2, run: () => this.hangDoorway(carried) });
       if (isBlanket && e?.defId === 'bed') A.push({ key: 'E', label: 'Постелить на кровать', time: 1, run: () => this.spreadBed(e, carried) });
       if (isBlanket) A.push({ key: 'F', label: 'Укутаться', time: 1, run: () => this.wrap(carried) });
-      else if (cd?.pocket) A.push({ key: 'F', label: 'Убрать в рюкзак', run: () => P.addToInventory(carried) && (P.carried = null) });
+      else if (carried.pocket) A.push({ key: 'F', label: 'Убрать в рюкзак', run: () => P.addToInventory(carried) && (P.carried = null) });
       return A;
     }
 
@@ -346,7 +352,7 @@ export class Interaction {
       if (w.glass === 'intact' && !w.cover) return 'Разбить стекло';
       return null;
     }
-    if (e.kind === 'trunk') return tg.includes('blunt') || tg.includes('knife') ? null : saw ? 'Распилить ствол' : 'Разрубить ствол';
+    if (woodOf(e) && (tg.includes('axe') || saw)) return chopLabelFor(e, tool, t.collider);
     if (e.kind === 'railing') return tg.includes('knife') ? null : saw ? 'Отпилить перила' : 'Рубить перила';
     if (e.kind === 'door') return tg.includes('knife') ? null : saw ? 'Распилить дверь' : 'Рубить дверь';
     if (e.def?.chop) {
@@ -418,7 +424,7 @@ export class Interaction {
     }
     if (e.kind !== 'item' || !d) return;
     if (e.pinned === 'fire') {
-      A.push({ key: 'E', label: 'Снять с огня', run: () => (d.pocket ? P.addToInventory(e) : P.carry(e)) });
+      A.push({ key: 'E', label: 'Снять с огня', run: () => (e.pocket ? P.addToInventory(e) : P.carry(e)) });
       return;
     }
     if (e.defId === 'bed') {
@@ -428,7 +434,7 @@ export class Interaction {
       A.push({ key: 'G', label: 'Тащить кровать', run: () => P.carry(e) });
       return;
     }
-    if (d.pocket) {
+    if (e.pocket) {
       A.push({ key: 'E', label: `Взять: ${e.name}`, run: () => P.addToInventory(e) });
       if (d.read) A.push({ key: 'F', label: d.read === 'book' ? 'Читать' : 'Прочитать', run: () => G.hud.read(e) });
       else A.push({ key: 'F', label: 'Взять в руки', run: () => P.carry(e) });
@@ -441,8 +447,13 @@ export class Interaction {
   }
 
   private treeActions(A: Action[], tr: Tree) {
-    if (tr.type === 'spruce' && tr.boughs > 0) A.push({ key: 'F', label: 'Наломать лапника', time: 3, run: () => this.harvest(tr, 'boughs') });
-    if (tr.twigs > 0) A.push({ key: tr.type === 'spruce' ? 'G' : 'F', label: tr.type === 'dead' ? 'Наломать сухих веток' : 'Наломать веток', time: 2.5, run: () => this.harvest(tr, 'sticks') });
+    const n = G.forest.reachableBranches(tr);
+    if (!n) {
+      this.info += ' · нижних веток не достать';
+      return;
+    }
+    const needles = tr.type === 'spruce' || tr.type === 'pine';
+    A.push({ key: 'F', label: needles ? 'Отломить еловую ветку (лапник)' : tr.type === 'dead' || tr.type === 'burnt' ? 'Отломить сухую ветку' : 'Отломить ветку', time: needles ? 2.5 : 2, run: () => this.harvest(tr) });
   }
 
   // ---------- descriptions ----------
@@ -473,10 +484,13 @@ export class Interaction {
       case 'radio':
         return `${e.name}${e.data.powered ? ' · есть питание' : ''}`;
     }
+    if (e.kind === 'stump') {
+      const w = woodOf(e)!;
+      return `${e.name} · высота ${pieceSize(w).replace(' · ', ' · ')}`;
+    }
     const d = e.def;
     if (!d) return e.name;
-    let s = e.displayName();
-    s += ` · ${e.mass < 1 ? Math.round(e.mass * 1000) + ' г' : e.mass.toFixed(1) + ' кг'}`;
+    let s = woodOf(e) ? describeWood(e) : e.displayName() + ` · ${e.mass < 1 ? Math.round(e.mass * 1000) + ' г' : e.mass.toFixed(1) + ' кг'}`;
     if (e.defId === 'bed') {
       const n = (e.data.blankets ?? []).length;
       s += n ? ` · одеял: ${n}` : ' · без одеяла';
@@ -493,8 +507,31 @@ export class Interaction {
   }
 
   private describeTree(t: Tree) {
-    const n = t.type === 'spruce' ? 'Ель' : t.type === 'birch' ? 'Берёза' : 'Сухостой';
-    return `${n} · ⌀${Math.round(t.r * 200)} см · ${t.h.toFixed(0)} м` + (t.hp < t.maxHp ? ` · ${Math.round((1 - t.hp / t.maxHp) * 100)}% подрублено` : '');
+    let s = `${TREE_NAMES[t.type]} · ⌀${Math.round(t.r * 200)} см · ${t.h.toFixed(0)} м`;
+    const deg = (t.lean * 180) / Math.PI;
+    const leanDir = new THREE.Vector3(Math.cos(t.leanDir), 0, Math.sin(t.leanDir));
+    if (deg >= 1.5) s += ` · наклон ${Math.round(deg)}° ${this.sideWord(t, leanDir)}`;
+    const cut = G.forest.cutDepth(t);
+    if (cut > 0.01) {
+      s += ` · подрублено ${Math.round(cut * 100)}%`;
+      const f = G.forest.fallDirection(t);
+      if (f) s += ` · упадёт ${this.sideWord(t, f.dir)}`;
+    }
+    return s;
+  }
+
+  /** "от вас", "на вас", "влево", "вправо": a direction at a tree, seen by the player */
+  private sideWord(t: Tree, dir: THREE.Vector3) {
+    const P = G.player.pos;
+    const away = new THREE.Vector3(t.x - P.x, 0, t.z - P.z);
+    if (away.lengthSq() < 1e-6) return '';
+    away.normalize();
+    const d = dir.clone().setY(0).normalize();
+    const c = away.dot(d);
+    if (c > 0.7) return 'от вас';
+    if (c < -0.7) return 'НА ВАС';
+    const right = new THREE.Vector3(-away.z, 0, away.x);
+    return d.dot(right) > 0 ? 'вправо' : 'влево';
   }
 
   private hpBar(e: Entity) {
@@ -651,15 +688,7 @@ export class Interaction {
         G.audio.play('thud', { pos: t.point });
         return;
       }
-      const tr = t.tree!;
-      tr.hp -= power * (saw ? 0.8 : 1);
-      G.audio.play(sfx, { pos: t.point });
-      G.fx.burst('chips', t.point, 6, t.normal);
-      if (Math.random() < 0.35) G.fx.burst('snow', new THREE.Vector3(tr.x, tr.y + tr.h * 0.55, tr.z), 10);
-      if (tr.hp <= 0) {
-        const away = new THREE.Vector3(tr.x - P.pos.x, 0, tr.z - P.pos.z);
-        G.forest.fell(tr, away.lengthSq() > 0.01 ? away : new THREE.Vector3(1, 0, 0));
-      }
+      G.forest.chopTree(t.tree!, t.point, power * (saw ? 0.8 : 1), saw);
       return;
     }
     if (t.kind === 'ice') {
@@ -677,6 +706,10 @@ export class Interaction {
       return;
     }
     const e = t.entity!;
+    if (woodOf(e) && (tg.includes('axe') || saw) && e.inWorld) {
+      hitPiece(e, tool, t.point, power, t.collider);
+      return;
+    }
     G.fx.burst(e.kind === 'window' ? 'glass' : 'chips', t.point, 6, t.normal);
     switch (e.kind) {
       case 'window': {
@@ -698,15 +731,6 @@ export class Interaction {
         e.hp -= power * (saw ? 1.2 : blunt ? 0.8 : 1);
         G.audio.play(sfx, { pos: t.point });
         if (e.hp <= 0) this.breakStructure(e, tool);
-        return;
-      case 'trunk':
-        if (blunt || tg.includes('knife')) {
-          G.audio.play('thud', { pos: t.point });
-          return;
-        }
-        e.hp -= power * (saw ? 1.3 : 1);
-        G.audio.play(sfx, { pos: t.point });
-        if (e.hp <= 0) this.breakTrunk(e);
         return;
     }
     if (e.kind === 'item' && e.def) {
@@ -752,17 +776,6 @@ export class Interaction {
     const y = saw ? [{ id: 'plank', n: Math.max(1, Math.round(len / 1.2)) }, { id: 'kindling', n: 1 }] : blunt ? [{ id: 'kindling', n: 3 }] : [{ id: 'firewood', n: 2 }, { id: 'kindling', n: 1 }];
     this.spawnYields(y, at.add(new THREE.Vector3(0, 0.6, 0)), 0.06, 0.3);
     msg(`${e.name} разрублены → ${y.map((q) => `${def(q.id).name} ×${q.n}`).join(', ')}`, 'good');
-  }
-
-  private breakTrunk(e: Entity) {
-    const at = e.position();
-    const r = e.body!.rotation();
-    const axis = new THREE.Vector3(0, 1, 0).applyQuaternion(new THREE.Quaternion(r.x, r.y, r.z, r.w));
-    const y = G.forest.trunkYields(e);
-    const len = e.data.len;
-    G.entities.destroy(e);
-    this.spawnYields(y, at, e.moisture, len * 0.4, axis);
-    msg(`Ствол разделан → ${y.map((q) => `${def(q.id).name} ×${q.n}`).join(', ')}`, 'good');
   }
 
   // ---------- actions ----------
@@ -1019,14 +1032,14 @@ export class Interaction {
     msg('Береста — отличный трут', 'good');
   }
 
-  private harvest(t: Tree, what: 'boughs' | 'sticks') {
-    if (what === 'boughs') {
-      t.boughs--;
-      this.giveOrDrop('boughs', 1, { moisture: 0.4 });
-    } else {
-      t.twigs--;
-      this.giveOrDrop('sticks', 1, { moisture: t.type === 'dead' ? 0.1 : 0.35 });
-    }
+  private harvest(t: Tree) {
+    const piece = G.forest.breakBranch(t);
+    if (!piece) return;
+    const P = G.player;
+    const at = P.eyePos.add(P.forward().multiplyScalar(0.6));
+    const e = spawnPiece(piece, at, new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), P.yaw), t.type === 'dead' || t.type === 'burnt' ? 0.12 : 0.4);
+    if (!(e.pocket && P.addToInventory(e))) msg(`${e.name} ${pieceSize(woodOf(e)!)} — слишком длинная для рюкзака, лежит рядом`, 'info');
+    else msg(`${e.name} · ${pieceSize(woodOf(e)!)} · ${e.mass.toFixed(1)} кг`, 'good');
     G.audio.play('tear');
     G.fx.burst('snow', new THREE.Vector3(t.x, t.y + 1.5, t.z), 6);
   }

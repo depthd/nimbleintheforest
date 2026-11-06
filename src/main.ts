@@ -57,4 +57,5 @@ async function go() {
 document.getElementById('st-go')!.addEventListener('click', go);
 if (params.get('preview') === 'map') import('./preview').then((m) => m.previewMap(params));
 else if (params.get('preview') === 'animals') import('./preview_animals').then((m) => m.previewAnimals(params));
+else if (params.get('preview') === 'wood') import('./preview_wood').then((m) => m.previewWood(params));
 else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1') go();

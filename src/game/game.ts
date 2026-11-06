@@ -474,6 +474,7 @@ function loop(now: number) {
     }
     if (steps >= 5) acc = 0;
     G.entities.sync();
+    G.forest.updateFalling(STEP * steps);
     let dtGame = dt * G.settings.timeScale;
     if (G.sleeping) dtGame = G.hud.sleepStep(dt);
     simulate(dtGame, dt);
@@ -572,7 +573,7 @@ function testApi() {
     },
     give(id: string, opts: Record<string, number> = {}) {
       const e = G.entities.spawnItem(id, P().eyePos, { charges: opts.charges ?? def(id).charges, moisture: opts.moisture });
-      if (def(id).pocket) P().addToInventory(e);
+      if (e.pocket) P().addToInventory(e);
       return e.id;
     },
     equip(id: string) {
@@ -602,6 +603,7 @@ function testApi() {
         G.player.avatar.update(STEP);
         contactEvents();
         G.recorder?.endTick();
+        G.forest.updateFalling(STEP);
       }
       G.entities.sync();
     },

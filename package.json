@@ -20,7 +20,8 @@
     "test:world-snow": "node tests/world-snow.cjs",
     "test:motion-record": "node tests/motion-record.cjs",
     "test:motion-recorder-browser": "node tests/motion-recorder-browser.cjs",
-    "test:e2e": "node tests/e2e.cjs"
+    "test:e2e": "node tests/e2e.cjs",
+    "test:wood-browser": "node tests/wood-browser.cjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

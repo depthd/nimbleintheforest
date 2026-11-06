@@ -2,7 +2,7 @@
 // clothing, carrying physical objects, falling through ice.
 import * as THREE from 'three';
 import type RAPIER_T from '@dimforge/rapier3d-compat';
-import { G, GROUPS_HELD, GROUPS_ITEM, GROUPS_PLAYER, GR_ITEM, GR_STATIC, groups, msg } from './ctx';
+import { G, GROUPS_HELD, GROUPS_ITEM, GROUPS_PLAYER, GR_ITEM, GR_STATIC, GR_TREE, groups, msg } from './ctx';
 import { Entity } from './entities';
 import { Slot } from './items';
 import { clamp } from '../core/rng';
@@ -392,7 +392,7 @@ export class Player {
       this.collider,
       desired,
       G.R.QueryFilterFlags.EXCLUDE_SENSORS,
-      groups(0x0004, GR_STATIC | GR_ITEM),
+      groups(0x0004, GR_STATIC | GR_TREE | GR_ITEM),
       carriedBody ? (c) => c.parent()?.handle !== carriedBody.handle : undefined,
     );
     const mv = this.kcc.computedMovement();

@@ -90,12 +90,19 @@ export const GR_STATIC = 0x0001;
 export const GR_ITEM = 0x0002;
 export const GR_PLAYER = 0x0004;
 export const GR_HELD = 0x0008;
+/** standing tree stems: a felled crown passes through them, the stem itself does not */
+export const GR_TREE = 0x0010;
 export const groups = (member: number, filter: number) => ((member & 0xffff) << 16) | (filter & 0xffff);
 export const GROUPS_STATIC = groups(GR_STATIC, 0xffff);
-export const GROUPS_ITEM = groups(GR_ITEM, GR_STATIC | GR_ITEM | GR_PLAYER | GR_HELD);
-export const GROUPS_HELD = groups(GR_HELD, GR_STATIC | GR_ITEM);
-export const GROUPS_PLAYER = groups(GR_PLAYER, GR_STATIC | GR_ITEM);
-export const GROUPS_RAY = groups(0xffff, GR_STATIC | GR_ITEM);
+export const GROUPS_TREE = groups(GR_TREE, 0xffff);
+export const GROUPS_ITEM = groups(GR_ITEM, GR_STATIC | GR_TREE | GR_ITEM | GR_PLAYER | GR_HELD);
+/** branches of a felled crown: rest on the ground and on things, slip past standing stems */
+export const GROUPS_CROWN = groups(GR_ITEM, GR_STATIC | GR_ITEM | GR_PLAYER | GR_HELD);
+/** a tree while it falls: hits the ground and other trees; the player is checked separately */
+export const GROUPS_FALLING = groups(GR_ITEM, GR_STATIC | GR_TREE | GR_ITEM);
+export const GROUPS_HELD = groups(GR_HELD, GR_STATIC | GR_TREE | GR_ITEM);
+export const GROUPS_PLAYER = groups(GR_PLAYER, GR_STATIC | GR_TREE | GR_ITEM);
+export const GROUPS_RAY = groups(0xffff, GR_STATIC | GR_TREE | GR_ITEM);
 
 export function msg(text: string, kind: 'info' | 'warn' | 'good' | 'bad' = 'info') {
   G.hud?.message(text, kind);

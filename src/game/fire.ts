@@ -7,6 +7,7 @@ import { def, FuelKind, FUEL_KIND_NAMES } from './items';
 import { clamp } from '../core/rng';
 import { Tex } from '../core/textures';
 import { M } from './meshes';
+import { fitsStove, fuelScale } from './wood/wood';
 
 export interface FuelItem {
   defId: string;
@@ -157,9 +158,12 @@ export class Fires {
     const d = e.def;
     if (!d?.fuel) return `${e.name} не горит`;
     if (f.fuel.length >= f.capacity) return f.kind === 'stove' ? 'Печь забита до отказа' : 'Костёр и так полон';
-    if (f.kind === 'stove' && d.mass > 4) return `${e.name} не влезет в печь — сначала разруби`;
+    if (f.kind === 'stove' && !fitsStove(e)) return `${e.name} не влезет в печь — сначала разруби`;
+    // a bigger piece burns longer and a little hotter
+    const k = fuelScale(e);
+    const burn = d.fuel.burn * k;
     f.fuel.push({
-      defId: e.defId, name: e.name, kind: d.fuel.kind, power: d.fuel.power, remaining: d.fuel.burn, total: d.fuel.burn,
+      defId: e.defId, name: e.name, kind: d.fuel.kind, power: d.fuel.power * Math.sqrt(k), remaining: burn, total: burn,
       ignite: d.fuel.ignite, moisture: e.moisture, burning: false, ramp: 0,
     });
     G.entities.destroy(e);

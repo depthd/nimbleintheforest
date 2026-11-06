@@ -547,7 +547,7 @@ export class Structures {
       if (id === 'book') opts.params = { t: this.rng.int(0, BOOKS.length - 1) };
       if (id === 'newspaper') opts.params = { t: this.rng.int(0, NEWSPAPERS.length - 1) };
       const it = this.spawn(id, p, opts);
-      if (it.def?.pocket && id !== 'battery' && P.packWeight() + it.mass <= P.maxPack()) P.addToInventory(it);
+      if (it.pocket && id !== 'battery' && P.packWeight() + it.mass <= P.maxPack()) P.addToInventory(it);
     });
     msg(`Нашли: ${ids.map((id) => G.entities.list.find((x) => x.defId === id)?.name ?? id).join(', ')}`, 'good');
   }

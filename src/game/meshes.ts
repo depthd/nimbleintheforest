@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Tex, worldUVBox } from '../core/textures';
 import { def } from './items';
+import { defaultPiece } from './wood/piece';
+import { buildWoodObject } from './wood/mesh';
 
 const mats = new Map<string, THREE.Material>();
 export function mat(key: string, make: () => THREE.Material): THREE.Material {
@@ -70,24 +72,6 @@ function legs(g: THREE.Group, w: number, d: number, h: number, top: number, t = 
   }
 }
 
-function logMesh(r: number, len: number, bark: THREE.Material) {
-  const g = new THREE.CylinderGeometry(r, r * 1.03, len, 12, 1);
-  const me = mesh(g, [bark, M.woodEnd(), M.woodEnd()]);
-  me.rotation.z = Math.PI / 2;
-  return me;
-}
-
-function sectorGeo(r: number, len: number) {
-  const s = new THREE.Shape();
-  s.moveTo(0, 0);
-  s.lineTo(r, 0);
-  s.absarc(0, 0, r, 0, Math.PI / 2, false);
-  s.lineTo(0, 0);
-  const g = new THREE.ExtrudeGeometry(s, { depth: len, bevelEnabled: false, curveSegments: 4 });
-  g.translate(-r / 2, -r / 2, -len / 2);
-  return g;
-}
-
 function can(r: number, h: number, label: THREE.Texture) {
   const lm = std('label' + label.uuid, { map: label, roughness: 0.6, metalness: 0.2 });
   return group(mesh(new THREE.CylinderGeometry(r, r, h, 14), [lm, M.metal(), M.metal()]));
@@ -108,6 +92,9 @@ function folded(w: number, h: number, d: number, m: THREE.Material) {
 
 export function buildItemMesh(id: string, params: Record<string, number> = {}): THREE.Object3D {
   const v = params.v ?? 0;
+  // logs, sticks, boards: the same pieces as in the world
+  const wood = defaultPiece(id, params);
+  if (wood) return buildWoodObject(wood);
   let o: THREE.Object3D;
   switch (id) {
     case 'axe':
@@ -217,48 +204,6 @@ export function buildItemMesh(id: string, params: Record<string, number> = {}): 
     case 'kerosene':
       o = group(mesh(cyl(0.045, 0.2, 12), std('kerobottle', { color: 0xb8431c, roughness: 0.5 })), mesh(cyl(0.015, 0.04, 8), M.black(), 0, 0.12, 0));
       break;
-    case 'log':
-      o = group(logMesh(0.14, 1.2, params.dead ? M.barkDead() : params.birch ? M.barkBirch() : M.barkSpruce()));
-      break;
-    case 'firewood':
-      o = group(mesh(sectorGeo(0.11, 0.4), params.birch ? std('fwbirch', { color: 0xe9e1cf, roughness: 0.9 }) : M.woodLight()));
-      break;
-    case 'plank':
-      o = group(mesh(worldUVBox(1.2, 0.024, 0.14, 1.2), M.wood()));
-      break;
-    case 'kindling': {
-      const g = new THREE.Group();
-      for (let i = 0; i < 3; i++) {
-        const k = mesh(box(0.012, 0.01, 0.24), M.woodLight(), (i - 1) * 0.013, 0, 0);
-        k.rotation.y = (i - 1) * 0.12;
-        g.add(k);
-      }
-      o = g;
-      break;
-    }
-    case 'sticks': {
-      const g = new THREE.Group();
-      for (let i = 0; i < 4; i++) {
-        const k = mesh(new THREE.CylinderGeometry(0.007, 0.01, 0.5, 5), M.barkDead(), (i - 1.5) * 0.012, 0, 0);
-        k.rotation.x = Math.PI / 2;
-        k.rotation.y = (i - 1.5) * 0.15;
-        g.add(k);
-      }
-      o = g;
-      break;
-    }
-    case 'boughs': {
-      const g = new THREE.Group();
-      for (let i = 0; i < 3; i++) {
-        const c = mesh(new THREE.ConeGeometry(0.18, 0.62, 6, 1), M.needles(), (i - 1) * 0.1, 0, 0);
-        c.rotation.x = Math.PI / 2;
-        c.rotation.y = (i - 1) * 0.3;
-        c.scale.set(1, 1, 0.25);
-        g.add(c);
-      }
-      o = g;
-      break;
-    }
     case 'bark': {
       const me = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.08, 10, 1, true, 0, Math.PI * 1.4), std('barkpiece', { map: Tex.barkBirch(), side: THREE.DoubleSide, roughness: 0.9 }));
       me.rotation.z = Math.PI / 2;
