@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { G, GROUPS_STATIC, msg } from '../ctx';
 import { Entity } from '../entities';
 import { category, cutAt, pieceName, WoodPiece } from '../wood/piece';
-import { attachColliders, spawnPiece, woodObject } from '../wood/wood';
+import { attachColliders, spawnPiece, tip, woodObject } from '../wood/wood';
 import { analyze, findRests, halfThickness, JointKind, pointAt, SJoint, SLoad, snowShape, SPart } from './statics';
 import { Placement } from './place';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -563,6 +563,7 @@ export class BuildSystem {
   changed(e: Entity) {
     const s = this.of(e);
     if (!s) return;
+    tip('part', 'Каждая деталь постройки держит то, что на ней лежит. Подрубленная деталь слабеет в месте зарубки; если она не выдержит или потеряет опору — упадёт, а с ней и всё, что она держала.');
     this.check(s);
     const st = e.data?.part ? e.data.load as number | undefined : undefined;
     if (st && st > 0.75 && !e.removed && e.kind === 'part') msg(`${e.name} трещит под нагрузкой`, 'warn');

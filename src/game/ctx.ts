@@ -107,8 +107,8 @@ export const GROUPS_HELD = groups(GR_HELD, GR_STATIC | GR_TREE | GR_ITEM);
 export const GROUPS_PLAYER = groups(GR_PLAYER, GR_STATIC | GR_TREE | GR_ITEM);
 export const GROUPS_RAY = groups(0xffff, GR_STATIC | GR_TREE | GR_ITEM);
 
-export function msg(text: string, kind: 'info' | 'warn' | 'good' | 'bad' = 'info') {
-  G.hud?.message(text, kind);
+export function msg(text: string, kind: 'info' | 'warn' | 'good' | 'bad' = 'info', life = 7) {
+  G.hud?.message(text, kind, life);
 }
 
 export function hourOf(t: number) {

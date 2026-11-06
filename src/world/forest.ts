@@ -19,7 +19,7 @@ import { Entity } from '../game/entities';
 import type { CrownSource } from '../game/wood/mesh';
 import { barkMaterial, endMaterial, roundGeometry } from '../game/wood/mesh';
 import { chop, cutAt, makeRound, sectionAt, Whorl, WoodPiece } from '../game/wood/piece';
-import { attachColliders, branchPiece, spawnPiece } from '../game/wood/wood';
+import { attachColliders, branchPiece, spawnPiece, tip } from '../game/wood/wood';
 import { fellCheck, FellState } from '../game/wood/felling';
 import type { Species } from '../game/wood/species';
 
@@ -601,6 +601,7 @@ export class Forest {
   /** One blow at a standing tree. */
   chopTree(t: Tree, point: THREE.Vector3, power: number, saw: boolean) {
     if (!t.alive) return;
+    tip('fell', 'Зарубка там, куда целитесь. Дерево падает туда, куда смещён его вес: в сторону подруба, наклона или ветра. Подсказка у прицела скажет, куда оно упадёт. Чтобы уронить от себя — подрубите с той стороны, куда валите, и допилите со своей.');
     this.activate(t);
     const { u, a } = this.stemHit(t, point, G.player.eyePos);
     // you can't reach above your head, and the root flare is in the snow

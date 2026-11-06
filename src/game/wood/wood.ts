@@ -351,6 +351,18 @@ export function branchPiece(sp: Species, br: Branch) {
   return piece;
 }
 
+// ---------- first-time tips ----------
+
+const told = new Set<string>();
+
+/** A short explanation the first time something new happens. */
+export function tip(key: string, text: string) {
+  if (told.has(key)) return;
+  told.add(key);
+  // long enough to read
+  setTimeout(() => msg(text, 'info', 18), 600);
+}
+
 // ---------- boards and beams ----------
 
 const BOARD_T = 0.032, KERF = 0.004;

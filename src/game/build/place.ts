@@ -9,6 +9,7 @@ import { G, msg } from '../ctx';
 import { Entity } from '../entities';
 import type { WoodPiece } from '../wood/piece';
 import { buildWoodObject } from '../wood/mesh';
+import { tip } from '../wood/wood';
 import { analyze, closestSegments, findRests, halfThickness, pointAt, SJoint, SPart } from './statics';
 import type { Structure } from './build';
 
@@ -59,6 +60,7 @@ export class Placement {
       this.hideGhost();
       return;
     }
+    tip('build', 'Из этого можно строить. R — повернуть, B — поставить стоймя или наискось. Прозрачный силуэт покажет, куда кусок ляжет и удержится ли; G — положить, с молотком и гвоздями — прибить, лопатой (F) — вкопать столб.');
     this.t -= dt;
     if (this.t <= 0) {
       this.t = 0.12;

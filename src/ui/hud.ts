@@ -128,7 +128,7 @@ export class HUD {
     return this.invOpen || this.sleepOpen || this.helpOpen || this.readerOpen || this.mapOpen || G.dead;
   }
 
-  message(text: string, kind: 'info' | 'warn' | 'good' | 'bad' = 'info') {
+  message(text: string, kind: 'info' | 'warn' | 'good' | 'bad' = 'info', life = 7) {
     if (text === this.lastMsg && this.msgs.lastElementChild) {
       const last = this.msgs.lastElementChild as HTMLElement;
       const n = Number(last.dataset.n ?? '1') + 1;
@@ -143,9 +143,10 @@ export class HUD {
     const d = document.createElement('div');
     d.className = `msg ${kind}`;
     d.textContent = text;
+    if (life !== 7) d.style.animationDuration = `${life}s`;
     this.msgs.appendChild(d);
     while (this.msgs.children.length > 6) this.msgs.firstElementChild!.remove();
-    setTimeout(() => d.remove(), 7000);
+    setTimeout(() => d.remove(), life * 1000);
   }
 
   flash(kind: 'bad' | 'good') {
