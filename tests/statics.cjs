@@ -203,4 +203,17 @@ test('a log in the valley of two logs stays; on top of one log it rolls off', ()
   assert.ok(bad.failures.some((x) => x.part === 3 && x.why === 'tip'), JSON.stringify(bad.failures));
 });
 
+test('a log balanced along another log rolls off; in a groove it stays', () => {
+  const r = 0.12;
+  const low = part(1, S.makeRound('spruce', 2, r), [0, r, 0], [2, r, 0]);
+  const top = part(2, S.makeRound('spruce', 2, r), [0, 3 * r, 0], [2, 3 * r, 0]);
+  const base = [ground(1, 0.3, 'rest'), ground(1, 1.7, 'rest')];
+  const rests = S.findRests(top, low);
+  assert.ok(rests.length > 1 && rests.every((j) => j.roll));
+  const loose = S.analyze(map(low, top), [...base, ...rests]);
+  assert.ok(loose.failures.some((x) => x.part === 2 && x.why === 'tip'), JSON.stringify(loose.failures));
+  const grooved = S.analyze(map(low, top), [...base, ...rests.map((j) => ({ ...j, kind: 'notch' }))]);
+  assert.ok(!grooved.failures.length, JSON.stringify(grooved.failures));
+});
+
 console.log(`\n${count} checks passed`);

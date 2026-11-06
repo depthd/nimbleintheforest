@@ -264,9 +264,25 @@ function check(name, ok, extra = '') {
     G.build.placement.place({ nails: true });
     out.board2 = board2.kind;
     out.nailsLeft = P.inventory.find((x) => x.defId === 'nails')?.charges;
+    // a log laid along another log rolls off; laid into a groove it stays (a wall course)
+    const lx = base.x + 0.5, lz = base.z - 2.5;
+    const gy = G.terrain.heightAt(lx, lz);
+    const along = new T.Quaternion();
+    const l1 = G.entities.spawnItem('log', new T.Vector3(lx, gy + 1, lz));
+    holdAt(l1, new T.Vector3(lx, gy + 0.2, lz), along);
+    G.build.placement.place();
+    g.steps(1);
+    const top = l1.position().y + l1.data.wood.r0 * 2 + 0.1;
+    const l2 = G.entities.spawnItem('log', new T.Vector3(lx, gy + 2, lz + 1));
+    const p3 = holdAt(l2, new T.Vector3(lx, top, lz), along);
+    out.logPlan = { ok: p3.ok, holds: p3.holds, grooved: p3.holdsGrooved, info: G.build.placement.info() };
+    G.build.placement.place({ groove: true });
+    out.l1 = l1.kind;
+    out.l2 = l2.kind;
     g.lookAt(base.x + 1.2, barY, base.z);
     return out;
   });
+  check('a log along a log needs a groove, and holds in one', hand.l1 === 'part' && hand.logPlan && !hand.logPlan.holds && hand.logPlan.grooved && hand.l2 === 'part', JSON.stringify(hand.logPlan) + ' ' + hand.l1 + ' ' + hand.l2);
   check('posts dug in by hand stand', hand.posts.every((k) => k === 'part'), JSON.stringify(hand));
   check('a crossbar laid on two posts holds', hand.bar === 'part' && hand.barRests >= 2 && hand.barPlan.holds, JSON.stringify(hand));
   check('a board on one end tips off; nailed it stays', hand.boardLoose === 'item' && hand.board2 === 'part' && hand.nailsLeft < 16, JSON.stringify(hand));

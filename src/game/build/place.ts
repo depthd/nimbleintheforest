@@ -17,6 +17,8 @@ export interface Plan {
   quat: THREE.Quaternion;
   ok: boolean;
   holds: boolean;
+  /** it would hold if laid into a groove cut with the axe (logs along logs) */
+  holdsGrooved: boolean;
   why: string;
   on: string[];
   structure: Structure | null;
@@ -122,7 +124,7 @@ export class Placement {
     let me: SPart = { id: -2, piece: p, pos, quat, moisture: e.moisture };
     const first = this.support(me, e);
     const d0 = new THREE.Vector3(1, 0, 0).applyQuaternion(quat);
-    const plan: Plan = { pos, quat, ok: false, holds: false, why: '', on: [], structure: null, upright: Math.abs(d0.y) > 0.8, footOnGround: false };
+    const plan: Plan = { pos, quat, ok: false, holds: false, holdsGrooved: false, why: '', on: [], structure: null, upright: Math.abs(d0.y) > 0.8, footOnGround: false };
     if (first.drop > 1.2) {
       plan.why = 'Опустите ниже: под ним ничего нет';
       return plan;
@@ -215,6 +217,13 @@ export class Placement {
     const mine = res.failures.find((f) => f.part === me.id);
     plan.holds = !mine && !res.failures.some((f) => f.why !== 'unsupported' && f.part !== me.id);
     plan.why = mine ? WHY[mine.why] ?? 'не удержится' : !plan.holds ? 'под ним что-то сломается' : '';
+    // a round log on a round log rolls off unless a groove is cut along its underside
+    if (!plan.holds && mine?.why === 'tip' && p.form === 'round' && !plan.upright) {
+      const grooved = all.map((j) => (j.a === me.id && j.b >= 0 && j.kind === 'rest' ? { ...j, kind: 'notch' as const } : j));
+      const res2 = analyze(parts, grooved, (plan.structure?.snow ?? 0) * 160);
+      plan.holdsGrooved = !res2.failures.some((f) => f.part === me.id) && !res2.failures.some((f) => f.why !== 'unsupported');
+      if (plan.holdsGrooved) plan.why = 'скатится — нужен паз (топор)';
+    }
     return plan;
   }
 
@@ -261,11 +270,12 @@ export class Placement {
       return G.player.hasTag('shovel') ? 'стоймя не устоит — вкопайте [F]' : 'стоймя не устоит — нужна лопата, чтобы вкопать';
     }
     const on = pl.on.length ? `ляжет на ${pl.on.slice(0, 3).join(', ')}` : '';
+    if (!pl.holds && pl.holdsGrooved) return `${on} · ${G.player.hasTag('axe') ? 'скатится — уложите в паз [F]' : 'скатится — нужен топор, чтобы вырубить паз'}`;
     return pl.holds ? `${on} · удержится` : `${on} · ${pl.why}`;
   }
 
   /** Put the carried piece where the ghost is. */
-  place(opts: { nails?: boolean; dig?: boolean } = {}) {
+  place(opts: { nails?: boolean; dig?: boolean; groove?: boolean } = {}) {
     const e = this.carriedWood();
     if (!e) return;
     const plan = this.compute(e);
@@ -285,7 +295,8 @@ export class Placement {
     G.build.adopt(s, e, pos, plan.quat, roof);
     let nails = 0;
     const box = opts.nails ? P.has((x) => x.defId === 'nails' && x.charges >= 2) : null;
-    const found = G.build.connect(s, e, { groundKind: opts.dig ? 'set' : 'rest', nails: box ? 2 : undefined });
+    const found = G.build.connect(s, e, { groundKind: opts.dig ? 'set' : 'rest', nails: box ? 2 : undefined, restKind: opts.groove ? 'notch' : undefined });
+    if (opts.groove) G.audio.play('chop', { pos });
     if (box) {
       nails = Math.min(box.charges, 2 * Math.max(1, s.joints.filter((j) => j.a === e.id && j.kind === 'nail').length));
       box.charges -= nails;
@@ -294,7 +305,7 @@ export class Placement {
     } else G.audio.play('drop', { pos });
     s.built = Math.max(s.built, s.parts.size);
     G.build.check(s);
-    if (e.kind === 'part') msg(`${e.name}: ${opts.dig ? 'вкопано' : nails ? `прибито (гвоздей: ${nails})` : 'поставлено'}${found ? '' : ' (на весу?)'}`, 'good');
+    if (e.kind === 'part') msg(`${e.name}: ${opts.dig ? 'вкопано' : nails ? `прибито (гвоздей: ${nails})` : opts.groove ? 'уложено в паз' : 'поставлено'}${found ? '' : ' (на весу?)'}`, 'good');
     else msg(`${e.name} не удержалось: ${plan.why || 'нет опоры'}`, 'warn');
   }
 }

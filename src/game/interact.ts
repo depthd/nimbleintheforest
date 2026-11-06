@@ -67,7 +67,12 @@ export class Interaction {
     const hit = G.world.castRayAndGetNormal(new R.Ray(origin, dir), REACH, true, undefined, GROUPS_RAY, G.player.collider, G.player.carried?.body ?? undefined);
     const t = this.target;
     const snow = G.snow?.raycast(origin, dir, REACH);
-    if (snow && (!hit || snow.distance < hit.timeOfImpact)) {
+    // a log, stump or wall log just under loose snow is felt through it: no need to dig first
+    const big = hit ? G.entities.byCollider.get(hit.collider.handle) : undefined;
+    const under = !!big && !!woodOf(big) && (big.kind === 'stump' || big.kind === 'part' || ['log', 'trunk', 'chock', 'pole', 'beam'].includes(big.defId));
+    if (snow && hit && under && hit.timeOfImpact - snow.distance < 0.4) {
+      // fall through to the physics hit
+    } else if (snow && (!hit || snow.distance < hit.timeOfImpact)) {
       t.kind = 'ground'; t.entity = undefined; t.tree = undefined;
       t.point.copy(snow.point); t.normal.set(0, 1, 0); t.dist = snow.distance;
       return;
@@ -221,6 +226,7 @@ export class Interaction {
         const nails = !!P.has((x) => x.defId === 'nails' && x.charges >= 2) && !!P.hasTag('hammer');
         if (pl.ok) A.push({ key: 'G', label: nails ? 'Прибить здесь' : 'Положить здесь', run: () => G.build.placement.place({ nails }) });
         if (pl.ok && pl.upright && pl.footOnGround && P.hasTag('shovel') && !carried.pocket) A.push({ key: 'F', label: 'Вкопать столб', time: 5, run: () => G.build.placement.place({ dig: true }) });
+        if (pl.ok && !pl.holds && pl.holdsGrooved && P.hasTag('axe') && !carried.pocket) A.push({ key: 'F', label: 'Уложить в паз', time: 4, run: () => G.build.placement.place({ groove: true }) });
         this.info = `${carried.name} · ${pieceSize(woodOf(carried)!)} · ${G.build.placement.info()} · [R] повернуть · [B] стоймя/наискось`;
       }
       return A;

@@ -44,6 +44,8 @@ export interface SJoint {
   n: THREE.Vector3;
   /** nails in a nailed joint */
   nails?: number;
+  /** round lying along round: balanced on a line, it rolls off at the first touch */
+  roll?: boolean;
 }
 
 export interface SLoad {
@@ -307,7 +309,8 @@ export function analyze(parts: Map<number, SPart>, joints: SJoint[], snowKgM2 = 
         const sum = rest.reduce((v, j) => v.add(j.n), new THREE.Vector3());
         const spread = rest.length > 1 && rest.some((j) => j.n.clone().sub(rest[0].n).lengthSq() > 0.1);
         const tiltd = Math.acos(Math.min(1, Math.max(-1, sum.clone().normalize().y)));
-        if (!spread && tiltd > 0.5 && Math.abs(d.y) < 0.7) {
+        const balanced = rest.every((j) => j.roll);
+        if (!spread && (tiltd > 0.5 || balanced) && Math.abs(d.y) < 0.7) {
           if (1.5 > st.ratio) Object.assign(st, { ratio: 1.5, u: stn.u, why: 'tip' as FailWhy });
         }
       }
@@ -414,7 +417,7 @@ export function findRests(a: SPart, b: SPart, tol = 0.04): SJoint[] {
     // a lies on b only if it is above it (the contact normal points up enough)
     if (nrm.y < 0.25) return;
     if (out.some((j) => Math.abs(j.ua - ua) < 0.3)) return;
-    out.push({ a: a.id, ua, b: b.id, ub, kind: 'rest', n: nrm });
+    out.push({ a: a.id, ua, b: b.id, ub, kind: 'rest', n: nrm, roll: parallel && a.piece.form === 'round' && b.piece.form === 'round' ? true : undefined });
   };
   if (!parallel) {
     const c = closestSegments(a0, a1, b0, b1);
