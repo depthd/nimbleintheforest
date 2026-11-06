@@ -83,6 +83,17 @@ export class WorldSnow {
     this.carriedSnow += this.field.remove(point.x, point.z, 0.3, 0.09);
     this.cooldown = 0.3; G.audio.play('snow_scoop', { pos: point, vol: 0.5 });
   }
+  /** Clear the snow down to the ground for a fire pit; the snow goes into a rim around it. */
+  clearPit(point: THREE.Vector3, radius = 0.55) {
+    if (!this.contains(point.x, point.z)) return;
+    let v = 0;
+    for (let i = 0; i < 8; i++) v += this.field.remove(point.x, point.z, radius, 0.2);
+    const n = 10;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      this.field.add(point.x + Math.cos(a) * (radius + 0.35), point.z + Math.sin(a) * (radius + 0.35), 0.3, v / n);
+    }
+  }
   deposit(point: THREE.Vector3) {
     if (this.cooldown > 0 || this.carriedSnow <= 0 || !this.contains(point.x, point.z)) return;
     this.carriedSnow -= this.field.add(point.x, point.z, 0.3, Math.min(this.carriedSnow, 0.012));

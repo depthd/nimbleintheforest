@@ -138,6 +138,8 @@ export async function startGame(settings: Settings) {
   G.sky.update();
 
   G.snow = new URLSearchParams(location.search).get('snow') === '1' ? new SnowExperiment() : new WorldSnow();
+  // fire pits that came with the world are dug out of the snow
+  if (G.snow instanceof WorldSnow) for (const f of G.fires.list) if (f.kind === 'camp') G.snow.clearPit(f.pos);
   if (!G.snow.isExperiment) G.player.avatar.reset();
   G.recorder = new MotionRecorder();
 

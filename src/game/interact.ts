@@ -1091,6 +1091,9 @@ export class Interaction {
     }
     const y = G.lake.onIce(p) ? G.lake.levelAt(p.x, p.z) + 0.03 : G.terrain.heightAt(p.x, p.z);
     G.fires.makeCampfire(new THREE.Vector3(p.x, y, p.z));
+    // the snow is scraped away down to the ground and heaped around the pit
+    const snow = G.snow;
+    if (snow && !snow.isExperiment && 'clearPit' in snow) snow.clearPit(new THREE.Vector3(p.x, y, p.z));
     G.audio.play('snow_scoop');
     msg('Кострище готово. Положите трут, растопку, дрова — и поджигайте.', 'good');
   }
