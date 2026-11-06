@@ -131,6 +131,32 @@ function check(name, ok, extra = '') {
   check('pulling a lower log out lets the upper ones roll', stack.none || stack.after < stack.before - 1, JSON.stringify(stack));
   await shot('03-stack');
 
+  // ---- a heavy log dropped on a lean-to goes through the roof ----
+  const drop = await ev(() => {
+    const g = window.__game;
+    const G = g.G;
+    const T = g.THREE;
+    const S = G.build.structures.find((s) => s.name === 'Навес' && !s.collapsed && s.parts.size === s.built);
+    if (!S) return { none: true };
+    const rows = [...S.parts.values()].filter((e) => e.data.part.roof > 0);
+    const c = rows[Math.floor(rows.length / 2)].position();
+    g.teleport(c.x + 6, G.terrain.heightAt(c.x + 6, c.z) + 0.05, c.z + 6);
+    g.steps(5);
+    const before = S.parts.size;
+    const wood = { sp: 'spruce', form: 'round', len: 2.6, r0: 0.2, r1: 0.18, sector: Math.PI * 2, w: 0, t: 0, notches: [], whorls: [], needles: 0, rev: 0 };
+    const log = G.entities.spawnItem('log', new T.Vector3(c.x, c.y + 4, c.z), { wood, moisture: 0.45, quat: new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), 0.4) });
+    // let it fall, checking the structures as the game loop does
+    const seen = [];
+    for (let i = 0; i < 200; i++) {
+      g.steps(1);
+      G.build.update(G.settings.timeScale / 60);
+      const l = G.build.loose.get(log.id);
+      if (i % 10 === 0) seen.push([+log.position().y.toFixed(2), l ? +l.impact.toFixed(1) : 0, S.parts.size]);
+    }
+    return { before, after: S.parts.size, mass: Math.round(log.mass), seen: seen.slice(0, 20), roofY: +c.y.toFixed(2) };
+  });
+  check('a heavy log dropped on a lean-to breaks through', drop.none || drop.after < drop.before, JSON.stringify(drop));
+
   // ---- log huts: whole on their own; boards off lets the wind in; a cut wall log holds ----
   const hut = await ev(() => {
     const g = window.__game;

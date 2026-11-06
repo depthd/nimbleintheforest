@@ -392,6 +392,17 @@ export class BuildSystem {
 
   /** the player standing on a part loads it */
   private liveLoads(s: Structure): SLoad[] {
+    const out: SLoad[] = [];
+    // loose pieces lying on it (and the blow when something heavy lands)
+    for (const [, l] of this.loose) {
+      if (l.s !== s) continue;
+      const k = l.until > performance.now() ? l.impact : 1;
+      for (const x of l.loads) if (s.parts.has(x.part)) out.push({ part: x.part, u: x.u, F: x.F.clone().multiplyScalar(k) });
+    }
+    return out.concat(this.playerLoad(s));
+  }
+
+  private playerLoad(s: Structure): SLoad[] {
     const P = G.player;
     if (!P || !P.grounded) return [];
     const ray = new G.R.Ray({ x: P.pos.x, y: P.pos.y + 0.3, z: P.pos.z }, { x: 0, y: -1, z: 0 });
@@ -403,6 +414,70 @@ export class BuildSystem {
     const u = P.pos.clone().sub(sp.pos).applyQuaternion(sp.quat.clone().invert()).x + sp.piece.len / 2;
     const mass = 80 + P.packWeight() + (P.carried?.mass ?? 0);
     return [{ part: e.id, u: Math.max(0, Math.min(sp.piece.len, u)), F: new THREE.Vector3(0, -mass * 9.81, 0) }];
+  }
+
+  /** loose pieces resting on structures: what each one presses on */
+  loose = new Map<number, { s: Structure; loads: SLoad[]; impact: number; until: number }>();
+  private looseT = 0;
+
+  /**
+   * Heavy loose pieces lying on parts load them; a piece that lands hard hits them with
+   * several times its weight for a moment (a tree felled onto a lean-to goes through).
+   */
+  private updateLoose(dt: number) {
+    this.looseT -= dt;
+    if (this.looseT > 0) return;
+    this.looseT = 0.12;
+    for (const e of G.entities.list) {
+      if (e.kind !== 'item' || !e.body || !e.inWorld || e.removed || e === G.player?.carried) continue;
+      if (e.body.isSleeping()) {
+        e.data.fast = 0;
+        continue;
+      }
+      if (e.mass < 3) continue;
+      const v = e.body.linvel();
+      const speed = Math.hypot(v.x, v.y, v.z);
+      // remember how fast it was going a moment ago: that is the speed it hits with
+      e.data.fast = Math.max(speed, (e.data.fast ?? 0) * 0.6);
+      let total = 0;
+      const hits: Entity[] = [];
+      for (const c of e.colliders) {
+        G.world.contactPairsWith(c, (c2) => {
+          total++;
+          const o = G.entities.byCollider.get(c2.handle);
+          if (o && o.kind === 'part' && !hits.includes(o)) hits.push(o);
+        });
+      }
+      const old = this.loose.get(e.id);
+      if (!hits.length) {
+        if (old) {
+          this.loose.delete(e.id);
+          old.s.dirty = true;
+        }
+        continue;
+      }
+      const s = this.of(hits[0])!;
+      const share = (e.mass * 9.81 * Math.min(1, hits.length / Math.max(1, total))) / hits.length;
+      const c = e.position();
+      const loads: SLoad[] = hits.filter((h) => this.of(h) === s).map((h) => {
+        const sp = this.spart(h);
+        const u = c.clone().sub(sp.pos).applyQuaternion(sp.quat.clone().invert()).x + sp.piece.len / 2;
+        return { part: h.id, u: Math.max(0, Math.min(sp.piece.len, u)), F: new THREE.Vector3(0, -share, 0) };
+      });
+      // landing: stopping within a few centimetres of give multiplies the weight
+      const hit = !old ? Math.min(8, 1 + (e.data.fast * e.data.fast) / (2 * 9.81 * 0.06)) : 1;
+      const was = old ? old.loads.reduce((a, x) => a + x.F.length(), 0) : 0;
+      const now = loads.reduce((a, x) => a + x.F.length(), 0);
+      this.loose.set(e.id, { s, loads, impact: hit, until: hit > 1.5 ? performance.now() + 250 : old?.until ?? 0 });
+      if (hit > 1.5 || Math.abs(now - was) > 150) s.dirty = true;
+    }
+    for (const [id, l] of this.loose) {
+      const e = G.entities.list.find((x) => x.id === id);
+      if (!e || e.removed || !e.inWorld || e.kind !== 'item') {
+        this.loose.delete(id);
+        l.s.dirty = true;
+      }
+    }
   }
 
   /** A part comes loose and falls as an ordinary piece (the same entity). */
@@ -565,6 +640,7 @@ export class BuildSystem {
       }
     }
     if (this.hold) return;
+    this.updateLoose(dtGame / Math.max(1, G.settings?.timeScale ?? 1));
     for (const s of this.structures) if (s.dirty && s.parts.size) this.check(s);
     this.draw();
   }
