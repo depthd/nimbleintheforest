@@ -169,6 +169,15 @@ export class Placement {
     plan.pos = pos;
     plan.quat = quat;
     me = { ...me, pos, quat };
+    // it must not end up through the player: a static piece would trap them
+    {
+      const P = G.player.pos;
+      const c = closestSegments(pointAt(me, 0), pointAt(me, p.len), new THREE.Vector3(P.x, P.y + 0.05, P.z), new THREE.Vector3(P.x, P.y + 1.75, P.z));
+      if (c.dist < halfThickness(p, c.s * p.len) + 0.33) {
+        plan.why = 'Мешаете сами себе: отойдите';
+        return plan;
+      }
+    }
     const settled = this.support(me, e);
     const d = new THREE.Vector3(1, 0, 0).applyQuaternion(quat);
     plan.upright = Math.abs(d.y) > 0.8;
