@@ -10,7 +10,7 @@ import type { Fire } from './fire';
 import { MAX_DRAG, MAX_LIFT } from './player';
 import { clamp } from '../core/rng';
 import { dryingAt } from './drying';
-import { chopLabelFor, describeWood, hitPiece, spawnPiece, woodOf } from './wood/wood';
+import { boardsOf, canMill, chopLabelFor, describeWood, hewToBeam, hitPiece, ripToBoards, spawnPiece, woodOf } from './wood/wood';
 import { pieceSize } from './wood/piece';
 import { TREE_NAMES } from '../world/forest';
 
@@ -454,6 +454,16 @@ export class Interaction {
       }
     }
     if (e.kind !== 'item' || !d) return;
+    // woodworking: rip a log into boards with the saw, hew it square with the axe
+    const wp = woodOf(e);
+    if (canMill(wp) && e.inWorld) {
+      const tg = tags(P.equipped);
+      if (tg.includes('saw')) {
+        const n = boardsOf(wp!).length;
+        if (n) A.push({ key: 'F', label: `Распустить на доски (${n} шт.)`, time: Math.round(n * 5 * wp!.len) / 2, run: () => ripToBoards(e) });
+      }
+      if (tg.includes('axe')) A.push({ key: 'G', label: 'Обтесать в брус', time: Math.round(wp!.len * 6), run: () => hewToBeam(e) });
+    }
     if (e.pinned === 'fire') {
       A.push({ key: 'E', label: 'Снять с огня', run: () => (e.pocket ? P.addToInventory(e) : P.carry(e)) });
       return;

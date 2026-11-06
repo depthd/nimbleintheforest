@@ -235,6 +235,40 @@ function check(name, ok, extra = '') {
   check('a chock splits into two halves of the same wood', split.chock && split.halves === 2 && Math.abs(split.halfMass - split.chockMass) < split.chockMass * 0.05, JSON.stringify(split));
   await shot('05-split');
 
+  // ---- rip a log into boards with the saw, hew one square with the axe ----
+  const mill = await ev(() => {
+    const g = window.__game;
+    const G = g.G;
+    const T = g.THREE;
+    const Y0 = G.house.Y0;
+    const P = G.player;
+    const at = P.pos.clone().add(new T.Vector3(0, 0.3, -1.1));
+    const log = G.entities.spawnItem('log', at, { quat: new T.Quaternion() });
+    g.steps(60);
+    g.give('saw');
+    g.equip('saw');
+    const lp = log.position();
+    g.lookAt(lp.x, lp.y, lp.z);
+    const acts = g.actions();
+    const before = G.entities.list.length;
+    const okRip = g.act('F', 'доски');
+    g.steps(30);
+    const boards = G.entities.list.filter((e) => e.defId === 'plank' && e.data.wood && !e.removed && e.position().distanceTo(lp) < 1.5);
+    const vLog = log.data.wood;
+    const log2 = G.entities.spawnItem('log', at.clone().add(new T.Vector3(0.6, 0, 0)), { quat: new T.Quaternion() });
+    g.steps(60);
+    g.equip('axe');
+    const l2 = log2.position();
+    g.lookAt(l2.x, l2.y, l2.z);
+    const acts2 = g.actions();
+    const okHew = g.act('G', 'брус');
+    g.steps(20);
+    const beam = G.entities.list.find((e) => e.defId === 'beam' && !e.removed);
+    return { acts: acts.actions, okRip, removed: log.removed, boards: boards.length, widths: boards.map((b) => +b.data.wood.w.toFixed(3)), len: vLog.len, acts2: acts2.actions, okHew, beam: beam ? [beam.name, +beam.data.wood.w.toFixed(3), +beam.mass.toFixed(1)] : null, Y0 };
+  });
+  check('a log ripped with the saw gives boards of its length', mill.okRip && mill.removed && mill.boards >= 3, JSON.stringify(mill));
+  check('a log hewn with the axe gives a square beam', mill.okHew && mill.beam && mill.beam[1] > 0.1, JSON.stringify(mill));
+
   // ---- small wood goes into one stack by weight ----
   const stack = await ev(() => {
     const g = window.__game;

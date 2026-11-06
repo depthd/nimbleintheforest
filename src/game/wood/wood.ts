@@ -6,7 +6,7 @@ import { G, GROUPS_CROWN, GROUPS_ITEM, msg } from '../ctx';
 import { Entity } from '../entities';
 import type { ToolTag } from '../items';
 import {
-  Branch, BRANCH_TIP, canSplit, category, chop, clonePiece, cutAt, cutThrough, fitsInPack, makeRound,
+  Branch, BRANCH_TIP, canSplit, category, chop, clonePiece, cutAt, cutThrough, fitsInPack, makeRound, makeSawn, makeSplit,
   maxRadius, pieceMass, pieceName, pieceSize, radiusAt, sectionAt, splitAlong, volume, weakestAt, whorlMass, WoodPiece,
 } from './piece';
 import { buildWoodObject, wedgeCentroid } from './mesh';
@@ -349,6 +349,64 @@ export function branchPiece(sp: Species, br: Branch) {
   const piece = makeRound(sp, br.len, br.r, br.r * BRANCH_TIP);
   piece.needles = br.needles;
   return piece;
+}
+
+// ---------- boards and beams ----------
+
+const BOARD_T = 0.032, KERF = 0.004;
+
+/** Boards a log can be ripped into: through the thickness of its thin end, minus the waney edges. */
+export function boardsOf(p: WoodPiece) {
+  const r = Math.min(p.r0, p.r1);
+  const out: { y: number; w: number }[] = [];
+  const n = Math.floor((2 * r * 0.94) / (BOARD_T + KERF));
+  for (let k = 0; k < n; k++) {
+    const y = -r * 0.94 + (k + 0.5) * (BOARD_T + KERF);
+    const w = 2 * Math.sqrt(Math.max(0, r * r - (Math.abs(y) + BOARD_T / 2) ** 2)) * 0.92;
+    if (w >= 0.07) out.push({ y, w });
+  }
+  return out;
+}
+
+/** Can it be ripped or hewn: a straight round log without branches. */
+export function canMill(p: WoodPiece | null) {
+  if (!p || p.form !== 'round' || p.whorls.length || p.needles > 0) return false;
+  const c = category(p);
+  return (c === 'log' || c === 'chock') && Math.min(p.r0, p.r1) >= 0.07;
+}
+
+/** Rip a log along its length with a saw: boards as wide as the log allows; the slabs go to kindling. */
+export function ripToBoards(e: Entity) {
+  const p = woodOf(e)!;
+  const { T, Q } = pose(e);
+  const moist = e.moisture;
+  const boards = boardsOf(p);
+  G.entities.destroy(e);
+  boards.forEach((b, i) => {
+    const piece = makeSawn(p.sp, p.len, b.w, BOARD_T);
+    const pos = new THREE.Vector3(0, b.y + i * 0.01 + 0.02, 0).applyQuaternion(Q).add(T);
+    spawnPiece(piece, pos, Q.clone(), moist);
+  });
+  // the two slabs with bark: kindling
+  for (const s of [-1, 1]) {
+    const pos = new THREE.Vector3(0, 0, s * (Math.min(p.r0, p.r1) + 0.08)).applyQuaternion(Q).add(T);
+    spawnPiece(makeSplit(p.sp, Math.min(0.6, p.len), Math.min(p.r0, p.r1) * 0.5, 1.0), pos, Q.clone(), moist);
+  }
+  G.audio.play('saw', { pos: T });
+  msg(`Распущено на доски: ${boards.length} шт. по ${pieceSize(makeSawn(p.sp, p.len, boards[0]?.w ?? 0.1, BOARD_T))}`, 'good');
+}
+
+/** Hew a log square with an axe: the largest beam that fits in its thin end. */
+export function hewToBeam(e: Entity) {
+  const p = woodOf(e)!;
+  const { T, Q } = pose(e);
+  const moist = e.moisture;
+  const side = Math.min(p.r0, p.r1) * Math.SQRT2 * 0.95;
+  G.entities.destroy(e);
+  const beam = spawnPiece(makeSawn(p.sp, p.len, side, side), T.clone().add(new THREE.Vector3(0, 0.02, 0)), Q.clone(), moist);
+  for (let i = 0; i < 3; i++) spawnPiece(makeSplit(p.sp, 0.25, 0.05, 0.8), T.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.6, 0.15, (Math.random() - 0.5) * 0.6)), new THREE.Quaternion(), moist);
+  G.audio.play('chop', { pos: T });
+  msg(`Обтёсано: ${beam.name.toLowerCase()} ${pieceSize(woodOf(beam)!)}`, 'good');
 }
 
 /** Remaining fraction of the deepest notch (for the prompt). */
