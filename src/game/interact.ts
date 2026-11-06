@@ -396,6 +396,22 @@ export class Interaction {
       case 'trunk':
       case 'railing':
         return;
+      case 'part': {
+        if (!G.build.loosePart(e)) {
+          this.info += ' · закреплено';
+          return;
+        }
+        if (e.mass > MAX_DRAG) {
+          this.info += ' · слишком тяжело';
+          return;
+        }
+        const above = G.build.carried(e);
+        A.push({ key: 'E', label: `Вытащить: ${e.name}${above ? ' (что на нём — упадёт)' : ''}`, time: 0.8, run: () => {
+          G.build.takeOut(e);
+          if (!e.removed && e.inWorld && e.mass <= MAX_DRAG) P.carry(e);
+        } });
+        return;
+      }
       case 'container':
         if (!e.data.searched) A.push({ key: 'E', label: 'Обыскать', time: 2.5, run: () => G.structures.search(e) });
         return;
@@ -486,7 +502,11 @@ export class Interaction {
     }
     if (e.kind === 'stump') {
       const w = woodOf(e)!;
-      return `${e.name} · высота ${pieceSize(w).replace(' · ', ' · ')}`;
+      return `${e.name} · высота ${pieceSize(w)}`;
+    }
+    if (e.kind === 'part') {
+      const s = G.build.of(e);
+      return `${describeWood(e)}${G.build.describe(e)}${s ? ` · ${s.name.toLowerCase()}` : ''}`;
     }
     const d = e.def;
     if (!d) return e.name;

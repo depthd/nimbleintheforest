@@ -31,6 +31,7 @@ import { SnowExperiment } from './snow-experiment';
 import { WorldSnow } from './world-snow';
 import { SnowCover } from '../world/snow-cover';
 import { MotionRecorder } from './motion-recorder';
+import { BuildSystem } from './build/build';
 
 const STEP = 1 / 60;
 let horror: Horror;
@@ -97,6 +98,7 @@ export async function startGame(settings: Settings) {
   G.fires = new Fires();
   G.fires.init();
   G.goal = { signalAt: 0, rescued: false, heliShown: false };
+  G.build = new BuildSystem();
   G.structures = new Structures();
   G.structures.build(new Rng(settings.seed * 31 + 5));
   G.animals = new Animals();
@@ -392,6 +394,7 @@ function simulate(dtGame: number, dtReal: number) {
   G.fires.update(dtGame, dtReal);
   G.thermal.update(dtGame);
   G.lake.update(dtGame);
+  G.build.update(dtGame);
   updateLights(dtGame);
   updateMoisture(dtGame);
   G.player.workT = Math.max(0, G.player.workT - dtReal);

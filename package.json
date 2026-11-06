@@ -21,7 +21,9 @@
     "test:motion-record": "node tests/motion-record.cjs",
     "test:motion-recorder-browser": "node tests/motion-recorder-browser.cjs",
     "test:e2e": "node tests/e2e.cjs",
-    "test:wood-browser": "node tests/wood-browser.cjs"
+    "test:wood-browser": "node tests/wood-browser.cjs",
+    "test:statics": "node tests/statics.cjs",
+    "test:build-browser": "node tests/build-browser.cjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

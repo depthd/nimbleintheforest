@@ -224,6 +224,7 @@ export function chopLabelFor(e: Entity, tool: Entity, handle?: number): string |
   if (!tg.includes('axe') && !saw) return null;
   if (whorlOfCollider(e, handle) >= 0) return saw ? 'Отпилить сук' : 'Обрубить сук';
   if (e.kind === 'stump') return saw ? 'Спилить пень ниже' : 'Срубить пень ниже';
+  if (e.kind === 'part') return saw ? 'Подпилить' : 'Подрубить';
   if (!saw && canSplit(p)) return 'Расколоть';
   return saw ? 'Распилить здесь' : 'Перерубить здесь';
 }
@@ -242,6 +243,15 @@ export function hitPiece(e: Entity, tool: Entity, point: THREE.Vector3, power: n
     return;
   }
   const { u, a, T, Q } = localHit(e, point, eye);
+  if (e.kind === 'part') {
+    const n = chop(p, u, a, power, saw);
+    if (cutThrough(p, n)) G.build.cutPart(e, weakestAt(p, n));
+    else {
+      refreshWood(e);
+      G.build.changed(e);
+    }
+    return;
+  }
   if (!saw && canSplit(p) && e.kind !== 'stump') {
     const need = Math.max(0.5, (p.form === 'round' ? 2 * (p.r0 + p.r1) / 2 : p.r0) * p.len * 15) / SPECIES[p.sp].chop;
     e.data.splitWork = (e.data.splitWork ?? 0) + power;

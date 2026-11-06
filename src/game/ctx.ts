@@ -27,6 +27,7 @@ import type { SnowExperiment } from './snow-experiment';
 import type { WorldSnow } from './world-snow';
 import type { MotionRecorder } from './motion-recorder';
 import type { SnowCover } from '../world/snow-cover';
+import type { BuildSystem } from './build/build';
 
 export interface Settings {
   seed: number;
@@ -61,6 +62,8 @@ export interface Ctx {
   lake: Water;
   region: Region;
   structures: Structures;
+  /** wooden structures made of real pieces (lean-tos, fences, what the player builds) */
+  build: BuildSystem;
   animals: Animals;
   /** the optional goal: power the radio, call for rescue */
   goal: { signalAt: number; rescued: boolean; heliShown: boolean };

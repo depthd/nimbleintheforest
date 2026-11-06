@@ -1,6 +1,7 @@
 // Geometry for wood pieces: tapered stems with real notches carved in, split sticks,
 // boards and spruce boughs. Fresh cuts are lighter than bark (a vertex attribute "cut").
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Tex, worldUVBox } from '../../core/textures';
 import { mat, M } from '../meshes';
 import { SPECIES, Species } from './species';
@@ -272,7 +273,24 @@ export function buildWoodObject(p: WoodPiece, crown?: CrownSource): THREE.Group 
     return g;
   }
   add(roundGeometry(p), [barkMaterial(p.sp), endMaterial(p.sp)]);
-  if (p.needles > 0) {
+  if (p.needles > 0 && p.len > 1.5) {
+    // a row of boughs laid across a roof: overlapping sprays hanging to both sides
+    const n = Math.max(2, Math.round(p.len / 0.2));
+    const parts: THREE.BufferGeometry[] = [];
+    let seed = Math.round(p.len * 1000) + p.needles * 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < n; i++) {
+      for (const side of [1, -1]) {
+        const c = new THREE.ConeGeometry(0.17 + rnd() * 0.05, 0.62, 6, 1);
+        c.scale(1, 1, 0.22);
+        c.rotateX((side * Math.PI) / 2);
+        c.rotateZ((rnd() - 0.5) * 0.5);
+        c.translate(-p.len / 2 + ((i + 0.5) / n) * p.len, 0.02 + rnd() * 0.03, side * 0.27);
+        parts.push(c.toNonIndexed());
+      }
+    }
+    add(mergeGeometries(parts)!, needlesMat());
+  } else if (p.needles > 0) {
     // a bough: flat sprays of needles along the outer two thirds
     const n = Math.max(1, Math.round(p.len / 0.35));
     for (let i = 0; i < n; i++) {

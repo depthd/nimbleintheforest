@@ -10,6 +10,7 @@ import { M, mat } from '../game/meshes';
 import { Entity } from '../game/entities';
 import { NOTE_KEYS, BOOKS, NEWSPAPERS } from '../game/lore';
 import type { Place } from '../gen/region';
+import { makeRound } from '../game/wood/piece';
 
 export interface Shelter {
   kind: 'hut' | 'grotto' | 'tower' | 'station';
@@ -292,22 +293,67 @@ export class Structures {
     this.shelters.push({ cx: p.x, cz: p.z, yaw: p.yaw, hx: W / 2 - 0.1, hz: D / 2 - 0.1, y0: p.y, y1: p.y + H + 0.8, shelter: { kind: 'hut', name: small ? 'Рыбацкая избушка' : 'Заимка', wind: 0.05, warm: 4, enclosed: true, pos: new THREE.Vector3(p.x, p.y, p.z) } });
   }
 
-  /** a hunter's lean-to: two forked posts, a ridge pole, a slope of poles and spruce boughs */
+  /**
+   * A hunter's lean-to built from real pieces: two posts dug into the ground, a ridge
+   * pole lying on them, poles leaning from the ridge down to the ground and rows of
+   * spruce boughs laid across. Snow collects on the boughs. Every piece carries what
+   * rests on it, so cutting a post or a heavy snowfall can bring it all down.
+   */
   private leanto(p: Place) {
     const b = new Builder(p.x, p.y, p.z, p.yaw);
-    const pole = M.barkSpruce();
-    const boughs = mat('leantoBoughs', () => new THREE.MeshStandardMaterial({ color: 0x2c4234, roughness: 1, flatShading: true }));
-    const W = 3.0, Hr = 2.3, depth = 2.6;
-    const cover = b.world(0, 0, 0.6-depth/2);
-    G.snowCover.add({ name:'Крыша навеса', kind:'roof', x:cover.x, z:cover.z, hx:(W+0.3)/2, hz:depth/2+0.05, yaw:p.yaw, y:p.y+Hr+0.4 });
-    for (const sx of [-1, 1]) b.box(0.1, Hr, 0.1, (sx * W) / 2, Hr / 2, 0.6, pole, { collide: false });
-    b.box(W + 0.4, 0.1, 0.1, 0, Hr, 0.6, pole, { collide: false });
-    const ang = Math.atan2(Hr, depth);
-    const len = Math.hypot(Hr, depth);
-    // the roof slopes from the ridge down to the ground at the back
-    const roof = b.box(W + 0.3, 0.22, len + 0.1, 0, Hr / 2 + 0.12, 0.6 - depth / 2, boughs, { rx: -ang });
-    void roof;
-    b.box(W + 0.2, 0.1, len, 0, Hr / 2 + 0.26, 0.6 - depth / 2, M.snow(), { rx: -ang, collide: false });
+    const r = this.rng;
+    const W = 3.0, Hr = 2.3, depth = 2.6, front = 0.6;
+    const rp = 0.07, rr = r.float(0.055, 0.065), rs = 0.04, rb = 0.02;
+    const S = G.build.structure('Навес');
+    const gy = (v: THREE.Vector3) => G.terrain.heightAt(v.x, v.z);
+    for (const sx of [-1, 1]) {
+      const top = b.world((sx * W) / 2, 0, front);
+      const bottom = top.clone();
+      bottom.y = gy(bottom) - 0.45;
+      top.y = p.y + Hr;
+      const e = G.build.part(S, makeRound('spruce', 1, rp, rp * 0.85), bottom, top, { moisture: 0.3 });
+      G.build.connect(S, e, { groundKind: 'set' });
+    }
+    const ridgeY = p.y + Hr + rr;
+    const ra = b.world(-W / 2 - 0.25, 0, front), rb2 = b.world(W / 2 + 0.25, 0, front);
+    ra.y = rb2.y = ridgeY;
+    const ridge = G.build.part(S, makeRound('spruce', 1, rr, rr * 0.85), ra, rb2, { moisture: 0.3 });
+    G.build.connect(S, ridge);
+    // poles from the ground at the back up over the ridge
+    const zb = front - depth;
+    const poles: { lx: number; y0: number; y1: number }[] = [];
+    for (let i = 0; i < 5; i++) {
+      const lx = -1.3 + i * 0.65;
+      const back = b.world(lx, 0, zb);
+      back.y = gy(back) - 0.12;
+      const ridgePt = b.world(lx, 0, front);
+      const ang = Math.atan2(ridgeY - back.y, depth);
+      ridgePt.y = ridgeY + (rr + rs) / Math.cos(ang);
+      const dir = ridgePt.clone().sub(back).normalize();
+      const e = G.build.part(S, makeRound('spruce', 1, rs, rs * 0.7), back, ridgePt.clone().addScaledVector(dir, 0.3), { moisture: 0.25 });
+      // the butt just stands on the ground: without the ridge the pole falls
+      G.build.connect(S, e);
+      poles.push({ lx, y0: back.y, y1: ridgePt.y });
+    }
+    // rows of boughs laid across the poles, from the ridge down
+    for (let k = 0; k < 5; k++) {
+      const z = front - 0.15 - k * 0.5;
+      const t = (z - zb) / (front - zb);
+      const ang = Math.atan2(poles[2].y1 - poles[2].y0, depth);
+      const y = Math.max(...poles.map((q) => q.y0 + (q.y1 - q.y0) * t)) + (rs + rb) / Math.cos(ang);
+      const a = b.world(-W / 2 - 0.2, 0, z), c = b.world(W / 2 + 0.2, 0, z);
+      a.y = c.y = y;
+      const row = makeRound('spruce', 1, rb, rb * 0.7);
+      row.needles = 7;
+      // lying in the plane of the roof slope
+      const e = G.build.part(S, row, a, c, { moisture: 0.35, roof: 0.55, name: 'Ряд лапника', roll: -ang });
+      // boughs are tucked under each other and hooked over the poles: they don't roll
+      G.build.connect(S, e, { restKind: 'notch' });
+    }
+    S.snow = r.float(0.03, 0.08);
+    G.build.check(S, true);
+    const coverAt = b.world(0, 0, front - depth / 2);
+    const zone = G.snowCover.add({ name: 'Крыша навеса', kind: 'roof', x: coverAt.x, z: coverAt.z, hx: (W + 0.3) / 2, hz: depth / 2 + 0.05, yaw: p.yaw, y: p.y + Hr + 0.4 });
     // a bed of boughs inside and a fire in front
     this.spawn('boughs', b.world(-0.5, 0.15, -0.3), { moisture: 0.2 });
     this.spawn('boughs', b.world(0.5, 0.15, -0.3), { moisture: 0.2 });
@@ -317,7 +363,13 @@ export class Structures {
     this.stump(b.world(1.3, 0, 2.3), 0.2);
     for (let i = 0; i < 3; i++) this.spawn('sticks', b.world(-1.6, 0.2 + i * 0.1, 1.6), { moisture: 0.15 });
     if (this.rng.chance(0.6)) this.placeLoot(b, [this.rng.pick(['matches', 'stew', 'tea', 'crackers', 'newspaper', 'knife'])], [[0.9, 0.05, -0.4]]);
-    this.shelters.push({ cx: b.world(0, 0, 0.1).x, cz: b.world(0, 0, 0.1).z, yaw: p.yaw, hx: W / 2, hz: 0.9, y0: p.y, y1: p.y + Hr, shelter: { kind: 'grotto', name: 'Навес', wind: 0.35, warm: 1, enclosed: false, pos: new THREE.Vector3(p.x, p.y, p.z) } });
+    const sh: Box = { cx: b.world(0, 0, 0.1).x, cz: b.world(0, 0, 0.1).z, yaw: p.yaw, hx: W / 2, hz: 0.9, y0: p.y, y1: p.y + Hr, shelter: { kind: 'grotto', name: 'Навес', wind: 0.35, warm: 1, enclosed: false, pos: new THREE.Vector3(p.x, p.y, p.z) } };
+    this.shelters.push(sh);
+    S.onCollapse = () => {
+      G.snowCover.remove(zone);
+      const i = this.shelters.indexOf(sh);
+      if (i >= 0) this.shelters.splice(i, 1);
+    };
   }
 
   /** an upturned boat on the shore and old ice holes out on the lake */
@@ -575,14 +627,52 @@ export class Structures {
   private logging(p: Place) {
     const stumps: number[][] = p.data.stumps ?? [];
     for (const s of stumps) this.stump(new THREE.Vector3(s[0], 0, s[2]), Math.max(0.12, 0.2 * s[3]));
-    // a stack of logs left behind
-    const q = new THREE.Quaternion().setFromAxisAngle(UP, p.yaw);
-    for (let i = 0; i < 7; i++) {
-      const row = i % 4, layer = Math.floor(i / 4);
-      const off = new THREE.Vector3(-0.6 + row * 0.38 + layer * 0.19, 0, 0).applyQuaternion(q);
-      const x = p.x + off.x, z = p.z + off.z;
-      G.entities.spawnItem('log', new THREE.Vector3(x, G.terrain.heightAt(x, z) + 0.25 + layer * 0.32, z), { quat: q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(UP, Math.PI / 2)), moisture: 0.25, sleep: true });
+    this.logStack(p);
+  }
+
+  /**
+   * A stack of logs left behind: two skids on the ground, logs across them and more
+   * logs in the hollows between. Pull out or cut a lower log and the ones above roll.
+   */
+  private logStack(p: Place) {
+    const b = new Builder(p.x, p.y, p.z, p.yaw);
+    const S = G.build.structure('Штабель брёвен');
+    const gy = (v: THREE.Vector3) => G.terrain.heightAt(v.x, v.z);
+    const rs = 0.1, r = 0.12, L = 3.0, D = 2 * r + 0.012;
+    const skidY: ((lz: number) => number)[] = [];
+    for (const lx of [-0.9, 0.9]) {
+      const a = b.world(lx, 0, -0.9), c = b.world(lx, 0, 0.9);
+      a.y = gy(a) + rs - 0.03;
+      c.y = gy(c) + rs - 0.03;
+      const e = G.build.part(S, makeRound('dead', 1, rs, rs), a, c, { moisture: 0.2 });
+      G.build.connect(S, e);
+      skidY.push((lz: number) => a.y + ((c.y - a.y) * (lz + 0.9)) / 1.8);
     }
+    let layer = [-1.5, -0.5, 0.5, 1.5].map((k) => k * D);
+    let ys = layer.map((lz) => [skidY[0](lz) + rs + r, skidY[1](lz) + rs + r]);
+    const place = (lz: number, y0: number, y1: number) => {
+      // the axis passes the skid lines at local x = ±0.9: extend to the full length
+      const k = (y1 - y0) / 1.8;
+      const a = b.world(-L / 2, 0, lz), c = b.world(L / 2, 0, lz);
+      a.y = y0 - k * (L / 2 - 0.9);
+      c.y = y1 + k * (L / 2 - 0.9);
+      const e = G.build.part(S, makeRound(this.rng.chance(0.3) ? 'pine' : 'spruce', 1, r, r * 0.95), a, c, { moisture: 0.3 });
+      G.build.connect(S, e);
+    };
+    for (let level = 0; level < 3 && layer.length; level++) {
+      layer.forEach((lz, i) => place(lz, ys[i][0], ys[i][1]));
+      const next: number[] = [];
+      const ny: number[][] = [];
+      const h = Math.sqrt(Math.max(0, 4 * r * r - (D / 2) ** 2));
+      for (let i = 0; i + 1 < layer.length; i++) {
+        if (level === 1 && i !== 0) continue;
+        next.push((layer[i] + layer[i + 1]) / 2);
+        ny.push([(ys[i][0] + ys[i + 1][0]) / 2 + h, (ys[i][1] + ys[i + 1][1]) / 2 + h]);
+      }
+      layer = next;
+      ys = ny;
+    }
+    G.build.check(S, true);
   }
 
   private cross(p: Place) {

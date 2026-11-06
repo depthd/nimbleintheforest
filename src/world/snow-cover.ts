@@ -48,7 +48,14 @@ export class SnowCover {
   readonly zones: Zone[] = [];
   private bins = new Map<string, number[]>();
   constructor(private bounds: SnowRect) {}
-  add(zone: SnowCoverZone) {
+  /** A roof or floor that is gone (a collapsed shelter): it no longer shelters anything. */
+  remove(id: number) {
+    const z = this.zones[id];
+    if (!z) return;
+    z.y = -1e9;
+    this.upload();
+  }
+  add(zone: SnowCoverZone): number {
     const c = Math.cos(zone.yaw ?? 0), s = Math.sin(zone.yaw ?? 0);
     const rx = Math.abs(c) * zone.hx + Math.abs(s) * zone.hz + SNOW_ROOF_FADE;
     const rz = Math.abs(s) * zone.hx + Math.abs(c) * zone.hz + SNOW_ROOF_FADE;
@@ -57,6 +64,7 @@ export class SnowCover {
     for (let iz=Math.floor(z.minZ/BIN); iz<=Math.floor(z.maxZ/BIN); iz++) for (let ix=Math.floor(z.minX/BIN); ix<=Math.floor(z.maxX/BIN); ix++) {
       const key=`${ix},${iz}`, ids=this.bins.get(key) ?? []; ids.push(id); this.bins.set(key,ids);
     }
+    return id;
   }
   private near(x: number, z: number) { return this.bins.get(`${Math.floor(x/BIN)},${Math.floor(z/BIN)}`) ?? NO_ZONES; }
   private distance(zone: Zone, x: number, z: number) {
