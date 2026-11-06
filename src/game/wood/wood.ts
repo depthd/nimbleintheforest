@@ -248,6 +248,7 @@ export function hitPiece(e: Entity, tool: Entity, point: THREE.Vector3, power: n
     if (cutThrough(p, n)) G.build.cutPart(e, weakestAt(p, n));
     else {
       refreshWood(e);
+      G.build.partChanged(e);
       G.build.changed(e);
     }
     return;

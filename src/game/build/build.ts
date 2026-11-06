@@ -12,6 +12,7 @@ import { category, cutAt, pieceName, WoodPiece } from '../wood/piece';
 import { attachColliders, spawnPiece, woodObject } from '../wood/wood';
 import { analyze, findRests, halfThickness, JointKind, pointAt, SJoint, SLoad, SPart } from './statics';
 import { Placement } from './place';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export interface Structure {
   id: number;
@@ -28,6 +29,9 @@ export interface Structure {
   collapsed: boolean;
   /** parts it had when built (to tell when it is mostly gone) */
   built: number;
+  /** all standing parts drawn as one mesh per material */
+  group: THREE.Group | null;
+  meshDirty: boolean;
 }
 
 export interface PartData {
@@ -62,7 +66,7 @@ export class BuildSystem {
   private snowT = 0;
 
   structure(name: string): Structure {
-    const s: Structure = { id: this.nextId++, name, parts: new Map(), joints: [], snow: 0, checkedSnow: 0, dirty: true, collapsed: false, built: 0 };
+    const s: Structure = { id: this.nextId++, name, parts: new Map(), joints: [], snow: 0, checkedSnow: 0, dirty: true, collapsed: false, built: 0, group: null, meshDirty: true };
     this.structures.push(s);
     return s;
   }
@@ -111,6 +115,11 @@ export class BuildSystem {
     into.joints.push(...from.joints);
     into.snow = Math.max(into.snow, from.snow);
     into.built += from.built;
+    into.meshDirty = true;
+    if (from.group) {
+      from.group.removeFromParent();
+      from.group = null;
+    }
     from.parts.clear();
     from.joints = [];
     const i = this.structures.indexOf(from);
@@ -128,10 +137,80 @@ export class BuildSystem {
     e.obj.position.copy(pos);
     e.obj.quaternion.copy(quat);
     G.scene.add(e.obj);
+    // drawn as part of the structure's merged mesh
+    e.obj.visible = false;
     e.inWorld = true;
     e.kind = 'part';
     G.entities.add(e);
     this.updateSnowMesh(e);
+    const pd = e.data.part as PartData;
+    pd.s.meshDirty = true;
+  }
+
+  /** A part changed shape in place (a notch): redraw it with its structure. */
+  partChanged(e: Entity) {
+    const pd = e.data.part as PartData | undefined;
+    if (!pd || !e.obj) return;
+    e.obj.visible = false;
+    pd.snowMesh = undefined;
+    this.updateSnowMesh(e);
+    pd.s.meshDirty = true;
+  }
+
+  /** Merge the standing parts of a structure into one mesh per material. */
+  private rebuildMesh(s: Structure) {
+    s.meshDirty = false;
+    if (s.group) {
+      s.group.removeFromParent();
+      s.group.traverse((c) => (c as THREE.Mesh).isMesh && (c as THREE.Mesh).geometry.dispose());
+      s.group = null;
+    }
+    if (!s.parts.size) return;
+    const buckets = new Map<THREE.Material, THREE.BufferGeometry[]>();
+    const put = (m: THREE.Material, g: THREE.BufferGeometry) => {
+      if (!buckets.has(m)) buckets.set(m, []);
+      buckets.get(m)!.push(g);
+    };
+    for (const e of s.parts.values()) {
+      const o = e.obj;
+      if (!o) continue;
+      o.updateMatrixWorld(true);
+      o.traverse((c) => {
+        const me = c as THREE.Mesh;
+        if (!me.isMesh || (me !== o && !me.visible && me === (e.data.part as PartData).snowMesh)) return;
+        const base = me.geometry;
+        const mats = Array.isArray(me.material) ? me.material : [me.material];
+        const groups = Array.isArray(me.material) && base.groups.length ? base.groups : [{ start: 0, count: base.index ? base.index.count : base.attributes.position.count, materialIndex: 0 }];
+        for (const gr of groups) {
+          const m = mats[gr.materialIndex ?? 0];
+          if (!m) continue;
+          let g: THREE.BufferGeometry;
+          if (base.index) {
+            g = new THREE.BufferGeometry();
+            for (const k of Object.keys(base.attributes)) g.setAttribute(k, base.attributes[k]);
+            g.setIndex(Array.from((base.index.array as ArrayLike<number>)).slice(gr.start, gr.start + gr.count));
+            g = g.toNonIndexed();
+          } else g = base.clone();
+          g.applyMatrix4(me.matrixWorld);
+          put(m, g);
+        }
+      });
+    }
+    const group = new THREE.Group();
+    for (const [m, list] of buckets) {
+      // keep the attributes they all have
+      const keys = Object.keys(list[0].attributes).filter((k) => list.every((g) => g.attributes[k]));
+      for (const g of list) for (const k of Object.keys(g.attributes)) if (!keys.includes(k)) g.deleteAttribute(k);
+      const merged = list.length === 1 ? list[0] : mergeGeometries(list, false);
+      if (!merged) continue;
+      merged.computeBoundingSphere();
+      const mesh = new THREE.Mesh(merged, m);
+      mesh.castShadow = m !== snowMat();
+      mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+    G.scene.add(group);
+    s.group = group;
   }
 
   /** A joint with the ground (b = -1) or another part. */
@@ -306,6 +385,7 @@ export class BuildSystem {
     this.detach(s, e);
     G.entities.removeFromWorld(e);
     e.kind = 'item';
+    if (e.obj) e.obj.visible = true;
     const pd = e.data.part as PartData;
     pd.snowMesh?.removeFromParent();
     delete e.data.part;
@@ -322,6 +402,7 @@ export class BuildSystem {
     s.parts.delete(e.id);
     s.joints = s.joints.filter((j) => j.a !== e.id && j.b !== e.id);
     s.dirty = true;
+    s.meshDirty = true;
   }
 
   /** Overloaded: the piece snaps at u and both halves fall. */
@@ -358,6 +439,7 @@ export class BuildSystem {
     s.joints = s.joints.filter((j) => j.a !== e.id && j.b !== e.id);
     pd.snowMesh?.removeFromParent();
     G.entities.destroy(e);
+    s.meshDirty = true;
     const ca = new THREE.Vector3(uc / 2 - p.len / 2, 0, 0).applyQuaternion(Q).add(T);
     const cb = new THREE.Vector3(uc + (p.len - uc) / 2 - p.len / 2, 0, 0).applyQuaternion(Q).add(T);
     const ea = this.placePart(s, a, ca, Q.clone(), e.moisture, pd.roof);
@@ -440,12 +522,29 @@ export class BuildSystem {
         if (!s.parts.size) continue;
         const before = s.snow;
         s.snow = Math.max(0, Math.min(2, s.snow + (rate - blow) * dt));
-        if (Math.abs(s.snow - before) > 1e-5) for (const e of s.parts.values()) if ((e.data.part as PartData).roof) this.updateSnowMesh(e);
+        if (Math.abs(s.snow - before) > 0.003) {
+          for (const e of s.parts.values()) if ((e.data.part as PartData).roof) this.updateSnowMesh(e);
+          s.meshDirty = true;
+        }
         if (Math.abs(s.snow * SNOW_DENSITY - s.checkedSnow) > 6) s.dirty = true;
       }
     }
     if (this.hold) return;
     for (const s of this.structures) if (s.dirty && s.parts.size) this.check(s);
+    this.draw();
+  }
+
+  /** redraw what changed; far structures are not drawn at all */
+  draw() {
+    const cam = G.camera?.position;
+    for (const s of this.structures) {
+      if (s.meshDirty) this.rebuildMesh(s);
+      if (s.group && cam) {
+        const c = s.group.children[0] as THREE.Mesh | undefined;
+        const bs = c?.geometry.boundingSphere;
+        if (bs) s.group.visible = bs.center.distanceTo(cam) < 420;
+      }
+    }
   }
 
   /** for tests and the debug panel: what would fail and why, without letting anything go */
