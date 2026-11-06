@@ -363,7 +363,8 @@ export class Player {
     if (B.core < 35) speed *= 0.8;
     if (B.fatigue > 0.9) speed *= 0.8;
     if (B.frostFeet > 0.3) speed *= 1 - B.frostFeet * 0.3;
-    const outdoors = !G.house.zoneAt(this.pos);
+    const inCave = !!G.caves?.inside;
+    const outdoors = !G.house.zoneAt(this.pos) && !inCave;
     if (outdoors && !G.lake.onIce(this.pos)) speed *= 0.88; // snow
     const snow = G.snow?.movement(this.pos.x, this.pos.z, this.pos.y);
     if (snow) speed *= snow.speed;
@@ -416,14 +417,15 @@ export class Player {
       this.fallStartY = ny;
     } else if (wasGrounded) this.fallStartY = ny;
     else this.fallStartY = Math.max(this.fallStartY, ny);
-    // world boundary
+    // world boundary (caves lie beyond it)
     const Rg = G.region;
-    const px = clamp(nx, Rg.minX + 30, Rg.maxX - 30), pz = clamp(nz, Rg.minZ + 30, Rg.maxZ - 30);
+    const px = inCave ? nx : clamp(nx, Rg.minX + 30, Rg.maxX - 30), pz = inCave ? nz : clamp(nz, Rg.minZ + 30, Rg.maxZ - 30);
     this.body.setNextKinematicTranslation({ x: px, y: ny, z: pz });
     const moved = Math.hypot(px - this.pos.x, pz - this.pos.z);
     this.pos.set(px, ny - HALF - RADIUS, pz);
     this.moving = moved > dt * 0.5;
     this.lastActivity = this.moving ? (this.sprinting ? 'sprint' : 'walk') : 'idle';
+    if (inCave) return;
     // stepped or slid into open water
     const wl = G.lake.levelAt(this.pos.x, this.pos.z);
     if (!Number.isNaN(wl) && this.pos.y < wl - 0.45) {

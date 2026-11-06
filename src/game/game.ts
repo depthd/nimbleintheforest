@@ -33,6 +33,7 @@ import { SnowCover } from '../world/snow-cover';
 import { MotionRecorder } from './motion-recorder';
 import { Cliffs } from '../world/cliffs';
 import { CliffLab } from './cliff-lab';
+import { Caves } from '../world/caves';
 
 const STEP = 1 / 60;
 let horror: Horror;
@@ -103,6 +104,8 @@ export async function startGame(settings: Settings) {
   G.structures.build(new Rng(settings.seed * 31 + 5));
   // rock registers its shelters before the snow layout is uploaded
   if (region.cliffs.length || region.skin?.blocks.length) G.cliffs = new Cliffs(region.cliffs, region.skin);
+  // cave mouths too (their throats are roofs for the snow)
+  if (region.caves.length) G.caves = new Caves(region.caves);
   G.animals = new Animals();
   await G.animals.load();
   // loud work carries far: animals hear it
@@ -112,7 +115,7 @@ export async function startGame(settings: Settings) {
     if (r) G.animals.noise(pos ?? G.player.pos, r);
   };
   G.player = new Player();
-  const { spawn, yaw } = findSpawn(rng);
+  const { spawn, yaw } = settings.caveLab && region.caves.length ? caveSpawn() : findSpawn(rng);
   G.player.init(spawn, yaw);
   G.interact = new Interaction();
   G.vm = new ViewModel();
@@ -183,6 +186,14 @@ function findSpawn(rng: Rng) {
   return { spawn: new THREE.Vector3(0, T.heightAt(0, 15) + 0.05, 15), yaw: 0 };
 }
 
+/** In front of the cave mouth nearest to the house, facing it. */
+function caveSpawn() {
+  const c = [...G.region.caves].sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+  const ux = Math.sin(c.yaw), uz = Math.cos(c.yaw);
+  const x = c.x - ux * 7, z = c.z - uz * 7;
+  return { spawn: new THREE.Vector3(x, G.terrain.heightAt(x, z) + 0.05, z), yaw: Math.atan2(-ux, -uz) };
+}
+
 function onResize() {
   const w = window.innerWidth, h = window.innerHeight;
   G.renderer.setSize(w, h);
@@ -250,7 +261,13 @@ function bodyEnv(): Env {
   let wind = 0;
   let rh = 0.85;
   let surfaces = 0;
-  if (!zone) {
+  const cave = G.caves?.envAt(P.pos) ?? null;
+  if (cave) {
+    // in a cave: no wind beyond the mouth, the air of the rock, warmed by a fire nearby
+    air = cave.air;
+    wind = cave.wind;
+    rh = 0.9;
+  } else if (!zone) {
     const inForest = !G.lake.onIce(P.pos) && G.region.forestAt(P.pos.x, P.pos.z) > 0.35;
     wind = W.wind * (inForest ? 0.65 : 1);
     // porch roof and walls give a little shelter
@@ -272,7 +289,7 @@ function bodyEnv(): Env {
     // cold walls and glass nearby pull warmth out of you by radiation
     surfaces = 0.45 * (G.thermal.mrtAt(chest) - air);
   }
-  const sun = !zone ? 3 * G.sky.daylight * (1 - W.cloud) : 0;
+  const sun = !zone && !cave ? 3 * G.sky.daylight * (1 - W.cloud) : 0;
   const se = G.hud.sleepEnv();
   const eq = P.equipped;
   const metal = !!eq && ['axe', 'saw', 'hammer', 'prybar', 'auger', 'shovel', 'pot', 'bucket'].includes(eq.defId);
@@ -287,8 +304,8 @@ function bodyEnv(): Env {
     handsWarming: P.handsWarming,
     lampInHand: eq?.defId === 'lamp' && eq.lit,
     metalTool: metal,
-    outdoors: !zone,
-    snowfall: G.snowCover.roofAt(P.pos.x, P.pos.z, P.eyePos.y) ? 0 : W.snow,
+    outdoors: !zone && !cave,
+    snowfall: cave || G.snowCover.roofAt(P.pos.x, P.pos.z, P.eyePos.y) ? 0 : W.snow,
     rh,
   };
 }
@@ -326,13 +343,15 @@ function updateLights(dtGame: number) {
   // flashlight
   const fl = P.equipped?.defId === 'flashlight' && P.equipped.lit ? P.equipped : null;
   if (fl) {
-    const cold = G.house.zoneAt(P.pos) ? 1 : G.weather.temp < -15 ? 1.8 : 1.3;
+    const cold = G.house.zoneAt(P.pos) || G.caves?.inside ? 1 : G.weather.temp < -15 ? 1.8 : 1.3;
     fl.charges = Math.max(0, fl.charges - (dtGame / (3 * 3600)) * 100 * cold);
     if (fl.charges <= 0) {
       fl.lit = false;
       msg('Фонарик погас — батарейка села', 'warn');
     }
-    G.fx.spot.intensity = 14 * Math.min(1, 0.3 + fl.charges / 40);
+    // eyes used to the dark of a cave see further by its beam
+    G.fx.spot.intensity = 14 * Math.min(1, 0.3 + fl.charges / 40) * (G.caves?.inside ? 1.6 : 1);
+    G.fx.spot.distance = G.caves?.inside ? 40 : 28;
   } else G.fx.spot.intensity = 0;
   // kerosene lamps (in hand or placed)
   for (const e of G.entities.list) {
@@ -483,29 +502,34 @@ function loop(now: number) {
     let dtGame = dt * G.settings.timeScale;
     if (G.sleeping) dtGame = G.hud.sleepStep(dt);
     simulate(dtGame, dt);
-    horror.update(dtGame, dt);
+    if (!G.caves?.inside) horror.update(dtGame, dt);
   }
+  G.caves?.update(dt);
+  const inCave = !!G.caves?.inside;
   G.player.renderAlpha = paused || G.dead ? 1 : acc / STEP;
   if (!G.recorder?.reviewing) {
     G.player.updateCamera(dt);
-    G.snow?.update(paused ? 0 : dt);
+    if (!inCave) G.snow?.update(paused ? 0 : dt);
     G.cliffLab?.update(dt);
   }
-  G.terrain.update(G.camera.position);
-  G.cliffs?.update(G.camera.position, G.player.pos);
-  G.forest.update(G.player.pos);
-  G.lake.stream(G.player.pos);
+  // the outdoor world stands still while you are in a cave
+  if (!inCave) {
+    G.terrain.update(G.camera.position);
+    G.cliffs?.update(G.camera.position, G.player.pos);
+    G.forest.update(G.player.pos);
+    G.lake.stream(G.player.pos);
+  }
   G.structures.update(dt);
-  if (!paused && !G.dead) G.animals.update(dt);
+  if (!paused && !G.dead && !inCave) G.animals.update(dt);
   updateGoal();
   G.interact.update(paused ? 0 : dt);
   const indoorAmb = G.sky.daylight > 0.3 ? 0.5 : 0.75;
-  G.sky.indoorFactor = THREE.MathUtils.lerp(G.sky.indoorFactor, G.house.zoneAt(G.player.pos) ? indoorAmb : 1, Math.min(1, dt * 2));
+  G.sky.indoorFactor = THREE.MathUtils.lerp(G.sky.indoorFactor, inCave ? 0.04 : G.house.zoneAt(G.player.pos) ? indoorAmb : 1, Math.min(1, dt * 2));
   G.sky.update();
   G.fx.update(dt);
   G.vm.update(dt);
   G.audio.setListener(G.camera.position, G.player.forward());
-  G.audio.update(dt, G.weather.wind * (G.structures.shelterAt(G.player.pos)?.wind ?? 1), !!G.house.zoneAt(G.player.pos) || !!G.structures.shelterAt(G.player.pos), G.fires.nearest(G.player.pos));
+  G.audio.update(dt, inCave ? 0 : G.weather.wind * (G.structures.shelterAt(G.player.pos)?.wind ?? 1), inCave || !!G.house.zoneAt(G.player.pos) || !!G.structures.shelterAt(G.player.pos), G.fires.nearest(G.player.pos));
   G.audio.setMood(musicMood());
   G.hud.update(dt);
   G.recorder?.present();
@@ -545,6 +569,12 @@ function testApi() {
         const p = P().eyePos.add(P().forward().multiplyScalar(1.2));
         c.body.setTranslation({ x: p.x, y: p.y, z: p.z }, true);
       }
+    },
+    /** go into a cave (or out of it) at once */
+    cave(i: number, enter = true) {
+      G.caves?.jump(i, enter);
+      this.steps(30);
+      return G.caves?.stats();
     },
     /** stand ~dist metres from a point, on the right floor, and look at it */
     approach(x: number, y: number, z: number, dist = 0.9) {

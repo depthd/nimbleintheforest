@@ -14,6 +14,11 @@ if (params.get('cliffs') === '1') {
   for (const [key, value] of Object.entries({ seed: '42', hour: '15.5', weather: 'clear', nocold: '1', horror: '0', scale: '0' }))
     if (!params.has(key)) params.set(key, value);
 }
+// The cave laboratory starts in front of the cave mouth nearest to the house.
+if (params.get('cave') === '1') {
+  for (const [key, value] of Object.entries({ seed: '42', hour: '13', weather: 'clear', nocold: '1', horror: '0', scale: '0' }))
+    if (!params.has(key)) params.set(key, value);
+}
 const el = (id: string) => document.getElementById(id) as HTMLInputElement;
 
 const seedInput = el('st-seed');
@@ -36,6 +41,7 @@ async function go() {
     horror: params.get('horror') ? params.get('horror') === '1' : el('st-horror').checked,
     size: Number(params.get('size') ?? 3072),
     cliffLab: params.get('cliffs') === '1',
+    caveLab: params.get('cave') === '1',
   };
   document.getElementById('start')!.style.display = 'none';
   const loading = document.getElementById('loading')!;
@@ -63,4 +69,4 @@ async function go() {
 document.getElementById('st-go')!.addEventListener('click', go);
 if (params.get('preview') === 'map') import('./preview').then((m) => m.previewMap(params));
 else if (params.get('preview') === 'animals') import('./preview_animals').then((m) => m.previewAnimals(params));
-else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1' || params.get('cliffs') === '1') go();
+else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1' || params.get('cliffs') === '1' || params.get('cave') === '1') go();

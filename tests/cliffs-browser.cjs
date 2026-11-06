@@ -110,7 +110,8 @@ function check(name, ok, data) { assert.ok(ok, `${name}: ${JSON.stringify(data)}
     const boulder = await ev(() => {
       const g = window.__game, { G } = g, R = G.region, P = R.rocks;
       let best = -1;
-      R.forEachProp(P, G.player.pos.x, G.player.pos.z, 400, (i) => { if (P.s[i] > 1.3 && (best < 0 || P.s[i] > P.s[best])) best = i; });
+      // rocks hidden under rock skin or in front of a cave mouth are not drawn on purpose
+      R.forEachProp(P, G.player.pos.x, G.player.pos.z, 400, (i) => { if (!(P.flags[i] & 3) && P.s[i] > 1.3 && (best < 0 || P.s[i] > P.s[best])) best = i; });
       if (best < 0) return null;
       const x = P.x[best], z = P.z[best], y = P.y[best], s = P.s[best];
       const px = x + s * 3 + 2, pz = z + s * 3 + 2;

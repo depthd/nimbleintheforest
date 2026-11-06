@@ -178,7 +178,7 @@ export class HUD {
       this.mapFog.width = this.mapFog.height = 300;
     }
     const c = this.mapFog.getContext('2d')!;
-    const P = G.player.pos;
+    const P = G.caves?.worldPos() ?? G.player.pos;
     const k = 300 / R.size;
     const high = Math.max(0, P.y - G.terrain.heightAt(P.x, P.z)) + Math.max(0, P.y - 40) * 0.5;
     const r = (170 + Math.min(400, high * 6)) * k;
@@ -229,14 +229,15 @@ export class HUD {
       c.fillText(text, p.x + 8, p.y + 4);
     };
     label(0, 0, 'Дом', '#e05a3a');
-    const names: Record<string, string> = { hut: 'Заимка', station: 'Метеостанция «Кряж»', grotto: 'Грот', car: 'УАЗ', bridge: 'Мост', logging: 'Вырубка', cross: 'Крест', leanto: 'Навес', fishing: 'Рыбацкая избушка' };
+    const names: Record<string, string> = { hut: 'Заимка', station: 'Метеостанция «Кряж»', grotto: 'Грот', car: 'УАЗ', bridge: 'Мост', logging: 'Вырубка', cross: 'Крест', leanto: 'Навес', fishing: 'Рыбацкая избушка', cave: 'Пещера' };
     for (const p of R.places) if (G.structures.seen.has(p)) label(p.x, p.z, names[p.kind], '#f0c36a');
     const st = G.structures.station;
     if (st && !G.structures.seen.has(st) && G.region.sites.tower && Math.hypot(G.player.pos.x - G.region.sites.tower.x, G.player.pos.z - G.region.sites.tower.z) < 400) label(st.x, st.z, 'Мачта с красным огнём?', '#ff4a3a');
     if (R.sites.tower) label(R.sites.tower.x, R.sites.tower.z, 'Пожарная вышка', '#9cc8ff');
     // you
     const P = G.player;
-    const me = mapXY(R, px, P.pos.x, P.pos.z);
+    const wp = G.caves?.worldPos() ?? P.pos;
+    const me = mapXY(R, px, wp.x, wp.z);
     c.save();
     c.translate(me.x, me.y);
     c.rotate(-P.yaw);
@@ -281,7 +282,7 @@ export class HUD {
       const bk = BOOKS[e.params.t];
       const fire = G.fires.nearest(G.player.pos);
       const lamp = G.player.equipped?.defId === 'lamp' && G.player.equipped.lit;
-      const light = G.sky.daylight > 0.35 || lamp || (fire.level > 0.1 && fire.pos && fire.pos.distanceTo(G.player.pos) < 3);
+      const light = (G.sky.daylight > 0.35 && !G.caves?.inside) || lamp || (fire.level > 0.1 && fire.pos && fire.pos.distanceTo(G.player.pos) < 3);
       if (!light) {
         msg('Слишком темно, чтобы читать. Нужен огонь, лампа или дневной свет.', 'warn');
         return;
@@ -931,6 +932,8 @@ export class HUD {
     const z = G.house.zoneAt(P.pos);
     const W = G.weather;
     let loc = G.lake.onIce(P.pos) ? (G.lake.levelAt(P.pos.x, P.pos.z) === 0 ? 'Морской лёд' : 'На льду') : Math.hypot(P.pos.x, P.pos.z) < 14 ? 'Двор' : BIOME_NAMES[G.region.biomeAt(P.pos.x, P.pos.z)];
+    const cave = G.caves?.envAt(P.pos);
+    if (cave) loc = `Пещера · здесь <b>${fmtTemp(cave.air)}</b>`;
     if (z) {
       const chest = P.pos.clone().add(new THREE.Vector3(0, 1.2, 0));
       const dr = G.thermal.draftAt(chest);

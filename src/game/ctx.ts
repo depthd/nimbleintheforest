@@ -29,6 +29,7 @@ import type { MotionRecorder } from './motion-recorder';
 import type { SnowCover } from '../world/snow-cover';
 import type { Cliffs } from '../world/cliffs';
 import type { CliffLab } from './cliff-lab';
+import type { Caves } from '../world/caves';
 
 export interface Settings {
   seed: number;
@@ -41,6 +42,8 @@ export interface Settings {
   size: number;
   /** raise the cliff laboratory near the house */
   cliffLab?: boolean;
+  /** start in front of the nearest cave mouth */
+  caveLab?: boolean;
 }
 
 export interface Ctx {
@@ -80,6 +83,7 @@ export interface Ctx {
   snow?: SnowExperiment | WorldSnow;
   cliffs?: Cliffs;
   cliffLab?: CliffLab;
+  caves?: Caves;
   recorder?: MotionRecorder;
   paused: boolean;
   sleeping: boolean;
