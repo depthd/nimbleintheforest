@@ -1,12 +1,20 @@
 // The region generator. Deterministic from the seed, layer by layer:
 // macro relief (continentalness / erosion / ridges, like Minecraft 1.18) → droplet erosion →
 // lakes and drainage (Priority-Flood) → rivers and gorges → biomes → fine 2 m heightmap,
-// water and ice → places (house, tower) → trees, shrubs, rocks.
+// water and ice → cliffs → places (house, tower) → trees, shrubs, rocks.
 // See docs/WORLD.md.
 import { Rng, Simplex2, clamp, lerp, smoothstep } from '../core/rng';
 import { erode } from './erosion';
 import { priorityFlood, accumulate, breachLakes, riverLevels, traceRivers, smoothRiver, River, DX, DY } from './hydro';
 import { B, BIOMES, BIOME_COUNT, Sp } from './biomes';
+import type { CliffBuild } from './cliffs';
+import { buildCliffLab } from './cliff-lab';
+import type { CliffLabInfo } from './cliff-lab';
+
+export interface RegionOptions {
+  /** raise the cliff laboratory near the house (?cliffs=1) */
+  cliffLab?: boolean;
+}
 
 export interface Props {
   count: number;
@@ -129,11 +137,14 @@ export class Region {
   pillars: Pillar[] = [];
   sites: { house: Site; tower: Site | null; thin: { x: number; z: number; r: number } | null } = { house: { x: 0, z: 0, y: 0 }, tower: null, thin: null };
   places: Place[] = [];
+  /** rock faces welded into the sheet; trees and places keep clear of them */
+  cliffs: CliffBuild[] = [];
+  cliffLab: CliffLabInfo | null = null;
   seaSide = 0;
   treeline = 165;
   timings: Record<string, number> = {};
 
-  constructor(seed: number, size: number) {
+  constructor(seed: number, size: number, readonly options: RegionOptions = {}) {
     this.seed = seed;
     this.size = size;
     this.n = size / FINE;
@@ -736,6 +747,15 @@ export class Region {
     // thin ice: on the lake nearest to the house, near an inflow if there is one
     this.sites.thin = this.pickThinIce(rng);
 
+    // cliffs reshape the sheet before anything is placed on it
+    if (this.options.cliffLab) {
+      t = performance.now();
+      const lab = buildCliffLab(this);
+      this.cliffs.push(...lab.builds);
+      this.cliffLab = lab.info;
+      mark('cliffs', t);
+    }
+
     // places of people: huts, the weather station, a grotto, cars, a bridge
     this.pickPlaces(sub(50));
 
@@ -928,6 +948,7 @@ export class Region {
       const r = p.data.clear ?? 0;
       if (r > 0 && Math.hypot(x - p.x, z - p.z) < r) return true;
     }
+    for (const c of this.cliffs) if (c.occupied(x, z, 1)) return true;
     return false;
   }
 
@@ -948,6 +969,7 @@ export class Region {
 
   private farFrom(x: number, z: number, d: number) {
     if (Math.hypot(x, z) < d) return false;
+    if (this.cliffs.some((c) => c.occupied(x, z, 12))) return false;
     const t = this.sites.tower;
     if (t && Math.hypot(x - t.x, z - t.z) < d * 0.6) return false;
     return this.places.every((p) => Math.hypot(p.x - x, p.z - z) > d * (p.kind === 'car' ? 0.2 : 1));

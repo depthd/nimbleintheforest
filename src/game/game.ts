@@ -31,6 +31,8 @@ import { SnowExperiment } from './snow-experiment';
 import { WorldSnow } from './world-snow';
 import { SnowCover } from '../world/snow-cover';
 import { MotionRecorder } from './motion-recorder';
+import { Cliffs } from '../world/cliffs';
+import { CliffLab } from './cliff-lab';
 
 const STEP = 1 / 60;
 let horror: Horror;
@@ -69,7 +71,7 @@ export async function startGame(settings: Settings) {
 
   const rng = G.rng;
   const loadText = document.querySelector('#loading h2');
-  const region = new Region(settings.seed, settings.size);
+  const region = new Region(settings.seed, settings.size, { cliffLab: settings.cliffLab });
   await region.generate(async (stage, f) => {
     if (loadText) loadText.textContent = `Генерация мира: ${stage.toLowerCase()} — ${Math.round(f * 100)}%`;
     await new Promise((r) => setTimeout(r, 0));
@@ -99,6 +101,8 @@ export async function startGame(settings: Settings) {
   G.goal = { signalAt: 0, rescued: false, heliShown: false };
   G.structures = new Structures();
   G.structures.build(new Rng(settings.seed * 31 + 5));
+  // rock faces register their shelters before the snow layout is uploaded
+  if (region.cliffs.length) G.cliffs = new Cliffs(region.cliffs);
   G.animals = new Animals();
   await G.animals.load();
   // loud work carries far: animals hear it
@@ -137,6 +141,7 @@ export async function startGame(settings: Settings) {
 
   G.snow = new URLSearchParams(location.search).get('snow') === '1' ? new SnowExperiment() : new WorldSnow();
   if (!G.snow.isExperiment) G.player.avatar.reset();
+  if (region.cliffLab) G.cliffLab = new CliffLab();
   G.recorder = new MotionRecorder();
 
   window.addEventListener('resize', onResize);
@@ -483,6 +488,7 @@ function loop(now: number) {
   if (!G.recorder?.reviewing) {
     G.player.updateCamera(dt);
     G.snow?.update(paused ? 0 : dt);
+    G.cliffLab?.update(dt);
   }
   G.terrain.update(G.camera.position);
   G.forest.update(G.player.pos);
@@ -505,7 +511,7 @@ function loop(now: number) {
   G.renderer.clear();
   const avatar = G.player.avatar;
   G.renderer.render(G.scene, G.recorder?.reviewing ? G.recorder.camera : avatar.inspectionView ? avatar.inspectionCamera : G.camera);
-  if (!avatar.inspectionView && !G.recorder?.reviewing) G.vm.render(G.renderer);
+  if (!avatar.inspectionView && !G.recorder?.reviewing && !G.cliffLab?.orbiting) G.vm.render(G.renderer);
   G.recorder?.captureFrame(dt, G.player.renderAlpha);
   G.hud.performance.frame(now);
   inp.endFrame();
