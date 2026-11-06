@@ -87,6 +87,7 @@ export async function startGame(settings: Settings) {
   G.sky = new Sky();
   G.fx = new Effects();
   G.entities = new Entities();
+  G.build = new BuildSystem();
   G.lake = new Water();
   G.lake.build(region);
   G.house = new House();
@@ -98,7 +99,6 @@ export async function startGame(settings: Settings) {
   G.fires = new Fires();
   G.fires.init();
   G.goal = { signalAt: 0, rescued: false, heliShown: false };
-  G.build = new BuildSystem();
   G.structures = new Structures();
   G.structures.build(new Rng(settings.seed * 31 + 5));
   G.animals = new Animals();

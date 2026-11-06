@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import type RAPIER_T from '@dimforge/rapier3d-compat';
 import { G, GROUPS_STATIC, msg } from '../game/ctx';
+import { makeRound, makeSawn } from '../game/wood/piece';
 import { Rng } from '../core/rng';
 import { Tex, worldUVBox } from '../core/textures';
 import { M, mat } from '../game/meshes';
@@ -562,7 +563,7 @@ export class House {
   private makePorch() {
     const pz0 = HZ, pz1 = HZ + 2.0, px0 = -0.6, px1 = 4.6;
     G.snowCover.add({ name: 'Пол крыльца', kind: 'floor', x: (px0+px1)/2, z: (pz0+pz1)/2, hx: (px1-px0)/2, hz: (pz1-pz0)/2, y: this.Y0 });
-    G.snowCover.add({ name: 'Крыша крыльца', kind: 'roof', x: (px0+px1)/2, z: (pz0+pz1)/2+0.1, hx: (px1-px0+0.4)/2, hz: 1.2*Math.cos(0.2), y: this.Y0+3.1 });
+    const porchZone = G.snowCover.add({ name: 'Крыша крыльца', kind: 'roof', x: (px0+px1)/2, z: (pz0+pz1)/2+0.1, hx: (px1-px0+0.4)/2, hz: 1.2*Math.cos(0.2), y: this.Y0+3.1 });
     this.solid(px1 - px0, 0.2, pz1 - pz0, (px0 + px1) / 2, -0.1, (pz0 + pz1) / 2, this.floorMat, 1.5);
     this.solid(px1 - px0 + 0.1, 0.9, pz1 - pz0, (px0 + px1) / 2, -0.65, (pz0 + pz1) / 2, mat('stoneplinth', () => new THREE.MeshStandardMaterial({ map: Tex.stone() })), 1.2, false);
     // steps (visual) + ramp collider
@@ -578,15 +579,16 @@ export class House {
       G.R.ColliderDesc.cuboid((sx1 - sx0) / 2, 0.04, rampLen / 2).setTranslation((sx0 + sx1) / 2, this.Y0 + ground / 2 - 0.04, pz1 + 0.45).setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }).setCollisionGroups(GROUPS_STATIC),
       this.body,
     );
-    // posts and roof
-    for (const x of [px0 + 0.1, px1 - 0.1]) this.solid(0.14, 2.7, 0.14, x, 1.35, pz1 - 0.1, M.woodDark(), 1.2);
-    const q2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.2);
-    this.solid(px1 - px0 + 0.4, 0.1, 2.4, (px0 + px1) / 2, 2.85, (pz0 + pz1) / 2 + 0.1, mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks() })), 1.5, true, q2);
-    const sn = new THREE.Mesh(worldUVBox(px1 - px0 + 0.35, 0.1, 2.35, 3), M.snow());
-    sn.position.set((px0 + px1) / 2, this.Y0 + 2.95, (pz0 + pz1) / 2 + 0.08);
-    sn.quaternion.copy(q2);
-    sn.castShadow = true;
-    G.scene.add(sn);
+    // posts and a shed roof of real pieces: chop a post and the roof comes down
+    const porchRoof = this.shedRoof('Навес крыльца', {
+      posts: [px0 + 0.1, px1 - 0.1].map((x) => [new THREE.Vector3(x, this.Y0, pz1 - 0.1), new THREE.Vector3(x, this.Y0 + 2.7, pz1 - 0.1)]),
+      postKind: 'nail',
+      beam: [new THREE.Vector3(px0 - 0.25, 0, pz1 - 0.1), new THREE.Vector3(px1 + 0.25, 0, pz1 - 0.1)],
+      ledger: [new THREE.Vector3(px0 - 0.25, 0, HZ), new THREE.Vector3(px1 + 0.25, 0, HZ)],
+      slope: 0.2,
+      overhang: 0.35,
+    });
+    porchRoof.onCollapse = () => G.snowCover.remove(porchZone);
     // porch railings (choppable)
     const Y = this.Y0;
     this.makeRailingSegment(new THREE.Vector3(px0 + 0.1, Y, pz1 - 0.1), new THREE.Vector3(sx0 - 0.05, Y, pz1 - 0.1), 'Перила крыльца');
@@ -599,15 +601,20 @@ export class House {
     const x0 = HX + 0.3, x1 = HX + 1.8;
     const z0 = -2.6, z1 = 1.6;
     const gy = T.heightAt((x0 + x1) / 2, (z0 + z1) / 2) - this.Y0;
-    G.snowCover.add({ name: 'Крыша дровника', kind: 'roof', x: (x0+x1)/2+0.1, z: (z0+z1)/2, hx: Math.cos(0.35), hz: (z1-z0+0.6)/2, y: this.Y0+gy+2.9 });
+    const shedZone = G.snowCover.add({ name: 'Крыша дровника', kind: 'roof', x: (x0+x1)/2+0.1, z: (z0+z1)/2, hx: Math.cos(0.35), hz: (z1-z0+0.6)/2, y: this.Y0+gy+2.9 });
     G.snowCover.add({ name: 'Настил дровника', kind: 'floor', x: (x0+x1)/2, z: (z0+z1)/2, hx: 0.65, hz: (z1-z0)/2, y: this.Y0+gy+0.06 });
-    for (const z of [z0, z1]) this.solid(0.12, 2.3, 0.12, x1, gy + 1.15, z, M.woodDark(), 1.2);
-    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.35);
-    this.solid(2.0, 0.08, z1 - z0 + 0.6, (x0 + x1) / 2 + 0.1, gy + 2.5, (z0 + z1) / 2, mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks() })), 1.5, true, q);
-    const sn = new THREE.Mesh(worldUVBox(1.95, 0.1, z1 - z0 + 0.55, 3), M.snow());
-    sn.position.set((x0 + x1) / 2 + 0.12, this.Y0 + gy + 2.59, (z0 + z1) / 2);
-    sn.quaternion.copy(q);
-    G.scene.add(sn);
+    const shed = this.shedRoof('Дровник', {
+      posts: [z0, z1].map((z) => {
+        const g = T.heightAt(x1, z);
+        return [new THREE.Vector3(x1, g - 0.45, z), new THREE.Vector3(x1, this.Y0 + gy + 2.3, z)];
+      }),
+      postKind: 'set',
+      beam: [new THREE.Vector3(x1, 0, z0 - 0.3), new THREE.Vector3(x1, 0, z1 + 0.3)],
+      ledger: [new THREE.Vector3(HX, 0, z0 - 0.3), new THREE.Vector3(HX, 0, z1 + 0.3)],
+      slope: 0.35,
+      overhang: 0.35,
+    });
+    shed.onCollapse = () => G.snowCover.remove(shedZone);
     this.solid(1.3, 0.06, z1 - z0, (x0 + x1) / 2, gy + 0.03, (z0 + z1) / 2, M.wood(), 1.2);
     const nLogs = rng.int(3, 6);
     const qLog = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
@@ -626,6 +633,56 @@ export class House {
   }
 
   blockPos = new THREE.Vector3();
+
+  /**
+   * A shed roof leaning on the house: posts, a beam on them, a ledger nailed to the
+   * wall and boards from the wall down over the beam. Real pieces with their statics.
+   */
+  private shedRoof(name: string, o: { posts: THREE.Vector3[][]; postKind: 'set' | 'nail'; beam: THREE.Vector3[]; ledger: THREE.Vector3[]; slope: number; overhang: number }) {
+    const S = G.build.structure(name);
+    const rp = 0.07, rb = 0.075, rl = 0.065, bw = 0.32, bt = 0.03;
+    const posts = o.posts.map(([a, b]) => {
+      const e = G.build.part(S, makeRound('pine', 1, rp, rp * 0.9), a, b, { moisture: 0.12 });
+      if (o.postKind === 'set') G.build.connect(S, e, { groundKind: 'set' });
+      // set into a socket in the stone plinth under the porch floor
+      else G.build.joint(S, e, 0.35, null, 0, 'set');
+      return e;
+    });
+    const top = Math.max(...o.posts.map(([, b]) => b.y));
+    const beamY = top + rb;
+    const ba = o.beam[0].clone().setY(beamY), bb = o.beam[1].clone().setY(beamY);
+    const beam = G.build.part(S, makeRound('pine', 1, rb, rb), ba, bb, { moisture: 0.12 });
+    G.build.connect(S, beam);
+    // the ledger on the wall, as high as the slope needs
+    const mid = ba.clone().add(bb).multiplyScalar(0.5);
+    const lm = o.ledger[0].clone().add(o.ledger[1]).multiplyScalar(0.5);
+    const out = new THREE.Vector3(mid.x - lm.x, 0, mid.z - lm.z);
+    const run = out.length() - rl;
+    out.normalize();
+    const ledgerTop = beamY + rb + Math.tan(o.slope) * run;
+    const la = o.ledger[0].clone().addScaledVector(out, rl).setY(ledgerTop - rl), lb = o.ledger[1].clone().addScaledVector(out, rl).setY(ledgerTop - rl);
+    const ledger = G.build.part(S, makeRound('pine', 1, rl, rl), la, lb, { moisture: 0.1 });
+    const ll = la.distanceTo(lb);
+    G.build.joint(S, ledger, 0.3, null, 0, 'nail', 6);
+    G.build.joint(S, ledger, ll - 0.3, null, 0, 'nail', 6);
+    // boards from the wall down over the beam
+    const along = lb.clone().sub(la).setY(0);
+    const width = along.length();
+    along.normalize();
+    const n = Math.ceil(width / bw);
+    for (let i = 0; i < n; i++) {
+      const t = -width / 2 + bw / 2 + i * bw;
+      const hi = lm.clone().addScaledVector(along, t).addScaledVector(out, 0.03).setY(ledgerTop + bt / 2);
+      const lo = mid.clone().addScaledVector(along, t).setY(beamY + rb + bt / 2);
+      const dir = lo.clone().sub(hi).normalize();
+      const e = G.build.part(S, makeSawn('spruce', 1, bw - 0.01, bt), hi, lo.clone().addScaledVector(dir, o.overhang), { moisture: 0.1, roof: bw });
+      G.build.connect(S, e);
+    }
+    void posts;
+    S.snow = 0.06;
+    G.build.check(S, true);
+    return S;
+  }
 
   // ---------- furniture & loot ----------
 
