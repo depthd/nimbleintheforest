@@ -227,6 +227,10 @@ export function sectionAt(p: WoodPiece, u: number): Section {
 export function bendingAt(p: WoodPiece, u: number, my: number, mz: number) {
   const r = radiusAt(p, u);
   const cuts = notchesAt(p, u);
+  if (!cuts.length) {
+    // a whole round section: the textbook values
+    return { area: Math.PI * r * r, S: (Math.PI * r * r * r) / 4, cy: 0, cz: 0, edge: r };
+  }
   const wgt = (Math.PI * r * r) / NDISK;
   let n = 0, sy = 0, sz = 0;
   const keep = new Uint8Array(NDISK);

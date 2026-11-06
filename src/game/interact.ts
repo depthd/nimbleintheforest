@@ -405,8 +405,9 @@ export class Interaction {
       case 'railing':
         return;
       case 'part': {
-        if (!G.build.loosePart(e)) {
-          this.info += ' · закреплено';
+        const stuck = G.build.whyStuck(e);
+        if (stuck) {
+          this.info += ` · ${stuck}`;
           return;
         }
         if (e.mass > MAX_DRAG) {

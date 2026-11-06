@@ -26,6 +26,10 @@ export interface Structure {
   dirty: boolean;
   /** called once when the structure has mostly come down */
   onCollapse?: () => void;
+  /** called after every check (walls cut through, roof gone...) */
+  onChange?: (s: Structure) => void;
+  /** how many parts of each role it was built with (walls, roof) */
+  roles?: Record<string, number>;
   collapsed: boolean;
   /** parts it had when built (to tell when it is mostly gone) */
   built: number;
@@ -225,7 +229,7 @@ export class BuildSystem {
    * Find what a part rests on: other parts of the structure (axes close enough to
    * touch) and the ground or any fixed thing under its ends (rocks, the house).
    */
-  connect(s: Structure, e: Entity, opts: { groundKind?: JointKind; nails?: number; restKind?: JointKind } = {}) {
+  connect(s: Structure, e: Entity, opts: { groundKind?: JointKind; nails?: number; restKind?: JointKind; base?: (c: THREE.Vector3) => number | null } = {}) {
     const me = this.spart(e);
     let found = 0;
     const pe = e.data.wood as WoodPiece;
@@ -244,7 +248,19 @@ export class BuildSystem {
     }
     for (const o of near) {
       if (this.of(o) !== s) continue;
-      for (const j of findRests(me, this.spart(o))) {
+      // pieces that cross into each other could seem to rest on each other both ways:
+      // keep only the way that is more nearly on top
+      const up = findRests(me, this.spart(o)), down = findRests(this.spart(o), me);
+      if (up.length && down.length) {
+        const ny = (js: SJoint[]) => Math.max(...js.map((j) => j.n.y));
+        if (ny(up) >= ny(down)) down.length = 0;
+        else up.length = 0;
+      }
+      for (const j of down) {
+        if (s.joints.some((x) => x.a === j.a && x.b === j.b && Math.abs(x.ua - j.ua) < 0.2)) continue;
+        s.joints.push(j);
+      }
+      for (const j of up) {
         if (opts.restKind) j.kind = opts.restKind;
         if (opts.nails) {
           j.kind = 'nail';
@@ -253,11 +269,7 @@ export class BuildSystem {
         s.joints.push(j);
         found++;
       }
-      // things that rest on the new part
-      for (const j of findRests(this.spart(o), me)) {
-        if (s.joints.some((x) => x.a === j.a && x.b === j.b && Math.abs(x.ua - j.ua) < 0.2)) continue;
-        s.joints.push(j);
-      }
+
     }
     // the ground (or anything fixed that isn't a part) right under the piece
     const p = e.data.wood as WoodPiece;
@@ -285,7 +297,8 @@ export class BuildSystem {
       const u = (p.len * i) / steps;
       const c = pointAt(me, u);
       const h = halfThickness(p, u);
-      const gy = this.solidBelow(c, h + 0.6, e);
+      // while the world is being built the physics can't see new colliders yet: the builder says what is under
+      const gy = opts.base ? opts.base(c) : this.solidBelow(c, h + 0.6, e);
       if (gy === null || c.y - h - gy > 0.06) continue;
       if (s.joints.some((x) => x.a === e.id && x.b === -1 && Math.abs(x.ua - u) < 0.3)) continue;
       s.joints.push({ a: e.id, ua: u, b: -1, ub: 0, kind: opts.groundKind ?? 'rest', n: UP.clone() });
@@ -331,9 +344,15 @@ export class BuildSystem {
       const load = s.snow * SNOW_DENSITY;
       const r = analyze(parts, s.joints, load, this.liveLoads(s));
       s.checkedSnow = load;
+      for (const e of s.parts.values()) e.data.pressed = 0;
       for (const [id, st] of r.state) {
         const e = s.parts.get(id);
         if (e) e.data.load = st.ratio;
+        // how hard each piece is pressed down by what rests on it
+        for (const { joint, R } of st.reactions) {
+          const below = joint.b >= 0 ? s.parts.get(joint.b) : null;
+          if (below) below.data.pressed = (below.data.pressed ?? 0) + Math.max(0, R.y);
+        }
       }
       if (!r.failures.length) break;
       // the worst first: one break changes everything above it
@@ -360,7 +379,15 @@ export class BuildSystem {
       s.collapsed = true;
       s.onCollapse?.();
     }
+    s.onChange?.(s);
     return fell;
+  }
+
+  /** how many parts of a role are still standing, and how many there were */
+  roleCount(s: Structure, role: string) {
+    let n = 0;
+    for (const e of s.parts.values()) if (e.data.role === role) n++;
+    return { n, of: s.roles?.[role] ?? n };
   }
 
   /** the player standing on a part loads it */
@@ -475,11 +502,19 @@ export class BuildSystem {
     return e;
   }
 
-  /** Can it be pulled out by hand (not dug in, not nailed)? */
+  /** Can it be pulled out by hand (not dug in, not nailed, not pinned under something heavy)? */
   loosePart(e: Entity) {
+    return this.whyStuck(e) === '';
+  }
+
+  whyStuck(e: Entity) {
     const s = this.of(e);
-    if (!s) return false;
-    return !s.joints.some((j) => (j.a === e.id || j.b === e.id) && (j.kind === 'set' || j.kind === 'nail'));
+    if (!s) return 'не в постройке';
+    if (s.joints.some((j) => (j.a === e.id || j.b === e.id) && j.kind === 'set')) return 'вкопано';
+    if (s.joints.some((j) => (j.a === e.id || j.b === e.id) && j.kind === 'nail')) return 'прибито';
+    // everything above presses it down: more than ~40 kg and it won't come out by hand
+    const kg = (e.data.pressed ?? 0) / 9.81;
+    return kg > 40 ? 'придавлено сверху' : '';
   }
 
   /** parts resting on this one */

@@ -131,6 +131,71 @@ function check(name, ok, extra = '') {
   check('pulling a lower log out lets the upper ones roll', stack.none || stack.after < stack.before - 1, JSON.stringify(stack));
   await shot('03-stack');
 
+  // ---- log huts: whole on their own; boards off lets the wind in; a cut wall log holds ----
+  const hut = await ev(() => {
+    const g = window.__game;
+    const G = g.G;
+    const T = g.THREE;
+    const huts = G.build.structures.filter((s) => s.name === 'Заимка' || s.name === 'Рыбацкая избушка');
+    const whole = huts.every((s) => s.parts.size === s.built && s.built > 60);
+    const S = huts.find((s) => s.name === 'Заимка');
+    const p = G.structures.places.find((x) => x.kind === 'hut' && [...S.parts.values()].some((e) => e.position().distanceTo(new T.Vector3(x.x, e.position().y, x.z)) < 4));
+    const fwd = new T.Vector3(0, 0, 1).applyAxisAngle(new T.Vector3(0, 1, 0), p.yaw);
+    const side = new T.Vector3(1, 0, 0).applyAxisAngle(new T.Vector3(0, 1, 0), p.yaw);
+    const at = new T.Vector3(p.x, 0, p.z).addScaledVector(fwd, 6).addScaledVector(side, 3);
+    g.teleport(at.x, G.terrain.heightAt(at.x, at.z) + 0.05, at.z);
+    G.forest.update(G.player.pos, true);
+    g.steps(10);
+    g.lookAt(p.x, p.y + 1.6, p.z);
+    const sh = G.structures.shelters.find((b) => Math.hypot(b.cx - p.x, b.cz - p.z) < 0.5);
+    return { whole, counts: huts.map((s) => `${s.parts.size}/${s.built}`), wind0: sh.shelter.wind, x: p.x, z: p.z, yaw: p.yaw };
+  });
+  check('log huts stand whole', hut.whole, JSON.stringify(hut.counts));
+  await page.waitForTimeout(400);
+  await shot('05-hut');
+  const hut2 = await ev((h) => {
+    const g = window.__game;
+    const G = g.G;
+    const T = g.THREE;
+    const S = G.build.structures.find((s) => s.name === 'Заимка' && [...s.parts.values()].some((e) => Math.hypot(e.position().x - h.x, e.position().z - h.z) < 4));
+    const sh = G.structures.shelters.find((b) => Math.hypot(b.cx - h.x, b.cz - h.z) < 0.5);
+    // a wall log beside the doorway, cut through in the middle: the wall above still holds
+    const fwd = new T.Vector3(0, 0, 1).applyAxisAngle(new T.Vector3(0, 1, 0), h.yaw);
+    const walls = [...S.parts.values()].filter((e) => e.data.role === 'wall');
+    const front = walls.filter((e) => e.position().clone().sub(new T.Vector3(h.x, e.position().y, h.z)).dot(fwd) > 1 && e.data.wood.len < 2.2);
+    const log = front.sort((a, b) => Math.abs(a.position().y - (G.terrain.heightAt(h.x, h.z) + 1.2)) - Math.abs(b.position().y - (G.terrain.heightAt(h.x, h.z) + 1.2)))[0];
+    const before = S.parts.size;
+    const lp = log.position();
+    const stand = lp.clone().addScaledVector(fwd, 1.0);
+    g.give('axe');
+    g.equip('axe');
+    g.teleport(stand.x, G.terrain.heightAt(stand.x, stand.z) + 0.05, stand.z);
+    g.steps(5);
+    let n = 0;
+    const id = log.id;
+    while (S.parts.has(id) && n < 60) {
+      g.lookAt(lp.x, lp.y, lp.z);
+      g.swing();
+      g.steps(1);
+      n++;
+    }
+    for (let i = 0; i < 30; i++) g.steps(1);
+    const afterCut = S.parts.size;
+    // take the roof boards off one by one
+    let boards = 0;
+    for (const e of [...S.parts.values()].filter((x) => x.data.role === 'roof')) {
+      if (!G.build.loosePart(e)) continue;
+      G.build.takeOut(e);
+      boards++;
+    }
+    for (let i = 0; i < 30; i++) g.steps(1);
+    return { n, before, afterCut, boards, wind1: sh ? sh.shelter.wind : null, warm1: sh ? sh.shelter.warm : null, stuck: G.build.whyStuck(walls[0]) };
+  }, hut);
+  check('a cut wall log does not bring the hut down', hut2.afterCut >= hut2.before && hut2.n < 60, JSON.stringify(hut2));
+  check('without the roof boards the wind gets in', hut2.boards > 10 && hut2.wind1 > hut.wind0 + 0.15, JSON.stringify({ ...hut2, wind0: hut.wind0 }));
+  check('a lower wall log is pinned by the wall above', hut2.stuck === 'придавлено сверху', hut2.stuck);
+  await shot('06-hut-open');
+
   // ---- build by hand: two posts dug in, a crossbar on them, a board on the crossbar ----
   const hand = await ev(() => {
     const g = window.__game;

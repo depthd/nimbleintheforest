@@ -10,7 +10,7 @@ import { M, mat } from '../game/meshes';
 import { Entity } from '../game/entities';
 import { NOTE_KEYS, BOOKS, NEWSPAPERS } from '../game/lore';
 import type { Place } from '../gen/region';
-import { makeRound } from '../game/wood/piece';
+import { makeRound, makeSawn } from '../game/wood/piece';
 
 export interface Shelter {
   kind: 'hut' | 'grotto' | 'tower' | 'station';
@@ -221,48 +221,130 @@ export class Structures {
 
   // ---------- builders ----------
 
+  /**
+   * Log walls, gables and a board roof as real pieces: courses of logs crossing at the
+   * corners, a doorway with a lintel, short gable logs, a ridge log, purlins and roof
+   * boards that collect snow. Everything rests on what is under it, so the statics
+   * apply: cut the logs by the door and the courses above sag onto the lintel, take
+   * the boards off and the snow falls in.
+   */
+  private logCabin(b: Builder, W: number, D: number, H: number, name: string) {
+    const S = G.build.structure(name);
+    const rnd = this.rng;
+    const r = 0.11, c = 0.19, over = 0.25;
+    const xw = W / 2 - r, zw = D / 2 - r;
+    const L = (x: number, y: number, z: number) => b.world(x, y, z);
+    // what is under a point: the floor inside the walls, the ground outside
+    const inv = new THREE.Quaternion(b.q.x, b.q.y, b.q.z, b.q.w).invert();
+    const base = (p: THREE.Vector3) => {
+      const l = p.clone().sub(new THREE.Vector3(b.x, b.y, b.z)).applyQuaternion(inv);
+      const ground = G.terrain.heightAt(p.x, p.z);
+      // the floor, and stones under the corners where the logs cross
+      return Math.abs(l.x) <= W / 2 + 0.4 && Math.abs(l.z) <= D / 2 + 0.4 ? Math.max(ground, b.y) : ground;
+    };
+    const log = (role: string, a: THREE.Vector3, e: THREE.Vector3, rr = r) => {
+      const part = G.build.part(S, makeRound('dead', 1, rr * rnd.float(0.97, 1.03), rr * rnd.float(0.88, 0.94)), a, e, { moisture: 0.14 });
+      part.data.role = role;
+      G.build.connect(S, part, { restKind: 'notch', base });
+      return part;
+    };
+    const courses = Math.floor((H - r) / c) + 1;
+    const dw = 1.05, doorTop = 2.05;
+    for (let k = 0; k < courses; k++) {
+      const y = r + k * c;
+      log('wall', L(-W / 2 - over, y, -zw), L(W / 2 + over, y, -zw));
+      if (y - r < doorTop) {
+        log('wall', L(-W / 2 - over, y, zw), L(-dw / 2, y, zw));
+        log('wall', L(dw / 2, y, zw), L(W / 2 + over, y, zw));
+      } else log('wall', L(-W / 2 - over, y, zw), L(W / 2 + over, y, zw));
+      // the end walls sit half a log higher and cross the long ones at the corners
+      for (const sx of [-1, 1]) log('wall', L(sx * xw, y + c / 2, -D / 2 - over), L(sx * xw, y + c / 2, D / 2 + over));
+    }
+    // gables: ever shorter logs, cut to stay under the roof boards
+    const eaveTop = r + (courses - 1) * c + r;
+    const rr = 0.12;
+    const ideal = eaveTop + Math.tan(0.55) * zw;
+    let topGable = eaveTop;
+    for (let k = courses; k < courses + 14; k++) {
+      const top = r + c / 2 + k * c + r;
+      if (top + 2 * rr > ideal) break;
+      topGable = top;
+    }
+    const ridgeTop = topGable + 2 * rr;
+    const fall = (ridgeTop - eaveTop) / zw; // how much the roof drops per metre from the ridge
+    const gables: { top: number; half: number }[] = [];
+    for (let k = courses; k < courses + 14; k++) {
+      const y = r + c / 2 + k * c;
+      if (y + r > topGable + 1e-6) break;
+      const half = Math.min(zw, (ridgeTop - (y + r)) / fall - 0.04);
+      for (const sx of [-1, 1]) log('gable', L(sx * xw, y, -half), L(sx * xw, y, half));
+      gables.push({ top: y + r, half });
+    }
+    log('ridge', L(-W / 2 - 0.35, topGable + rr, 0), L(W / 2 + 0.35, topGable + rr, 0), rr);
+    // purlins rest on a gable log half way down each slope, just past the end of the log above
+    const rp = 0.08;
+    const gi = gables.findIndex((q) => q.half >= zw / 2 + 0.1 && (gables[gables.indexOf(q) + 1]?.half ?? 0) < zw / 2 + 0.1);
+    const g = gables[gi];
+    if (g) {
+      const above = gables[gi + 1]?.half ?? 0;
+      const z = Math.min(g.half - 0.08, Math.max(zw / 2, above + rp + 0.04));
+      for (const sz of [-1, 1]) log('purlin', L(-W / 2 - 0.3, g.top + rp, sz * z), L(W / 2 + 0.3, g.top + rp, sz * z), rp);
+    }
+    // roof boards from the ridge down past the eaves
+    const bw = 0.38, bt = 0.035;
+    const n = Math.ceil((W + 0.7) / bw);
+    for (const sz of [-1, 1]) {
+      for (let i = 0; i < n; i++) {
+        const x = -(n * bw) / 2 + bw / 2 + i * bw;
+        const top = L(x, ridgeTop + bt / 2, sz * 0.01);
+        const eave = L(x, eaveTop + bt / 2, sz * zw);
+        const dir = eave.clone().sub(top).normalize();
+        const board = makeSawn('spruce', 1, bw - 0.01, bt);
+        const e = G.build.part(S, board, top, eave.clone().addScaledVector(dir, 0.4), { moisture: 0.12, roof: bw });
+        e.data.role = 'roof';
+        G.build.connect(S, e);
+      }
+    }
+    const roles: Record<string, number> = {};
+    for (const e of S.parts.values()) roles[e.data.role] = (roles[e.data.role] ?? 0) + 1;
+    S.roles = roles;
+    S.snow = rnd.float(0.05, 0.15);
+    G.build.check(S, true);
+    return { S, eaveTop, ridgeTop };
+  }
+
   private hut(p: Place, no: number, small = false) {
     const r = this.rng;
     const b = new Builder(p.x, p.y, p.z, p.yaw);
-    const wall = mat('logwall', () => new THREE.MeshStandardMaterial({ map: Tex.logWall(), roughness: 0.9 }));
-    const roof = mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks(), color: 0x5a4a40, roughness: 0.9 }));
-    const W = small ? 3.4 : 4.4, D = small ? 3.0 : 3.6, H = small ? 2.3 : 2.4, T = 0.2;
-    G.snowCover.add({ name: small ? 'Крыша рыбацкой избушки' : 'Крыша заимки', kind: 'roof', x:p.x, z:p.z, hx:(W+0.6)/2, hz:D/2+0.4, yaw:p.yaw, y:p.y+H+1.4 });
-    G.snowCover.add({ name: 'Пол избушки', kind:'floor', x:p.x, z:p.z, hx:W/2, hz:D/2, yaw:p.yaw, y:p.y });
+    const W = small ? 3.4 : 4.4, D = small ? 3.0 : 3.6, H = small ? 2.3 : 2.4;
+    const name = small ? 'Рыбацкая избушка' : 'Заимка';
+    let roofZone = G.snowCover.add({ name: small ? 'Крыша рыбацкой избушки' : 'Крыша заимки', kind: 'roof', x: p.x, z: p.z, hx: (W + 0.6) / 2, hz: D / 2 + 0.4, yaw: p.yaw, y: p.y + H + 1.4 });
+    G.snowCover.add({ name: 'Пол избушки', kind: 'floor', x: p.x, z: p.z, hx: W / 2, hz: D / 2, yaw: p.yaw, y: p.y });
     const bx = -W / 2 + 0.2 + 0.95, sx = W / 2 - 0.2 - 0.5;
     b.box(W, 0.3, D, 0, -0.15, 0, M.wood());
-    b.box(W, H, T, 0, H / 2, -D / 2 + T / 2, wall, { tex: 1.6 });
-    b.box(T, H, D, -W / 2 + T / 2, H / 2, 0, wall, { tex: 1.6 });
-    b.box(T, H, D, W / 2 - T / 2, H / 2, 0, wall, { tex: 1.6 });
-    // front wall with a doorway
-    const dw = 1.05;
-    const side = (W - dw) / 2;
-    b.box(side, H, T, -W / 2 + side / 2, H / 2, D / 2 - T / 2, wall, { tex: 1.6 });
-    b.box(side, H, T, W / 2 - side / 2, H / 2, D / 2 - T / 2, wall, { tex: 1.6 });
-    b.box(dw, H - 2.05, T, 0, 2.05 + (H - 2.05) / 2, D / 2 - T / 2, wall, { tex: 1.6 });
+    // corner stones the first logs lie on
+    const stone = mat('cornerStone', () => new THREE.MeshStandardMaterial({ map: Tex.stone(), color: 0x8a8a86, roughness: 1 }));
+    for (const cx of [-1, 1]) for (const cz of [-1, 1]) b.box(0.55, 0.45, 0.55, (cx * W) / 2, -0.225, (cz * D) / 2, stone);
+    const { S } = this.logCabin(b, W, D, H, name);
     // a small window (glass gone, boarded up)
     b.box(0.6, 0.45, 0.04, W / 2 + 0.01, 1.35, 0.4, M.woodDark(), { collide: false });
-    // gable roof
-    const ang = 0.55;
-    const run = D / 2 + 0.4;
-    const len = run / Math.cos(ang);
-    for (const s of [-1, 1]) {
-      b.box(W + 0.6, 0.12, len, 0, H + Math.tan(ang) * run * 0.5 - 0.05, (s * run) / 2, roof, { rx: s * ang });
-      b.box(W + 0.5, 0.1, len - 0.05, 0, H + Math.tan(ang) * run * 0.5 + 0.07, (s * run) / 2, M.snow(), { rx: s * ang, collide: false });
-    }
-    // gable triangles
-    for (const sx of [-1, 1]) {
-      const sh = new THREE.Shape();
-      sh.moveTo(-D / 2, 0);
-      sh.lineTo(D / 2, 0);
-      sh.lineTo(0, Math.tan(ang) * D * 0.5);
-      const g = new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false });
-      g.rotateY(Math.PI / 2);
-      const m = new THREE.Mesh(g, wall);
-      m.position.set(sx * (W / 2) - T / 2, H, 0);
-      m.castShadow = true;
-      b.group.add(m);
-    }
+    const sh: Box = { cx: p.x, cz: p.z, yaw: p.yaw, hx: W / 2 - 0.1, hz: D / 2 - 0.1, y0: p.y, y1: p.y + H + 0.8, shelter: { kind: 'hut', name, wind: 0.05, warm: 4, enclosed: true, pos: new THREE.Vector3(p.x, p.y, p.z) } };
+    // holes in the walls let the wind in; without boards the snow falls in
+    S.onChange = () => {
+      const w = G.build.roleCount(S, 'wall'), rf = G.build.roleCount(S, 'roof');
+      const missW = 1 - w.n / Math.max(1, w.of), missR = 1 - rf.n / Math.max(1, rf.of);
+      sh.shelter.wind = Math.min(1, 0.05 + missW * 2.5 + missR * 0.4);
+      sh.shelter.warm = Math.max(0, 4 * (1 - Math.min(1, missW * 2 + missR)));
+      sh.shelter.enclosed = missW < 0.1 && missR < 0.3;
+      if (missR > 0.5 && roofZone >= 0) {
+        G.snowCover.remove(roofZone);
+        roofZone = -1;
+      }
+      if (missW > 0.6) {
+        const i = this.shelters.indexOf(sh);
+        if (i >= 0) this.shelters.splice(i, 1);
+      }
+    };
     // bunk (things are stashed under it), shelf, a chest
     const bunk = b.box(1.9, 0.45, 0.85, bx, 0.22, -D / 2 + 0.6, M.woodDark());
     b.box(1.0, 0.05, 0.3, sx, 1.3, -D / 2 + 0.35, M.wood());
@@ -290,7 +372,7 @@ export class Structures {
     const key = car ? 'battery' : r.pick(['hunter', 'wife', 'kid', 'hunter']);
     this.note(key, b.world(bx + 0.3, 0.5, -D / 2 + 0.55));
     if (p.data.battery) this.spawn('battery', b.world(0.2, 0.1, -1.0), { charges: 70 });
-    this.shelters.push({ cx: p.x, cz: p.z, yaw: p.yaw, hx: W / 2 - 0.1, hz: D / 2 - 0.1, y0: p.y, y1: p.y + H + 0.8, shelter: { kind: 'hut', name: small ? 'Рыбацкая избушка' : 'Заимка', wind: 0.05, warm: 4, enclosed: true, pos: new THREE.Vector3(p.x, p.y, p.z) } });
+    this.shelters.push(sh);
   }
 
   /**
