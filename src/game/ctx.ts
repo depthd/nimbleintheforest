@@ -31,6 +31,7 @@ import type { BuildSystem } from './build/build';
 import type { Cliffs } from '../world/cliffs';
 import type { CliffLab } from './cliff-lab';
 import type { Caves } from '../world/caves';
+import type { Resting } from './resting';
 
 export interface Settings {
   seed: number;
@@ -75,6 +76,8 @@ export interface Ctx {
   /** the optional goal: power the radio, call for rescue */
   goal: { signalAt: number; rescued: boolean; heliShown: boolean };
   entities: Entities;
+  /** loose things at rest: still piles put to sleep, resting wood drawn merged */
+  resting: Resting;
   player: Player;
   body: Body;
   thermal: Thermal;

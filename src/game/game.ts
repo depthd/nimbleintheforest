@@ -35,8 +35,15 @@ import { BuildSystem } from './build/build';
 import { Cliffs } from '../world/cliffs';
 import { CliffLab } from './cliff-lab';
 import { Caves } from '../world/caves';
+import { Resting } from './resting';
 
 const STEP = 1 / 60;
+/**
+ * Physics steps a frame may take to catch up with real time. A slow frame makes the next
+ * one simulate more, which makes it slower still; beyond this the game slows down instead
+ * (it keeps real time down to 20 frames a second).
+ */
+const MAX_STEPS = 3;
 let horror: Horror;
 
 export async function startGame(settings: Settings) {
@@ -90,6 +97,7 @@ export async function startGame(settings: Settings) {
   G.sky = new Sky();
   G.fx = new Effects();
   G.entities = new Entities();
+  G.resting = new Resting();
   G.build = new BuildSystem();
   G.lake = new Water();
   G.lake.build(region);
@@ -492,7 +500,7 @@ function loop(now: number) {
     G.player.look();
     acc += dt;
     let steps = 0;
-    while (acc >= STEP && steps < 5) {
+    while (acc >= STEP && steps < MAX_STEPS) {
       G.recorder?.beginTick();
       G.player.physics(STEP);
       G.house.updateDoor(STEP);
@@ -503,8 +511,10 @@ function loop(now: number) {
       acc -= STEP;
       steps++;
     }
-    if (steps >= 5) acc = 0;
+    // too far behind: drop the rest, keep the fraction for smooth drawing
+    if (acc >= STEP) acc %= STEP;
     G.entities.sync();
+    G.resting.update(dt);
     G.forest.updateFalling(STEP * steps);
     let dtGame = dt * G.settings.timeScale;
     if (G.sleeping) dtGame = G.hud.sleepStep(dt);

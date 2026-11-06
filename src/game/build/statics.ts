@@ -75,9 +75,42 @@ export interface PartState {
   N: number;
 }
 
+/** what a part was checked with: its supports and the loads coming onto it */
+export interface PartInput {
+  sup: SJoint[];
+  incoming: SLoad[];
+}
+
 export interface Analysis {
   failures: Failure[];
   state: Map<number, PartState>;
+  /** per part, to check one part again after a notch */
+  inputs: Map<number, PartInput>;
+  /** what each part passed on and what it was worked out with, to reuse it next time */
+  memo: Map<number, Memo>;
+  snow: number;
+}
+
+interface Memo {
+  out: SLoad[];
+  unsupported: boolean;
+  piece: WoodPiece;
+  rev: number;
+  moisture: number;
+  roof: number;
+  pos: THREE.Vector3;
+  quat: THREE.Quaternion;
+}
+
+/** the same supports (the very joints) and the same loads coming on */
+function sameInput(a: PartInput, b: PartInput) {
+  if (a.sup.length !== b.sup.length || a.incoming.length !== b.incoming.length) return false;
+  for (let i = 0; i < a.sup.length; i++) if (a.sup[i] !== b.sup[i]) return false;
+  for (let i = 0; i < a.incoming.length; i++) {
+    const x = a.incoming[i], y = b.incoming[i];
+    if (x !== y && (x.u !== y.u || x.part !== y.part || !x.F.equals(y.F))) return false;
+  }
+  return true;
 }
 
 const g = 9.81;
@@ -176,7 +209,12 @@ export function supported(parts: Map<number, SPart>, joints: SJoint[]) {
   return ok;
 }
 
-export function analyze(parts: Map<number, SPart>, joints: SJoint[], snowKgM2 = 0, extra: SLoad[] = []): Analysis {
+/**
+ * Work out every part, top down. With the previous analysis of the same structure, a part
+ * whose piece, supports and incoming loads are all unchanged keeps its result: after one
+ * part comes loose only what was above or under it is worked out again.
+ */
+export function analyze(parts: Map<number, SPart>, joints: SJoint[], snowKgM2 = 0, extra: SLoad[] = [], prev?: Analysis | null): Analysis {
   const failures: Failure[] = [];
   const state = new Map<number, PartState>();
   const live = joints.filter((j) => parts.has(j.a) && (j.b === -1 || parts.has(j.b)));
@@ -197,169 +235,234 @@ export function analyze(parts: Map<number, SPart>, joints: SJoint[], snowKgM2 = 
     incoming.get(l.part)!.push(l);
   }
   // the order has every part before the parts it rests on: loads flow down
+  const inputs = new Map<number, PartInput>();
+  const memo = new Map<number, Memo>();
+  const reuse = prev && prev.snow === snowKgM2 ? prev : null;
   for (const id of order) {
     const sp = parts.get(id)!;
-    const p = sp.piece;
-    const d = axisOf(sp);
-    const rho = density(p.sp, sp.moisture);
-    const forces: { u: number; F: THREE.Vector3 }[] = [];
-    // own weight and snow, in slices
-    const n = Math.max(6, Math.min(16, Math.round(p.len / 0.25)));
-    const horiz = Math.sqrt(Math.max(0, 1 - d.y * d.y));
-    const keep = sp.roof ? snowShape(sp.quat) : 0;
-    for (let i = 0; i < n; i++) {
-      const u0 = (p.len * i) / n, u1 = (p.len * (i + 1)) / n;
-      let m = sliceMass(p, u0, u1, rho);
-      if (sp.roof && snowKgM2 > 0) m += snowKgM2 * keep * sp.roof * (u1 - u0) * horiz;
-      forces.push({ u: (u0 + u1) / 2, F: DOWN.clone().multiplyScalar(m * g) });
-    }
-    for (const l of incoming.get(id) ?? []) forces.push({ u: l.u, F: l.F.clone() });
-    const sup = (held.get(id) ?? []).filter((j) => !cut.has(j));
-    const st: PartState = { ratio: 0, u: p.len / 2, why: null, reactions: [], N: 0 };
-    state.set(id, st);
-    if (!sup.length) {
+    const input: PartInput = { sup: (held.get(id) ?? []).filter((j) => !cut.has(j)), incoming: incoming.get(id) ?? [] };
+    inputs.set(id, input);
+    const old = reuse?.memo.get(id);
+    const same = !!old && old.piece === sp.piece && old.rev === sp.piece.rev && old.moisture === sp.moisture && old.roof === (sp.roof ?? 0) &&
+      old.pos.equals(sp.pos) && old.quat.equals(sp.quat) && sameInput(reuse!.inputs.get(id)!, input);
+    const r = same ? { st: reuse!.state.get(id)!, unsupported: old!.unsupported, out: old!.out } : partState(sp, input, snowKgM2);
+    memo.set(id, same ? old! : { out: r.out, unsupported: r.unsupported, piece: sp.piece, rev: sp.piece.rev, moisture: sp.moisture, roof: sp.roof ?? 0, pos: sp.pos.clone(), quat: sp.quat.clone() });
+    state.set(id, r.st);
+    if (r.unsupported) {
       failures.push({ part: id, why: 'unsupported', u: 0, ratio: Infinity });
       continue;
     }
-    const R = sup.map(() => new THREE.Vector3());
-    // supports at (nearly) the same point act together: a log lying in the valley of two
-    const raw = sup.map((j, i) => ({ j, i, u: j.ua })).sort((a, b) => a.u - b.u);
-    const sorted: { u: number; members: number[]; j: SJoint; i: number }[] = [];
-    for (const x of raw) {
-      const last = sorted[sorted.length - 1];
-      if (last && x.u - last.u < 0.08) last.members.push(x.i);
-      else sorted.push({ u: x.u, members: [x.i], j: x.j, i: x.i });
+    if (r.st.ratio > 1) failures.push({ part: id, why: r.st.why ?? 'bend', u: r.st.u, ratio: r.st.ratio });
+    for (const l of r.out) {
+      if (!incoming.has(l.part)) incoming.set(l.part, []);
+      incoming.get(l.part)!.push(l);
     }
-    const share = (st: { members: number[] }, v: THREE.Vector3, k: number) => {
-      for (const i of st.members) R[i].addScaledVector(v, k / st.members.length);
-    };
-    // the support that takes the push along the axis: dug in, nailed, or the lowest one
-    const axial = sup.reduce((best, j, i) => {
-      const score = (j.kind === 'set' ? -100 : j.kind === 'nail' ? -10 : 0) + pointAt(sp, j.ua).y;
-      return score < best.score ? { i, score } : best;
-    }, { i: 0, score: Infinity }).i;
-    let comp = 0;
-    const ua = sup[axial].ua;
-    for (const f of forces) {
-      const fa = f.F.dot(d);
-      const ft = f.F.clone().addScaledVector(d, -fa);
-      R[axial].addScaledVector(d, -fa);
-      if ((fa < 0 && f.u > ua) || (fa > 0 && f.u < ua)) comp += Math.abs(fa);
-      if (sorted.length === 1) {
-        share(sorted[0], ft, -1);
-        continue;
-      }
-      // lever rule between the two supports around the load (or the two nearest)
-      let k = 0;
-      while (k < sorted.length - 2 && f.u > sorted[k + 1].u) k++;
-      const s0 = sorted[k], s1 = sorted[k + 1];
-      const span = Math.max(1e-3, s1.u - s0.u);
-      const w1 = (f.u - s0.u) / span;
-      share(s1, ft, -w1);
-      share(s0, ft, -(1 - w1));
-    }
-    st.N = comp;
-    // bending moments along the piece (transverse forces and reactions)
-    const items = forces.map((f) => ({ u: f.u, F: f.F.clone().addScaledVector(d, -f.F.dot(d)) }));
-    sup.forEach((j, i) => items.push({ u: j.ua, F: R[i].clone().addScaledVector(d, -R[i].dot(d)) }));
-    const single = sorted.length === 1 ? sorted[0].u : null;
-    const xs: number[] = [];
-    for (let i = 0; i <= 24; i++) xs.push((p.len * i) / 24);
-    for (const nn of p.notches) if (!nn.done) xs.push(nn.u);
-    const qi = sp.quat.clone().invert();
-    const strength = SPECIES[p.sp].mor * 1e6 * STRUCT_STRENGTH;
-    for (const x of xs) {
-      if (x <= 0 || x >= p.len) continue;
-      const M = new THREE.Vector3();
-      const fromRight = single !== null && x > single;
-      for (const it of items) {
-        if (fromRight ? it.u > x : it.u < x) M.addScaledVector(it.F, Math.abs(x - it.u));
-      }
-      const m = M.length();
-      if (m < 1e-6 && comp < 1e-6) continue;
-      // direction of the bend across the section (when there is hardly any moment, any will do)
-      const loc = M.clone().applyQuaternion(qi);
-      const ll = Math.hypot(loc.y, loc.z);
-      const my = m > 1e-3 && ll > 1e-9 ? loc.y / ll : 1, mz = m > 1e-3 && ll > 1e-9 ? loc.z / ll : 0;
-      const sec = sectionProps(p, x, my, mz);
-      const sigma = (sec.S > 0 ? m / sec.S : Infinity) + (sec.A > 0 ? comp / sec.A : Infinity);
-      const ratio = sigma / strength;
-      if (ratio > st.ratio) {
-        st.ratio = ratio;
-        st.u = x;
-        st.why = 'bend';
-      }
-    }
-    // buckling of a column
-    if (comp > 0 && p.form !== 'split') {
-      const top = sup.some((j) => Math.abs(j.ua - ua) > p.len * 0.5);
-      const K = top ? 1 : 2;
-      const mid = sectionProps(p, p.len / 2, 0, 1);
-      const Ncr = (Math.PI * Math.PI * SPECIES[p.sp].E * 1e9 * mid.I) / ((K * p.len) ** 2);
-      const rb = comp / Ncr;
-      if (rb > st.ratio) {
-        st.ratio = rb;
-        st.u = p.len / 2;
-        st.why = 'buckle';
-      }
-    }
-    // a round piece on a single rounded contact rolls or slides off unless the contact is
-    // nearly level; two contacts on both sides (a valley) hold it
-    if (p.form === 'round') {
-      for (const stn of sorted) {
-        const rest = stn.members.map((i) => sup[i]).filter((j) => j.kind === 'rest');
-        if (rest.length !== stn.members.length || !rest.length) continue;
-        const sum = rest.reduce((v, j) => v.add(j.n), new THREE.Vector3());
-        const spread = rest.length > 1 && rest.some((j) => j.n.clone().sub(rest[0].n).lengthSq() > 0.1);
-        const tiltd = Math.acos(Math.min(1, Math.max(-1, sum.clone().normalize().y)));
-        const balanced = rest.every((j) => j.roll);
-        if (!spread && (tiltd > 0.5 || balanced) && Math.abs(d.y) < 0.7) {
-          if (1.5 > st.ratio) Object.assign(st, { ratio: 1.5, u: stn.u, why: 'tip' as FailWhy });
-        }
-      }
-    }
-    // joints: resting supports can only push; one resting support must be right under the load
-    sup.forEach((j, i) => {
-      const r = R[i];
-      st.reactions.push({ joint: j, R: r.clone() });
-      if (j.kind === 'rest' || j.kind === 'notch') {
-        const push = r.dot(j.n);
-        if (push < -0.05 * r.length() - 2) {
-          const ratio = 1 + -push / Math.max(1, r.length());
-          if (ratio > st.ratio) Object.assign(st, { ratio, u: j.ua, why: 'tip' as FailWhy });
-        }
-      }
-      if (j.kind === 'nail') {
-        const ratio = r.length() / (NAIL_CAP * (j.nails ?? 2));
-        if (ratio > st.ratio) Object.assign(st, { ratio, u: j.ua, why: 'joint' as FailWhy });
-      }
-    });
-    if (single !== null) {
-      // a lone support: what it can hold as a moment
-      const j = sorted[0].j;
-      const M = new THREE.Vector3();
-      for (const it of items) M.addScaledVector(it.F, it.u - single);
-      const mom = M.length();
-      const r = sorted[0].members.reduce((v, i) => v.add(R[i]), new THREE.Vector3()).length();
-      const depth = j.ua < p.len / 2 ? j.ua : p.len - j.ua;
-      const cap = j.kind === 'set' ? SET_MOMENT * Math.max(0.1, depth) ** 2 : j.kind === 'nail' ? 60 * (j.nails ?? 2) : r * Math.max(0.02, (p.form === 'sawn' ? p.t : radiusAt(p, j.ua)) * 0.6);
-      const ratio = mom / Math.max(1e-6, cap);
-      if (ratio > st.ratio) Object.assign(st, { ratio, u: j.ua, why: (j.kind === 'set' || j.kind === 'nail' ? 'joint' : 'tip') as FailWhy });
-      // a slender pole standing on its end with nothing holding it falls over at the first touch
-      const thick = p.form === 'sawn' ? Math.min(p.w, p.t) : 2 * radiusAt(p, j.ua);
-      if ((j.kind === 'rest' || j.kind === 'notch') && Math.abs(d.y) > 0.7 && p.len > 3 * thick) {
-        if (2 > st.ratio) Object.assign(st, { ratio: 2, u: j.ua, why: 'tip' as FailWhy });
-      }
-    }
-    if (st.ratio > 1) failures.push({ part: id, why: st.why ?? 'bend', u: st.u, ratio: st.ratio });
-    // pass the load on
-    sup.forEach((j, i) => {
-      if (j.b < 0) return;
-      if (!incoming.has(j.b)) incoming.set(j.b, []);
-      incoming.get(j.b)!.push({ part: j.b, u: j.ub, F: R[i].clone().negate() });
-    });
   }
-  return { failures, state };
+  return { failures, state, inputs, memo, snow: snowKgM2 };
+}
+
+/**
+ * Check one part again with the loads it had in the last analysis: a notch only makes
+ * its own section weaker, so nothing else has to be worked out unless it gives way.
+ */
+export function recheck(sp: SPart, input: PartInput, snowKgM2 = 0): PartState {
+  const r = partState(sp, input, snowKgM2);
+  if (r.unsupported) Object.assign(r.st, { ratio: Infinity, why: 'unsupported' as FailWhy });
+  return r.st;
+}
+
+/** running sums of forces along a piece (reused) */
+let sumF = new Float64Array(192), sumFu = new Float64Array(192);
+
+/** One part as a beam or a column under its own weight, snow and what rests on it. */
+function partState(sp: SPart, input: PartInput, snowKgM2: number) {
+  const p = sp.piece;
+  const d = axisOf(sp);
+  const rho = density(p.sp, sp.moisture);
+  const forces: { u: number; F: THREE.Vector3 }[] = [];
+  // own weight and snow, in slices
+  const n = Math.max(6, Math.min(16, Math.round(p.len / 0.25)));
+  const horiz = Math.sqrt(Math.max(0, 1 - d.y * d.y));
+  const keep = sp.roof ? snowShape(sp.quat) : 0;
+  for (let i = 0; i < n; i++) {
+    const u0 = (p.len * i) / n, u1 = (p.len * (i + 1)) / n;
+    let m = sliceMass(p, u0, u1, rho);
+    if (sp.roof && snowKgM2 > 0) m += snowKgM2 * keep * sp.roof * (u1 - u0) * horiz;
+    forces.push({ u: (u0 + u1) / 2, F: DOWN.clone().multiplyScalar(m * g) });
+  }
+  for (const l of input.incoming) forces.push({ u: l.u, F: l.F.clone() });
+  const sup = input.sup;
+  const st: PartState = { ratio: 0, u: p.len / 2, why: null, reactions: [], N: 0 };
+  if (!sup.length) return { st, unsupported: true, out: [] as SLoad[] };
+  const R = sup.map(() => new THREE.Vector3());
+  // supports at (nearly) the same point act together: a log lying in the valley of two
+  const raw = sup.map((j, i) => ({ j, i, u: j.ua })).sort((a, b) => a.u - b.u);
+  const sorted: { u: number; members: number[]; j: SJoint; i: number }[] = [];
+  for (const x of raw) {
+    const last = sorted[sorted.length - 1];
+    if (last && x.u - last.u < 0.08) last.members.push(x.i);
+    else sorted.push({ u: x.u, members: [x.i], j: x.j, i: x.i });
+  }
+  const share = (st: { members: number[] }, v: THREE.Vector3, k: number) => {
+    for (const i of st.members) R[i].addScaledVector(v, k / st.members.length);
+  };
+  // the support that takes the push along the axis: dug in, nailed, or the lowest one
+  const axial = sup.reduce((best, j, i) => {
+    const score = (j.kind === 'set' ? -100 : j.kind === 'nail' ? -10 : 0) + pointAt(sp, j.ua).y;
+    return score < best.score ? { i, score } : best;
+  }, { i: 0, score: Infinity }).i;
+  let comp = 0;
+  const ua = sup[axial].ua;
+  for (const f of forces) {
+    const fa = f.F.dot(d);
+    const ft = f.F.clone().addScaledVector(d, -fa);
+    R[axial].addScaledVector(d, -fa);
+    if ((fa < 0 && f.u > ua) || (fa > 0 && f.u < ua)) comp += Math.abs(fa);
+    if (sorted.length === 1) {
+      share(sorted[0], ft, -1);
+      continue;
+    }
+    // lever rule between the two supports around the load (or the two nearest)
+    let k = 0;
+    while (k < sorted.length - 2 && f.u > sorted[k + 1].u) k++;
+    const s0 = sorted[k], s1 = sorted[k + 1];
+    const span = Math.max(1e-3, s1.u - s0.u);
+    const w1 = (f.u - s0.u) / span;
+    share(s1, ft, -w1);
+    share(s0, ft, -(1 - w1));
+  }
+  st.N = comp;
+  // bending moments along the piece (transverse forces and reactions)
+  const items = forces.map((f) => ({ u: f.u, F: f.F.clone().addScaledVector(d, -f.F.dot(d)) }));
+  sup.forEach((j, i) => items.push({ u: j.ua, F: R[i].clone().addScaledVector(d, -R[i].dot(d)) }));
+  const single = sorted.length === 1 ? sorted[0].u : null;
+  const xs: number[] = [];
+  for (let i = 0; i <= 24; i++) xs.push((p.len * i) / 24);
+  for (const nn of p.notches) if (!nn.done) xs.push(nn.u);
+  const qi = sp.quat.clone().invert();
+  const strength = SPECIES[p.sp].mor * 1e6 * STRUCT_STRENGTH;
+  // the moment at x from the forces on one side of it, out of running sums over the forces
+  // in order along the piece: sum F·(x - u) = x·sum F - sum F·u
+  const byU = items.slice().sort((a, b) => a.u - b.u);
+  const k = byU.length;
+  if (sumF.length < 3 * (k + 1)) {
+    sumF = new Float64Array(6 * (k + 1));
+    sumFu = new Float64Array(6 * (k + 1));
+  }
+  const sF = sumF, sFu = sumFu;
+  sF[0] = sF[1] = sF[2] = sFu[0] = sFu[1] = sFu[2] = 0;
+  for (let i = 0; i < k; i++) {
+    const { u, F } = byU[i];
+    sF[3 * i + 3] = sF[3 * i] + F.x;
+    sF[3 * i + 4] = sF[3 * i + 1] + F.y;
+    sF[3 * i + 5] = sF[3 * i + 2] + F.z;
+    sFu[3 * i + 3] = sFu[3 * i] + F.x * u;
+    sFu[3 * i + 4] = sFu[3 * i + 1] + F.y * u;
+    sFu[3 * i + 5] = sFu[3 * i + 2] + F.z * u;
+  }
+  /** how many forces lie before x (strictly, or up to and including x) */
+  const before = (x: number, strict: boolean) => {
+    let lo = 0, hi = k;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (strict ? byU[mid].u < x : byU[mid].u <= x) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+  for (const x of xs) {
+    if (x <= 0 || x >= p.len) continue;
+    const M = new THREE.Vector3();
+    if (single !== null && x > single) {
+      // a lone support: what hangs beyond x, from the right
+      const i = 3 * before(x, false), e = 3 * k;
+      M.set(sFu[e] - sFu[i] - x * (sF[e] - sF[i]), sFu[e + 1] - sFu[i + 1] - x * (sF[e + 1] - sF[i + 1]), sFu[e + 2] - sFu[i + 2] - x * (sF[e + 2] - sF[i + 2]));
+    } else {
+      const i = 3 * before(x, true);
+      M.set(x * sF[i] - sFu[i], x * sF[i + 1] - sFu[i + 1], x * sF[i + 2] - sFu[i + 2]);
+    }
+    const m = M.length();
+    if (m < 1e-6 && comp < 1e-6) continue;
+    // direction of the bend across the section (when there is hardly any moment, any will do)
+    const loc = M.clone().applyQuaternion(qi);
+    const ll = Math.sqrt(loc.y * loc.y + loc.z * loc.z);
+    const my = m > 1e-3 && ll > 1e-9 ? loc.y / ll : 1, mz = m > 1e-3 && ll > 1e-9 ? loc.z / ll : 0;
+    const sec = sectionProps(p, x, my, mz);
+    const sigma = (sec.S > 0 ? m / sec.S : Infinity) + (sec.A > 0 ? comp / sec.A : Infinity);
+    const ratio = sigma / strength;
+    if (ratio > st.ratio) {
+      st.ratio = ratio;
+      st.u = x;
+      st.why = 'bend';
+    }
+  }
+  // buckling of a column
+  if (comp > 0 && p.form !== 'split') {
+    const top = sup.some((j) => Math.abs(j.ua - ua) > p.len * 0.5);
+    const K = top ? 1 : 2;
+    const mid = sectionProps(p, p.len / 2, 0, 1);
+    const Ncr = (Math.PI * Math.PI * SPECIES[p.sp].E * 1e9 * mid.I) / ((K * p.len) ** 2);
+    const rb = comp / Ncr;
+    if (rb > st.ratio) {
+      st.ratio = rb;
+      st.u = p.len / 2;
+      st.why = 'buckle';
+    }
+  }
+  // a round piece on a single rounded contact rolls or slides off unless the contact is
+  // nearly level; two contacts on both sides (a valley) hold it
+  if (p.form === 'round') {
+    for (const stn of sorted) {
+      const rest = stn.members.map((i) => sup[i]).filter((j) => j.kind === 'rest');
+      if (rest.length !== stn.members.length || !rest.length) continue;
+      const sum = rest.reduce((v, j) => v.add(j.n), new THREE.Vector3());
+      const spread = rest.length > 1 && rest.some((j) => j.n.clone().sub(rest[0].n).lengthSq() > 0.1);
+      const tiltd = Math.acos(Math.min(1, Math.max(-1, sum.clone().normalize().y)));
+      const balanced = rest.every((j) => j.roll);
+      if (!spread && (tiltd > 0.5 || balanced) && Math.abs(d.y) < 0.7) {
+        if (1.5 > st.ratio) Object.assign(st, { ratio: 1.5, u: stn.u, why: 'tip' as FailWhy });
+      }
+    }
+  }
+  // joints: resting supports can only push; one resting support must be right under the load
+  sup.forEach((j, i) => {
+    const r = R[i];
+    st.reactions.push({ joint: j, R: r.clone() });
+    if (j.kind === 'rest' || j.kind === 'notch') {
+      const push = r.dot(j.n);
+      if (push < -0.05 * r.length() - 2) {
+        const ratio = 1 + -push / Math.max(1, r.length());
+        if (ratio > st.ratio) Object.assign(st, { ratio, u: j.ua, why: 'tip' as FailWhy });
+      }
+    }
+    if (j.kind === 'nail') {
+      const ratio = r.length() / (NAIL_CAP * (j.nails ?? 2));
+      if (ratio > st.ratio) Object.assign(st, { ratio, u: j.ua, why: 'joint' as FailWhy });
+    }
+  });
+  if (single !== null) {
+    // a lone support: what it can hold as a moment
+    const j = sorted[0].j;
+    const M = new THREE.Vector3();
+    for (const it of items) M.addScaledVector(it.F, it.u - single);
+    const mom = M.length();
+    const r = sorted[0].members.reduce((v, i) => v.add(R[i]), new THREE.Vector3()).length();
+    const depth = j.ua < p.len / 2 ? j.ua : p.len - j.ua;
+    const cap = j.kind === 'set' ? SET_MOMENT * Math.max(0.1, depth) ** 2 : j.kind === 'nail' ? 60 * (j.nails ?? 2) : r * Math.max(0.02, (p.form === 'sawn' ? p.t : radiusAt(p, j.ua)) * 0.6);
+    const ratio = mom / Math.max(1e-6, cap);
+    if (ratio > st.ratio) Object.assign(st, { ratio, u: j.ua, why: (j.kind === 'set' || j.kind === 'nail' ? 'joint' : 'tip') as FailWhy });
+    // a slender pole standing on its end with nothing holding it falls over at the first touch
+    const thick = p.form === 'sawn' ? Math.min(p.w, p.t) : 2 * radiusAt(p, j.ua);
+    if ((j.kind === 'rest' || j.kind === 'notch') && Math.abs(d.y) > 0.7 && p.len > 3 * thick) {
+      if (2 > st.ratio) Object.assign(st, { ratio: 2, u: j.ua, why: 'tip' as FailWhy });
+    }
+  }
+  // pass the load on
+  const out: SLoad[] = [];
+  sup.forEach((j, i) => {
+    if (j.b >= 0) out.push({ part: j.b, u: j.ub, F: R[i].clone().negate() });
+  });
+  return { st, unsupported: false, out };
 }
 
 // ---------- finding joints from geometry ----------

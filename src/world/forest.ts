@@ -810,6 +810,11 @@ export class Forest {
     return this.falling.some((f) => f.e === e && !f.landed);
   }
 
+  /** stems still falling or settling on their hinge */
+  fallingStems() {
+    return this.falling.map((f) => f.e);
+  }
+
   // ---------- small harvest from a standing tree ----------
 
   /** Branches you can reach from the ground: the lowest band below ~2.3 m. */
