@@ -99,15 +99,6 @@ export function pointAt(p: SPart, u: number, out = new THREE.Vector3()) {
   return axisOf(p, out).multiplyScalar(u - p.piece.len / 2).add(p.pos);
 }
 
-/** a basis across the axis: t1 in the vertical plane through the axis (or any), t2 horizontal */
-function transverse(d: THREE.Vector3) {
-  let t1 = DOWN.clone().addScaledVector(d, -DOWN.dot(d));
-  if (t1.lengthSq() < 1e-6) t1 = new THREE.Vector3(1, 0, 0).addScaledVector(d, -d.x);
-  t1.normalize();
-  const t2 = new THREE.Vector3().crossVectors(d, t1).normalize();
-  return [t1, t2] as const;
-}
-
 /** cross-section properties of any piece at u for bending toward local (my, mz) */
 function sectionProps(p: WoodPiece, u: number, my: number, mz: number) {
   if (p.form === 'sawn') {
@@ -198,7 +189,6 @@ export function analyze(parts: Map<number, SPart>, joints: SJoint[], snowKgM2 = 
     const sp = parts.get(id)!;
     const p = sp.piece;
     const d = axisOf(sp);
-    const [t1, t2] = transverse(d);
     const rho = density(p.sp, sp.moisture);
     const forces: { u: number; F: THREE.Vector3 }[] = [];
     // own weight and snow, in slices
