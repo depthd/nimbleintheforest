@@ -50,6 +50,14 @@ function ridged(n: Simplex2, x: number, y: number, oct: number) {
   return s / norm;
 }
 
+/** Boulders, pillars and the backdrop share the ground shader but are not ground:
+ * a negative loose depth keeps the snow-cover and trail masks from discarding them. */
+export function solidGroundGeometry(g: THREE.BufferGeometry) {
+  g.setAttribute('aSnowDepth', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(-1), 1));
+  g.setAttribute('aSnowNormal', g.attributes.normal);
+  return g;
+}
+
 export function makeGroundMaterial(far: boolean, snowSurface = false, packedBase = false) {
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
   m.defines = far ? { FAR_TERRAIN: 1 } : {};
@@ -133,7 +141,8 @@ vec3 triRock(vec3 p, vec3 n) {
   float peb = bio.a * smoothstep(0.45, 0.7, nz2.a) * (0.6 + 0.4 * nz3.r);
   snow = mix(snow, vec3(0.5, 0.48, 0.45) * (0.7 + 0.5 * nz3.g), peb * 0.75);
 #if !defined(SNOW_SURFACE) && !defined(PACKED_SNOW_BASE)
-  if (uWorldSnow > 0.5) {
+  // Trail tiles replace only the ground surface; boulders and pillars opt out.
+  if (uWorldSnow > 0.5 && vLooseDepth >= 0.0) {
     vec2 tile = floor(vWPos.xz / 3.2) - uSnowTileGrid.xy;
     if (texture2D(uSnowTiles, (tile + 0.5) / uSnowTileGrid.zw).r > 0.5) discard;
   }
@@ -151,7 +160,8 @@ vec3 triRock(vec3 p, vec3 n) {
   rockK = max(rockK, smoothstep(uTreeline + 60.0, uTreeline + 180.0, vWPos.y) * smoothstep(0.2, 0.34, slope));
   // snow clings in streaks and gullies even on steep rock
   rockK *= 1.0 - 0.55 * smoothstep(0.45, 0.7, nz2.a * 0.6 + nz1.b * 0.5) * (1.0 - smoothstep(0.55, 0.8, slope));
-  vec3 rock = triRock(vWPos * 0.06, N) * vec3(1.05, 1.02, 1.0) * (0.85 + 0.3 * nz2.b) + vec3(0.06, 0.065, 0.075);
+  // the same dark, cool stone as the rock blocks (world/cliffs.ts), barely textured
+  vec3 rock = vec3(0.085, 0.092, 0.125) * (0.72 + 1.6 * triRock(vWPos * 0.06, N)) * (0.88 + 0.24 * nz2.b);
   vec3 col = mix(snow, rock, rockK);
   // distant forest canopy: dark green-grey seen from afar (the trees themselves stop drawing)
   float farF = smoothstep(uForestFar.x, uForestFar.y, camDist);
@@ -517,8 +527,7 @@ export class Terrain {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setIndex(idx);
     g.computeVertexNormals();
-    g.setAttribute('aSnowDepth',new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(-1),1));
-    g.setAttribute('aSnowNormal',g.attributes.normal);
+    solidGroundGeometry(g);
     this.backdrop = new THREE.Mesh(g, this.farMat);
     this.backdrop.frustumCulled = false;
     this.backdrop.name = 'backdrop';

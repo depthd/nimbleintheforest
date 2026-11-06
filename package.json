@@ -20,7 +20,14 @@
     "test:world-snow": "node tests/world-snow.cjs",
     "test:motion-record": "node tests/motion-record.cjs",
     "test:motion-recorder-browser": "node tests/motion-recorder-browser.cjs",
-    "test:e2e": "node tests/e2e.cjs"
+    "test:e2e": "node tests/e2e.cjs",
+    "test:cliffs": "node tests/cliffs.cjs",
+    "test:cliff-lab": "node tests/cliff-lab.cjs",
+    "test:cliffs-browser": "node tests/cliffs-browser.cjs",
+    "test:rock": "node tests/rock-skin.cjs",
+    "test:rock-browser": "node tests/rock-browser.cjs",
+    "test:caves": "node tests/caves.cjs",
+    "test:caves-browser": "node tests/caves-browser.cjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

@@ -183,5 +183,6 @@ export class Sky {
     waterUniforms.uTime.value = performance.now() / 1000;
     this.dome.position.copy(G.camera.position);
     this.stars.position.copy(G.camera.position);
+    G.caves?.applySky();
   }
 }
