@@ -10,7 +10,7 @@ import { G, GROUPS_STATIC, msg } from '../ctx';
 import { Entity } from '../entities';
 import { category, cutAt, pieceName, WoodPiece } from '../wood/piece';
 import { attachColliders, spawnPiece, woodObject } from '../wood/wood';
-import { analyze, findRests, halfThickness, JointKind, pointAt, SJoint, SLoad, SPart } from './statics';
+import { analyze, findRests, halfThickness, JointKind, pointAt, SJoint, SLoad, snowShape, SPart } from './statics';
 import { Placement } from './place';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -612,11 +612,12 @@ export class BuildSystem {
       pd.snowMesh.receiveShadow = true;
       e.obj!.add(pd.snowMesh);
     }
-    const d = Math.max(0.005, s.snow);
+    // steep roofs shed their snow
+    const d = Math.max(0.005, s.snow * snowShape(e.obj!.quaternion));
     const h = halfThickness(p, p.len / 2);
     pd.snowMesh.scale.set(p.len, d, Math.max(0.05, pd.roof * 0.95));
     pd.snowMesh.position.set(0, h + d / 2, 0);
-    pd.snowMesh.visible = s.snow > 0.004;
+    pd.snowMesh.visible = d > 0.006;
   }
 
   update(dtGame: number) {

@@ -90,6 +90,18 @@ export const SET_MOMENT = 12000;
 const UP = new THREE.Vector3(0, 1, 0);
 const DOWN = new THREE.Vector3(0, -1, 0);
 
+/**
+ * How much of the snow a roof surface keeps: all of it up to 30°, none from 60° on
+ * (it slides off), as building codes count it. The surface normal is the piece's
+ * local Y (boards lie flat, bough rows are rolled into the roof plane).
+ */
+export function snowShape(quat: THREE.Quaternion) {
+  const ny = Math.abs(new THREE.Vector3(0, 1, 0).applyQuaternion(quat).y);
+  const slope = Math.acos(Math.min(1, ny));
+  const deg = (slope * 180) / Math.PI;
+  return deg <= 30 ? 1 : deg >= 60 ? 0 : (60 - deg) / 30;
+}
+
 export function axisOf(p: SPart, out = new THREE.Vector3()) {
   return out.set(1, 0, 0).applyQuaternion(p.quat);
 }
@@ -194,10 +206,11 @@ export function analyze(parts: Map<number, SPart>, joints: SJoint[], snowKgM2 = 
     // own weight and snow, in slices
     const n = Math.max(6, Math.min(16, Math.round(p.len / 0.25)));
     const horiz = Math.sqrt(Math.max(0, 1 - d.y * d.y));
+    const keep = sp.roof ? snowShape(sp.quat) : 0;
     for (let i = 0; i < n; i++) {
       const u0 = (p.len * i) / n, u1 = (p.len * (i + 1)) / n;
       let m = sliceMass(p, u0, u1, rho);
-      if (sp.roof && snowKgM2 > 0) m += snowKgM2 * sp.roof * (u1 - u0) * horiz;
+      if (sp.roof && snowKgM2 > 0) m += snowKgM2 * keep * sp.roof * (u1 - u0) * horiz;
       forces.push({ u: (u0 + u1) / 2, F: DOWN.clone().multiplyScalar(m * g) });
     }
     for (const l of incoming.get(id) ?? []) forces.push({ u: l.u, F: l.F.clone() });
