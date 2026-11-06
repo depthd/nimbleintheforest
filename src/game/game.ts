@@ -101,8 +101,8 @@ export async function startGame(settings: Settings) {
   G.goal = { signalAt: 0, rescued: false, heliShown: false };
   G.structures = new Structures();
   G.structures.build(new Rng(settings.seed * 31 + 5));
-  // rock faces register their shelters before the snow layout is uploaded
-  if (region.cliffs.length) G.cliffs = new Cliffs(region.cliffs);
+  // rock registers its shelters before the snow layout is uploaded
+  if (region.cliffs.length || region.skin?.blocks.length) G.cliffs = new Cliffs(region.cliffs, region.skin);
   G.animals = new Animals();
   await G.animals.load();
   // loud work carries far: animals hear it
@@ -130,6 +130,7 @@ export async function startGame(settings: Settings) {
 
   // stream the world around the player, then let furniture and loot settle
   G.terrain.update(G.camera.position.copy(G.player.eyePos), 400);
+  G.cliffs?.update(G.player.pos, G.player.pos, Infinity);
   G.forest.update(G.player.pos, true);
   G.lake.stream(G.player.pos, 60);
   for (let i = 0; i < 150; i++) G.world.step(G.events);
@@ -491,6 +492,7 @@ function loop(now: number) {
     G.cliffLab?.update(dt);
   }
   G.terrain.update(G.camera.position);
+  G.cliffs?.update(G.camera.position, G.player.pos);
   G.forest.update(G.player.pos);
   G.lake.stream(G.player.pos);
   G.structures.update(dt);

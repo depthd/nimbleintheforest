@@ -104,7 +104,7 @@ export function buildCliffLab(R: Sheet): { builds: CliffBuild[]; info: CliffLabI
   for (let q = 0; q < N; q++) {
     const th = (q / N) * Math.PI * 2;
     // broad irregularity only: tight wiggles in plan would fold the rock behind the face
-    const kk = 1 + 0.09 * noise.noise(Math.cos(th) * 1.3 + 4, Math.sin(th) * 1.3) + 0.012 * noise.noise(Math.cos(th) * 4 - 2, Math.sin(th) * 4);
+    const kk = 1 + 0.16 * noise.noise(Math.cos(th) * 1.1 + 4, Math.sin(th) * 1.1) + 0.05 * noise.noise(Math.cos(th) * 2.3 - 2, Math.sin(th) * 2.3);
     const u = A * Math.cos(th) * kk, w = B * Math.sin(th) * kk;
     outline.push({ x: C.x + r.x * u + f.x * w, z: C.z + r.z * u + f.z * w, th });
   }

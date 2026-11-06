@@ -308,7 +308,7 @@ export class Forest {
       const RP = this.rocksP;
       this.rockMesh.count = 0;
       R.forEachProp(RP, p.x, p.z, 320, (i) => {
-        if (this.rockMesh.count >= 3000) return;
+        if (this.rockMesh.count >= 3000 || RP.flags[i] & 3) return;
         tmpQ.setFromAxisAngle(UP, RP.rot[i]);
         const s = RP.s[i];
         tmpM.compose(tmpP.set(RP.x[i], RP.y[i] - s * 0.25, RP.z[i]), tmpQ, tmpS.setScalar(s));
@@ -343,6 +343,7 @@ export class Forest {
       const RP = this.rocksP;
       const wantR = new Set<number>();
       R.forEachProp(RP, p.x, p.z, RC, (i) => {
+        if (RP.flags[i] & 3) return;
         wantR.add(i);
         if (this.rockCols.has(i)) return;
         const s = RP.s[i];

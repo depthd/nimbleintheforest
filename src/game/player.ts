@@ -308,6 +308,8 @@ export class Player {
     this.body.setTranslation({ x: p.x, y: p.y + HALF + RADIUS, z: p.z }, true);
     this.body.setNextKinematicTranslation({ x: p.x, y: p.y + HALF + RADIUS, z: p.z });
     this.fallStartY = p.y;
+    // rock colliders stream around the player: the ground under a jump must exist at once
+    G.cliffs?.update(p, p, Infinity);
     this.avatar?.reset();
   }
 

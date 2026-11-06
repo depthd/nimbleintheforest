@@ -160,7 +160,8 @@ vec3 triRock(vec3 p, vec3 n) {
   rockK = max(rockK, smoothstep(uTreeline + 60.0, uTreeline + 180.0, vWPos.y) * smoothstep(0.2, 0.34, slope));
   // snow clings in streaks and gullies even on steep rock
   rockK *= 1.0 - 0.55 * smoothstep(0.45, 0.7, nz2.a * 0.6 + nz1.b * 0.5) * (1.0 - smoothstep(0.55, 0.8, slope));
-  vec3 rock = triRock(vWPos * 0.06, N) * vec3(1.05, 1.02, 1.0) * (0.85 + 0.3 * nz2.b) + vec3(0.06, 0.065, 0.075);
+  // the same dark, cool stone as the rock blocks (world/cliffs.ts), barely textured
+  vec3 rock = vec3(0.085, 0.092, 0.125) * (0.72 + 1.6 * triRock(vWPos * 0.06, N)) * (0.88 + 0.24 * nz2.b);
   vec3 col = mix(snow, rock, rockK);
   // distant forest canopy: dark green-grey seen from afar (the trees themselves stop drawing)
   float farF = smoothstep(uForestFar.x, uForestFar.y, camDist);

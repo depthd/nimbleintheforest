@@ -34,8 +34,8 @@ function check(name, ok, data) { assert.ok(ok, `${name}: ${JSON.stringify(data)}
     await ev(() => { const g = window.__game; g.setManualStepping(true); g.G.input.enabled = true; g.steps(30); });
 
     const stats = await ev(() => window.__game.G.cliffs.stats());
-    check('every block has a collider', stats.cliffs === 3 && stats.skipped === 0 && stats.colliders === stats.blocks, stats);
-    check('the rock stays light to draw', stats.rockTriangles + stats.snowTriangles < 60000, stats);
+    check('the lab rock and the world rock skin are built; colliders only near the player', stats.cliffs === 3 && stats.skin > 5000 && stats.skipped === 0 && stats.colliders > 0 && stats.colliders < stats.blocks / 10, stats);
+    check('what is drawn stays within budget', stats.drawnTriangles < 700000, stats);
 
     // under the undercut: out of the snow and the wind, room to stand and walk along it
     const shelter = await ev(() => {

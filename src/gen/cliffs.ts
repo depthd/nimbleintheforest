@@ -43,7 +43,7 @@ export interface CliffGround {
   upper(x: number, z: number): number;
 }
 
-export type BlockKind = 'face' | 'cap' | 'rubble' | 'boulder';
+export type BlockKind = 'face' | 'cap' | 'rubble' | 'boulder' | 'skin';
 
 /** A faceted block: stacked rings of n points, bottom first. Sides join consecutive rings;
  * the first and last rings are closed with fans around their centroids. */
@@ -211,7 +211,7 @@ class Frame {
 interface Layer { y0: number; y1: number; hard: number; basal: boolean; roof: boolean }
 
 function strata(spec: CliffSpec, rng: Rng, yMin: number, yMax: number): Layer[] {
-  const soft = spec.soft ?? [0.7, 1.7], hard = spec.hard ?? [1.5, 3.4];
+  const soft = spec.soft ?? [1.1, 2.4], hard = spec.hard ?? [2.4, 5.2];
   const layers: Layer[] = [];
   let y = yMin, k = 0;
   const wave = rng.float(0, 10);
@@ -444,6 +444,12 @@ export class CliffBuild {
       }
       const thick = Math.max(...yt.map((t, j) => t - yb[j]));
       if (thick < 0.35) return;
+      // blocks of one bed are staggered: each reaches a little further down or up, so bedding
+      // lines break instead of running on like courses of masonry (overlap only grows)
+      if (!cap && !l.roof) { // the roof of an undercut keeps its height: it is the headroom
+        const down = rng.float(0, 0.3) * thick, up = rng.chance(0.3) ? rng.float(0.1, 0.45) * thick : 0;
+        for (let j = 0; j < 3; j++) { yb[j] -= down; yt[j] = Math.min(yt[j] + up, topAt(S[j]) - capT); }
+      }
       // where the layer pinches out under the talus or into the caprock, it keeps its own
       // band there (hidden) instead of twisting the block towards the clip
       for (let j = 0; j < 3; j++) if (yt[j] - yb[j] < 0.22) { yb[j] = band[j][0]; yt[j] = Math.max(band[j][1], band[j][0] + 0.22); }
@@ -739,30 +745,7 @@ export class CliffBuild {
       if (exposure < 0.4) continue;
       const t = clamp(0.1 + 0.035 * Math.sqrt(area), 0.12, 0.36) * exposure * rng.float(0.8, 1.15) * (b.kind === 'rubble' ? 0.7 : 1);
       if (t < 0.07) continue;
-      const v0 = pos.length / 3;
-      const push = (x: number, y: number, z: number) => { pos.push(x, y, z); };
-      // rim on the shoulder, draping the chamfer; then two rings rising to the crown
-      for (let q = 0; q < n; q++) {
-        const s = (sh + q) * 3, u = (top + q) * 3;
-        const ox = P[s] - cx, oz = P[s + 2] - cz, ol = Math.hypot(ox, oz) || 1;
-        push(P[s] + (ox / ol) * 0.035, P[s + 1] + 0.03, P[s + 2] + (oz / ol) * 0.035);
-        push(lerp(P[s], P[u], 0.6), lerp(P[s + 1], P[u + 1], 0.6) + t * 0.55, lerp(P[s + 2], P[u + 2], 0.6));
-        push(lerp(P[u], cx, 0.22), lerp(P[u + 1], cy, 0.22) + t * 0.92 * rng.float(0.9, 1.08), lerp(P[u + 2], cz, 0.22));
-      }
-      push(cx, cy + t * 1.02 + 0.03, cz);
-      const c = v0 + n * 3;
-      for (let q = 0; q < n; q++) {
-        const a = v0 + q * 3, d = v0 + ((q + 1) % n) * 3;
-        for (let r = 0; r < 2; r++) idx.push(a + r, d + r, d + r + 1, a + r, d + r + 1, a + r + 1);
-        idx.push(a + 2, d + 2, c);
-      }
-    }
-    // wind each triangle so it faces up
-    for (let k = 0; k < idx.length; k += 3) {
-      const a = idx[k] * 3, b = idx[k + 1] * 3, c = idx[k + 2] * 3;
-      const ux = pos[b] - pos[a], uz = pos[b + 2] - pos[a + 2], vx = pos[c] - pos[a], vz = pos[c + 2] - pos[a + 2];
-      const ny = uz * vx - ux * vz;
-      if (ny < 0) { const tmp = idx[k + 1]; idx[k + 1] = idx[k + 2]; idx[k + 2] = tmp; }
+      pillow(b, t, () => rng.float(0.9, 1.08), pos, idx);
     }
     return { positions: Float32Array.from(pos), indices: Uint32Array.from(idx) };
   }
@@ -855,4 +838,33 @@ export function blockTriangles(b: CliffBlock, out: number[]) {
     tri(v(a), v(c), v(d));
   }
   fan(R - 1);
+}
+
+/** A rounded snow cap on the top ring of a block, draping its chamfer. Appends to pos/idx,
+ * each triangle wound to face up. `t` is the thickness at the crown. */
+export function pillow(b: CliffBlock, t: number, jitter: () => number, pos: number[], idx: number[]) {
+  const n = b.n, P = b.pts, top = (b.rings - 1) * n, sh = (b.rings - 2) * n;
+  let cx = 0, cy = 0, cz = 0;
+  for (let q = 0; q < n; q++) { cx += P[(top + q) * 3] / n; cy += P[(top + q) * 3 + 1] / n; cz += P[(top + q) * 3 + 2] / n; }
+  const v0 = pos.length / 3, i0 = idx.length;
+  // rim on the shoulder, draping the chamfer; then two rings rising to the crown
+  for (let q = 0; q < n; q++) {
+    const s = (sh + q) * 3, u = (top + q) * 3;
+    const ox = P[s] - cx, oz = P[s + 2] - cz, ol = Math.hypot(ox, oz) || 1;
+    pos.push(P[s] + (ox / ol) * 0.035, P[s + 1] + 0.03, P[s + 2] + (oz / ol) * 0.035);
+    pos.push(lerp(P[s], P[u], 0.6), lerp(P[s + 1], P[u + 1], 0.6) + t * 0.55, lerp(P[s + 2], P[u + 2], 0.6));
+    pos.push(lerp(P[u], cx, 0.22), lerp(P[u + 1], cy, 0.22) + t * 0.92 * jitter(), lerp(P[u + 2], cz, 0.22));
+  }
+  pos.push(cx, cy + t * 1.02 + 0.03, cz);
+  const c = v0 + n * 3;
+  for (let q = 0; q < n; q++) {
+    const a = v0 + q * 3, d = v0 + ((q + 1) % n) * 3;
+    for (let r = 0; r < 2; r++) idx.push(a + r, d + r, d + r + 1, a + r, d + r + 1, a + r + 1);
+    idx.push(a + 2, d + 2, c);
+  }
+  for (let k = i0; k < idx.length; k += 3) {
+    const a = idx[k] * 3, bb = idx[k + 1] * 3, cc = idx[k + 2] * 3;
+    const ux = pos[bb] - pos[a], uz = pos[bb + 2] - pos[a + 2], vx = pos[cc] - pos[a], vz = pos[cc + 2] - pos[a + 2];
+    if (uz * vx - ux * vz < 0) { const tmp = idx[k + 1]; idx[k + 1] = idx[k + 2]; idx[k + 2] = tmp; }
+  }
 }

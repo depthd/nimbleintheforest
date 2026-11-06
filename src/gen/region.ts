@@ -8,6 +8,7 @@ import { erode } from './erosion';
 import { priorityFlood, accumulate, breachLakes, riverLevels, traceRivers, smoothRiver, River, DX, DY } from './hydro';
 import { B, BIOMES, BIOME_COUNT, Sp } from './biomes';
 import type { CliffBuild } from './cliffs';
+import { RockSkin } from './rock-skin';
 import { buildCliffLab } from './cliff-lab';
 import type { CliffLabInfo } from './cliff-lab';
 
@@ -139,6 +140,8 @@ export class Region {
   places: Place[] = [];
   /** rock faces welded into the sheet; trees and places keep clear of them */
   cliffs: CliffBuild[] = [];
+  /** rows of rock over every slope too steep to walk */
+  skin: RockSkin | null = null;
   cliffLab: CliffLabInfo | null = null;
   seaSide = 0;
   treeline = 165;
@@ -759,6 +762,16 @@ export class Region {
     // places of people: huts, the weather station, a grotto, cars, a bridge
     this.pickPlaces(sub(50));
 
+    // steep slopes become rock; places, the house and cliff bands keep their ground
+    await progress?.('Скалы', 0.68);
+    t = performance.now();
+    const tower = this.sites.tower;
+    this.skin = new RockSkin(this, {
+      exclude: (x, z) => Math.hypot(x, z) < 30 || (!!tower && Math.hypot(x - tower.x, z - tower.z) < 14) ||
+        this.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.data.clear ?? 4) + 6) || this.cliffs.some((c) => c.occupied(x, z, 2)),
+    });
+    mark('rock', t);
+
     // ---------- vegetation ----------
     await progress?.('Лес', 0.72);
     t = performance.now();
@@ -768,6 +781,10 @@ export class Region {
     t = performance.now();
     this.placeRocks(sub(40));
     this.clearLogging(sub(51));
+    // nothing grows or lies on the rock skin; hiding afterwards keeps the forest elsewhere as it was
+    if (this.skin) for (const P of [this.trees, this.shrubs, this.rocks]) {
+      for (let i = 0; i < P.count; i++) if (this.skin.covers(P.x[i], P.z[i])) P.flags[i] |= 1;
+    }
     mark('rocks', t);
     this.timings.total = Math.round(performance.now() - t0);
     await yieldFrame();
