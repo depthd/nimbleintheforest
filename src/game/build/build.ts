@@ -11,6 +11,7 @@ import { Entity } from '../entities';
 import { category, cutAt, pieceName, WoodPiece } from '../wood/piece';
 import { attachColliders, spawnPiece, woodObject } from '../wood/wood';
 import { analyze, findRests, halfThickness, JointKind, pointAt, SJoint, SLoad, SPart } from './statics';
+import { Placement } from './place';
 
 export interface Structure {
   id: number;
@@ -55,6 +56,8 @@ export function poseFrom(a: THREE.Vector3, b: THREE.Vector3, roll = 0) {
 
 export class BuildSystem {
   structures: Structure[] = [];
+  /** building by hand with the piece you carry */
+  placement = new Placement();
   private nextId = 1;
   private snowT = 0;
 
@@ -88,6 +91,33 @@ export class BuildSystem {
     return e;
   }
 
+  /** A loose piece becomes a part of a structure where it is. */
+  adopt(s: Structure, e: Entity, pos: THREE.Vector3, quat: THREE.Quaternion, roof = 0) {
+    e.data.part = { s, roof } as PartData;
+    e.data.groups = GROUPS_STATIC;
+    this.makeStatic(e, pos, quat);
+    s.parts.set(e.id, e);
+    s.built = Math.max(s.built, s.parts.size);
+    s.dirty = true;
+  }
+
+  /** two structures that now touch become one */
+  private merge(into: Structure, from: Structure) {
+    if (into === from) return;
+    for (const [id, e] of from.parts) {
+      (e.data.part as PartData).s = into;
+      into.parts.set(id, e);
+    }
+    into.joints.push(...from.joints);
+    into.snow = Math.max(into.snow, from.snow);
+    into.built += from.built;
+    from.parts.clear();
+    from.joints = [];
+    const i = this.structures.indexOf(from);
+    if (i >= 0) this.structures.splice(i, 1);
+    into.dirty = true;
+  }
+
   private makeStatic(e: Entity, pos: THREE.Vector3, quat: THREE.Quaternion) {
     const body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed().setTranslation(pos.x, pos.y, pos.z).setRotation({ x: quat.x, y: quat.y, z: quat.z, w: quat.w }));
     e.body = body;
@@ -119,8 +149,22 @@ export class BuildSystem {
   connect(s: Structure, e: Entity, opts: { groundKind?: JointKind; nails?: number; restKind?: JointKind } = {}) {
     const me = this.spart(e);
     let found = 0;
-    for (const [, o] of s.parts) {
-      if (o === e) continue;
+    const pe = e.data.wood as WoodPiece;
+    const near: Entity[] = [];
+    for (const other of [...this.structures]) {
+      for (const o of other.parts.values()) {
+        if (o === e) continue;
+        if (o.position().distanceTo(me.pos) > pe.len / 2 + (o.data.wood as WoodPiece).len / 2 + 0.5) continue;
+        near.push(o);
+      }
+    }
+    for (const o of near) {
+      const other = this.of(o)!;
+      const touch = findRests(me, this.spart(o)).length + findRests(this.spart(o), me).length;
+      if (touch && other !== s) this.merge(s, other);
+    }
+    for (const o of near) {
+      if (this.of(o) !== s) continue;
       for (const j of findRests(me, this.spart(o))) {
         if (opts.restKind) j.kind = opts.restKind;
         if (opts.nails) {
@@ -424,6 +468,15 @@ export class BuildSystem {
 
   /** skip the checks while a structure is being put together */
   hold = false;
+
+  /** is there a built roof (boughs, boards) right above this point? */
+  roofOver(p: THREE.Vector3) {
+    const ray = new G.R.Ray({ x: p.x, y: p.y + 0.2, z: p.z }, { x: 0, y: 1, z: 0 });
+    const hit = G.world.castRay(ray, 4, true, undefined, undefined, G.player?.collider, undefined, (c) => G.entities.byCollider.get(c.handle)?.kind === 'part');
+    if (!hit) return false;
+    const e = G.entities.byCollider.get(hit.collider.handle);
+    return !!e && ((e.data.part as PartData)?.roof ?? 0) > 0;
+  }
 
   /** a quick look at a part for the prompt */
   describe(e: Entity) {

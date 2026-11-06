@@ -131,6 +131,83 @@ function check(name, ok, extra = '') {
   check('pulling a lower log out lets the upper ones roll', stack.none || stack.after < stack.before - 1, JSON.stringify(stack));
   await shot('03-stack');
 
+  // ---- build by hand: two posts dug in, a crossbar on them, a board on the crossbar ----
+  const hand = await ev(() => {
+    const g = window.__game;
+    const G = g.G;
+    const T = g.THREE;
+    const P = G.player;
+    // an open flat spot near the house
+    let base = null;
+    for (let r = 12; r < 60 && !base; r += 3) for (let a = 0; a < 6.28 && !base; a += 0.4) {
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (!Number.isNaN(G.region.waterAt(x, z)) || G.region.slopeAt(x, z) > 0.15 || G.forest.treesNear(x, z, 4).length) continue;
+      if (G.house.zoneAt(new T.Vector3(x, G.terrain.heightAt(x, z) + 1, z))) continue;
+      base = new T.Vector3(x, G.terrain.heightAt(x, z), z);
+    }
+    g.teleport(base.x - 2, G.terrain.heightAt(base.x - 2, base.z) + 0.05, base.z - 2);
+    G.forest.update(P.pos, true);
+    g.steps(10);
+    g.give('shovel');
+    const out = {};
+    const upright = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 0, 1), Math.PI / 2);
+    const holdAt = (e, pos, q) => {
+      P.carry(e);
+      e.body.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
+      e.body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
+      G.build.placement.update(1);
+      return G.build.placement.plan;
+    };
+    const posts = [];
+    for (const dx of [0, 2.4]) {
+      const e = G.entities.spawnItem('pole', base.clone().add(new T.Vector3(dx, 2, 0)));
+      const len = e.data.wood.len;
+      const at = new T.Vector3(base.x + dx, G.terrain.heightAt(base.x + dx, base.z) + len / 2 + 0.02, base.z);
+      const plan = holdAt(e, at, upright);
+      out['post' + dx] = { ok: plan.ok, upright: plan.upright, foot: plan.footOnGround, info: G.build.placement.info() };
+      G.build.placement.place({ dig: true });
+      g.steps(1);
+      posts.push(e);
+    }
+    out.posts = posts.map((e) => e.kind);
+    const S = G.build.of(posts[0]);
+    out.sameStructure = S && G.build.of(posts[1]) === S ? false : true;
+    // the crossbar, held a bit above the tops: it settles onto them
+    const bar = G.entities.spawnItem('pole', base.clone().add(new T.Vector3(1.2, 3, 1)));
+    const topY = Math.max(...posts.map((e) => e.position().y + e.data.wood.len / 2));
+    const plan = holdAt(bar, new T.Vector3(base.x + 1.2, topY + 0.25, base.z), new T.Quaternion());
+    out.barPlan = { ok: plan.ok, holds: plan.holds, on: plan.on, info: G.build.placement.info() };
+    G.build.placement.place();
+    g.steps(1);
+    const S2 = G.build.of(bar);
+    out.bar = bar.kind;
+    out.parts = S2 ? S2.parts.size : 0;
+    out.barRests = S2 ? S2.joints.filter((j) => j.a === bar.id && j.b >= 0).length : 0;
+    // a board laid with one end on the crossbar tips off; nailed, it stays
+    const barY = bar.position().y;
+    const board = G.entities.spawnItem('plank', base.clone().add(new T.Vector3(0, 3, 2)));
+    const p1 = holdAt(board, new T.Vector3(base.x + 1.2, barY + 0.2, base.z + 0.5), new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI / 2));
+    out.boardPlan = { ok: p1.ok, holds: p1.holds, why: p1.why };
+    G.build.placement.place();
+    out.boardLoose = board.kind;
+    for (let i = 0; i < 60; i++) g.steps(1);
+    g.give('hammer');
+    g.give('nails', { charges: 16 });
+    const board2 = G.entities.spawnItem('plank', base.clone().add(new T.Vector3(0, 3, 3)));
+    const p2 = holdAt(board2, new T.Vector3(base.x + 1.2, barY + 0.2, base.z + 0.3), new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI / 2));
+    out.board2Plan = { ok: p2.ok };
+    G.build.placement.place({ nails: true });
+    out.board2 = board2.kind;
+    out.nailsLeft = P.inventory.find((x) => x.defId === 'nails')?.charges;
+    g.lookAt(base.x + 1.2, barY, base.z);
+    return out;
+  });
+  check('posts dug in by hand stand', hand.posts.every((k) => k === 'part'), JSON.stringify(hand));
+  check('a crossbar laid on two posts holds', hand.bar === 'part' && hand.barRests >= 2 && hand.barPlan.holds, JSON.stringify(hand));
+  check('a board on one end tips off; nailed it stays', hand.boardLoose === 'item' && hand.board2 === 'part' && hand.nailsLeft < 16, JSON.stringify(hand));
+  await page.waitForTimeout(300);
+  await shot('04-handbuilt');
+
   check('no page errors', errors.length === 0, errors.slice(0, 5).join(' | '));
   await browser.close();
   await server.close();

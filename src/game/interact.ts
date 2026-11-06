@@ -215,6 +215,14 @@ export class Interaction {
       if (isBlanket && e?.defId === 'bed') A.push({ key: 'E', label: 'Постелить на кровать', time: 1, run: () => this.spreadBed(e, carried) });
       if (isBlanket) A.push({ key: 'F', label: 'Укутаться', time: 1, run: () => this.wrap(carried) });
       else if (carried.pocket) A.push({ key: 'F', label: 'Убрать в рюкзак', run: () => P.addToInventory(carried) && (P.carried = null) });
+      // building: put the piece where the ghost shows
+      const pl = G.build.placement.plan;
+      if (woodOf(carried) && pl && !P.dragging) {
+        const nails = !!P.has((x) => x.defId === 'nails' && x.charges >= 2) && !!P.hasTag('hammer');
+        if (pl.ok) A.push({ key: 'G', label: nails ? 'Прибить здесь' : 'Положить здесь', run: () => G.build.placement.place({ nails }) });
+        if (pl.ok && pl.upright && pl.footOnGround && P.hasTag('shovel') && !carried.pocket) A.push({ key: 'F', label: 'Вкопать столб', time: 5, run: () => G.build.placement.place({ dig: true }) });
+        this.info = `${carried.name} · ${pieceSize(woodOf(carried)!)} · ${G.build.placement.info()} · [R] повернуть · [B] стоймя/наискось`;
+      }
       return A;
     }
 
@@ -562,6 +570,7 @@ export class Interaction {
 
   update(dt: number) {
     const inp = G.input;
+    G.build?.placement.update(dt);
     this.computeTarget();
     this.actions = this.compute();
     if (G.sleeping || G.dead || !inp.enabled) return;

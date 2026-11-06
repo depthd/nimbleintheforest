@@ -252,6 +252,7 @@ function bodyEnv(): Env {
     // porch roof and walls give a little shelter
     if (Math.abs(P.pos.x - 2) < 3 && P.pos.z > 3.9 && P.pos.z < 6.2) wind *= 0.6;
     // huts, the grotto, the station: out of the wind, and a fire inside warms the air
+    if (G.build.roofOver(P.eyePos)) wind *= 0.75;
     const sh = G.structures.shelterAt(P.pos);
     if (sh) {
       wind *= sh.wind;
@@ -284,7 +285,7 @@ function bodyEnv(): Env {
     lampInHand: eq?.defId === 'lamp' && eq.lit,
     metalTool: metal,
     outdoors: !zone,
-    snowfall: G.snowCover.roofAt(P.pos.x, P.pos.z, P.eyePos.y) ? 0 : W.snow,
+    snowfall: G.snowCover.roofAt(P.pos.x, P.pos.z, P.eyePos.y) || G.build.roofOver(P.eyePos) ? 0 : W.snow,
     rh,
   };
 }

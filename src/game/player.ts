@@ -35,6 +35,8 @@ export class Player {
   carried: Entity | null = null;
   carryDist = 1.4;
   carryYaw = 0;
+  /** wood held for building: 0 lying across, π/2 upright, π/4 slanted */
+  carryTilt = 0;
   private carryBaseQ = new THREE.Quaternion();
   dragging = false;
   wrapped: Entity | null = null;
@@ -202,6 +204,7 @@ export class Player {
     const camQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
     this.carryBaseQ.copy(camQ.invert()).multiply(new THREE.Quaternion(r.x, r.y, r.z, r.w));
     this.carryYaw = 0;
+    this.carryTilt = 0;
     this.carryDist = this.dragging ? 1.6 : clamp(this.eyePos.distanceTo(e.position()), 1.0, 1.8);
     G.audio.play('pickup');
   }
@@ -234,6 +237,8 @@ export class Player {
     }
     if (G.input.wheel) this.carryDist = clamp(this.carryDist - G.input.wheel * 0.12, 0.7, 2.4);
     if (G.input.hit('KeyR')) this.carryYaw += Math.PI / 4;
+    const wood = !!e.data.wood && !this.dragging;
+    if (wood && G.input.hit('KeyB')) this.carryTilt = this.carryTilt === 0 ? Math.PI / 2 : this.carryTilt > 1 ? Math.PI / 4 : 0;
     const eye = this.eyePos;
     const target = eye.clone().add(this.forward().multiplyScalar(this.carryDist));
     const p = e.position();
@@ -250,7 +255,10 @@ export class Player {
     const lv = e.body.linvel();
     e.body.setLinvel({ x: v.x, y: this.dragging ? lv.y : v.y, z: v.z }, true);
     // orientation follows view yaw
-    const want = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw + this.carryYaw).multiply(this.carryBaseQ);
+    // wood is held lying across the view (R turns it, B stands it up); other things keep how they were picked up
+    const want = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw + this.carryYaw);
+    if (wood) want.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), this.carryTilt));
+    else want.multiply(this.carryBaseQ);
     const r = e.body.rotation();
     const cur = new THREE.Quaternion(r.x, r.y, r.z, r.w);
     const dq = want.multiply(cur.invert());
