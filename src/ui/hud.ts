@@ -892,7 +892,8 @@ export class HUD {
     const lines: string[] = [];
     for (const a of I.actions) lines.push(`<div class="act"><span class="key">${KEY_LABEL[a.key]}</span>${a.label}${a.time ? ' <span class="t">⏱</span>' : ''}</div>`);
     if (P.carried) {
-      lines.push(`<div class="act dim"><span class="key">E/Q</span>положить <span class="key">ПКМ</span>бросить <span class="key">R</span>повернуть <span class="key">колесо</span>ближе/дальше</div>`);
+      const wood = !!P.carried.data?.wood && !P.dragging;
+      lines.push(`<div class="act dim"><span class="key">E/Q</span>уронить <span class="key">ПКМ</span>бросить <span class="key">R</span>повернуть${wood ? ' <span class="key">B</span>стоймя/наискось' : ''} <span class="key">колесо</span>ближе/дальше</div>`);
     }
     if (P.water) {
       const pick = P.inventory.some((x) => x.defId === 'axe' || x.defId === 'hatchet' || x.defId === 'knife');
