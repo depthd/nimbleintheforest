@@ -59,7 +59,7 @@ export class WorldSnow {
     return { height, speed: 1 / (1 + depth * 3) };
   }
   step() {
-    if (G.player.water || G.sleeping || G.dead) { this.resetBoots(); return; }
+    if (G.player.water || G.sleeping || G.dead || G.caves?.inside) { this.resetBoots(); return; }
     const start = performance.now(), poses = G.player.avatar.motion.feet.map(f => footPose(f));
     if (this.lastBoots) for (let i = 0; i < poses.length; i++) this.field.sweepBoot(this.lastBoots[i], poses[i]);
     this.lastBoots = poses; this.bootMs = performance.now() - start;

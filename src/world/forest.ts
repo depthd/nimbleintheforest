@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Props } from '../gen/region';
 import { Sp } from '../gen/biomes';
-import { makeGroundMaterial } from './terrain';
+import { makeGroundMaterial, solidGroundGeometry } from './terrain';
 import type RAPIER_T from '@dimforge/rapier3d-compat';
 import { G, GROUPS_FALLING, GROUPS_ITEM, GROUPS_STATIC, GROUPS_TREE, msg } from '../game/ctx';
 import { Rng, Simplex2, clamp } from '../core/rng';
@@ -275,7 +275,7 @@ export class Forest {
       mp.setXYZ(k, x * f * 1.15, y * f * 0.7, z * f);
     }
     merged.computeVertexNormals();
-    this.rockMesh = new THREE.InstancedMesh(merged, makeGroundMaterial(false), 3000);
+    this.rockMesh = new THREE.InstancedMesh(solidGroundGeometry(merged), makeGroundMaterial(false), 3000);
     this.rockMesh.castShadow = true;
     this.rockMesh.receiveShadow = true;
     this.rockMesh.count = 0;
@@ -293,7 +293,7 @@ export class Forest {
         gp.setXYZ(k, x * f, y, z * f);
       }
       g.computeVertexNormals();
-      const m = new THREE.Mesh(g, makeGroundMaterial(false));
+      const m = new THREE.Mesh(solidGroundGeometry(g), makeGroundMaterial(false));
       m.position.set(p.x, p.y + p.h / 2 - 1, p.z);
       m.castShadow = m.receiveShadow = true;
       G.scene.add(m);
@@ -404,7 +404,7 @@ export class Forest {
       const RP = this.rocksP;
       this.rockMesh.count = 0;
       R.forEachProp(RP, p.x, p.z, 320, (i) => {
-        if (this.rockMesh.count >= 3000) return;
+        if (this.rockMesh.count >= 3000 || RP.flags[i] & 3) return;
         tmpQ.setFromAxisAngle(UP, RP.rot[i]);
         const s = RP.s[i];
         tmpM.compose(tmpP.set(RP.x[i], RP.y[i] - s * 0.25, RP.z[i]), tmpQ, tmpS.setScalar(s));
@@ -439,6 +439,7 @@ export class Forest {
       const RP = this.rocksP;
       const wantR = new Set<number>();
       R.forEachProp(RP, p.x, p.z, RC, (i) => {
+        if (RP.flags[i] & 3) return;
         wantR.add(i);
         if (this.rockCols.has(i)) return;
         const s = RP.s[i];

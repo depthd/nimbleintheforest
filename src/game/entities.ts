@@ -268,7 +268,7 @@ export class Entities {
       this.syncOne(e);
       const t = e.body.translation();
       // rescue items that fell through the world
-      if (e.kind === 'item') {
+      if (e.kind === 'item' && !G.caves?.rescue(e.body)) {
         const gh = G.terrain.heightAt(t.x, t.z);
         if (t.y < gh - 3 || t.y < -60) {
           e.body.setTranslation({ x: t.x, y: gh + 1, z: t.z }, true);

@@ -1,12 +1,22 @@
 // The region generator. Deterministic from the seed, layer by layer:
 // macro relief (continentalness / erosion / ridges, like Minecraft 1.18) → droplet erosion →
 // lakes and drainage (Priority-Flood) → rivers and gorges → biomes → fine 2 m heightmap,
-// water and ice → places (house, tower) → trees, shrubs, rocks.
+// water and ice → cliffs → places (house, tower) → trees, shrubs, rocks.
 // See docs/WORLD.md.
 import { Rng, Simplex2, clamp, lerp, smoothstep } from '../core/rng';
 import { erode } from './erosion';
 import { priorityFlood, accumulate, breachLakes, riverLevels, traceRivers, smoothRiver, River, DX, DY } from './hydro';
 import { B, BIOMES, BIOME_COUNT, Sp } from './biomes';
+import type { CliffBuild } from './cliffs';
+import { RockSkin } from './rock-skin';
+import type { CaveHill } from './cave';
+import { buildCliffLab } from './cliff-lab';
+import type { CliffLabInfo } from './cliff-lab';
+
+export interface RegionOptions {
+  /** raise the cliff laboratory near the house (?cliffs=1) */
+  cliffLab?: boolean;
+}
 
 export interface Props {
   count: number;
@@ -56,7 +66,19 @@ export interface Site {
   y: number;
 }
 
-export type PlaceKind = 'hut' | 'station' | 'grotto' | 'car' | 'bridge' | 'logging' | 'cross' | 'leanto' | 'fishing';
+export type PlaceKind = 'hut' | 'station' | 'grotto' | 'car' | 'bridge' | 'logging' | 'cross' | 'leanto' | 'fishing' | 'cave';
+
+/** A cave mouth at the foot of a steep slope. Local frame: origin on the floor of the opening,
+ * +z (yaw) into the hill. The sheet under the throat is cut, so the throat fits. */
+export interface CaveSite {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  seed: number;
+  /** the hillside around the mouth, before the cut */
+  hill: CaveHill;
+}
 
 /** a man-made place or trace of people, chosen by rules and built by world/structures */
 export interface Place {
@@ -129,11 +151,18 @@ export class Region {
   pillars: Pillar[] = [];
   sites: { house: Site; tower: Site | null; thin: { x: number; z: number; r: number } | null } = { house: { x: 0, z: 0, y: 0 }, tower: null, thin: null };
   places: Place[] = [];
+  /** rock faces welded into the sheet; trees and places keep clear of them */
+  cliffs: CliffBuild[] = [];
+  /** rows of rock over every slope too steep to walk */
+  skin: RockSkin | null = null;
+  /** cave mouths; the interiors are separate places (gen/cave.ts) */
+  caves: CaveSite[] = [];
+  cliffLab: CliffLabInfo | null = null;
   seaSide = 0;
   treeline = 165;
   timings: Record<string, number> = {};
 
-  constructor(seed: number, size: number) {
+  constructor(seed: number, size: number, readonly options: RegionOptions = {}) {
     this.seed = seed;
     this.size = size;
     this.n = size / FINE;
@@ -736,8 +765,32 @@ export class Region {
     // thin ice: on the lake nearest to the house, near an inflow if there is one
     this.sites.thin = this.pickThinIce(rng);
 
+    // cliffs reshape the sheet before anything is placed on it
+    if (this.options.cliffLab) {
+      t = performance.now();
+      const lab = buildCliffLab(this);
+      this.cliffs.push(...lab.builds);
+      this.cliffLab = lab.info;
+      mark('cliffs', t);
+    }
+
     // places of people: huts, the weather station, a grotto, cars, a bridge
     this.pickPlaces(sub(50));
+    // cave mouths cut into the foot of steep slopes, before the slopes get their rock
+    t = performance.now();
+    this.pickCaves(sub(60));
+    mark('caves', t);
+
+    // steep slopes become rock; places, the house and cliff bands keep their ground
+    await progress?.('Скалы', 0.68);
+    t = performance.now();
+    const tower = this.sites.tower;
+    this.skin = new RockSkin(this, {
+      exclude: (x, z) => Math.hypot(x, z) < 30 || (!!tower && Math.hypot(x - tower.x, z - tower.z) < 14) ||
+        this.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.data.clear ?? 4) + 6) || this.cliffs.some((c) => c.occupied(x, z, 2)) ||
+        this.caves.some((c) => this.inMouth(c, x, z, 9, 12.5)),
+    });
+    mark('rock', t);
 
     // ---------- vegetation ----------
     await progress?.('Лес', 0.72);
@@ -748,6 +801,14 @@ export class Region {
     t = performance.now();
     this.placeRocks(sub(40));
     this.clearLogging(sub(51));
+    // nothing grows or lies on the rock skin; hiding afterwards keeps the forest elsewhere as it was
+    if (this.skin) for (const P of [this.trees, this.shrubs, this.rocks]) {
+      for (let i = 0; i < P.count; i++) if (this.skin.covers(P.x[i], P.z[i])) P.flags[i] |= 1;
+    }
+    // nor in front of a cave mouth or over it
+    for (const c of this.caves) for (const P of [this.trees, this.shrubs, this.rocks]) {
+      this.forEachProp(P, c.x, c.z, 22, (i) => { if (this.inMouth(c, P.x[i], P.z[i], 12.5, 16, -11)) P.flags[i] |= 1; });
+    }
     mark('rocks', t);
     this.timings.total = Math.round(performance.now() - t0);
     await yieldFrame();
@@ -928,6 +989,7 @@ export class Region {
       const r = p.data.clear ?? 0;
       if (r > 0 && Math.hypot(x - p.x, z - p.z) < r) return true;
     }
+    for (const c of this.cliffs) if (c.occupied(x, z, 1)) return true;
     return false;
   }
 
@@ -948,9 +1010,105 @@ export class Region {
 
   private farFrom(x: number, z: number, d: number) {
     if (Math.hypot(x, z) < d) return false;
+    if (this.cliffs.some((c) => c.occupied(x, z, 12))) return false;
     const t = this.sites.tower;
     if (t && Math.hypot(x - t.x, z - t.z) < d * 0.6) return false;
     return this.places.every((p) => Math.hypot(p.x - x, p.z - z) > d * (p.kind === 'car' ? 0.2 : 1));
+  }
+
+  /** a world point in the frame of a cave mouth */
+  caveLocal(c: { x: number; z: number; yaw: number }, x: number, z: number) {
+    const dx = x - c.x, dz = z - c.z, co = Math.cos(c.yaw), si = Math.sin(c.yaw);
+    return { lx: dx * co - dz * si, lz: dx * si + dz * co };
+  }
+
+  /** inside the footprint of a cave mouth: the rock patch over the throat and the ground before it */
+  inMouth(c: CaveSite, x: number, z: number, halfW: number, back: number, front = -3.5) {
+    const { lx, lz } = this.caveLocal(c, x, z);
+    return Math.abs(lx) < halfW && lz > front && lz < back;
+  }
+
+  /** sheet height as the terrain draws it (triangles, not bilinear) */
+  private sheetAt(x: number, z: number) {
+    const nf = this.n + 1, H = this.h;
+    const fx = clamp((x + this.ox) / FINE, 0, this.n - 1e-4), fz = clamp((z + this.oz) / FINE, 0, this.n - 1e-4);
+    const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, k = j * nf + i;
+    return u + v <= 1 ? H[k] + (H[k + 1] - H[k]) * u + (H[k + nf] - H[k]) * v
+      : H[k + nf + 1] + (H[k + nf] - H[k + nf + 1]) * (1 - u) + (H[k + 1] - H[k + nf + 1]) * (1 - v);
+  }
+
+  /** Cave mouths: level ground in front, a hillside rising steeply right behind, dry, out of
+   * the way of places. The sheet gets a pad in front and a cut where the throat goes in. */
+  private pickCaves(rng: Rng) {
+    const S = this.size, maxD = S * 0.6;
+    const H = (x: number, z: number) => this.heightAt(x, z);
+    const found: { x: number; z: number; ux: number; uz: number; y: number }[] = [];
+    for (let k = 0; k < 14000 && found.length < 5; k++) {
+      const near = found.length < 2;
+      const a = rng.float(0, Math.PI * 2), d = rng.float(near ? 300 : 450, near ? 950 : maxD);
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (!this.inside(x, z, 340) || !Number.isNaN(this.waterAt(x, z)) || this.slopeAt(x, z) > 0.3) continue;
+      // the direction the ground rises fastest
+      let best = 0, ux = 0, uz = 0;
+      for (let q = 0; q < 16; q++) {
+        const b = (q / 16) * Math.PI * 2, rise = H(x + Math.cos(b) * 7, z + Math.sin(b) * 7) - H(x, z);
+        if (rise > best) { best = rise; ux = Math.cos(b); uz = Math.sin(b); }
+      }
+      if (best < 4) continue;
+      // walk up to the foot of the steep part
+      let fx = NaN, fz = NaN;
+      for (let s = 0; s <= 8; s += 0.5) {
+        const px = x + ux * s, pz = z + uz * s;
+        if (H(px + ux * 3, pz + uz * 3) - H(px, pz) > 2.6) { fx = px; fz = pz; break; }
+      }
+      if (Number.isNaN(fx)) continue;
+      const y0 = H(fx, fz);
+      // a real hillside over the throat, rising on both sides too, not a spur or a bank
+      if (H(fx + ux * 8, fz + uz * 8) - y0 < 7.5 || H(fx + ux * 15, fz + uz * 15) - y0 < 13) continue;
+      const vx = -uz, vz = ux;
+      if ([-7, 7].some((w) => H(fx + vx * w + ux * 6, fz + vz * w + uz * 6) - y0 < 4)) continue;
+      // dry, walkable ground in front of it
+      let front = true;
+      for (const s of [1.5, 4, 7, 10]) for (const w of [-4.5, 0, 4.5]) {
+        const px = fx - ux * s + vx * w, pz = fz - uz * s + vz * w;
+        if (!Number.isNaN(this.waterAt(px, pz)) || Math.abs(H(px, pz) - y0) > 0.7 + s * 0.22) front = false;
+      }
+      if (!front || this.edgeDist(fx, fz) < 340) continue;
+      if (!this.farFrom(fx, fz, 160) || found.some((c) => Math.hypot(c.x - fx, c.z - fz) < 480)) continue;
+      if (this.sites.thin && Math.hypot(this.sites.thin.x - fx, this.sites.thin.z - fz) < 80) continue;
+      found.push({ x: fx, z: fz, ux, uz, y: y0 });
+    }
+    const n = this.n, nf = n + 1, Hh = this.h;
+    for (const f of found) {
+      const site = { x: f.x, z: f.z, yaw: Math.atan2(f.ux, f.uz) };
+      const verts = (r: number, fn: (v: number, lx: number, lz: number) => void) => {
+        const gx = f.x + this.ox, gz = f.z + this.oz;
+        const i0 = clamp(Math.floor((gx - r) / FINE), 0, n), i1 = clamp(Math.ceil((gx + r) / FINE), 0, n);
+        const j0 = clamp(Math.floor((gz - r) / FINE), 0, n), j1 = clamp(Math.ceil((gz + r) / FINE), 0, n);
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+          const { lx, lz } = this.caveLocal(site, i * FINE - this.ox, j * FINE - this.oz);
+          fn(j * nf + i, lx, lz);
+        }
+      };
+      // level ground before the opening
+      verts(16, (v, lx, lz) => {
+        if (lz > 0.8) return;
+        const w = (1 - smoothstep(5.5, 8.5, Math.abs(lx))) * smoothstep(-11, -7.5, lz) * (1 - smoothstep(0.1, 0.8, lz));
+        Hh[v] = lerp(Hh[v], f.y, w);
+      });
+      // the hillside as the mouth rock will follow it
+      const hill = { x0: -13, z0: -7, nx: 27, nz: 25, cell: 1, h: new Float32Array(27 * 25) };
+      for (let j = 0; j < hill.nz; j++) for (let i = 0; i < hill.nx; i++) {
+        const lx = hill.x0 + i, lz = hill.z0 + j, co = Math.cos(site.yaw), si = Math.sin(site.yaw);
+        hill.h[j * hill.nx + i] = this.sheetAt(f.x + lx * co + lz * si, f.z - lx * si + lz * co) - f.y;
+      }
+      // the cut: under the throat the sheet goes below its floor; the mouth rock covers it
+      verts(16, (v, lx, lz) => {
+        if (Math.abs(lx) < 5.8 && lz > (Math.abs(lx) < 3 ? 0 : 1) && lz < 9.9) Hh[v] = Math.min(Hh[v], f.y - 0.45 - 0.04 * lz);
+      });
+      this.caves.push({ x: f.x, y: f.y, z: f.z, yaw: site.yaw, seed: this.seed * 1009 + this.caves.length * 37 + 5, hill });
+      this.places.push({ kind: 'cave', x: f.x - f.ux * 4, z: f.z - f.uz * 4, y: f.y, yaw: site.yaw, remote: clamp(Math.hypot(f.x, f.z) / (S * 0.5), 0, 1), data: { cave: this.caves.length - 1 } });
+    }
   }
 
   private pickPlaces(rng: Rng) {
