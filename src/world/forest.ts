@@ -77,6 +77,86 @@ interface Kind {
   meshes: THREE.InstancedMesh[];
   geos: THREE.BufferGeometry[];
   mats: THREE.Material[];
+  instances?: InstanceChunks;
+}
+
+// A single forest-wide instance buffer makes even trees behind the camera take
+// part in every shadow pass. Keep the same models and radius, but let each camera
+// cull small world-space batches independently, including off-screen casters.
+const INSTANCE_CHUNK = 128;
+class InstanceChunks {
+  readonly meshes: THREE.InstancedMesh[] = [];
+  private chunks = new Map<string, THREE.InstancedMesh[]>();
+  private count = 0;
+
+  constructor(private parent: THREE.Object3D, private geos: THREE.BufferGeometry[],
+    private mats: THREE.Material[], private kind: Kind) {}
+
+  begin() {
+    this.count = 0;
+    for (const mesh of this.meshes) mesh.count = 0;
+  }
+
+  add(matrix: THREE.Matrix4) {
+    // Preserve the previous per-variant limit; each part of a tree shares a slot.
+    if (this.count >= 4000) return;
+    const e = matrix.elements;
+    const key = `${Math.floor(e[12] / INSTANCE_CHUNK)},${Math.floor(e[14] / INSTANCE_CHUNK)}`;
+    let parts = this.chunks.get(key);
+    if (!parts) {
+      parts = this.makeParts(32);
+      this.chunks.set(key, parts);
+    } else if (parts[0].count === parts[0].instanceMatrix.count) {
+      const previous = parts;
+      parts = this.makeParts(previous[0].instanceMatrix.count * 2, previous);
+      this.chunks.set(key, parts);
+      this.release(previous);
+    }
+    for (const mesh of parts) mesh.setMatrixAt(mesh.count++, matrix);
+    this.count++;
+  }
+
+  finish() {
+    for (const [key, parts] of this.chunks) {
+      if (!parts[0].count) {
+        this.release(parts);
+        this.chunks.delete(key);
+        continue;
+      }
+      for (const mesh of parts) {
+        mesh.instanceMatrix.clearUpdateRanges();
+        mesh.instanceMatrix.addUpdateRange(0, mesh.count * 16);
+        mesh.instanceMatrix.needsUpdate = true;
+        // InstancedMesh bounds are not refreshed by setMatrixAt. Recompute after
+        // streaming or felling so neither camera nor shadow culling drops crowns.
+        mesh.computeBoundingBox();
+        mesh.computeBoundingSphere();
+      }
+    }
+  }
+
+  private makeParts(capacity: number, previous?: THREE.InstancedMesh[]) {
+    return this.geos.map((geo, i) => {
+      const mesh = new THREE.InstancedMesh(geo, this.mats[i], capacity);
+      mesh.count = previous?.[i].count ?? 0;
+      if (previous) mesh.instanceMatrix.array.set(previous[i].instanceMatrix.array);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.name = 'forest-chunk';
+      mesh.userData.forestKind = this.kind;
+      this.parent.add(mesh);
+      this.meshes.push(mesh);
+      return mesh;
+    });
+  }
+
+  private release(parts: THREE.InstancedMesh[]) {
+    for (const mesh of parts) {
+      mesh.removeFromParent();
+      mesh.dispose(); // geometry and materials are shared by all chunks
+      this.meshes.splice(this.meshes.indexOf(mesh), 1);
+    }
+  }
 }
 
 function colorize(g: THREE.BufferGeometry, fn: (y: number, x: number, z: number) => [number, number, number]) {
@@ -252,16 +332,8 @@ export class Forest {
     // species → kind indices (see gen/biomes Sp)
     this.kindOfSp = [[0, 1, 2], [7], [3, 4], [5], [6], [0, 1, 2]];
     for (const kind of this.kinds) {
-      for (let gi = 0; gi < kind.geos.length; gi++) {
-        const im = new THREE.InstancedMesh(kind.geos[gi], kind.mats[gi], 4000);
-        im.castShadow = true;
-        im.receiveShadow = true;
-        im.count = 0;
-        im.frustumCulled = false;
-        im.userData.forestKind = kind;
-        G.scene.add(im);
-        kind.meshes.push(im);
-      }
+      kind.instances = new InstanceChunks(G.scene, kind.geos, kind.mats, kind);
+      kind.meshes = kind.instances.meshes;
     }
     this.crownSource = (p, bi) => this.crownParts(p, bi);
     // boulders: smooth, snow settles on top (ground shader)
@@ -378,7 +450,7 @@ export class Forest {
     const P = this.P;
     if (force || Math.hypot(p.x - this.center.x, p.z - this.center.z) > 14) {
       this.center.copy(p);
-      for (const k of this.kinds) for (const im of k.meshes) im.count = 0;
+      for (const k of this.kinds) k.instances!.begin();
       R.forEachProp(P, p.x, p.z, R0, (i) => {
         if (P.flags[i] & 3) return;
         if (this.active.has(i)) return;
@@ -395,12 +467,9 @@ export class Forest {
           tmpQ.premultiply(this.leanQuat(((0.4 + 3.6 * f1 * f1) * Math.PI) / 180, f2 * Math.PI * 2, tmpQ2));
         }
         tmpM.compose(tmpP.set(P.x[i], P.y[i] - 0.15, P.z[i]), tmpQ, tmpS.set(sx, sy, sx));
-        for (const im of kind.meshes) {
-          if (im.count >= im.instanceMatrix.count) continue;
-          im.setMatrixAt(im.count++, tmpM);
-        }
+        kind.instances!.add(tmpM);
       });
-      for (const k of this.kinds) for (const im of k.meshes) im.instanceMatrix.needsUpdate = true;
+      for (const k of this.kinds) k.instances!.finish();
       const RP = this.rocksP;
       this.rockMesh.count = 0;
       R.forEachProp(RP, p.x, p.z, 320, (i) => {

@@ -18,10 +18,13 @@ function check(name, ok, extra = '') {
   await server.listen();
   const port = server.config.server.port;
   const url = `http://localhost:${port}/?test=1&seed=${process.env.SEED || 42}&hour=12&weather=clear`;
-  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined,
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
   const errors = [];
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('console', (m) => {
+    if (m.type() === 'error' && !m.location().url?.endsWith('/favicon.ico')) errors.push(m.text());
+  });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(url);
   await page.waitForFunction(() => window.__game, null, { timeout: 180000 });

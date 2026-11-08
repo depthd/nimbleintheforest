@@ -40,6 +40,8 @@ export class SnowField {
   }
   baseHeight(x: number, z: number) { return this.base(x, z); }
   initialThickness(x: number, z: number) { return this.thickness * this.coverage(x, z); }
+  /** Contact/replay/storage changes, independent of analytically evaluated weather. */
+  get changeRevision() { return this.revision; }
 
   private address(ix: number, iz: number) {
     const tx = Math.floor(ix / TILE_CELLS), tz = Math.floor(iz / TILE_CELLS);
@@ -97,7 +99,7 @@ export class SnowField {
         t.hot ? t.hot.mass[i] : t.cold!.mass[k], t.hot ? t.hot.packed[i] : t.cold!.packed[k], 0, 0,
         t.hot ? t.hot.exposure[i] : t.cold!.exposure[k], 0]);
     }
-    this.tiles.delete(key); return true;
+    this.tiles.delete(key); this.revision++; return true;
   }
   sample(x: number, z: number) {
     const gx = x / CELL, gz = z / CELL, ix = Math.floor(gx), iz = Math.floor(gz);

@@ -48,8 +48,12 @@ function check(name, ok, data) { assert.ok(ok, `${name}: ${JSON.stringify(data)}
         if (Math.hypot(p.x - s.x, p.z - s.z) > 32) invalid.push(`far from site ${e.id}`);
         for (const other of corpses) if (other !== e) nearestPair = Math.min(nearestPair, p.distanceTo(other.position()));
         const size = new THREE.Box3().setFromObject(e.obj).getSize(new THREE.Vector3());
-        let meshes = 0; e.obj.traverse(o => { if (o.isMesh) meshes++; });
-        if (meshes < 12 || Math.hypot(size.x, size.z) < 1.3 || size.y > 0.9) invalid.push(`missing human silhouette ${e.id}`);
+        let triangles = 0; const materials = new Set();
+        e.obj.traverse(o => { if (o.isMesh) {
+          triangles += (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) materials.add(m.uuid);
+        } });
+        if (triangles < 1000 || materials.size < 4 || Math.hypot(size.x, size.z) < 1.3 || size.y > 0.9) invalid.push(`missing human silhouette ${e.id}`);
       }
       return { count: corpses.length, kinds: [...new Set(corpses.map(e => e.data.corpse.site.kind))], nearestPair, invalid };
     });

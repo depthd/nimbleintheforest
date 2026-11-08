@@ -22,7 +22,8 @@ test('archived offscreen tracks have exactly the same weather history',()=>{
  assert.ok(b.stats().hotTiles<=32);
 });
 test('fully covered storage can be reclaimed only after the last visible relief is gone',()=>{
- const f=make();press(f);assert.equal(f.forgetWeatheredTile(0,0),false);f.advanceWeather(7200,storm);assert.equal(f.forgetWeatheredTile(0,0),true);assert.equal(f.sample(0,0).height,.28);
+ const f=make();press(f);assert.equal(f.forgetWeatheredTile(0,0),false);const revision=f.changeRevision;
+ f.advanceWeather(7200,storm);assert.equal(f.forgetWeatheredTile(0,0),true);assert.ok(f.changeRevision>revision);assert.equal(f.sample(0,0).height,.28);
 });
 test('the shared swept contact supports paw-sized shapes and records weather losslessly',()=>{
  const f=make();f.advanceWeather(600,storm);const shape={...BOOT_SHAPE,halfWidth:.045,front:.065,back:.045,rounding:.02,shoulder:.025};
@@ -53,5 +54,45 @@ test('a long trail reduces distant geometry without losing material or its textu
  for(const x of [8,12,18,22,48,80,0])r.update(new THREE.Vector3(x,0,0));
  assert.equal(r.entries.size,entries.length);assert.deepEqual(f.recordedCells(),cells);
  for(const {e,texture,pixels} of original){assert.equal(e.texture,texture);assert.deepEqual(e.pixels,pixels)}
+});
+test('idle frames and camera-only movement keep persistent trail textures without rescanning history',()=>{
+ const f=make(),r=new rendererModule.exports.SnowTrailRenderer(f,{minX:-100,minZ:-100,maxX:100,maxZ:100}),eye=new THREE.Vector3();
+ for(const x of [0,4,8])press(f,x);r.update(eye);
+ const entries=[...r.entries.values()],versions=entries.map(e=>e.texture.version),pixels=entries.map(e=>e.pixels.slice());
+ let visits=0,signatures=0;const visit=f.visitTiles.bind(f),revision=f.tileRevision.bind(f);
+ f.visitTiles=(fn)=>{visits++;return visit(fn)};f.tileRevision=(x,z)=>{signatures++;return revision(x,z)};
+ for(let i=0;i<60;i++){r.update(eye);assert.equal(r.updatedVertices,0)}
+ r.update(new THREE.Vector3(80,0,0));assert.ok(entries.every(e=>e.mesh.geometry.attributes.position.count===81));
+ r.refreshAll();
+ assert.equal(visits,0);assert.equal(signatures,entries.length*9,'only the explicit refreshAll needs new signatures');
+ entries.forEach((e,i)=>{assert.equal(e.texture.version,versions[i]);assert.deepEqual(e.pixels,pixels[i])});
+});
+test('replayed cells invalidate cached neighbouring trail textures and field replacement clears old tiles',()=>{
+ const bounds={minX:-100,minZ:-100,maxX:100,maxZ:100},f=make(),r=new rendererModule.exports.SnowTrailRenderer(f,bounds),eye=new THREE.Vector3();
+ press(f,3.15);r.update(eye);
+ f.applyRecordedCell(79,0,-.18,230);r.update(eye);
+ const reference=new rendererModule.exports.SnowTrailRenderer(f,bounds);reference.update(eye);
+ assert.deepEqual([...r.entries.keys()],[...reference.entries.keys()]);
+ for(const [key,e] of r.entries)assert.deepEqual(e.pixels,reference.entries.get(key).pixels);
+ const replacement=make();press(replacement,20);r.field=replacement;r.update(eye);
+ const restored=new rendererModule.exports.SnowTrailRenderer(replacement,bounds);restored.update(eye);
+ assert.deepEqual([...r.entries.keys()],[...restored.entries.keys()]);
+ for(const [key,e] of r.entries){const expected=restored.entries.get(key);assert.deepEqual(e.pixels,expected.pixels);assert.equal(e.mesh.geometry.attributes.position.count,expected.mesh.geometry.attributes.position.count);assert.equal(e.mesh.castShadow,expected.mesh.castShadow)}
+});
+test('weather refreshes one oldest texture per frame without history scans, including exposure rewind',()=>{
+ const bounds={minX:-100,minZ:-100,maxX:100,maxZ:100},f=make(),r=new rendererModule.exports.SnowTrailRenderer(f,bounds),eye=new THREE.Vector3();
+ for(const x of [0,8,16,24])press(f,x);r.update(eye);
+ let visits=0;const visit=f.visitTiles.bind(f);f.visitTiles=(fn)=>{visits++;return visit(fn)};
+ f.advanceWeather(60,storm);
+ for(let i=0,n=r.entries.size;i<n;i++){
+  const before=[...r.entries.values()].map(e=>[e,e.texture.version]);r.update(eye);
+  assert.ok(before.filter(([e,v])=>e.texture.version!==v).length<=1);
+ }
+ assert.equal(visits,0);assert.ok([...r.entries.values()].every(e=>e.exposure===f.weatherExposure));
+ const reference=new rendererModule.exports.SnowTrailRenderer(f,bounds);reference.update(eye);
+ for(const [key,e] of r.entries)assert.deepEqual(e.pixels,reference.entries.get(key).pixels);
+ f.weatherExposure=0;r.update(eye);
+ const rewind=new rendererModule.exports.SnowTrailRenderer(f,bounds);rewind.update(eye);
+ for(const [key,e] of r.entries)assert.deepEqual(e.pixels,rewind.entries.get(key).pixels);
 });
 console.log(`${count} trail lifetime checks passed`);

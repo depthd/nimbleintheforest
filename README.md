@@ -188,6 +188,9 @@ npm run test:caves-browser
 
 ## Технологии
 
+Фоновое построение рельефа, отсечение леса, измерения и проверки производительности:
+[docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+
 - [Three.js](https://threejs.org) — рендер. Все модели и текстуры генерируются кодом, внешних ассетов нет.
 - [Rapier](https://rapier.rs) (`@dimforge/rapier3d-compat`) — физика и контроллер персонажа.
 - WebAudio — весь звук синтезируется (ветер, огонь, шаги, рубка).

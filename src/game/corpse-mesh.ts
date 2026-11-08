@@ -1,6 +1,7 @@
 // A resting human silhouette, using the same small procedural shapes as the player.
 // Clothing changes with the actual items left on the body; no duplicated visual loot.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Tex } from '../core/textures';
 import type { Entity } from './entities';
 import type { Slot } from './items';
@@ -160,6 +161,12 @@ export function buildCorpseMesh(worn: ReadonlyMap<Slot, Entity>, variant: number
   root.userData.corpseClothing = { torso, hips, sleeves, legs, knees, coatDetail,
     hat, hatBrim, earFlaps, balaclava, scarf, hands, gloves, feet, shoes, soles,
     pack, packBody, straps } satisfies ClothingView;
+  // Keep editable clothing parts outside the scene. A corpse has no moving
+  // joints: only the small set of material batches below needs rendering.
+  const source = new THREE.Group();
+  source.name = 'corpse-clothing-source';
+  source.add(...root.children.slice());
+  root.userData.corpseSource = source;
   updateCorpseClothing(root, worn);
   return root;
 }
@@ -205,4 +212,40 @@ export function updateCorpseClothing(root: THREE.Group, worn: ReadonlyMap<Slot, 
   const back = worn.get('back')?.defId;
   v.pack.visible = v.straps.visible = !!back;
   if (back) v.packBody.material = fabric(back);
+  bakeCorpse(root);
+}
+
+/** Rebuild only when clothing changes, preserving the exact visible pose and UVs. */
+function bakeCorpse(root: THREE.Group) {
+  const source = root.userData.corpseSource as THREE.Group;
+  source.updateMatrixWorld(true);
+  const byMaterial = new Map<THREE.Material, THREE.BufferGeometry[]>();
+  source.traverseVisible(o => {
+    if (!(o instanceof THREE.Mesh)) return;
+    const material = o.material as THREE.Material;
+    let parts = byMaterial.get(material);
+    if (!parts) { parts = []; byMaterial.set(material, parts); }
+    // The detached source is in root-local coordinates, so root placement and
+    // rotation remain independent of this bake, including subsequent looting.
+    parts.push(o.geometry.clone().applyMatrix4(o.matrixWorld));
+  });
+  const batches: THREE.Mesh[] = [];
+  for (const [material, parts] of byMaterial) {
+    const geometry = parts.length === 1 ? parts[0] : mergeGeometries(parts)!;
+    if (parts.length > 1) for (const part of parts) part.dispose();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = 'corpse-material-batch';
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.matrixAutoUpdate = false;
+    batches.push(mesh);
+  }
+  // Only these baked geometries are owned here. Primitive shapes and materials
+  // belong to all corpses and must survive a garment being taken from one body.
+  for (const previous of root.children.slice()) {
+    root.remove(previous);
+    if (previous instanceof THREE.Mesh) previous.geometry.dispose();
+  }
+  root.add(...batches);
 }

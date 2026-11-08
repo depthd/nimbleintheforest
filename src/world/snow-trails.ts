@@ -70,6 +70,12 @@ export class SnowTrailRenderer {
   private far = this.geometry(8);
   private eye = { value: new THREE.Vector3() };
   private previousField: SnowField;
+  private fieldRevision = -1;
+  private previousExposure = 0;
+  private lodPosition = new THREE.Vector2(Infinity, Infinity);
+  // Full refreshes are ordered by exposure. Partial contact updates leave the
+  // older pixels' exposure in place, so weather never skips those pixels.
+  private weatherQueue = new Map<string, Entry>();
   private mask: THREE.DataTexture;
   private maskPixels: Uint8Array;
   private origin: THREE.Vector2;
@@ -162,6 +168,7 @@ export class SnowTrailRenderer {
     }
     if (!dirty) { e.minY = Infinity; e.maxY = -Infinity; }
     const weights = [0.25, 0.5, 0.25], wide=[1/16,4/16,6/16,4/16,1/16];
+    let pixelsChanged = false;
     for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
       let delta = 0, packed = 0;
       for (let dz = 0; dz < 3; dz++) for (let dx = 0; dx < 3; dx++) {
@@ -177,62 +184,93 @@ export class SnowTrailRenderer {
       const values = [this.field.baseHeight(wx, wz) - e.base, this.field.initialThickness(wx, wz), delta, packed];
       e.minY = Math.min(e.minY, e.base + values[0] + values[1] + Math.min(0, delta));
       e.maxY = Math.max(e.maxY, e.base + values[0] + values[1] + Math.max(0, delta));
-      for (let k = 0; k < 4; k++) e.pixels[i + k] = THREE.DataUtils.toHalfFloat(values[k]);
+      for (let k = 0; k < 4; k++) {
+        const value = THREE.DataUtils.toHalfFloat(values[k]);
+        if (e.pixels[i + k] !== value) { e.pixels[i + k] = value; pixelsChanged = true; }
+      }
       const active = +(x >= 2 && x <= SIZE - 3 && z >= 2 && z <= SIZE - 3 && (Math.abs(delta) > 0.00005 || packed > 0.001));
       const index = z * SIZE + x; e.activeCount += active - e.active[index]; e.active[index] = active;
     }
-    e.texture.needsUpdate = true; if (!dirty) e.exposure = this.field.weatherExposure; e.signature = this.signature(e.x, e.z);
+    if (pixelsChanged) e.texture.needsUpdate = true;
+    if (!dirty) {
+      e.exposure = this.field.weatherExposure;
+      const key = `${e.x},${e.z}`;
+      this.weatherQueue.delete(key); this.weatherQueue.set(key, e);
+    }
+    e.signature = this.signature(e.x, e.z);
     new THREE.Box3(new THREE.Vector3(-0.06,e.minY-0.1,-0.06),new THREE.Vector3(TILE_SIZE+0.06,e.maxY+0.1,TILE_SIZE+0.06)).getBoundingSphere(e.mesh.boundingSphere);
     e.mesh.visible = e.activeCount > 0; this.setMask(e, e.mesh.visible); this.updatedVertices += (x1-x0+1)*(z1-z0+1);
     return e.mesh.visible;
   }
   private remove(key: string, e: Entry) {
     this.setMask(e, false); this.group.remove(e.mesh); (e.mesh.material as THREE.Material).dispose();
-    e.mesh.customDepthMaterial?.dispose(); e.texture.dispose(); this.entries.delete(key);
+    e.mesh.customDepthMaterial?.dispose(); e.texture.dispose(); this.entries.delete(key); this.weatherQueue.delete(key);
+  }
+  private updateLod(e: Entry, position: THREE.Vector3) {
+    const { x, z } = e;
+    const distance = Math.hypot((x + 0.5) * TILE_SIZE - position.x, (z + 0.5) * TILE_SIZE - position.z);
+    // Keep the original 2 cm mesh near the boots. Away from the viewer, morph
+    // to 4/8 cm meshes before swapping them; footprint shading stays in the
+    // same texture at every distance. Include the tile radius so its nearest
+    // edge keeps full detail within 3 m of the viewer.
+    const near = Math.max(0, distance - TILE_SIZE / Math.SQRT2);
+    if (near < 6) {
+      e.mesh.geometry = this.fine; e.coarseStep.value = (TILE_SIZE + 0.12) / 80;
+      e.morph.value = THREE.MathUtils.smoothstep(near, 3, 6);
+    } else if (near < 12) {
+      e.mesh.geometry = this.medium; e.coarseStep.value = (TILE_SIZE + 0.12) / 40;
+      e.morph.value = THREE.MathUtils.smoothstep(near, 8, 12);
+    } else if (distance < 22) {
+      e.mesh.geometry = this.coarse; e.coarseStep.value = (TILE_SIZE + 0.12) / 8;
+      e.morph.value = THREE.MathUtils.smoothstep(distance, 18, 22);
+    } else {
+      e.mesh.geometry = this.far; e.morph.value = 0;
+    }
+    e.mesh.castShadow = distance < 22;
+  }
+  private refreshEntry(key: string, e: Entry, dirty?: SnowRect) {
+    if (!this.refresh(e, dirty)) {
+      this.empty.set(key, { signature: e.signature, exposure: e.exposure });
+      this.remove(key, e); this.field.forgetWeatheredTile(e.x, e.z);
+    }
   }
   update(position: THREE.Vector3) {
     this.eye.value.copy(position); this.updatedVertices = 0;
     if (this.previousField !== this.field) {
       for (const [k, e] of this.entries) this.remove(k, e);
-      this.empty.clear(); this.previousField = this.field;
+      this.empty.clear(); this.previousField = this.field; this.fieldRevision = -1;
+      this.previousExposure = this.field.weatherExposure;
     }
-    const dirty = this.field.takeDirty();
-    const wanted = new Set<string>(); let weatherBudget = 1;
-    this.field.visitTiles((x, z) => {
-      const key = `${x},${z}`, signature = this.signature(x, z); wanted.add(key);
-      const oldEmpty = this.empty.get(key);
-      if (oldEmpty?.signature === signature && this.field.weatherExposure >= oldEmpty.exposure) return;
-      let e = this.entries.get(key);
-      if (!e) { e = this.create(x, z); this.entries.set(key, e); }
-      const distance = Math.hypot((x + 0.5) * TILE_SIZE - position.x, (z + 0.5) * TILE_SIZE - position.z);
-      // Keep the original 2 cm mesh near the boots. Away from the viewer, morph
-      // to 4/8 cm meshes before swapping them; footprint shading stays in the
-      // same texture at every distance. Include the tile radius so its nearest
-      // edge keeps full detail within 3 m of the viewer.
-      const near = Math.max(0, distance - TILE_SIZE / Math.SQRT2);
-      if (near < 6) {
-        e.mesh.geometry = this.fine; e.coarseStep.value = (TILE_SIZE + 0.12) / 80;
-        e.morph.value = THREE.MathUtils.smoothstep(near, 3, 6);
-      } else if (near < 12) {
-        e.mesh.geometry = this.medium; e.coarseStep.value = (TILE_SIZE + 0.12) / 40;
-        e.morph.value = THREE.MathUtils.smoothstep(near, 8, 12);
-      } else if (distance < 22) {
-        e.mesh.geometry = this.coarse; e.coarseStep.value = (TILE_SIZE + 0.12) / 8;
-        e.morph.value = THREE.MathUtils.smoothstep(distance, 18, 22);
-      } else {
-        e.mesh.geometry = this.far; e.morph.value = 0;
-      }
-      e.mesh.castShadow = distance < 22;
-      const changed = e.signature !== signature;
-      const weather = this.field.weatherExposure - e.exposure > 0.0001;
-      if (changed || (weather && weatherBudget-- > 0)) {
-        if (!this.refresh(e, e.signature && !weather ? dirty ?? undefined : undefined)) {
-          this.empty.set(key, { signature: e.signature, exposure: e.exposure });
-          this.remove(key, e); this.field.forgetWeatheredTile(x, z);
+    const exposure = this.field.weatherExposure, rewound = exposure < this.previousExposure;
+    this.previousExposure = exposure;
+    const moved = this.lodPosition.x !== position.x || this.lodPosition.y !== position.z;
+    if (this.fieldRevision !== this.field.changeRevision || rewound) {
+      this.fieldRevision = this.field.changeRevision;
+      const dirty = this.field.takeDirty(), wanted = new Set<string>();
+      this.field.visitTiles((x, z) => {
+        const key = `${x},${z}`, signature = this.signature(x, z); wanted.add(key);
+        const oldEmpty = this.empty.get(key);
+        if (oldEmpty?.signature === signature && exposure >= oldEmpty.exposure) return;
+        let e = this.entries.get(key);
+        if (!e) {
+          e = this.create(x, z); this.entries.set(key, e);
+          if (!moved) this.updateLod(e, position);
         }
-      }
-    });
-    for (const [key, e] of this.entries) if (!wanted.has(key)) this.remove(key, e);
+        const weather = exposure - e.exposure > 0.0001;
+        if (e.signature !== signature || rewound)
+          this.refreshEntry(key, e, e.signature && !weather && !rewound ? dirty ?? undefined : undefined);
+      });
+      for (const [key, e] of this.entries) if (!wanted.has(key)) this.remove(key, e);
+      for (const key of this.empty.keys()) if (!wanted.has(key)) this.empty.delete(key);
+    }
+    if (moved) {
+      for (const e of this.entries.values()) this.updateLod(e, position);
+      this.lodPosition.set(position.x, position.z);
+    }
+    // The oldest full texture refresh is the first candidate. Unchanged frames
+    // need neither a history scan nor nine neighbour-signature lookups per tile.
+    const oldest = this.weatherQueue.entries().next().value;
+    if (oldest && exposure - oldest[1].exposure > 0.0001) this.refreshEntry(oldest[0], oldest[1]);
   }
   refreshAll() { for (const e of this.entries.values()) this.refresh(e); }
   stats() { return { meshes: this.entries.size, vertices: Array.from(this.entries.values()).reduce((n,e) => n + e.mesh.geometry.attributes.position.count, 0),

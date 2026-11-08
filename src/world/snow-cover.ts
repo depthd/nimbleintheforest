@@ -45,6 +45,7 @@ vec2 snowCover(vec3 p) {
 }`;
 
 export class SnowCover {
+  revision = 0;
   readonly zones: Zone[] = [];
   private bins = new Map<string, number[]>();
   constructor(private bounds: SnowRect) {}
@@ -52,7 +53,7 @@ export class SnowCover {
   remove(id: number) {
     const z = this.zones[id];
     if (!z) return;
-    z.y = -1e9;
+    z.y = -1e9; this.revision++;
     this.upload();
   }
   add(zone: SnowCoverZone): number {
@@ -60,7 +61,7 @@ export class SnowCover {
     const rx = Math.abs(c) * zone.hx + Math.abs(s) * zone.hz + SNOW_ROOF_FADE;
     const rz = Math.abs(s) * zone.hx + Math.abs(c) * zone.hz + SNOW_ROOF_FADE;
     const z: Zone = { ...zone, c, s, minX: zone.x-rx, maxX: zone.x+rx, minZ: zone.z-rz, maxZ: zone.z+rz };
-    const id = this.zones.push(z) - 1;
+    const id = this.zones.push(z) - 1; this.revision++;
     for (let iz=Math.floor(z.minZ/BIN); iz<=Math.floor(z.maxZ/BIN); iz++) for (let ix=Math.floor(z.minX/BIN); ix<=Math.floor(z.maxX/BIN); ix++) {
       const key=`${ix},${iz}`, ids=this.bins.get(key) ?? []; ids.push(id); this.bins.set(key,ids);
     }

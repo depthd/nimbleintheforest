@@ -11,9 +11,10 @@ import { Simplex2, clamp, lerp, smoothstep } from '../core/rng';
 import { Tex } from '../core/textures';
 import { noiseTexture } from '../core/noisetex';
 import { snowCoverShader, snowCoverUniforms } from './snow-cover';
+import { buildTerrainGeometry, terrainGeometrySteps, terrainLod, type TerrainGeometryData } from './terrain-geometry';
+import { splitGridGeometry } from './spatial-geometry';
 
 const CH = 64; // fine cells per chunk side
-const STEPS = [1, 2, 4, 8];
 const NEAR_K = 6; // chunks drawn individually: (2K+1)²
 
 /** uniforms shared by all ground materials (updated by the sky each frame) */
@@ -25,8 +26,8 @@ export const groundUniforms = {
   uNoise: { value: null as THREE.Texture | null },
   uRock: { value: null as THREE.Texture | null },
   uTreeline: { value: 160 },
-  uNearCenter: { value: new THREE.Vector2(0, 0) },
-  uNearHalf: { value: new THREE.Vector2(0, 0) },
+  uTerrainLoaded: { value: null as THREE.Texture | null },
+  uTerrainGrid: { value: 1 },
   uSunDir: { value: new THREE.Vector3(0, 1, 0) },
   uGlint: { value: 1 },
   uForestFar: { value: new THREE.Vector2(380, 620) },
@@ -88,7 +89,7 @@ varying float vLooseDepth;
 #endif
 ${snowCoverShader}
 uniform vec2 uOrigin; uniform float uSize; uniform sampler2D uBiome; uniform sampler2D uWaterTex; uniform sampler2D uNoise; uniform sampler2D uRock;
-uniform float uTreeline; uniform vec2 uNearCenter; uniform vec2 uNearHalf; uniform vec3 uSunDir; uniform float uGlint; uniform vec2 uForestFar;
+uniform float uTreeline; uniform sampler2D uTerrainLoaded; uniform float uTerrainGrid; uniform vec3 uSunDir; uniform float uGlint; uniform vec2 uForestFar;
 uniform float uWorldSnow; uniform vec4 uSnowPatch; uniform sampler2D uSnowTiles; uniform vec4 uSnowTileGrid;
 vec3 triRock(vec3 p, vec3 n) {
   vec3 w = pow(abs(n), vec3(4.0)); w /= (w.x + w.y + w.z);
@@ -99,7 +100,9 @@ vec3 triRock(vec3 p, vec3 n) {
         '#include <map_fragment>',
         /* glsl */ `
 #ifdef FAR_TERRAIN
-  if (abs(vWPos.x - uNearCenter.x) < uNearHalf.x && abs(vWPos.z - uNearCenter.y) < uNearHalf.y) discard;
+  vec2 terrainCell = floor((vWPos.xz + uOrigin) / 128.0);
+  if (all(greaterThanEqual(terrainCell,vec2(0.0))) && all(lessThan(terrainCell,vec2(uTerrainGrid)))
+    && texture2D(uTerrainLoaded,(terrainCell+0.5)/uTerrainGrid).r>0.5) discard;
 #endif
   if (uSnowCoverEnabled>0.5) {
 #ifndef SNOW_SURFACE
@@ -208,6 +211,8 @@ interface Slot {
   base?: THREE.Mesh;
   geos: (THREE.BufferGeometry | null)[];
   lod: number;
+  desired: number;
+  near: boolean;
   minY: number;
   maxY: number;
 }
@@ -226,9 +231,19 @@ export class Terrain {
   mat!: THREE.MeshStandardMaterial;
   farMat!: THREE.MeshStandardMaterial;
   far!: THREE.Mesh;
-  backdrop!: THREE.Mesh;
+  backdrop!: THREE.Group;
   private slots: Slot[] = [];
-  private indices: THREE.BufferAttribute[] = [];
+  private loaded!: THREE.DataTexture;
+  private loadedCells!: Uint8Array;
+  private background = false;
+  private worker: Worker | null = null;
+  private workerRevision = -1;
+  private nextJobId = 0;
+  private pending: { id: number; ci: number; cj: number; lod: number; revision: number } | null = null;
+  private fallback: Generator<void, TerrainGeometryData> | null = null;
+  private ready: { ci: number; cj: number; lod: number; revision: number; geometry: TerrainGeometryData } | null = null;
+  private completedJobs = 0;
+  private discardedJobs = 0;
   private cpc: number; // chunks per side
   private group = new THREE.Group();
 
@@ -272,6 +287,7 @@ export class Terrain {
     this.snowAttributes(this.far.geometry,0,0,false);
     const farBase=new THREE.Mesh(this.far.geometry,makeGroundMaterial(true,false,true));
     farBase.frustumCulled=false;farBase.name='packed-snow-far';this.far.add(farBase);
+    this.startBackgroundMeshing();
   }
   private attachBase(s:Slot) {
     if(!this.packedMaterial || !s.mesh || s.base)return;
@@ -328,11 +344,14 @@ export class Terrain {
     this.farMat = makeGroundMaterial(true);
     G.scene.add(this.group);
 
-    // index buffers (grid + skirt) per LOD
-    for (const s of STEPS) this.indices.push(this.makeIndex(CH / s + 1));
+    this.loadedCells = new Uint8Array(this.cpc * this.cpc);
+    this.loaded = new THREE.DataTexture(this.loadedCells, this.cpc, this.cpc, THREE.RedFormat);
+    this.loaded.minFilter = this.loaded.magFilter = THREE.NearestFilter;
+    this.loaded.needsUpdate = true;
+    U.uTerrainLoaded.value = this.loaded; U.uTerrainGrid.value = this.cpc;
     for (let cj = 0; cj < this.cpc; cj++) for (let ci = 0; ci < this.cpc; ci++) {
       const { minY, maxY } = this.chunkRange(ci, cj);
-      this.slots.push({ ci, cj, mesh: null, geos: [null, null, null, null], lod: -1, minY, maxY });
+      this.slots.push({ ci, cj, mesh: null, geos: [null, null, null, null], lod: -1, desired: -1, near: false, minY, maxY });
     }
     this.buildPhysics();
     this.buildFar();
@@ -350,102 +369,92 @@ export class Terrain {
     return { minY: mn - 4, maxY: mx + 2 };
   }
 
-  private makeIndex(m: number) {
-    const idx: number[] = [];
-    for (let b = 0; b < m - 1; b++) for (let a = 0; a < m - 1; a++) {
-      const v = b * m + a;
-      // same diagonal on every quad
-      idx.push(v, v + m, v + 1, v + 1, v + m, v + m + 1);
-    }
-    // skirts: one ring of extra vertices after the grid, in the order top, right, bottom, left
-    const base = m * m;
-    const edge = (k: number, side: number) => {
-      switch (side) {
-        case 0: return k; // b = 0
-        case 1: return k * m + (m - 1); // a = m-1
-        case 2: return (m - 1) * m + (m - 1 - k); // b = m-1, reversed
-        default: return (m - 1 - k) * m; // a = 0, reversed
-      }
-    };
-    for (let side = 0; side < 4; side++) {
-      for (let k = 0; k < m - 1; k++) {
-        const a = edge(k, side), b = edge(k + 1, side);
-        const sa = base + side * m + k, sb = base + side * m + k + 1;
-        idx.push(a, sa, b, b, sa, sb);
-      }
-    }
-    return new THREE.BufferAttribute(new Uint32Array(idx), 1);
+  private snowSource() {
+    return this.snowHeightAt ? { heightAt: this.snowHeightAt, detailedAt: this.snowDetailedAt ?? undefined } : undefined;
   }
 
-  private makeGeometry(ci: number, cj: number, lod: number) {
-    const s = STEPS[lod];
-    const m = CH / s + 1;
-    const H = this.R.h, nf = this.n + 1;
-    const pos = new Array<number>((m * m + 4 * m) * 3).fill(0);
-    const nrm = new Array<number>(pos.length).fill(0);
-    const i0 = ci * CH, j0 = cj * CH;
-    const hAt = (i: number, j: number) => {
-      i=clamp(i,0,this.n-1e-7);j=clamp(j,0,this.n-1e-7);
-      const ix=Math.floor(i),iz=Math.floor(j),u=i-ix,v=j-iz,k=iz*nf+ix;
-      return u+v<=1?H[k]+(H[k+1]-H[k])*u+(H[k+nf]-H[k])*v:H[k+nf+1]+(H[k+nf]-H[k+nf+1])*(1-u)+(H[k+1]-H[k+nf+1])*(1-v);
-    };
-    const span = s;
-    const setV = (o: number, a: number, b: number, drop: number, height?:number) => {
-      const i = i0 + a * s, j = j0 + b * s;
-      const h = height ?? hAt(i, j);
-      pos[o * 3] = a * s * 2;
-      pos[o * 3 + 1] = h - drop;
-      pos[o * 3 + 2] = b * s * 2;
-      const dx = hAt(i + span, j) - hAt(i - span, j);
-      const dz = hAt(i, j + span) - hAt(i, j - span);
-      const L = Math.hypot(dx, 4 * span, dz);
-      nrm[o * 3] = -dx / L;
-      nrm[o * 3 + 1] = (4 * span) / L;
-      nrm[o * 3 + 2] = -dz / L;
-    };
-    for (let b = 0; b < m; b++) for (let a = 0; a < m; a++) setV(b * m + a, a, b, 0);
-    const drop = 1.5 + s * 1.5;
-    const base = m * m;
-    for (let k = 0; k < m; k++) {
-      setV(base + k, k, 0, drop);
-      setV(base + m + k, m - 1, k, drop);
-      setV(base + 2 * m + k, m - 1 - k, m - 1, drop);
-      setV(base + 3 * m + k, 0, m - 1 - k, drop);
-    }
-    let index: THREE.BufferAttribute | number[] = this.indices[lod];
-    let packed:THREE.BufferGeometry | undefined;
-    if(this.snowDetailedAt) {
-      // The immutable base remains the original terrain triangles: refining its
-      // collinear vertices would spend GPU work without changing its surface.
-      packed=new THREE.BufferGeometry();
-      packed.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));packed.setAttribute('normal',new THREE.Float32BufferAttribute(nrm,3));
-      packed.setAttribute('aSnowDepth',new THREE.BufferAttribute(new Float32Array(pos.length/3),1));packed.setIndex(this.indices[lod]);
-      const indices:number[]=[],sub=lod===0?8:4,originX=ci*CH*2-this.R.ox,originZ=cj*CH*2-this.R.oz;
-      for(let b=0;b<m-1;b++)for(let a=0;a<m-1;a++) {
-        const v=b*m+a;
-        if(!this.snowDetailedAt(originX+a*s*2,originZ+b*s*2,s*2)) {indices.push(v,v+m,v+1,v+1,v+m,v+m+1);continue;}
-        const grid:number[]=[];
-        const h00=pos[v*3+1],h10=pos[(v+1)*3+1],h01=pos[(v+m)*3+1],h11=pos[(v+m+1)*3+1];
-        for(let z=0;z<=sub;z++)for(let x=0;x<=sub;x++) {
-          const u=x/sub,w=z/sub,id=pos.length/3;
-          const h=u+w<=1?h00+(h10-h00)*u+(h01-h00)*w:h11+(h01-h11)*(1-u)+(h10-h11)*(1-w);
-          setV(id,a+u,b+w,0,h);grid.push(id);
-          if(x && z){const k=z*(sub+1)+x,aa=grid[k-sub-2],bb=grid[k-sub-1],cc=grid[k-1],dd=grid[k];indices.push(aa,cc,bb,bb,cc,dd);}
-        }
-      }
-      const skirts=this.indices[lod].array;for(let i=(m-1)*(m-1)*6;i<skirts.length;i++)indices.push(skirts[i]);
-      index=indices;
-    }
+  private geometryFromData(data: TerrainGeometryData, ci: number, cj: number) {
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
-    g.setIndex(index);
-    this.snowAttributes(g,ci*CH*2-this.R.ox,cj*CH*2-this.R.oz);
+    g.setAttribute('position', new THREE.BufferAttribute(data.position, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(data.normal, 3));
+    g.setAttribute('aSnowDepth', new THREE.BufferAttribute(data.depth, 1));
+    g.setAttribute('aSnowNormal', new THREE.BufferAttribute(data.snowNormal, 3));
+    g.setIndex(new THREE.BufferAttribute(data.index, 1));
     const slot = this.slots[cj * this.cpc + ci];
     g.boundingBox = new THREE.Box3(new THREE.Vector3(0, slot.minY, 0), new THREE.Vector3(CH * 2, slot.maxY, CH * 2));
     g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere());
-    if(packed){packed.boundingBox=g.boundingBox;packed.boundingSphere=g.boundingSphere;g.userData.packedGeometry=packed;}
+    if (data.packed) {
+      const packed = new THREE.BufferGeometry();
+      packed.setAttribute('position', new THREE.BufferAttribute(data.packed.position, 3));
+      packed.setAttribute('normal', new THREE.BufferAttribute(data.packed.normal, 3));
+      packed.setAttribute('aSnowDepth', new THREE.BufferAttribute(new Float32Array(data.packed.position.length / 3), 1));
+      packed.setIndex(new THREE.BufferAttribute(data.packed.index, 1));
+      packed.boundingBox = g.boundingBox; packed.boundingSphere = g.boundingSphere;
+      g.userData.packedGeometry = packed;
+    }
     return g;
+  }
+
+  private makeGeometry(ci: number, cj: number, lod: number) {
+    return this.geometryFromData(buildTerrainGeometry(this.R, ci, cj, lod, this.snowSource()), ci, cj);
+  }
+
+  private startBackgroundMeshing() {
+    this.background = true;
+    if (typeof Worker === 'undefined') return;
+    try {
+      const worker = new Worker(new URL('./terrain-worker.ts', import.meta.url), { type: 'module' });
+      this.worker = worker;
+      worker.onmessage = ({ data }) => {
+        if (data.id !== this.pending?.id) return;
+        this.ready = data; this.pending = null; this.completedJobs++;
+      };
+      const fail = (event?: Event) => {
+        // A blocked/unsupported worker uses the very same generator, spread
+        // across frames. Never fall back to an unbounded synchronous chunk.
+        event?.preventDefault(); worker.terminate(); this.worker = null;
+        if (this.pending) this.fallback = terrainGeometrySteps(this.R, this.pending.ci, this.pending.cj, this.pending.lod, this.snowSource());
+      };
+      worker.onerror = fail;
+      worker.onmessageerror = fail;
+      const r = this.R;
+      this.workerRevision = G.snowCover.revision;
+      // Structured clone intentionally leaves the live height/water buffers
+      // attached: Rapier, snow and gameplay continue using them on this thread.
+      worker.postMessage({ type: 'init', region: { h: r.h, water: r.water, n: r.n, size: r.size, ox: r.ox, oz: r.oz },
+        zones: G.snowCover.zones, revision: this.workerRevision });
+    } catch { this.worker?.terminate(); this.worker = null; }
+  }
+
+  private requestGeometry(slot: Slot) {
+    const job = { id: ++this.nextJobId, ci: slot.ci, cj: slot.cj, lod: slot.desired, revision: G.snowCover.revision };
+    this.pending = job;
+    if (this.worker) {
+      const zones = job.revision !== this.workerRevision ? G.snowCover.zones : undefined;
+      this.workerRevision = job.revision;
+      try { this.worker.postMessage({ ...job, zones }); }
+      catch {
+        this.worker.terminate(); this.worker = null;
+        this.fallback = terrainGeometrySteps(this.R, job.ci, job.cj, job.lod, this.snowSource());
+      }
+    } else this.fallback = terrainGeometrySteps(this.R, job.ci, job.cj, job.lod, this.snowSource());
+  }
+
+  private advanceFallback() {
+    if (!this.fallback || !this.pending) return;
+    const deadline = performance.now() + 1.5;
+    do {
+      const next = this.fallback.next();
+      if (next.done) {
+        this.ready = { ...this.pending, geometry: next.value };
+        this.pending = null; this.fallback = null; this.completedJobs++; return;
+      }
+    } while (performance.now() < deadline);
+  }
+
+  streamingStats() {
+    return { worker: !!this.worker, pending: !!this.pending, completed: this.completedJobs, discarded: this.discardedJobs,
+      readyChunks: this.loadedCells.reduce((n, v) => n + (v ? 1 : 0), 0) };
   }
 
   private buildPhysics() {
@@ -528,76 +537,73 @@ export class Terrain {
     g.setIndex(idx);
     g.computeVertexNormals();
     solidGroundGeometry(g);
-    this.backdrop = new THREE.Mesh(g, this.farMat);
-    this.backdrop.frustumCulled = false;
+    // Preserve the exact horizon mesh and shared normals, but submit only the
+    // spatial tiles intersecting the camera instead of the entire 17 km ring.
+    this.backdrop = new THREE.Group();
+    for (const tile of splitGridGeometry(g, m - 1)) this.backdrop.add(new THREE.Mesh(tile, this.farMat));
     this.backdrop.name = 'backdrop';
     G.scene.add(this.backdrop);
   }
 
-  /** Pick the level of detail for chunks around the camera. */
+  /** Pick existing geometry immediately; request missing geometry off-thread.
+   * Explicit bulk budgets are reserved for loading/teleport inspection tools. */
   update(cam: THREE.Vector3, budget = 6) {
-    const R = this.R;
-    const cs = CH * 2;
+    const R = this.R, cs = CH * 2, synchronous = !this.background || budget > 6;
     const cci = clamp(Math.floor((cam.x + R.ox) / cs), 0, this.cpc - 1);
     const ccj = clamp(Math.floor((cam.z + R.oz) / cs), 0, this.cpc - 1);
     const i0 = Math.max(0, cci - NEAR_K), i1 = Math.min(this.cpc - 1, cci + NEAR_K);
     const j0 = Math.max(0, ccj - NEAR_K), j1 = Math.min(this.cpc - 1, ccj + NEAR_K);
-    // the far mesh is cut out exactly where the near chunks are
-    groundUniforms.uNearCenter.value.set(((i0 + i1 + 1) / 2) * cs - R.ox, ((j0 + j1 + 1) / 2) * cs - R.oz);
-    groundUniforms.uNearHalf.value.set(((i1 - i0 + 1) / 2) * cs, ((j1 - j0 + 1) / 2) * cs);
-    for (const s of this.slots) {
-      const inNear = s.ci >= i0 && s.ci <= i1 && s.cj >= j0 && s.cj <= j1;
-      if (!inNear) {
+    let wanted: Slot | null = null, closest = Infinity, maskChanged = false;
+    for (const s of this.slots) s.near = s.ci >= i0 && s.ci <= i1 && s.cj >= j0 && s.cj <= j1;
+    if (this.ready) {
+      const data = this.ready, s = this.slots[data.cj * this.cpc + data.ci];
+      if (s.near && !s.geos[data.lod] && data.revision === G.snowCover.revision)
+        s.geos[data.lod] = this.geometryFromData(data.geometry, data.ci, data.cj);
+      else this.discardedJobs++;
+      this.ready = null;
+    }
+    for (let k = 0; k < this.slots.length; k++) {
+      const s = this.slots[k];
+      if (!s.near) {
         if (s.mesh) s.mesh.visible = false;
-        // Refined shore/roof geometry is local rendering data. Long journeys
-        // must not retain every detailed mesh from previously visited regions.
-        if(s.mesh && s.lod<2){this.group.remove(s.mesh);s.mesh=null;s.base=undefined;s.lod=-1;}
-        for(let l=0;l<2;l++)if(s.geos[l]){this.disposeGeometry(s.geos[l]!);s.geos[l]=null;}
+        if (s.mesh && s.lod < 2) { this.group.remove(s.mesh); s.mesh = null; s.base = undefined; s.lod = -1; }
+        for (let l = 0; l < 2; l++) if (s.geos[l]) { this.disposeGeometry(s.geos[l]!); s.geos[l] = null; }
+        s.desired = -1;
+        if (this.loadedCells[k]) { this.loadedCells[k] = 0; maskChanged = true; }
         continue;
       }
       const x0 = s.ci * cs - R.ox, z0 = s.cj * cs - R.oz;
-      const dx = Math.max(x0 - cam.x, 0, cam.x - (x0 + cs));
-      const dz = Math.max(z0 - cam.z, 0, cam.z - (z0 + cs));
-      const dy = Math.max(s.minY - cam.y, 0, cam.y - s.maxY);
-      const d = Math.hypot(dx, dz, dy * 0.5);
-      const want = d < 150 ? 0 : d < 330 ? 1 : d < 620 ? 2 : 3;
-      let lod = want;
+      const dx = Math.max(x0 - cam.x, 0, cam.x - x0 - cs), dz = Math.max(z0 - cam.z, 0, cam.z - z0 - cs);
+      const dy = Math.max(s.minY - cam.y, 0, cam.y - s.maxY), d = Math.hypot(dx, dz, dy * .5);
+      s.desired = terrainLod(d, s.desired);
+      let lod = s.desired;
       if (!s.geos[lod]) {
-        if (budget > 0 || lod === 3) {
-          s.geos[lod] = this.makeGeometry(s.ci, s.cj, lod);
-          budget--;
-        } else {
-          // use whatever is ready, building the cheapest one if needed
-          lod = s.geos.findIndex((g) => g !== null);
-          if (lod < 0) {
-            lod = 3;
-            s.geos[3] = this.makeGeometry(s.ci, s.cj, 3);
-          }
+        if (synchronous && (budget > 0 || lod === 3)) { s.geos[lod] = this.makeGeometry(s.ci, s.cj, lod); budget--; }
+        else {
+          if (d < closest) { closest = d; wanted = s; }
+          // Keep the previous surface until its replacement is ready. A new
+          // chunk uses the far map, whose mask changes only after installation.
+          lod = s.lod >= 0 && s.geos[s.lod] ? s.lod : s.geos.findIndex(g => g !== null);
         }
       }
+      if (lod < 0) continue;
       if (!s.mesh) {
-        s.mesh = new THREE.Mesh(s.geos[lod]!, this.mat);
-        s.mesh.position.set(x0, 0, z0);
-        s.mesh.receiveShadow = true;
+        s.mesh = new THREE.Mesh(s.geos[lod]!, this.mat); s.mesh.position.set(x0, 0, z0);
+        s.mesh.receiveShadow = true; s.mesh.name = 'terrain';
         if (this.snowDepthMaterial) s.mesh.customDepthMaterial = this.snowDepthMaterial;
-        s.mesh.name = 'terrain';
-        this.group.add(s.mesh);
-        this.attachBase(s);
+        this.group.add(s.mesh); this.attachBase(s);
       }
       if (s.lod !== lod) {
-        s.mesh.geometry = s.geos[lod]!;
-        s.lod = lod;
-        s.mesh.castShadow = lod <= 1;
-        if(s.base){s.base.geometry=s.geos[lod]!.userData.packedGeometry ?? s.geos[lod]!;s.base.castShadow=lod<=1;}
+        s.mesh.geometry = s.geos[lod]!; s.lod = lod; s.mesh.castShadow = lod <= 1;
+        if (s.base) { s.base.geometry = s.geos[lod]!.userData.packedGeometry ?? s.geos[lod]!; s.base.castShadow = lod <= 1; }
       }
       s.mesh.visible = true;
-      // free detailed geometry of chunks far away
-      if (want >= 2) {
-        for (let l = 0; l < 2; l++) if (s.geos[l] && l !== lod) {
-          this.disposeGeometry(s.geos[l]!);
-          s.geos[l] = null;
-        }
-      }
+      if (!this.loadedCells[k]) { this.loadedCells[k] = 255; maskChanged = true; }
+    }
+    if (maskChanged) this.loaded.needsUpdate = true;
+    if (!synchronous) {
+      if (!this.pending && wanted) this.requestGeometry(wanted);
+      this.advanceFallback();
     }
   }
 }

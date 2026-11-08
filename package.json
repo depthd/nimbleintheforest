@@ -31,7 +31,12 @@
     "test:rock-browser": "node tests/rock-browser.cjs",
     "test:caves": "node tests/caves.cjs",
     "test:corpses-browser": "node tests/corpses-browser.cjs",
-    "test:caves-browser": "node tests/caves-browser.cjs"
+    "test:caves-browser": "node tests/caves-browser.cjs",
+    "test:terrain-geometry": "node tests/terrain-geometry.cjs",
+    "test:forest-instances": "node tests/forest-instances.cjs",
+    "test:spatial-geometry": "node tests/spatial-geometry.cjs",
+    "test:terrain-streaming-browser": "node tests/terrain-streaming-browser.cjs",
+    "test:corpse-mesh": "node tests/corpse-mesh.cjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",
