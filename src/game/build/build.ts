@@ -5,14 +5,19 @@
 // parts that lost their support, tip over or break come loose and fall as ordinary
 // pieces — the very same pieces, which you can pick up and use. A broken beam breaks
 // at the point where it was overloaded.
+//
+// Standing parts cost little: their colliders all sit on one fixed body, and each
+// structure is drawn as one mesh per material. A part that changes is taken out of that
+// mesh at once and drawn on its own; the mesh is redrawn when the structure is quiet.
 import * as THREE from 'three';
+import type RAPIER_T from '@dimforge/rapier3d-compat';
 import { G, GROUPS_STATIC, msg } from '../ctx';
 import { Entity } from '../entities';
+import { MergedMeshes } from '../merge';
 import { category, cutAt, pieceName, WoodPiece } from '../wood/piece';
 import { attachColliders, spawnPiece, tip, woodObject } from '../wood/wood';
-import { analyze, findRests, halfThickness, JointKind, pointAt, SJoint, SLoad, snowShape, SPart } from './statics';
+import { analyze, Analysis, findRests, halfThickness, JointKind, pointAt, recheck, SJoint, SLoad, snowShape, SPart } from './statics';
 import { Placement } from './place';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export interface Structure {
   id: number;
@@ -33,9 +38,19 @@ export interface Structure {
   collapsed: boolean;
   /** parts it had when built (to tell when it is mostly gone) */
   built: number;
-  /** all standing parts drawn as one mesh per material */
-  group: THREE.Group | null;
+  /** standing parts drawn as one mesh per material */
+  mesh: MergedMeshes | null;
+  /** redraw at once (just built, joined with another one) */
   meshDirty: boolean;
+  /** parts drawn on their own until the next redraw: changed or added since */
+  solo: Set<Entity>;
+  /** when a part last changed (performance.now()): redrawn once it has been quiet */
+  changedAt: number;
+  /**
+   * The last analysis: reused for the parts that did not change, and, when nothing failed
+   * and nothing changed since (clean), to check one part alone after a notch.
+   */
+  last: { a: Analysis; clean: boolean } | null;
 }
 
 export interface PartData {
@@ -47,6 +62,8 @@ export interface PartData {
 
 /** settled snow, kg/m³ */
 const SNOW_DENSITY = 160;
+/** a structure is redrawn as one mesh when nothing in it changed for this long, ms */
+const QUIET_MS = 2500;
 const X = new THREE.Vector3(1, 0, 0);
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -68,11 +85,21 @@ export class BuildSystem {
   placement = new Placement();
   private nextId = 1;
   private snowT = 0;
+  /** one fixed body holds the colliders of all the parts */
+  private body: RAPIER_T.RigidBody | null = null;
 
   structure(name: string): Structure {
-    const s: Structure = { id: this.nextId++, name, parts: new Map(), joints: [], snow: 0, checkedSnow: 0, dirty: true, collapsed: false, built: 0, group: null, meshDirty: true };
+    const s: Structure = {
+      id: this.nextId++, name, parts: new Map(), joints: [], snow: 0, checkedSnow: 0, dirty: true, collapsed: false, built: 0,
+      mesh: null, meshDirty: true, solo: new Set(), changedAt: 0, last: null,
+    };
     this.structures.push(s);
     return s;
+  }
+
+  private fixedBody() {
+    if (!this.body) this.body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed());
+    return this.body;
   }
 
   of(e: Entity | null | undefined): Structure | null {
@@ -120,10 +147,14 @@ export class BuildSystem {
     into.snow = Math.max(into.snow, from.snow);
     into.built += from.built;
     into.meshDirty = true;
-    if (from.group) {
-      from.group.removeFromParent();
-      from.group = null;
+    // drawn on their own until the joined structure is redrawn (this frame)
+    for (const e of from.parts.values()) {
+      into.solo.add(e);
+      if (e.obj && e.obj.parent !== G.scene) G.scene.add(e.obj);
     }
+    from.mesh?.dispose();
+    from.mesh = null;
+    from.solo.clear();
     from.parts.clear();
     from.joints = [];
     const i = this.structures.indexOf(from);
@@ -131,90 +162,72 @@ export class BuildSystem {
     into.dirty = true;
   }
 
+  /**
+   * A static part: its colliders go on the shared fixed body in the part's pose, its
+   * object stays out of the scene (the structure's mesh draws it) and only keeps the pose.
+   */
   private makeStatic(e: Entity, pos: THREE.Vector3, quat: THREE.Quaternion) {
-    const body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed().setTranslation(pos.x, pos.y, pos.z).setRotation({ x: quat.x, y: quat.y, z: quat.z, w: quat.w }));
-    e.body = body;
+    e.body = null;
     e.colliders = [];
-    attachColliders(e, body, GROUPS_STATIC);
     if (!e.obj) e.obj = woodObject(e);
     e.obj.userData.entity = e;
+    e.obj.removeFromParent();
+    e.obj.visible = true;
     e.obj.position.copy(pos);
     e.obj.quaternion.copy(quat);
-    G.scene.add(e.obj);
-    // drawn as part of the structure's merged mesh
-    e.obj.visible = false;
+    attachColliders(e, this.fixedBody(), GROUPS_STATIC, e.obj);
     e.inWorld = true;
     e.kind = 'part';
     G.entities.add(e);
     this.updateSnowMesh(e);
-    const pd = e.data.part as PartData;
-    pd.s.meshDirty = true;
+    // drawn on its own until its structure is redrawn with it
+    this.solo((e.data.part as PartData).s, e);
   }
 
-  /** A part changed shape in place (a notch): redraw it with its structure. */
-  partChanged(e: Entity) {
+  /** Draw a part on its own (it changed, or is new) until its structure is redrawn. */
+  private solo(s: Structure, e: Entity) {
+    s.mesh?.hide(e.id);
+    s.solo.add(e);
+    if (e.obj && e.obj.parent !== G.scene) G.scene.add(e.obj);
+    s.changedAt = performance.now();
+  }
+
+  /** The structure no longer draws this part (it came loose or is gone). */
+  private unsolo(s: Structure, e: Entity) {
+    s.mesh?.hide(e.id);
+    s.solo.delete(e);
+    s.changedAt = performance.now();
+  }
+
+  /** A part changed shape in place (a notch, a branch lopped): draw it on its own for now. */
+  partChanged(e: Entity, colliders = false) {
     const pd = e.data.part as PartData | undefined;
     if (!pd || !e.obj) return;
-    e.obj.visible = false;
+    if (colliders) {
+      for (const c of e.colliders) {
+        G.entities.byCollider.delete(c.handle);
+        G.world.removeCollider(c, true);
+      }
+      e.colliders = [];
+      attachColliders(e, this.fixedBody(), GROUPS_STATIC, e.obj);
+      pd.s.dirty = true;
+    }
     pd.snowMesh = undefined;
     this.updateSnowMesh(e);
-    pd.s.meshDirty = true;
+    this.solo(pd.s, e);
   }
 
   /** Merge the standing parts of a structure into one mesh per material. */
   private rebuildMesh(s: Structure) {
     s.meshDirty = false;
-    if (s.group) {
-      s.group.removeFromParent();
-      s.group.traverse((c) => (c as THREE.Mesh).isMesh && (c as THREE.Mesh).geometry.dispose());
-      s.group = null;
-    }
+    s.mesh?.dispose();
+    s.mesh = null;
+    for (const e of s.solo) e.obj?.removeFromParent();
+    s.solo.clear();
     if (!s.parts.size) return;
-    const buckets = new Map<THREE.Material, THREE.BufferGeometry[]>();
-    const put = (m: THREE.Material, g: THREE.BufferGeometry) => {
-      if (!buckets.has(m)) buckets.set(m, []);
-      buckets.get(m)!.push(g);
-    };
-    for (const e of s.parts.values()) {
-      const o = e.obj;
-      if (!o) continue;
-      o.updateMatrixWorld(true);
-      o.traverse((c) => {
-        const me = c as THREE.Mesh;
-        if (!me.isMesh || (me !== o && !me.visible && me === (e.data.part as PartData).snowMesh)) return;
-        const base = me.geometry;
-        const mats = Array.isArray(me.material) ? me.material : [me.material];
-        const groups = Array.isArray(me.material) && base.groups.length ? base.groups : [{ start: 0, count: base.index ? base.index.count : base.attributes.position.count, materialIndex: 0 }];
-        for (const gr of groups) {
-          const m = mats[gr.materialIndex ?? 0];
-          if (!m) continue;
-          let g: THREE.BufferGeometry;
-          if (base.index) {
-            g = new THREE.BufferGeometry();
-            for (const k of Object.keys(base.attributes)) g.setAttribute(k, base.attributes[k]);
-            g.setIndex(Array.from((base.index.array as ArrayLike<number>)).slice(gr.start, gr.start + gr.count));
-            g = g.toNonIndexed();
-          } else g = base.clone();
-          g.applyMatrix4(me.matrixWorld);
-          put(m, g);
-        }
-      });
-    }
-    const group = new THREE.Group();
-    for (const [m, list] of buckets) {
-      // keep the attributes they all have
-      const keys = Object.keys(list[0].attributes).filter((k) => list.every((g) => g.attributes[k]));
-      for (const g of list) for (const k of Object.keys(g.attributes)) if (!keys.includes(k)) g.deleteAttribute(k);
-      const merged = list.length === 1 ? list[0] : mergeGeometries(list, false);
-      if (!merged) continue;
-      merged.computeBoundingSphere();
-      const mesh = new THREE.Mesh(merged, m);
-      mesh.castShadow = m !== snowMat();
-      mesh.receiveShadow = true;
-      group.add(mesh);
-    }
-    G.scene.add(group);
-    s.group = group;
+    const members = [...s.parts.values()].filter((e) => e.obj).map((e) => ({ id: e.id, obj: e.obj! }));
+    s.mesh = new MergedMeshes(members);
+    G.scene.add(s.mesh.group);
   }
 
   /** A joint with the ground (b = -1) or another part. */
@@ -313,7 +326,7 @@ export class BuildSystem {
     let best: number | null = G.terrain.heightAt(c.x, c.z);
     if (c.y - best > range) best = null;
     const ray = new G.R.Ray({ x: c.x, y: c.y + 0.05, z: c.z }, { x: 0, y: -1, z: 0 });
-    const hit = G.world.castRay(ray, range + 0.05, true, undefined, undefined, undefined, self.body ?? undefined);
+    const hit = G.world.castRay(ray, range + 0.05, true, undefined, undefined, undefined, undefined, (col) => G.entities.byCollider.get(col.handle) !== self);
     if (hit) {
       const other = G.entities.byCollider.get(hit.collider.handle);
       const isPart = other?.kind === 'part';
@@ -328,8 +341,7 @@ export class BuildSystem {
 
   spart(e: Entity): SPart {
     const pd = e.data.part as PartData;
-    const t = e.body!.translation(), r = e.body!.rotation();
-    return { id: e.id, piece: e.data.wood as WoodPiece, pos: new THREE.Vector3(t.x, t.y, t.z), quat: new THREE.Quaternion(r.x, r.y, r.z, r.w), moisture: e.moisture, roof: pd?.roof ?? 0 };
+    return { id: e.id, piece: e.data.wood as WoodPiece, pos: e.obj!.position.clone(), quat: e.obj!.quaternion.clone(), moisture: e.moisture, roof: pd?.roof ?? 0 };
   }
 
   /** Work out the statics and let go whatever can't stand. Returns the parts that fell. */
@@ -342,8 +354,9 @@ export class BuildSystem {
       const parts = new Map<number, SPart>();
       for (const [id, e] of s.parts) parts.set(id, this.spart(e));
       const load = s.snow * SNOW_DENSITY;
-      const r = analyze(parts, s.joints, load, this.liveLoads(s));
+      const r = analyze(parts, s.joints, load, this.liveLoads(s), s.last?.a);
       s.checkedSnow = load;
+      s.last = { a: r, clean: !r.failures.length };
       for (const e of s.parts.values()) e.data.pressed = 0;
       for (const [id, st] of r.state) {
         const e = s.parts.get(id);
@@ -417,7 +430,7 @@ export class BuildSystem {
   }
 
   /** loose pieces resting on structures: what each one presses on */
-  loose = new Map<number, { s: Structure; loads: SLoad[]; impact: number; until: number }>();
+  loose = new Map<number, { e: Entity; s: Structure; loads: SLoad[]; impact: number; until: number }>();
   private looseT = 0;
 
   /**
@@ -468,12 +481,12 @@ export class BuildSystem {
       const hit = !old ? Math.min(8, 1 + (e.data.fast * e.data.fast) / (2 * 9.81 * 0.06)) : 1;
       const was = old ? old.loads.reduce((a, x) => a + x.F.length(), 0) : 0;
       const now = loads.reduce((a, x) => a + x.F.length(), 0);
-      this.loose.set(e.id, { s, loads, impact: hit, until: hit > 1.5 ? performance.now() + 250 : old?.until ?? 0 });
+      this.loose.set(e.id, { e, s, loads, impact: hit, until: hit > 1.5 ? performance.now() + 250 : old?.until ?? 0 });
       if (hit > 1.5 || Math.abs(now - was) > 150) s.dirty = true;
     }
     for (const [id, l] of this.loose) {
-      const e = G.entities.list.find((x) => x.id === id);
-      if (!e || e.removed || !e.inWorld || e.kind !== 'item') {
+      const e = l.e;
+      if (e.removed || !e.inWorld || e.kind !== 'item') {
         this.loose.delete(id);
         l.s.dirty = true;
       }
@@ -482,8 +495,7 @@ export class BuildSystem {
 
   /** A part comes loose and falls as an ordinary piece (the same entity). */
   release(s: Structure, e: Entity, vel?: THREE.Vector3) {
-    const t = e.body!.translation(), r = e.body!.rotation();
-    const pos = new THREE.Vector3(t.x, t.y, t.z), quat = new THREE.Quaternion(r.x, r.y, r.z, r.w);
+    const pos = e.obj!.position.clone(), quat = e.obj!.quaternion.clone();
     this.detach(s, e);
     G.entities.removeFromWorld(e);
     e.kind = 'item';
@@ -504,15 +516,14 @@ export class BuildSystem {
     s.parts.delete(e.id);
     s.joints = s.joints.filter((j) => j.a !== e.id && j.b !== e.id);
     s.dirty = true;
-    s.meshDirty = true;
+    this.unsolo(s, e);
   }
 
   /** Overloaded: the piece snaps at u and both halves fall. */
   private breakPart(s: Structure, e: Entity, u: number) {
     const p = e.data.wood as WoodPiece;
     if (u < 0.05 || u > p.len - 0.05) return [this.release(s, e)];
-    const t = e.body!.translation(), r = e.body!.rotation();
-    const T = new THREE.Vector3(t.x, t.y, t.z), Q = new THREE.Quaternion(r.x, r.y, r.z, r.w);
+    const T = e.obj!.position.clone(), Q = e.obj!.quaternion.clone();
     this.detach(s, e);
     const [a, b] = cutAt(p, u);
     // a break is a ragged tear, not a clean cut: no notch shapes the ends
@@ -533,15 +544,14 @@ export class BuildSystem {
     if (!s) return;
     const p = e.data.wood as WoodPiece;
     const pd = e.data.part as PartData;
-    const t = e.body!.translation(), r = e.body!.rotation();
-    const T = new THREE.Vector3(t.x, t.y, t.z), Q = new THREE.Quaternion(r.x, r.y, r.z, r.w);
+    const T = e.obj!.position.clone(), Q = e.obj!.quaternion.clone();
     const [a, b] = cutAt(p, uc);
     const old = s.joints.filter((j) => j.a === e.id || j.b === e.id);
     s.parts.delete(e.id);
     s.joints = s.joints.filter((j) => j.a !== e.id && j.b !== e.id);
     pd.snowMesh?.removeFromParent();
+    this.unsolo(s, e);
     G.entities.destroy(e);
-    s.meshDirty = true;
     const ca = new THREE.Vector3(uc / 2 - p.len / 2, 0, 0).applyQuaternion(Q).add(T);
     const cb = new THREE.Vector3(uc + (p.len - uc) / 2 - p.len / 2, 0, 0).applyQuaternion(Q).add(T);
     const ea = this.placePart(s, a, ca, Q.clone(), e.moisture, pd.roof);
@@ -564,6 +574,17 @@ export class BuildSystem {
     const s = this.of(e);
     if (!s) return;
     tip('part', 'Каждая деталь постройки держит то, что на ней лежит. Подрубленная деталь слабеет в месте зарубки; если она не выдержит или потеряет опору — упадёт, а с ней и всё, что она держала.');
+    // a notch only weakens this part: check it alone with the loads it had; the whole
+    // structure only if it gives way
+    const input = !s.dirty && !this.hold && s.last?.clean ? s.last.a.inputs.get(e.id) : undefined;
+    if (input) {
+      const st = recheck(this.spart(e), input, s.last!.a.snow);
+      e.data.load = st.ratio;
+      if (st.ratio <= 1) {
+        if (st.ratio > 0.75) msg(`${e.name} трещит под нагрузкой`, 'warn');
+        return;
+      }
+    }
     this.check(s);
     const st = e.data?.part ? e.data.load as number | undefined : undefined;
     if (st && st > 0.75 && !e.removed && e.kind === 'part') msg(`${e.name} трещит под нагрузкой`, 'warn');
@@ -647,16 +668,19 @@ export class BuildSystem {
     this.draw();
   }
 
-  /** redraw what changed; far structures are not drawn at all */
+  /** redraw what changed (one quiet structure a frame); far structures are not drawn at all */
   draw() {
     const cam = G.camera?.position;
+    const now = performance.now();
+    const inCave = !!G.caves?.inside;
+    let quiet = false;
     for (const s of this.structures) {
       if (s.meshDirty) this.rebuildMesh(s);
-      if (s.group && cam) {
-        const c = s.group.children[0] as THREE.Mesh | undefined;
-        const bs = c?.geometry.boundingSphere;
-        if (bs) s.group.visible = bs.center.distanceTo(cam) < 420;
+      else if (!quiet && (s.solo.size || (s.mesh?.holes ?? 0) > 0) && now - s.changedAt > QUIET_MS) {
+        quiet = true;
+        this.rebuildMesh(s);
       }
+      if (s.mesh && cam) s.mesh.group.visible = !inCave && s.mesh.sphere.center.distanceTo(cam) - s.mesh.sphere.radius < 420;
     }
   }
 

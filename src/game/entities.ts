@@ -44,6 +44,8 @@ export class Entity {
   removed = false;
   /** item is resting on a fixed spot (stove top, bed...) without physics */
   pinned: string | null = null;
+  /** when its body was first seen asleep (performance.now()), 0 while it moves */
+  restSince = 0;
 
   constructor(kind: Kind) {
     this.kind = kind;
@@ -72,6 +74,8 @@ export class Entity {
   }
 
   position(out = new THREE.Vector3()): THREE.Vector3 {
+    // parts of structures have no body of their own and their objects are not in the scene
+    if (this.kind === 'part' && this.obj) return out.copy(this.obj.position);
     if (this.body) {
       const t = this.body.translation();
       return out.set(t.x, t.y, t.z);
@@ -199,6 +203,8 @@ export class Entities {
 
   /** Remove physics body and mesh from the scene (e.g. item goes to inventory). */
   removeFromWorld(e: Entity) {
+    G.resting?.drop(e);
+    e.restSince = 0;
     for (const c of e.colliders) this.byCollider.delete(c.handle);
     if (e.body) G.world.removeRigidBody(e.body);
     else for (const c of e.colliders) G.world.removeCollider(c, false);
@@ -276,11 +282,19 @@ export class Entities {
   }
 
   sync() {
+    const now = performance.now();
     for (const e of this.list) {
       if (!e.body || !e.obj) continue;
       // parts of structures and stumps don't move
       if (e.kind === 'part' || e.kind === 'stump') continue;
-      if (e.body.isSleeping()) continue;
+      if (e.body.isSleeping()) {
+        if (!e.restSince) e.restSince = now;
+        continue;
+      }
+      if (e.restSince) {
+        e.restSince = 0;
+        G.resting?.woke(e);
+      }
       this.syncOne(e);
       const t = e.body.translation();
       // rescue items that fell through the world

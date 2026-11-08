@@ -118,6 +118,8 @@ export function refreshWood(e: Entity, colliders = false) {
   const p = woodOf(e)!;
   e.name = pieceName(p);
   e.defId = category(p);
+  // no longer drawn merged with the wood resting around it
+  G.resting?.drop(e);
   const old = e.obj;
   const obj = woodObject(e);
   if (old) {
@@ -129,6 +131,10 @@ export function refreshWood(e: Entity, colliders = false) {
     if (parent) parent.add(obj);
   } else if (e.inWorld) G.scene.add(obj);
   e.obj = obj;
+  if (e.kind === 'part') {
+    G.build.partChanged(e, colliders);
+    return;
+  }
   if (e.body && e.colliders.length && !colliders) {
     e.colliders[0].setMass(Math.max(0.05, stemMass(p, e.moisture)));
     return;
@@ -146,11 +152,20 @@ export function refreshWood(e: Entity, colliders = false) {
   }
 }
 
-/** Create the colliders of a wood piece on its body and register them. */
-export function attachColliders(e: Entity, body: RAPIER_T.RigidBody, groups?: number) {
+/**
+ * Create the colliders of a wood piece on its body and register them. On a body shared by
+ * many pieces (parts of structures) the colliders carry the piece's own pose.
+ */
+export function attachColliders(e: Entity, body: RAPIER_T.RigidBody, groups?: number, pose?: { position: THREE.Vector3; quaternion: THREE.Quaternion }) {
   const whorlCols: number[] = [];
   for (const wc of woodColliders(e)) {
     if (wc.whorl < 0) wc.desc.setCollisionGroups(groups ?? GROUPS_ITEM);
+    if (pose) {
+      const t = wc.desc.translation, r = wc.desc.rotation;
+      const q = pose.quaternion.clone().multiply(new THREE.Quaternion(r.x, r.y, r.z, r.w));
+      const c = new THREE.Vector3(t.x, t.y, t.z).applyQuaternion(pose.quaternion).add(pose.position);
+      wc.desc.setTranslation(c.x, c.y, c.z).setRotation(rot(q));
+    }
     const col = G.world.createCollider(wc.desc, body);
     e.colliders.push(col);
     G.entities.byCollider.set(col.handle, e);
@@ -247,8 +262,8 @@ export function hitPiece(e: Entity, tool: Entity, point: THREE.Vector3, power: n
     const n = chop(p, u, a, power, saw);
     if (cutThrough(p, n)) G.build.cutPart(e, weakestAt(p, n));
     else {
+      // redrawn on its own (refreshWood), then checked alone unless it gives way
       refreshWood(e);
-      G.build.partChanged(e);
       G.build.changed(e);
     }
     return;

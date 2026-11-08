@@ -141,6 +141,28 @@ test('a deeply notched post under load fails at the notch', () => {
   assert.ok(Math.abs(f.u - 1.4) < 0.3, String(f.u));
 });
 
+test('a notched part checked alone holds or fails just as in the whole structure', () => {
+  const { parts, joints } = frame(0.09);
+  const post = parts.get(1);
+  const loads = [{ part: 3, u: 0.2, F: new THREE.Vector3(0, -2500, 0) }];
+  const before = S.analyze(parts, joints, 0, loads);
+  const input = before.inputs.get(1);
+  let failedAlone = false, failedAll = false, finite = 0;
+  for (let i = 0; i < 200 && !failedAll; i++) {
+    S.chop(post.piece, 1.4, 0, 0.1, false);
+    const one = S.recheck(post, input, 0);
+    const all = S.analyze(parts, joints, 0, loads).state.get(1);
+    const same = one.ratio === all.ratio || Math.abs(one.ratio - all.ratio) <= 0.02 * all.ratio + 1e-9;
+    assert.ok(same, `blow ${i}: alone ${one.ratio} vs all ${all.ratio}`);
+    if (Number.isFinite(all.ratio)) finite++;
+    failedAlone = one.ratio > 1;
+    failedAll = all.ratio > 1;
+    assert.equal(failedAlone, failedAll, `blow ${i}`);
+  }
+  assert.ok(failedAll, 'the post gave way in the end');
+  assert.ok(finite >= 3, `compared while it still held: ${finite}`);
+});
+
 test('take a post away: the beam resting on the other one tips over', () => {
   const { parts, joints } = frame();
   parts.delete(2);
