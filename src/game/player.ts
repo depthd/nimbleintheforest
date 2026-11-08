@@ -89,7 +89,7 @@ export class Player {
   }
 
   packWeight() {
-    return this.inventory.reduce((s, e) => s + (this.worn.get(e.def?.wear?.slot as Slot) === e ? 0 : e.mass), 0);
+    return this.inventory.reduce((s, e) => s + (this.worn.get(e.def?.wear?.slot as Slot) === e ? e.pocketMass : e.mass), 0);
   }
 
   // ---------- inventory ----------
@@ -110,6 +110,34 @@ export class Player {
     }
     if (!this.inventory.includes(e)) this.inventory.push(e);
     G.audio.play('pickup');
+    return true;
+  }
+
+  /** Move a pocket item into the main inventory without changing total carried weight. */
+  takeFromPocket(garment: Entity, item: Entity): boolean {
+    if (!this.inventory.includes(garment)) return false;
+    const i = garment.pockets.indexOf(item);
+    if (i < 0 || item.removed) return false;
+    garment.pockets.splice(i, 1);
+    this.inventory.push(item);
+    G.audio.play('pickup');
+    return true;
+  }
+
+  canPutInPocket(garment: Entity, item: Entity): boolean {
+    if (!this.inventory.includes(garment) || !this.inventory.includes(item) || garment === item || item.removed || !item.pocket || item.def?.wear || item.pockets.length) return false;
+    const slot = garment.def?.wear?.slot;
+    if (slot === 'back') return true;
+    if (slot !== 'outer' && slot !== 'legs') return false;
+    const s = item.def!.shape;
+    const size = s.t === 'box' ? 2 * Math.max(s.x, s.y, s.z) : s.t === 'ball' ? 2 * s.r : 2 * Math.max(s.r, s.h);
+    return size <= 0.35;
+  }
+
+  putInPocket(garment: Entity, item: Entity): boolean {
+    if (!this.canPutInPocket(garment, item)) return false;
+    this.forget(item);
+    garment.pockets.push(item);
     return true;
   }
 

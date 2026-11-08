@@ -168,6 +168,54 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 .side .stat b { font-weight: 500; text-align: right; }
 .side .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
+#inventory.corpse-inventory { flex-direction: column; inset: 8vh max(5vw, calc((100vw - 1050px) / 2)); gap: 18px; }
+.pack-contents { flex: 1; min-height: 0; overflow-y: auto; }
+.pack-contents > .inv-grid { overflow-y: visible; flex: none; }
+.inventory-pockets { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+.inventory-pockets h3 { font-size: 13px; color: var(--accent); }
+.pocket-item { display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); padding: 4px 0; }
+.pocket-item img, .pocket-item .noicon { width: 36px; height: 36px; margin: 0; flex: 0 0 36px; }
+.pocket-item .noicon { line-height: 36px; }
+.pocket-item > div { flex: 1; min-width: 0; font-size: 12px; }
+.pocket-item small { display: block; color: var(--dim); font-size: 11px; }
+.pocket-item button { font-size: 12px; padding: 4px 7px; }
+.corpse-heading, .corpse-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-shrink: 0; }
+.corpse-heading h2 { margin-bottom: 3px; }
+.corpse-heading p, .corpse-footer p { margin: 3px 0 0; }
+.corpse-heading button, .corpse-footer button { flex-shrink: 0; }
+.corpse-section { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.corpse-section h3 { border-bottom: 1px solid var(--line); padding-bottom: 8px; font-size: 15px; }
+.corpse-section h3 small { color: var(--dim); font-weight: 400; margin-left: 6px; }
+.corpse-items { overflow-y: auto; min-height: 0; }
+.corpse-garments { display: grid; grid-template-columns: 1fr 1fr; align-content: start; align-items: start; gap: 14px; }
+.corpse-garment { background: rgba(255, 255, 255, 0.025); border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; }
+.corpse-garment > .corpse-item { border-bottom: 0; }
+.garment-pockets { margin: 3px 0 4px; padding: 7px 0 0 12px; border-top: 1px solid var(--line); border-left: 2px solid rgba(156, 200, 255, 0.3); }
+.garment-pockets h4 { color: var(--accent); font-size: 12px; margin-bottom: 2px; }
+.garment-pockets .corpse-item { padding: 3px 0; }
+.garment-pockets .corpse-item:last-child { border-bottom: 0; }
+.garment-pockets .corpse-item img { width: 36px; height: 36px; flex-basis: 36px; }
+.corpse-item { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.corpse-item img, .corpse-item .noicon { width: 48px; height: 48px; flex: 0 0 48px; }
+.corpse-item .noicon { line-height: 48px; }
+.corpse-item-name { flex: 1; min-width: 0; }
+.corpse-item-name span { display: block; }
+.corpse-item-name small { display: block; color: var(--dim); margin-top: 2px; font-size: 11.5px; }
+.corpse-item button { font-size: 12px; padding: 5px 8px; flex-shrink: 0; }
+.corpse-empty { padding: 14px 0; }
+.corpse-footer { border-top: 1px solid var(--line); padding-top: 14px; }
+.corpse-footer button { background: rgba(156, 200, 255, 0.15); border-color: rgba(156, 200, 255, 0.4); }
+.corpse-footer button:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 760px) {
+  #inventory.corpse-inventory { inset: 3vh 3vw; padding: 12px; gap: 12px; overflow-y: auto; }
+  .corpse-section { flex: 0 0 auto; }
+  .corpse-garments { grid-template-columns: 1fr; }
+  .corpse-items { overflow-y: visible; }
+  .corpse-heading { align-items: flex-start; }
+  .corpse-heading button { font-size: 11px; padding: 6px; }
+  .corpse-footer { margin-top: auto; }
+}
+
 #reader { width: min(620px, calc(100vw - 32px)); background: #e9e2d0; color: #2a2620; border-color: #b8ad92; font-family: Georgia, 'Times New Roman', serif; }
 #reader h2 { font-size: 19px; }
 #reader-body { white-space: pre-wrap; font-size: 15.5px; line-height: 1.55; max-height: 60vh; overflow-y: auto; }

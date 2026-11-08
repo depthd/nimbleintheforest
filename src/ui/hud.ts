@@ -53,6 +53,7 @@ export class HUD {
   private help: HTMLElement;
   private pause: HTMLElement;
   private death: HTMLElement;
+  private corpseSource: Entity | null = null;
   invOpen = false;
   debugOpen = false;
   helpOpen = false;
@@ -159,9 +160,18 @@ export class HUD {
 
   toggleInventory(open?: boolean) {
     this.invOpen = open ?? !this.invOpen;
+    if (!this.invOpen) this.corpseSource = null;
+    this.inv.classList.toggle('corpse-inventory', !!this.corpseSource);
     this.inv.style.display = this.invOpen ? 'flex' : 'none';
     if (this.invOpen) this.renderInventory();
     this.syncInput();
+  }
+
+  openCorpse(e: Entity) {
+    if (e.kind !== 'corpse' || e.removed || !e.inWorld || !e.data.corpse || G.dead || G.sleeping || G.caves?.inside || e.position().distanceToSquared(G.player.pos) > 16) return;
+    e.data.corpse.searched = true;
+    this.corpseSource = e;
+    this.toggleInventory(true);
   }
 
   toggleDebug() {
@@ -470,12 +480,16 @@ export class HUD {
   invSel = 0;
 
   private renderInventory() {
+    if (this.corpseSource) {
+      this.renderCorpse();
+      return;
+    }
     const P = G.player;
     const groups = new Map<string, Entity[]>();
     for (const e of P.inventory) {
       if (P.isWorn(e)) continue;
       const wet = (e.def?.fuel || e.def?.wear) && e.moisture > 0.3 ? 'w' : '';
-      const k = e.contents || e.charges || e.def?.read ? `${e.defId}#${e.id}` : e.defId + wet;
+      const k = e.contents || e.charges || e.def?.read || e.pockets.length ? `${e.defId}#${e.id}` : e.defId + wet;
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k)!.push(e);
     }
@@ -504,6 +518,13 @@ export class HUD {
       const name = byWeight ? (STACK_NAMES[e.defId] ?? e.def?.name ?? e.name) + (e.moisture > 0.3 ? ' (сырое)' : '') : e.displayName();
       cards.push(`<div class="card${sel === e || (sel && groupOf.get(sel) === list) ? ' sel' : ''}${P.equipped === e ? ' eq' : ''}" draggable="true" data-act="select" data-id="${e.id}">${icon(e)}${n}${wetTag(e)}<span class="cn">${name}</span><span class="cw">${w < 1 ? Math.round(w * 1000) + ' г' : w.toFixed(1) + ' кг'}</span></div>`);
     }
+    const pockets = P.inventory.filter(e => e.pockets.length).map(garment => `<section class="inventory-pockets" data-garment-id="${garment.id}">
+      <h3>Карманы: ${garment.name}</h3>
+      ${garment.pockets.map(item => `<div class="pocket-item" data-item-id="${item.id}">
+        ${icon(item)}<div><span>${item.displayName()}</span><small>${item.mass < 1 ? Math.round(item.mass * 1000) + ' г' : item.mass.toFixed(1) + ' кг'}</small></div>
+        <button data-act="pocket-take" data-garment-id="${garment.id}" data-id="${item.id}">Достать</button>
+      </div>`).join('')}
+    </section>`).join('');
     // the figure with slots around it
     const pos: Record<Slot, [number, number]> = {
       head: [50, 2], neck: [50, 17], base: [16, 30], mid: [84, 30], outer: [50, 32], hands: [12, 52], back: [88, 52], legs: [50, 62], socks: [16, 80], feet: [84, 80],
@@ -535,6 +556,7 @@ export class HUD {
       if (d.tearInto) b.push(btn('tear', 'Порвать'));
       if (d.fuel && nearFire) b.push(btn('burn', 'В огонь'));
       if (!worn) b.push(btn('carry', 'В руки'), btn('drop', 'Положить'));
+      for (const garment of P.inventory) if (P.canPutInPocket(garment, e)) b.push(`<button data-act="pocket-put" data-garment-id="${garment.id}" data-id="${e.id}">Убрать в карманы: ${garment.name}</button>`);
       const stats: string[] = [];
       const bar = (label: string, v: number, txt: string, bad = false) => `<div class="stat"><span>${label}</span><div class="track"><i class="${bad ? 'bad' : ''}" style="width:${Math.round(Math.min(1, v) * 100)}%"></i></div><b>${txt}</b></div>`;
       if (d.wear) {
@@ -563,7 +585,7 @@ export class HUD {
     this.inv.innerHTML = `
       <div class="inv-col">
         <h2>${P.worn.get('back') ? P.worn.get('back')!.name : 'Карманы'} <small>${pw.toFixed(1)} / ${P.maxPack()} кг${pw > P.maxPack() * 0.5 ? ' · тяжело' : ''}</small></h2>
-        <div class="inv-grid" data-zone="pack">${cards.join('') || '<div class="empty">Пусто</div>'}</div>
+        <div class="pack-contents"><div class="inv-grid" data-zone="pack">${cards.join('') || '<div class="empty">Пусто</div>'}</div>${pockets}</div>
       </div>
       <div class="inv-col doll-col">
         <h2>Одежда <small>${clo.toFixed(2)} кло · ветер ${Math.round(windproof * 100)}%</small></h2>
@@ -580,6 +602,58 @@ export class HUD {
         <button class="close" data-act="close" data-id="0">Закрыть [Tab]</button>
       </div>`;
     this.bindInventoryDrag();
+  }
+
+  private renderCorpse() {
+    const corpse = this.corpseSource;
+    if (!corpse) return;
+    const data = corpse.data.corpse as { worn: Map<Slot, Entity> };
+    const P = G.player;
+    const clothes = [...data.worn.entries()];
+    const weight = (n: number) => n < 1 ? `${Math.round(n * 1000)} г` : `${n.toFixed(1)} кг`;
+    const row = (e: Entity, slot?: Slot) => {
+      const url = itemIcon(e.defId, e.params.v ?? 0);
+      const tooHeavy = P.packWeight() + e.mass > P.maxPack();
+      return `<div class="corpse-item" data-item-id="${e.id}">
+        ${url ? `<img src="${url}" alt="">` : '<span class="noicon">?</span>'}
+        <div class="corpse-item-name"><span>${e.displayName()}</span><small>${slot ? SLOT_NAMES[slot] + ' · ' : ''}${weight(e.mass)}${e.pockets.length ? ' с содержимым' : ''}${tooHeavy ? ' · не помещается' : ''}</small></div>
+        <button data-act="corpse-take" data-id="${e.id}">${slot ? 'Снять и взять' : 'Взять'}</button>
+      </div>`;
+    };
+    const left = clothes.length;
+    this.inv.innerHTML = `<div class="corpse-heading">
+      <div><h2>${corpse.name}</h2><p class="hint">${left ? 'Снимите одежду или заберите отдельные вещи из её карманов.' : 'Одежды не осталось.'}</p></div>
+      <button data-act="close" data-id="0" aria-label="Закрыть обыск">Закрыть [Esc / Tab]</button>
+    </div>
+    <section class="corpse-section"><h3>Надето <small>${clothes.length}</small></h3>
+      <div class="corpse-items corpse-garments">${clothes.map(([slot, garment]) => `<article class="corpse-garment" data-garment-id="${garment.id}">
+        ${row(garment, slot)}
+        ${garment.pockets.length ? `<div class="garment-pockets"><h4>Карманы: ${garment.name}</h4>${garment.pockets.map(item => row(item)).join('')}</div>` : ''}
+      </article>`).join('') || '<p class="hint corpse-empty">Одежды не осталось</p>'}</div>
+    </section>
+    <div class="corpse-footer">
+      <div><b>${P.worn.get('back')?.name ?? 'Карманы'}: ${P.packWeight().toFixed(1)} / ${P.maxPack()} кг</b><p class="hint">Одежда снимается вместе с содержимым карманов. Если места не хватит, вещи останутся здесь.</p></div>
+      <button data-act="corpse-take-all" data-id="0"${left ? '' : ' disabled'}>Взять всю одежду</button>
+    </div>`;
+  }
+
+  private onCorpseClick(ev: MouseEvent) {
+    const corpse = this.corpseSource;
+    if (!corpse) return;
+    const t = (ev.target as HTMLElement).closest<HTMLElement>('[data-act]');
+    if (!t) return;
+    if (t.dataset.act === 'close') {
+      this.toggleInventory(false);
+      return;
+    }
+    const data = corpse.data.corpse as { worn: Map<Slot, Entity> };
+    if (t.dataset.act === 'corpse-take-all') {
+      for (const e of [...data.worn.values()]) G.corpses.take(corpse, e);
+    } else if (t.dataset.act === 'corpse-take') {
+      const e = [...data.worn.values()].flatMap(garment => [garment, ...garment.pockets]).find(e => e.id === Number(t.dataset.id));
+      if (e) G.corpses.take(corpse, e);
+    } else return;
+    this.renderCorpse();
   }
 
   private bindInventoryDrag() {
@@ -621,11 +695,29 @@ export class HUD {
   }
 
   private onInvClick(ev: MouseEvent) {
-    const t = ev.target as HTMLElement;
-    const act = t.dataset.act;
-    if (!act) return;
+    if (this.corpseSource) {
+      this.onCorpseClick(ev);
+      return;
+    }
+    const t = (ev.target as HTMLElement).closest<HTMLElement>('[data-act]');
+    const act = t?.dataset.act;
+    if (!act || !t) return;
     const P = G.player;
     const id = Number(t.dataset.id);
+    if (act === 'pocket-take') {
+      const garment = P.inventory.find(x => x.id === Number(t.dataset.garmentId));
+      const item = garment?.pockets.find(x => x.id === id);
+      if (garment && item && P.takeFromPocket(garment, item)) this.invSel = item.id;
+      this.renderInventory();
+      return;
+    }
+    if (act === 'pocket-put') {
+      const garment = P.inventory.find(x => x.id === Number(t.dataset.garmentId));
+      const item = P.inventory.find(x => x.id === id);
+      if (garment && item && P.putInPocket(garment, item)) this.invSel = garment.id;
+      this.renderInventory();
+      return;
+    }
     const e = P.inventory.find((x) => x.id === id) ?? null;
     switch (act) {
       case 'close':
@@ -887,6 +979,7 @@ export class HUD {
   // ---------- per frame ----------
 
   update(dt: number) {
+    if (this.corpseSource && (this.corpseSource.removed || !this.corpseSource.inWorld || G.dead || this.corpseSource.position().distanceToSquared(G.player.pos) > 16)) this.toggleInventory(false);
     this.updateFog(dt);
     const I = G.interact;
     // prompts every frame (cheap)

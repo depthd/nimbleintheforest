@@ -7,7 +7,7 @@ import { buildItemMesh } from './meshes';
 import { attachColliders, isPocket, woodMass, woodObject } from './wood/wood';
 import { category, defaultPiece, maxRadius, pieceName, WOOD_IDS, type WoodPiece } from './wood/piece';
 
-export type Kind = 'item' | 'window' | 'door' | 'railing' | 'stove' | 'fire' | 'icehole' | 'trunk' | 'stump' | 'part' | 'doorway' | 'radio' | 'container' | 'animal';
+export type Kind = 'item' | 'window' | 'door' | 'railing' | 'stove' | 'fire' | 'icehole' | 'trunk' | 'stump' | 'part' | 'doorway' | 'radio' | 'container' | 'animal' | 'corpse';
 
 export interface PotContents {
   snow: number; // litres of water-equivalent snow
@@ -34,6 +34,8 @@ export class Entity {
   charges = 0;
   params: Record<string, number> = {};
   contents: PotContents | null = null;
+  /** Items in this garment's pockets. They stay with it when worn, taken or dropped. */
+  pockets: Entity[] = [];
   cook = 0; // cooking progress, game seconds
   lit = false;
   burning = 0; // lamp/flashlight remaining, uses charges
@@ -57,7 +59,11 @@ export class Entity {
     if (!d) return this.data.mass ?? 100;
     let m = d.mass;
     if (this.contents) m += this.contents.snow + this.contents.water;
-    return m;
+    return m + this.pocketMass;
+  }
+
+  get pocketMass(): number {
+    return this.pockets.reduce((sum, e) => sum + e.mass, 0);
   }
 
   /** fits into the backpack (by size, the weight is checked separately) */
@@ -82,6 +88,7 @@ export class Entity {
     if (this.defId === 'lighter') n += ` (${this.charges})`;
     if (this.defId === 'nails') n += ` (${this.charges})`;
     if (this.defId === 'flashlight' || this.defId === 'lamp' || this.defId === 'kerosene') n += ` (${Math.round(this.charges)}%)`;
+    if (this.pockets.length) n += ` · в карманах: ${this.pockets.length}`;
     if (this.contents) {
       const c = this.contents;
       if (c.snow > 0.01) n += ` · снег ${c.snow.toFixed(1)} л`;
@@ -123,7 +130,8 @@ export class Entities {
   list: Entity[] = [];
   byCollider = new Map<number, Entity>();
 
-  spawnItem(id: string, pos: THREE.Vector3, opts: SpawnOpts = {}): Entity {
+  /** An actual item kept in an inventory, without a mesh or physics body yet. */
+  createItem(id: string, opts: SpawnOpts = {}): Entity {
     const d = def(id);
     const e = new Entity('item');
     e.defId = id;
@@ -145,6 +153,11 @@ export class Entities {
       if (opts.moisture === undefined && (wood.sp === 'dead' || wood.sp === 'burnt')) e.moisture = Math.min(e.moisture, 0.15);
     }
     this.list.push(e);
+    return e;
+  }
+
+  spawnItem(id: string, pos: THREE.Vector3, opts: SpawnOpts = {}): Entity {
+    const e = this.createItem(id, opts);
     this.placeInWorld(e, pos, opts.quat, opts.vel, opts.angvel, opts.sleep);
     return e;
   }
@@ -197,6 +210,9 @@ export class Entities {
   }
 
   destroy(e: Entity) {
+    // Destroying a garment releases its contents instead of deleting hidden loot.
+    const pocketPos = e.inWorld ? e.position() : G.player?.eyePos;
+    if (pocketPos) for (const item of e.pockets.splice(0)) this.placeInWorld(item, pocketPos);
     if (e.inWorld || e.colliders.length) this.removeFromWorld(e);
     if (e.obj) e.obj.removeFromParent();
     e.removed = true;

@@ -31,6 +31,7 @@ import type { BuildSystem } from './build/build';
 import type { Cliffs } from '../world/cliffs';
 import type { CliffLab } from './cliff-lab';
 import type { Caves } from '../world/caves';
+import type { Corpses } from './corpses';
 
 export interface Settings {
   seed: number;
@@ -72,6 +73,7 @@ export interface Ctx {
   /** wooden structures made of real pieces (lean-tos, fences, what the player builds) */
   build: BuildSystem;
   animals: Animals;
+  corpses: Corpses;
   /** the optional goal: power the radio, call for rescue */
   goal: { signalAt: number; rescued: boolean; heliShown: boolean };
   entities: Entities;

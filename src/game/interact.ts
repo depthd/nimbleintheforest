@@ -430,6 +430,9 @@ export class Interaction {
       case 'container':
         if (!e.data.searched) A.push({ key: 'E', label: 'Обыскать', time: 2.5, run: () => G.structures.search(e) });
         return;
+      case 'corpse':
+        A.push({ key: 'E', label: 'Обыскать', time: e.data.corpse.searched ? 0 : 2.5, run: () => G.hud.openCorpse(e) });
+        return;
       case 'radio': {
         const bat = P.has((x) => x.defId === 'battery' && x.charges > 5);
         if (!e.data.powered) {
@@ -522,6 +525,8 @@ export class Interaction {
         return `${e.name}${e.data.frozen > 0.6 ? ' · замёрзла' : e.data.frozen > 0.3 ? ' · затягивается льдом' : ''}`;
       case 'container':
         return `${e.name}${e.data.searched ? ' · обыскан' : ''}`;
+      case 'corpse':
+        return G.corpses.describe(e);
       case 'radio':
         return `${e.name}${e.data.powered ? ' · есть питание' : ''}`;
     }

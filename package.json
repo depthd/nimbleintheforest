@@ -30,6 +30,7 @@
     "test:rock": "node tests/rock-skin.cjs",
     "test:rock-browser": "node tests/rock-browser.cjs",
     "test:caves": "node tests/caves.cjs",
+    "test:corpses-browser": "node tests/corpses-browser.cjs",
     "test:caves-browser": "node tests/caves-browser.cjs"
   },
   "dependencies": {

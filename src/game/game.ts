@@ -35,6 +35,7 @@ import { BuildSystem } from './build/build';
 import { Cliffs } from '../world/cliffs';
 import { CliffLab } from './cliff-lab';
 import { Caves } from '../world/caves';
+import { Corpses } from './corpses';
 
 const STEP = 1 / 60;
 let horror: Horror;
@@ -149,6 +150,8 @@ export async function startGame(settings: Settings) {
   // fire pits that came with the world are dug out of the snow
   if (G.snow instanceof WorldSnow) for (const f of G.fires.list) if (f.kind === 'camp') G.snow.clearPit(f.pos);
   if (!G.snow.isExperiment) G.player.avatar.reset();
+  G.corpses = new Corpses();
+  G.corpses.build();
   if (region.cliffLab) G.cliffLab = new CliffLab();
   G.recorder = new MotionRecorder();
 
@@ -528,6 +531,7 @@ function loop(now: number) {
     G.lake.stream(G.player.pos);
   }
   G.structures.update(dt);
+  G.corpses.update();
   if (!paused && !G.dead && !inCave) G.animals.update(dt);
   updateGoal();
   G.interact.update(paused ? 0 : dt);
