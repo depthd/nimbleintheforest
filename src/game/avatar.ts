@@ -1,7 +1,8 @@
-// A small procedural winter-clothed body. The locomotion solver owns the pose;
-// this class probes Rapier surfaces and draws interpolated two-bone legs.
+// The locomotion solver owns the pose. Procedural joints drive the skinned avatar;
+// the original meshes remain hidden pose references and a loading/error fallback.
 import * as THREE from 'three';
 import { G, GROUPS_RAY } from './ctx';
+import { SurvivorAvatar } from './survivor-avatar';
 import { Tex } from '../core/textures';
 import { ANKLE, Locomotion, footPose, solveLeg, wrapAngle } from './locomotion';
 import type { FootSurface, MotionInput } from './locomotion';
@@ -24,6 +25,7 @@ export class PlayerAvatar {
   readonly root = new THREE.Group();
   readonly inspectionCamera = new THREE.PerspectiveCamera(48, 1, 0.05, 14000);
   inspectionView: 0 | 1 | 2 = 0;
+  private survivor?: SurvivorAvatar;
   private pelvis = new THREE.Group();
   private chest = new THREE.Group();
   private head = new THREE.Group();
@@ -41,6 +43,7 @@ export class PlayerAvatar {
   constructor(private player: Player) {
     this.root.name = 'player-avatar';
     G.scene.add(this.root);
+    this.loadSurvivor();
     const fabric = (color: string) => new THREE.MeshStandardMaterial({ map: Tex.fabric(color), roughness: 0.96 });
     const pants = fabric('#46515b');
     const jacket = fabric('#625e49');
@@ -127,6 +130,15 @@ export class PlayerAvatar {
       for (let i = 0; i < 3; i++) mesh(boot, unitBox, trim, [0.08, 0.008, 0.01], [0, 0.142 - i * 0.011, -0.055 - i * 0.025]);
       this.legs.push({ thigh, shin, knee, boot });
     }
+  }
+
+  private loadSurvivor() {
+    void SurvivorAvatar.load().then(survivor => {
+      this.root.traverse(o => { if (o instanceof THREE.Mesh) o.visible = false; });
+      this.root.add(survivor.model);
+      this.survivor = survivor;
+      this.diagnosticNodes = null;
+    }).catch(error => console.error('Survivor model failed to load; retaining procedural avatar', error));
   }
 
   private input(): MotionInput {
@@ -220,6 +232,8 @@ export class PlayerAvatar {
       arm.shoulder.rotation.x = holding ? 0.65 : armSwing;
       arm.elbow.rotation.x = holding ? 0.8 : 0.2 + m.runBlend * 0.8 + Math.abs(armSwing) * 0.25;
     }
+    this.root.updateMatrixWorld(true);
+    this.survivor?.pose(this.pelvis, this.chest, this.head, this.legs, this.arms, !this.inspectionView);
     if (this.inspectionView) {
       const target = origin.clone().add(new THREE.Vector3(0, this.player.crouch ? 0.62 : 0.92, 0));
       const eye = target.clone().addScaledVector(this.inspectionView === 1 ? right : forward, 3.3);
@@ -264,5 +278,6 @@ export class PlayerAvatar {
     if (data.length !== nodes.length * 11) throw new Error('Запись создана для другой модели персонажа.');
     nodes.forEach((o, i) => { const k = i * 11; o.position.fromArray(data, k); o.quaternion.fromArray(data, k + 3); o.scale.fromArray(data, k + 7); o.visible = !!data[k + 10]; });
     this.hideUpperBody.value = firstPerson ? 1 : 0;
+    this.survivor?.setFirstPerson(firstPerson);
   }
 }
