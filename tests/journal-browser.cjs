@@ -5,12 +5,13 @@ const {chromium}=require('playwright');
  const {createServer}=await import('vite');const server=await createServer({server:{port:5193,strictPort:true,hmr:false,watch:null},logLevel:'error'});await server.listen();let browser;
  try{
  browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
- const page=await browser.newPage({viewport:{width:1000,height:700}}),errors=[];
+ const page=await browser.newPage({viewport:{width:800,height:600}}),errors=[];
+ page.setDefaultTimeout(180000);
  page.on('pageerror',e=>{errors.push(e.message);console.error('PAGEERROR',e.message)});
  page.on('console',m=>{if(m.type()==='error') console.error('CONSOLE',m.text())});
  await page.goto('http://localhost:5193/?test=1&seed=42&hour=13&weather=clear&warmup=0');
  await page.waitForFunction(()=>window.__game,null,{timeout:300000});
- await page.evaluate(()=>{const g=window.__game;g.G.settings.noCold=true;g.G.input.lock();g.G.paused=false;});
+ await page.evaluate(()=>{const g=window.__game;g.G.settings.noCold=true;g.G.settings.timeScale=0;g.G.renderer.setPixelRatio(.5);g.G.input.lock();g.G.paused=false;});
  await page.keyboard.press('j');
  await page.waitForTimeout(200);await page.screenshot({path:path.join(out,'raise.png')});
  await page.waitForTimeout(1200);await page.screenshot({path:path.join(out,'held.png')});

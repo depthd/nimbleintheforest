@@ -12,3 +12,5 @@ Left: hunger = 1 − kcal/3000, thirst = 1 − water/3, fatigue, felt temperatur
 Validation: `npm run build`; grip-solver, hands, statics, resting tests; `node tests/journal-browser.cjs <task/SHA artifact dir>`. Browser test captures raising, holding, changing physiology, pitch extremes and portrait; checks both grips and action blocking/restoration. Screenshots require visual inspection, not just numerical contact checks. Kimi unavailable: self QA must not be labelled independent QA.
 
 Delivery: task PR into configured integration branch; dispatch existing test-pages workflow at exact checked task SHA. Workflow restores current production artifact and compares root index/version before publishing test, serializes with other releases. Do not merge QA evidence into gameplay or dispatch pages.yml for this task.
+
+Software-rendered browser capture initially exceeded Playwright's default 30s screenshot timeout. Journal browser test uses half raster pixel ratio (viewport unchanged), freezes only physiology time, and allows 180s per operation; this is a test harness cost adjustment, not a gameplay graphics change.

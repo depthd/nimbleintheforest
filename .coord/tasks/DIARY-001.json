@@ -1,6 +1,6 @@
 {
   "id": "DIARY-001",
-  "status": "developing",
+  "status": "qa",
   "owner": "codex-diary-coordinator",
   "branch": "task/DIARY-001-journal",
   "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
@@ -20,5 +20,6 @@
     "Raise diary from below and hold both pages with actual Survivor hands",
     "Live physiology indicators; preserve supplied artwork",
     "Publish exact checked SHA only at /test/, preserve live root"
-  ]
+  ],
+  "qa_result": "BUILD_AND_UNIT_PASS_BROWSER_IN_PROGRESS"
 }
