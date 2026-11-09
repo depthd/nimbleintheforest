@@ -2,6 +2,7 @@
 // the original meshes remain hidden pose references and a loading/error fallback.
 import * as THREE from 'three';
 import { G, GROUPS_RAY } from './ctx';
+import { Hands, type ArmReference } from './hands';
 import { SurvivorAvatar } from './survivor-avatar';
 import { Tex } from '../core/textures';
 import { ANKLE, Locomotion, footPose, solveLeg, wrapAngle } from './locomotion';
@@ -22,6 +23,7 @@ interface LegMesh {
 
 export class PlayerAvatar {
   readonly motion = new Locomotion();
+  readonly hands = new Hands();
   readonly root = new THREE.Group();
   readonly inspectionCamera = new THREE.PerspectiveCamera(48, 1, 0.05, 14000);
   inspectionView: 0 | 1 | 2 = 0;
@@ -30,7 +32,7 @@ export class PlayerAvatar {
   private chest = new THREE.Group();
   private head = new THREE.Group();
   private legs: LegMesh[] = [];
-  private arms: { shoulder: THREE.Group; elbow: THREE.Group }[] = [];
+  private arms: ArmReference[] = [];
   private visualFeet = [new THREE.Vector3(), new THREE.Vector3()];
   private visualKnees = [new THREE.Vector3(), new THREE.Vector3()];
   private reachErrors = [0, 0];
@@ -238,6 +240,7 @@ export class PlayerAvatar {
       arm.elbow.rotation.x = holding ? 0.8 : 0.2 + m.runBlend * 0.8 + Math.abs(armSwing) * 0.25;
     }
     this.root.updateMatrixWorld(true);
+    this.hands.update(dt, this.arms);
     this.survivor?.pose(this.pelvis, this.chest, this.head, this.legs, this.arms, !this.inspectionView);
     if (this.inspectionView) {
       const target = origin.clone().add(new THREE.Vector3(0, this.player.crouch ? 0.62 : 0.92, 0));

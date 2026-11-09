@@ -79,7 +79,8 @@ export class WorldSnow {
     return null;
   }
   dig(point: THREE.Vector3) {
-    if (this.cooldown > 0 || !this.contains(point.x, point.z)) return;
+    if (this.cooldown > 0 || !G.player.crouch || G.player.handsWarming || G.player.equipped || G.player.carried || !this.contains(point.x, point.z)) return;
+    G.player.avatar.hands.begin('dig', 0.3);
     this.carriedSnow += this.field.remove(point.x, point.z, 0.3, 0.09);
     this.cooldown = 0.3; G.audio.play('snow_scoop', { pos: point, vol: 0.5 });
   }
@@ -95,7 +96,8 @@ export class WorldSnow {
     }
   }
   deposit(point: THREE.Vector3) {
-    if (this.cooldown > 0 || this.carriedSnow <= 0 || !this.contains(point.x, point.z)) return;
+    if (this.cooldown > 0 || G.player.handsWarming || G.player.equipped || G.player.carried || this.carriedSnow <= 0 || !this.contains(point.x, point.z)) return;
+    G.player.avatar.hands.begin('pour', 0.3);
     this.carriedSnow -= this.field.add(point.x, point.z, 0.3, Math.min(this.carriedSnow, 0.012));
     this.cooldown = 0.3; G.audio.play('snow_scoop', { pos: point, vol: 0.5 });
   }
