@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { ArmReference } from './hands';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /** Retarget the existing procedural pose; no second animation clock or movement controller. */
@@ -103,7 +104,7 @@ export class SurvivorAvatar {
 
   pose(pelvis: THREE.Group, chest: THREE.Group, head: THREE.Group,
     legs: { thigh: THREE.Mesh; shin: THREE.Mesh; boot: THREE.Group }[],
-    arms: { shoulder: THREE.Group; elbow: THREE.Group }[], firstPerson: boolean) {
+    arms: ArmReference[], firstPerson: boolean) {
     this.hide.value = firstPerson ? 1 : 0;
     pelvis.updateWorldMatrix(true, true);
     const frame = pelvis.getWorldQuaternion(new THREE.Quaternion());
@@ -120,10 +121,10 @@ export class SurvivorAvatar {
       this.orient(`Foot${side}`, leg.boot.getWorldQuaternion(new THREE.Quaternion()));
       const shoulder = arm.shoulder.getWorldPosition(new THREE.Vector3());
       const elbow = arm.elbow.getWorldPosition(new THREE.Vector3());
-      const wrist = arm.elbow.localToWorld(new THREE.Vector3(0, -0.245, 0));
+      const wrist = arm.wrist ?? arm.elbow.localToWorld(new THREE.Vector3(0, -0.245, 0));
       this.segment(`UpperArm${side}`, `ForeArm${side}`, shoulder, elbow, frame);
       this.segment(`ForeArm${side}`, `Hand${side}`, elbow, wrist, frame);
-      this.orient(`Hand${side}`, arm.elbow.getWorldQuaternion(new THREE.Quaternion()));
+      this.orient(`Hand${side}`, arm.handRotation ?? arm.elbow.getWorldQuaternion(new THREE.Quaternion()));
     }
     this.model.updateMatrixWorld(true);
   }

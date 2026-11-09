@@ -736,6 +736,9 @@ export class HUD {
         return;
     }
     if (!e) return;
+    const handActions: Record<string, 'eat' | 'drink' | 'pour' | 'work' | 'reach'> = { eat: 'eat', drink: 'drink', pour: 'pour', tea: 'work', refill: 'work', read: 'reach' };
+    const handAction = handActions[act];
+    if (handAction) P.avatar.hands.begin(handAction, 0.8);
     switch (act) {
       case 'equip':
         P.equip(e);

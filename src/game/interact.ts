@@ -1,6 +1,7 @@
 // What the player looks at, which actions are possible and what happens:
 // chopping, picking up, hanging blankets, lighting fires, fishing and more.
 import * as THREE from 'three';
+import { actionFor } from './hands';
 import { G, GROUPS_RAY, msg } from './ctx';
 import { Entity } from './entities';
 import { def, ItemDef, ToolTag, Yield } from './items';
@@ -234,9 +235,9 @@ export class Interaction {
 
     // --- tool / item in hand (LMB/RMB) ---
     if (eq) this.toolActions(A, eq, tg, t, e, fire);
-    if (!eq && t.kind === 'ground' && G.snow && !G.snow.isExperiment && G.snow.contains(t.point.x, t.point.z)) {
+    if (!eq && !P.handsWarming && t.kind === 'ground' && G.snow && !G.snow.isExperiment && G.snow.contains(t.point.x, t.point.z)) {
       const snow = G.snow, point = t.point.clone();
-      if (snow.field.sample(point.x, point.z).mass > 0.001)
+      if (P.crouch && snow.field.sample(point.x, point.z).mass > 0.001)
         A.push({ key: 'LMB', label: 'Разгрести снег', run: () => snow.dig(point) });
       if (snow.carriedSnow > 0.00001)
         A.push({ key: 'RMB', label: 'Высыпать снег', run: () => snow.deposit(point) });
@@ -595,7 +596,8 @@ export class Interaction {
     G.build?.placement.update(dt);
     this.computeTarget();
     this.actions = this.compute();
-    if (G.sleeping || G.dead || !inp.enabled) return;
+    if (G.sleeping || G.dead || !inp.enabled) { this.swinging = null; this.timed = null; G.player.avatar.hands.cancel(); return; }
+    if (dt <= 0) return;
     const P = G.player;
 
     // flame countdown
@@ -642,7 +644,7 @@ export class Interaction {
     // timed action in progress
     if (this.timed) {
       const tm = this.timed;
-      if (P.pos.distanceTo(tm.start) > 0.45) {
+      if (P.pos.distanceTo(tm.start) > 0.45 || P.handsWarming) {
         this.timed = null;
         msg('Прервано', 'info');
       } else {
@@ -659,6 +661,7 @@ export class Interaction {
     // swing in progress
     if (this.swinging) {
       const s = this.swinging;
+      if (P.equipped !== s.tool || P.handsWarming || P.carried) { this.swinging = null; P.avatar.hands.cancel(); return; }
       s.t += dt;
       if (!s.hit && s.t >= s.dur * 0.55) {
         s.hit = true;
@@ -676,6 +679,7 @@ export class Interaction {
     }
     for (const a of this.actions) {
       if (!pressed(a.key)) continue;
+      P.avatar.hands.begin(actionFor(a.label), a.time ?? 0.55);
       if (a.time) this.timed = { action: a, t: 0, start: P.pos.clone() };
       else a.run();
       return;
@@ -706,6 +710,7 @@ export class Interaction {
 
   startSwing(tool: Entity) {
     const P = G.player;
+    if (P.handsWarming || P.carried) return;
     if (P.wrapped) {
       msg('Сначала снимите одеяло с плеч [F в инвентаре]', 'warn');
       return;
