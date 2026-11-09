@@ -1,62 +1,84 @@
-# Hands foundation (HANDS-001)
+# Coupled hands foundation (HANDS-002)
 
-The ordinary Survivor skinned body's UpperArm/ForeArm/Hand bones now perform the
-hand poses, in first person, F6 inspection and shadows. No duplicate floating arm
-asset is used. The procedural avatar remains the existing loading/error fallback.
+The HANDS-001 prototype moved the item and smoothed each wrist independently.
+It also solved arms before placing the current frame's anatomical camera. Both
+sources of grip drift are removed.
 
-`PlayerAvatar.hands` owns the two-bone arm targets. Reach is clamped to 29 + 27 cm;
-the body is not stretched to a target. Walking/running uses the existing foot
-cycle, and stance follows the anatomical camera. Airborne movement has its own balance pose. A single priority resolves warm,
-swing, timed work, short feedback actions, carrying, equipment and locomotion.
-The existing interaction clock is authoritative for swings and timed work.
-Switching equipment cancels work/swing; pausing does not advance hand feedback.
+## Frame order and ownership
 
-Every contextual action is routed through `actionFor(label)` to a prototype pose:
-reach, repeated work, brushing snow off clothing, food/drink, ignition, sawing, striking, scooping or pouring.
-Pickup, carrying, release/throw and changing clothes also notify the controller.
-Snow digging requires crouching and free hands, including the snow laboratory.
-The effect timing for existing instantaneous actions remains immediate; these are
-animation foundations, not a deterministic contact/force simulation. Existing axe
-hits retain their 55% interaction-clock impact. Snow still changes per scoop using
-the existing cooldown, not a physical palm collider.
+1. PlayerAvatar.render poses the torso/head/legs, allowing the eye position to be read.
+2. Player.updateCamera places the current frame's anatomical camera.
+3. Interaction advances its action phase, then PlayerAvatar.renderHands samples one item pose, fits its translation to the
+   intersection of arm reach constraints, and solves both attached wrists exactly.
+   The main loop defers arms until after action update; standalone updateCamera
+  calls still pose arms for diagnostic/test callers. The same frame reposes the actual Survivor bones.
+4. ViewModel copies that final item transform into the visible world mesh.
 
-## Extension contracts
+An attached palm has no independent easing or secondary action target. Generic
+reach/work/eat poses cannot pull a supporting hand off a two-hand item. Arm length
+constraints move the entire equipped item, rather than clamping the wrists away
+from it. Impossible two-hand socket spacing explicitly releases the secondary
+hand. Warm/brush poses explicitly disengage equipment and hide it.
 
-- `handGrips[id]`: item-local right/optional left palm anchors in metres and item
-  orientation. Register a journal profile without replacing the controller.
-- `hands.palms[0/1]`: world-space left/right wrist attachment transforms.
-- `hands.begin(kind, seconds)` / `cancel()`: short feedback actions. Timed actions
-  and swings have priority. Future extensions should add semantic action IDs to
-  Action rather than extending the current label-based fallback indefinitely.
-- `hands.diagnostics()`: current state, normalized phase, wrist and item positions.
-  The diagnostics task can consume this without modifying the controller.
-- Clothing stays on the Survivor's existing skeleton. This change does not replace
-  the model or modify clothing slots, meshes or inventory semantics.
+Unattached hand transitions still use easing. Nothing applies that easing after
+a grip constraint. There is intentionally no second animation clock for an item.
 
-Equipped meshes use their real dimensions and render in the main world pass,
-with scene depth, light and shadows. A wall can occlude an item. No overlay is
-painted over walls. Carried objects retain their existing Rapier spring movement;
-arms reach for them but do not teleport or rescale them.
+## Replaceable model and animation contract
 
-## Current limits
+Register a `Grip` in `handGrips[id]`:
 
-This first pass is deliberately rough. There is no finger-chain skeleton in the
-asset beyond its thumbs, so closed finger grips need an asset update. Grip profiles
-need individual artistic tuning. Distant targets/carry positions can be out of
-arm reach; bounded arms do not imply a physical grasp. No new contact-force solver,
-wall avoidance sweep, full-body reach/lean, or guaranteed tool-edge collision is
-claimed. Inventory modal actions keep their existing immediate semantics.
-The motion recorder already captures body bone transforms; the equipped item is
-hidden during review because the old format does not record its identity/pose.
-The diagnostics task should capture equipment separately rather than showing the
-current live item in an old recording.
+- `sockets.right` and optional `sockets.left`: item-local palm positions in metres
+  and quaternion orientations. Palm-frame -Y points from wrist toward fingers.
+  The common adapter converts palm contact into a wrist target with a 6 cm hand
+  offset. A future character can replace this calibration in the adapter.
+- `createVisual()`: instantiate the equipped model, including a cloned GLB scene.
+  Source geometry/material ownership stays with the asset system.
+- `samplePose({state, phase, dt, position, rotation})`: sample an authored animation
+  into the proposed WORLD item pose. `phase` comes from the authoritative
+  Interaction swing/timed clock. Do not advance a separate action timer. Built-in
+  swing/work offsets are disabled when this callback is supplied.
+- `contactPhase`: optional gameplay hit marker in normalized swing time (default
+  .55), consumed by Interaction. It must agree with the authored clip's contact.
 
-## Verification
+The common reach fit follows sampling, so model, sockets and both hands receive
+the same final transform. Replacing the registry profile also rebuilds the visual.
+Legacy `right/left/rotation` profiles are adapted into rigid palm frames; they are
+fallback art, not a prescribed animation for the new axe. This task does not
+create an axe asset or authored axe clip.
 
-- `npm run build`
-- `node tests/hands.cjs`: arm lengths, bounded reach, degenerate targets and grips.
-- `NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium node tests/hands-browser.cjs`
-  checks all hand modes on the actual loaded Survivor; screenshots in
-  `test-results/hands/`. These mode fixtures supplement real gameplay tests;
-  they do not claim every contextual action's game result was tested.
-- Existing locomotion, motion recording, Survivor and gameplay browser tests.
+`hands.palms` are actual world palm transforms (not wrist origins).
+`hands.contacts`, `gripErrors`, and `diagnostics()` expose the attachment state and
+constraint error for diagnostics. The rig's `ArmReference.wrist` is the wrist.
+Clothing continues to use the existing character bones.
+
+## Physical carrying
+
+Rapier remains authoritative. Anchors are captured once in the actual object's
+local geometry bounds (or authored sockets), including rotation; they do not
+slide around a recomputed world AABB. Reachable wrists follow actual physics
+sockets without lag. Unreachable hands explicitly lose contact and reach toward
+the object. If neither hand regains contact for .6 active seconds, the physics
+controller releases the object. Rendering never teleports a physical body.
+Ordinary carry distance is now .35–.65 m with a lowered center, replacing the
+previous 1–2.4 m targets that an anatomical arm could never hold. Dragging keeps
+its separate distance/speed behavior but cannot claim an unreachable grasp.
+
+## Limits
+
+This is a constraint/attachment foundation, not polished authored art. Finger
+chains are absent in the current asset. Generic free-hand gestures, skin shape,
+contact forces, hand wall sweeps and full-body leaning remain future work.
+The default swing is a placeholder; agreement between an authored tool edge and
+world target belongs to its action/animation implementation. A marker synchronizes
+gameplay and animation clocks but does not by itself prove tool-edge contact.
+Instant inventory and snow effects retain their existing semantics.
+
+## Checks
+
+- `node tests/grip-solver.cjs`: 600 rigid two-hand fits and palm/wrist conversion,
+  impossible socket spacing.
+- `NODE_PATH=/opt/codex/cua_node/lib/node_modules node tests/grip-browser.cjs`:
+  450 same-frame turn/pitch/stance/framerate samples, legacy and replaceable
+  model/pose fixtures, actual skinned wrists, object visual transform, physical
+  carried sockets and explicit loss of unreachable grasp.
+- `node tests/hands.cjs`, existing hands modes, camera clearance and motion recording.

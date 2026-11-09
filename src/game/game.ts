@@ -540,7 +540,7 @@ function loop(now: number) {
   const inCave = !!G.caves?.inside;
   G.player.renderAlpha = paused || G.dead ? 1 : acc / STEP;
   if (!G.recorder?.reviewing) {
-    G.player.updateCamera(dt);
+    G.player.updateCamera(dt, false);
     if (!inCave) G.snow?.update(paused ? 0 : dt);
     G.cliffLab?.update(dt);
   }
@@ -560,6 +560,8 @@ function loop(now: number) {
   } else if (G.settings.deerLab) deer?.update(dt);
   updateGoal();
   G.interact.update(paused ? 0 : dt);
+  // Resolve grips after actions advance, using this frame's camera and action phase.
+  if (!G.recorder?.reviewing) G.player.avatar.renderHands(paused || G.dead ? 0 : dt);
   const indoorAmb = G.sky.daylight > 0.3 ? 0.5 : 0.75;
   G.sky.indoorFactor = THREE.MathUtils.lerp(G.sky.indoorFactor, inCave ? 0.04 : G.house.zoneAt(G.player.pos) ? indoorAmb : 1, Math.min(1, dt * 2));
   G.sky.update();

@@ -25,7 +25,7 @@ const { chromium } = require('playwright');
  G.paused=false;p.avatar.hands.update(0.25,p.avatar.arms);G.paused=true;
  },kind);
  const s=await state();assert.equal(s.state,kind,JSON.stringify(s));assert.ok(s.palms.flat().every(Number.isFinite));
- await capture(kind); const error=await page.evaluate(()=>{const {G,THREE:T}=window.__game;const a=G.player.avatar;return Math.max(...['L','R'].map((side,i)=>a.survivor.model.getObjectByName('Hand'+side).getWorldPosition(new T.Vector3()).distanceTo(a.hands.palms[i].position)));}); assert.ok(error<0.0001,'Skin wrist/IK mismatch '+error); console.log('PASS',kind);
+ await capture(kind); const error=await page.evaluate(()=>{const {G,THREE:T}=window.__game;const a=G.player.avatar;return Math.max(...['L','R'].map((side,i)=>a.survivor.model.getObjectByName('Hand'+side).getWorldPosition(new T.Vector3()).distanceTo(a.arms[i].wrist)));}); assert.ok(error<0.0001,'Skin wrist/IK mismatch '+error); console.log('PASS',kind);
  }
  await page.evaluate(()=>{const {G}=window.__game; G.player.equipped=null;G.player.carried=null; G.player.handsWarming=false;G.input.keys.clear();G.player.avatar.inspectionView=2;});await capture('third-person');
  assert.deepEqual(errors,[]); console.log('PASS browser errors, all hand modes, actual skinned avatar');
