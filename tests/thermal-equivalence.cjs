@@ -1,0 +1,12 @@
+const assert = require('node:assert/strict');
+const {buildSync}=require('esbuild'); const Module=require('node:module');const path=require('node:path');
+const m=new Module(__filename);m._compile(buildSync({stdin:{contents:"export { Thermal } from './thermal'; export { G } from './ctx'; export * as T from 'three';",resolveDir:path.join(__dirname,'../src/game'),loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text,__filename);
+const {Thermal,G,T}=m.exports;
+Object.assign(G,{house:{Y0:12.345,windows:[{data:{center:new T.Vector3(4.75,13.8,0),inward:new T.Vector3(-1,0,0),w:1.3,h:1.4,glass:'broken',boards:0,cover:null}}],door:{removed:false,data:{open:true,angle:0}},stove:{data:{firePos:new T.Vector3(-3,12.8,-2)}}},weather:{temp:-24,wind:14},fires:{stoveFire:{power:8},list:[]},entities:{list:[]},player:{pos:new T.Vector3(0,12.4,0)}});
+function originalSpread(){const src=[...this.draft];for(let c=0;c<src.length;c++){if(!this.active[c]||src[c]<=0)continue;const p=this.cellCenter(c);for(let d=1;d<=3;d++)for(const off of [[d,0],[-d,0],[0,d],[0,-d]]){const q=this.cellAt(new T.Vector3(p.x+off[0]*.5,p.y,p.z+off[1]*.5));if(q>=0)this.draft[q]=Math.max(this.draft[q],src[c]*Math.exp(-d*.55));}}}
+const a=new Thermal(),b=new Thermal();a.init();b.init();b.spreadDraft=originalSpread;
+// Exercise every source cell, including inactive/roof boundary mappings.
+for(let i=0;i<a.draft.length;i++){a.draft[i]=(i%17)/13;b.draft[i]=a.draft[i];}a.spreadDraft();b.spreadDraft();assert.deepEqual(a.draft,b.draft);
+for(let i=0;i<40;i++){const w=G.house.windows[0].data;w.glass=i%3?'broken':'intact';w.cover=i%4===0?{}:null;w.boards=i%3;G.house.door.data.open=i%2===0;G.house.door.removed=i%5===0;G.house.doorway={data:{cover:i%2?{}:null}};a.update(i%4===0?60:.2);b.update(i%4===0?60:.2);for(const key of ['T','AH','draft','windowFrost','windowGlassT','zones'])assert.deepEqual(a[key],b[key],key);assert.deepEqual(a.faces.map(f=>[f.Ts,f.glassT]),b.faces.map(f=>[f.Ts,f.glassT]));}
+for(const [name,f] of [['original',b],['cached',a]]){for(let i=0;i<100;i++)f.spreadDraft();const times=[];for(let j=0;j<7;j++){const t=performance.now();for(let i=0;i<200;i++)f.spreadDraft();times.push((performance.now()-t)/200);}times.sort((a,b)=>a-b);console.log(name,'spread ms',times[3].toFixed(3));}
+console.log('PASS exact draught, temperature, moisture, frost, surface and zone equivalence across 40 changing-door/window steps');

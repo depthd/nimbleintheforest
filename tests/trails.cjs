@@ -95,4 +95,16 @@ test('weather refreshes one oldest texture per frame without history scans, incl
  const rewind=new rendererModule.exports.SnowTrailRenderer(f,bounds);rewind.update(eye);
  for(const [key,e] of r.entries)assert.deepEqual(e.pixels,rewind.entries.get(key).pixels);
 });
+test('refresh shares substrate samples without caching stale shelter coverage',()=>{
+ let coverage=1,calls=0;
+ const f=new SnowField({thickness:.28,densityRatio:2.6,base:(x,z)=>.01*x+.02*z,coverage:()=>{calls++;return coverage}});
+ press(f);const r=new rendererModule.exports.SnowTrailRenderer(f,{minX:-10,minZ:-10,maxX:10,maxZ:10});r.update(new THREE.Vector3());
+ const entry=[...r.entries.values()][0];calls=0;r.refresh(entry);
+ // One query per raw sample, including the 2-cell smoothing halo. Previously
+ // each raw sample was queried twice, plus one query per output pixel.
+ assert.equal(calls,89*89);
+ coverage=.6;r.refreshAll();
+ const reference=new rendererModule.exports.SnowTrailRenderer(f,{minX:-10,minZ:-10,maxX:10,maxZ:10});reference.update(new THREE.Vector3());
+ for(const [key,e]of r.entries)assert.deepEqual(e.pixels,reference.entries.get(key).pixels);
+});
 console.log(`${count} trail lifetime checks passed`);

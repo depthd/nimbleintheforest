@@ -88,13 +88,20 @@ class InstanceChunks {
   readonly meshes: THREE.InstancedMesh[] = [];
   private chunks = new Map<string, THREE.InstancedMesh[]>();
   private count = 0;
+  private previousCounts = new Map<THREE.InstancedMesh, number>();
+  private changed = new Set<THREE.InstancedMesh>();
 
   constructor(private parent: THREE.Object3D, private geos: THREE.BufferGeometry[],
     private mats: THREE.Material[], private kind: Kind) {}
 
   begin() {
     this.count = 0;
-    for (const mesh of this.meshes) mesh.count = 0;
+    this.previousCounts.clear();
+    this.changed.clear();
+    for (const mesh of this.meshes) {
+      this.previousCounts.set(mesh, mesh.count);
+      mesh.count = 0;
+    }
   }
 
   add(matrix: THREE.Matrix4) {
@@ -112,7 +119,15 @@ class InstanceChunks {
       this.chunks.set(key, parts);
       this.release(previous);
     }
-    for (const mesh of parts) mesh.setMatrixAt(mesh.count++, matrix);
+    // All parts share the same instance transforms. Only changed chunks need
+    // buffer uploads and bounds scans; most chunks survive a 14 m stream intact.
+    const first = parts[0], offset = first.count * 16, array = first.instanceMatrix.array;
+    let changed = !this.previousCounts.has(first);
+    for (let i = 0; i < 16 && !changed; i++) changed = array[offset + i] !== Math.fround(e[i]);
+    for (const mesh of parts) {
+      if (changed) { mesh.setMatrixAt(mesh.count, matrix); this.changed.add(mesh); }
+      mesh.count++;
+    }
     this.count++;
   }
 
@@ -124,6 +139,7 @@ class InstanceChunks {
         continue;
       }
       for (const mesh of parts) {
+        if (!this.changed.has(mesh) && this.previousCounts.get(mesh) === mesh.count) continue;
         mesh.instanceMatrix.clearUpdateRanges();
         mesh.instanceMatrix.addUpdateRange(0, mesh.count * 16);
         mesh.instanceMatrix.needsUpdate = true;
