@@ -15,6 +15,7 @@ import { Water } from '../world/water';
 import { Region } from '../gen/region';
 import { Structures } from '../world/structures';
 import { Animals } from './animals/animals';
+import { Deer, DeerLab } from './animals/deer-lab';
 import { Entities, Entity } from './entities';
 import { Player } from './player';
 import { Body, Env, Activity } from './body';
@@ -46,6 +47,7 @@ const STEP = 1 / 60;
  */
 const MAX_STEPS = 3;
 let horror: Horror;
+let deer: Deer | null = null;
 
 export async function startGame(settings: Settings) {
   await RAPIER.init();
@@ -161,13 +163,21 @@ export async function startGame(settings: Settings) {
   G.corpses = new Corpses();
   G.corpses.build();
   if (region.cliffLab) G.cliffLab = new CliffLab();
+  deer = new Deer();
+  try {
+    await deer.load(!!settings.deerLab);
+    if (settings.deerLab) new DeerLab(deer);
+  } catch (e) {
+    console.warn('deer: model failed to load', e);
+    deer = null;
+  }
   G.recorder = new MotionRecorder();
 
   window.addEventListener('resize', onResize);
   onResize();
   G.input.onLockChange = (locked) => {
     if (locked || G.recorder?.reviewing) G.hud.showPause(false);
-    else if (!G.hud.modal && !G.dead) G.hud.showPause(true);
+    else if (!G.hud.modal && !G.dead && !settings.deerLab) G.hud.showPause(true);
   };
   renderer.domElement.addEventListener('click', () => {
     if (G.recorder?.reviewing) return;
@@ -542,7 +552,10 @@ function loop(now: number) {
   }
   G.structures.update(dt);
   G.corpses.update();
-  if (!paused && !G.dead && !inCave) G.animals.update(dt);
+  if (!paused && !G.dead && !inCave) {
+    G.animals.update(dt);
+    deer?.update(dt);
+  } else if (G.settings.deerLab) deer?.update(dt);
   updateGoal();
   G.interact.update(paused ? 0 : dt);
   const indoorAmb = G.sky.daylight > 0.3 ? 0.5 : 0.75;
@@ -669,6 +682,12 @@ function testApi() {
     animation() {
       P().avatar.render(1, 0);
       return P().avatar.snapshot();
+    },
+    deer() {
+      return deer ? { state: deer.state, pos: deer.position.toArray() } : null;
+    },
+    stepDeer(seconds: number) {
+      for (let t = 0; t < seconds; t += 1 / 30) deer?.update(Math.min(1 / 30, seconds - t));
     },
     state() {
       const B = G.body;

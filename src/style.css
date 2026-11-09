@@ -249,3 +249,8 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 .motion-recorder p { margin: 9px 0 2px; }
 .motion-notice { color: #d4e8f2; font-size: 12px; margin-top: 6px; }
 body.motion-reviewing .snow-panel { opacity: .4; pointer-events: none; }
+
+.deer-panel { left: auto; right: 12px; max-width: min(390px, calc(100vw - 24px)); }
+.deer-animations { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.deer-animations button { padding: 5px 8px; }
+.deer-animations button.active { background: #416786; border-color: #9cc8ff; }

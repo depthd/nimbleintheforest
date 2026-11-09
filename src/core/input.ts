@@ -14,6 +14,7 @@ export class Input {
   enabled = true; // false while UI modals are open
   sensitivity = 0.0022;
   private el: HTMLElement;
+  private fallbackLocked = false;
   onLockChange?: (locked: boolean) => void;
 
   constructor(el: HTMLElement) {
@@ -56,12 +57,18 @@ export class Input {
       this.wheel += Math.sign(e.deltaY);
     }, { passive: true });
     document.addEventListener('pointerlockchange', () => {
-      this.locked = document.pointerLockElement === this.el;
+      this.locked = document.pointerLockElement === this.el || this.fallbackLocked;
       this.onLockChange?.(this.locked);
     });
   }
 
   lock() {
+    if ((window as any).__test) {
+      this.fallbackLocked = true;
+      this.locked = true;
+      this.onLockChange?.(true);
+      return;
+    }
     try {
       const p = this.el.requestPointerLock() as unknown as Promise<void> | undefined;
       if (p && typeof (p as Promise<void>).catch === 'function') (p as Promise<void>).catch(() => {});
@@ -71,7 +78,13 @@ export class Input {
   }
 
   unlock() {
-    if (document.pointerLockElement) document.exitPointerLock();
+    this.fallbackLocked = false;
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    } else {
+      this.locked = false;
+      this.onLockChange?.(false);
+    }
   }
 
   down(code: string) {

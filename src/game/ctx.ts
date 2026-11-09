@@ -47,6 +47,8 @@ export interface Settings {
   cliffLab?: boolean;
   /** start in front of the nearest cave mouth */
   caveLab?: boolean;
+  /** show the imported deer and its animation controls */
+  deerLab?: boolean;
 }
 
 export interface Ctx {

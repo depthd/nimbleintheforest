@@ -19,6 +19,11 @@ if (params.get('cave') === '1') {
   for (const [key, value] of Object.entries({ seed: '42', hour: '13', weather: 'clear', nocold: '1', horror: '0', scale: '0' }))
     if (!params.has(key)) params.set(key, value);
 }
+// One stationary imported deer in the ordinary world, with direct clip controls.
+if (params.get('deer') === '1') {
+  for (const [key, value] of Object.entries({ seed: '42', hour: '13', weather: 'clear', nocold: '1', horror: '0', scale: '0' }))
+    if (!params.has(key)) params.set(key, value);
+}
 const el = (id: string) => document.getElementById(id) as HTMLInputElement;
 
 const seedInput = el('st-seed');
@@ -42,11 +47,12 @@ async function go() {
     size: Number(params.get('size') ?? 3072),
     cliffLab: params.get('cliffs') === '1',
     caveLab: params.get('cave') === '1',
+    deerLab: params.get('deer') === '1',
   };
   document.getElementById('start')!.style.display = 'none';
   const loading = document.getElementById('loading')!;
   loading.style.display = 'flex';
-  if (params.get('test') === '1') (window as any).__test = true;
+  if (params.get('test') === '1' || settings.deerLab) (window as any).__test = true;
   // give the browser a frame to paint the loading screen
   await new Promise((r) => setTimeout(r, 30));
   try {
@@ -70,4 +76,4 @@ document.getElementById('st-go')!.addEventListener('click', go);
 if (params.get('preview') === 'map') import('./preview').then((m) => m.previewMap(params));
 else if (params.get('preview') === 'animals') import('./preview_animals').then((m) => m.previewAnimals(params));
 else if (params.get('preview') === 'wood') import('./preview_wood').then((m) => m.previewWood(params));
-else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1' || params.get('cliffs') === '1' || params.get('cave') === '1') go();
+else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1' || params.get('cliffs') === '1' || params.get('cave') === '1' || params.get('deer') === '1') go();
