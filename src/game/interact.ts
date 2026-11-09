@@ -1,7 +1,7 @@
 // What the player looks at, which actions are possible and what happens:
 // chopping, picking up, hanging blankets, lighting fires, fishing and more.
 import * as THREE from 'three';
-import { actionFor } from './hands';
+import { actionFor, handGrips } from './hands';
 import { G, GROUPS_RAY, msg } from './ctx';
 import { Entity } from './entities';
 import { def, ItemDef, ToolTag, Yield } from './items';
@@ -663,7 +663,7 @@ export class Interaction {
       const s = this.swinging;
       if (P.equipped !== s.tool || P.handsWarming || P.carried) { this.swinging = null; P.avatar.hands.cancel(); return; }
       s.t += dt;
-      if (!s.hit && s.t >= s.dur * 0.55) {
+      if (!s.hit && s.t >= s.dur * clamp(handGrips[s.tool.defId]?.contactPhase ?? 0.55, 0, 1)) {
         s.hit = true;
         this.resolveHit(s.tool);
       }

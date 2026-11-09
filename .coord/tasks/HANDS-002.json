@@ -1,0 +1,38 @@
+{
+  "id": "HANDS-002",
+  "status": "review",
+  "owner": "codex-task-2",
+  "branch": "task/HANDS-002-coupled-grips",
+  "base_sha": "de20db3bb8883af6ade9afb5bb418b708afd9d71",
+  "allowed_paths": [
+    ".coord/tasks/HANDS-001.json",
+    "src/game/hands.ts",
+    "src/game/avatar.ts",
+    "src/game/survivor-avatar.ts",
+    "src/game/viewmodel.ts",
+    "src/game/interact.ts",
+    "src/game/player.ts",
+    "src/game/world-snow.ts",
+    "src/game/snow-experiment.ts",
+    "tests/hands.cjs",
+    "tests/hands-browser.cjs",
+    "docs/HANDS.md",
+    "src/ui/hud.ts",
+    "docs/qa/HANDS-001/",
+    ".coord/tasks/HANDS-002.json",
+    "src/game/grip-solver.ts",
+    "tests/grip-solver.cjs",
+    "tests/grip-browser.cjs",
+    "src/game/game.ts",
+    "docs/qa/HANDS-002/"
+  ],
+  "acceptance": [
+    "Same-frame item and hands, no independent grip lag",
+    "Correct object pose jointly for both arms, report loss of carried grip",
+    "Replaceable models, sockets and authored pose sampling with a shared contact phase",
+    "Measure palm-to-object gaps during turns and actions"
+  ],
+  "coordination": "User assigned task 2 and explicitly authorized preparing the task card and isolated checkout. Diagnostics, clothing and journal remain separate tasks.",
+  "qa_sha": null,
+  "qa_result": "NOT_TESTED"
+}

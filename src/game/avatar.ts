@@ -240,7 +240,6 @@ export class PlayerAvatar {
       arm.elbow.rotation.x = holding ? 0.8 : 0.2 + m.runBlend * 0.8 + Math.abs(armSwing) * 0.25;
     }
     this.root.updateMatrixWorld(true);
-    this.hands.update(dt, this.arms);
     this.survivor?.pose(this.pelvis, this.chest, this.head, this.legs, this.arms, !this.inspectionView);
     if (this.inspectionView) {
       const target = origin.clone().add(new THREE.Vector3(0, this.player.crouch ? 0.62 : 0.92, 0));
@@ -254,6 +253,13 @@ export class PlayerAvatar {
       this.inspectionCamera.updateProjectionMatrix();
       this.inspectionCamera.lookAt(target);
     }
+  }
+
+  /** Final arm solve runs after this frame's anatomical camera is placed. */
+  renderHands(dt: number) {
+    this.root.updateMatrixWorld(true);
+    this.hands.update(dt, this.arms);
+    this.survivor?.pose(this.pelvis, this.chest, this.head, this.legs, this.arms, !this.inspectionView);
   }
 
   private segment(mesh: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3, origin: THREE.Vector3, radius: number) {

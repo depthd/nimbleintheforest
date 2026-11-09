@@ -1,5 +1,6 @@
 // Equipment uses the same world scene/depth as the actual Survivor hands.
 import * as THREE from 'three';
+import { handGrips, type Grip } from './hands';
 import { G } from './ctx';
 import { buildItemMesh } from './meshes';
 import { Tex } from '../core/textures';
@@ -7,6 +8,7 @@ import type { Entity } from './entities';
 
 export class ViewModel {
   private holder = new THREE.Group();
+  private profile?: Grip;
   private current: Entity | null = null;
   private mesh: THREE.Object3D | null = null;
   private flame: THREE.Sprite;
@@ -22,10 +24,12 @@ export class ViewModel {
   swing(_dur: number, _kind: 'chop' | 'saw' | 'poke') { /* The authoritative interaction clock drives Hands. */ }
   update(_dt: number) {
     const p = G.player, eq = p.equipped;
-    if (eq !== this.current) {
+    const profile = handGrips[eq?.defId ?? ''];
+    if (eq !== this.current || profile !== this.profile) {
+      this.profile = profile;
       if (this.mesh) this.holder.remove(this.mesh);
       // Item geometry/materials come from shared caches; do not dispose them here.
-      this.mesh = eq ? buildItemMesh(eq.defId, eq.params) : null;
+      this.mesh = eq ? (profile?.createVisual?.() ?? buildItemMesh(eq.defId, eq.params)) : null;
       this.mesh?.traverse(c => { c.castShadow = c.receiveShadow = true; });
       if (this.mesh) this.holder.add(this.mesh);
       this.current = eq;
@@ -33,7 +37,7 @@ export class ViewModel {
     const hands = p.avatar.hands;
     this.holder.position.copy(hands.item.position);
     this.holder.quaternion.copy(hands.item.quaternion);
-    this.holder.visible = !p.carried && !G.sleeping && !G.dead && hands.state !== 'warm' && !G.recorder?.reviewing;
+    this.holder.visible = !p.carried && !G.sleeping && !G.dead && hands.state !== 'warm' && hands.state !== 'brush' && !G.recorder?.reviewing;
     this.flame.visible = !!G.interact?.flame || !!(eq?.defId === 'lamp' && eq.lit);
     const fl = 0.85 + Math.random() * 0.3;
     this.flame.position.set(eq?.defId === 'lamp' ? 0 : -0.02, eq?.defId === 'lamp' ? 0 : 0.07, 0);
