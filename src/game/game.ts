@@ -24,6 +24,7 @@ import { Thermal } from './thermal';
 import { Fires } from './fire';
 import { Interaction } from './interact';
 import { ViewModel } from './viewmodel';
+import { journal } from './journal/journal';
 import { Effects } from './effects';
 import { HUD } from '../ui/hud';
 import { Horror } from './horror';
@@ -523,6 +524,7 @@ function loop(now: number) {
   last = now;
   if (dt > 0.1) dt = 0.1;
   const inp = G.input;
+  journal.update(dt);
   if (!G.recorder?.reviewing) handleGlobalKeys();
   const paused = G.recorder?.reviewing || G.paused || (!inp.locked && !G.hud.modal && !(window as any).__test);
 
