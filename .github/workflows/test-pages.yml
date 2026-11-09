@@ -1,6 +1,11 @@
 name: Publish Survivor test alongside current game
 on:
   workflow_dispatch:
+    inputs:
+      sha:
+        description: Full tested source SHA to publish at /test/
+        required: true
+        type: string
 permissions:
   contents: read
   actions: read
@@ -14,17 +19,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 2871a0ee60d8a4ffe02a2bf86373b6d476d2eceb
+          ref: ${{ inputs.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: node scripts/repo-check.mjs --base e5699d46d4af0e9382e11821d778c409367ca1ea
+      - run: node scripts/repo-check.mjs --base e4dbfd7f1692b5300a0a569a749b4d68bcf4c273
       - run: npm ci && npm run build && npm run test:statics && npm run test:resting
       - name: Restore exact published game and add test build
         env:
           GH_TOKEN: ${{ github.token }}
+          TEST_SHA: ${{ inputs.sha }}
         run: |
           mv dist preview-dist
           gh run download 42676348641 --repo "$GITHUB_REPOSITORY" --name github-pages --dir original-pages
@@ -36,7 +42,7 @@ jobs:
           test ! -e dist/test
           mkdir dist/test
           cp -a preview-dist/. dist/test/
-          node -e 'require("fs").writeFileSync("dist/test/version.json", JSON.stringify({sha:"2871a0ee60d8a4ffe02a2bf86373b6d476d2eceb",pr:3,productionRun:42676348641}))'
+          node -e 'require("fs").writeFileSync("dist/test/version.json", JSON.stringify({sha:process.env.TEST_SHA,productionRun:42676348641}))'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

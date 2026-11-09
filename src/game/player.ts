@@ -77,7 +77,7 @@ export class Player {
 
   private get eyeOffset() {
     const yaw = this.avatar?.motion.bodyYaw ?? this.yaw;
-    return new THREE.Vector3(-Math.sin(yaw) * 0.12, 0, -Math.cos(yaw) * 0.12);
+    return new THREE.Vector3(-Math.sin(yaw) * 0.26, 0, -Math.cos(yaw) * 0.26);
   }
 
   get eyePos() {
