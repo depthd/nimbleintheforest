@@ -29,7 +29,7 @@ export class SurvivorAvatar {
       const pos = o.geometry.getAttribute('position');
       const mask = new Float32Array(pos.count);
       // Bind-space mask follows skinning and affects only the main material, not shadows.
-      for (let i = 0; i < pos.count; i++) mask[i] = pos.getY(i) > 1.12 || (pos.getY(i) > 0.75 && Math.abs(pos.getX(i)) < 0.3) ? 1 : 0;
+      for (let i = 0; i < pos.count; i++) mask[i] = pos.getY(i) > 1.12 ? 1 : 0;
       o.geometry.setAttribute('avatarHide', new THREE.BufferAttribute(mask, 1));
       const materials = Array.isArray(o.material) ? o.material : [o.material];
       for (const material of materials) {
@@ -38,7 +38,7 @@ export class SurvivorAvatar {
           shader.vertexShader = 'attribute float avatarHide; varying float vAvatarHide;\n' + shader.vertexShader;
           shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvAvatarHide = avatarHide;');
           shader.fragmentShader = 'uniform float uAvatarFirstPerson; varying float vAvatarHide;\n' + shader.fragmentShader;
-          shader.fragmentShader = shader.fragmentShader.replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (uAvatarFirstPerson > 0.5 && vAvatarHide > 0.5) discard;');
+          shader.fragmentShader = shader.fragmentShader.replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (uAvatarFirstPerson > 0.5 && (vAvatarHide > 0.5 || !gl_FrontFacing)) discard;');
         };
         material.customProgramCacheKey = () => 'survivor-first-person-v1';
       }
