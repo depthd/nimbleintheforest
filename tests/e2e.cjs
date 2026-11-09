@@ -172,7 +172,8 @@ function check(name, ok, extra = '') {
     g.teleport(px, G.terrain.heightAt(px, pz) + 0.05, pz);
     g.steps(20);
     g.equip('axe');
-    g.lookAt(tr.x, tr.y + 1.2, tr.z);
+    // Aim at exposed wood above today's snow, not the buried summer base.
+    g.lookAt(tr.x, Math.max(tr.y + 1.2, G.terrain.heightAt(tr.x, tr.z) + 0.8), tr.z);
     const acts = g.actions();
     let n = 0;
     while (tr.alive && n < 80) {
