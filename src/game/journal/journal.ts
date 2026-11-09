@@ -12,6 +12,7 @@ class Journal {
   private art?: ReturnType<typeof createJournalModel>;
   private lastState = '';
   private fontReady = false;
+  private inputBlocked = false;
   constructor() { this.entity.defId = 'journal'; this.entity.name = 'Дневник'; }
   get active() { return this.open || this.progress > 0; }
   init() {
@@ -49,8 +50,11 @@ class Journal {
     if (G.hud.modal || G.sleeping || G.dead || G.player.carried || G.recorder?.reviewing) { this.open = false; this.progress = 0; }
     this.progress = THREE.MathUtils.clamp(this.progress + (this.open ? 1 : -1) * dt / .65, 0, 1);
     document.body.classList.toggle('journal-reading', this.active);
-    if (this.active) inp.enabled = false;
-    else if (!G.hud.modal) inp.enabled = true;
+    if (this.active) { inp.enabled = false; this.inputBlocked = true; }
+    else if (G.hud.modal) this.inputBlocked = false; // modal owns restoration
+    else if (this.inputBlocked && !G.sleeping && !G.dead && !G.recorder?.reviewing && !G.paused) {
+      inp.enabled = true; this.inputBlocked = false;
+    }
     if (!this.active || !this.art) return;
     const b = G.body;
     const state = {
