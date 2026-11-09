@@ -1,0 +1,21 @@
+{
+  "id": "AVATAR-004",
+  "status": "developing",
+  "owner": "codex-coordinator",
+  "branch": "task/AVATAR-004-camera-clearance",
+  "base_sha": "ff674750bb866a8065154165448c53a91d8db4f8",
+  "allowed_paths": [
+    ".coord/tasks/AVATAR-004.json",
+    "src/game/game.ts",
+    "src/game/survivor-avatar.ts",
+    "src/game/player.ts",
+    "tests/survivor-avatar.cjs"
+  ],
+  "acceptance": [
+    "No clipped torso interiors at maximum downward pitch and wide viewport",
+    "Measure rendered mesh clearance rather than only eye-anchor agreement",
+    "Publish corrected test preserving main game"
+  ],
+  "qa_sha": null,
+  "qa_result": "NOT_TESTED"
+}

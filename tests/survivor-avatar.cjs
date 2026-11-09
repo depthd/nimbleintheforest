@@ -99,14 +99,16 @@ fs.mkdirSync(OUT, { recursive: true });
       ['crouch-front', ['ControlLeft'], 0, 2],
       ['first-person-level', [], 0, 0], ['first-person', [], -1.35, 0],
       ['crouch-first-person', ['ControlLeft'], -1.35, 0],
+      ['max-down-wide', [], -1.5, 0], ['crouch-max-down-wide', ['ControlLeft'], -1.5, 0],
     ]) {
-      await ev(({keys, pitch, view}) => {
+      if (name.includes('wide')) await page.setViewportSize({width:1080,height:400});
+      await ev(({keys, pitch, view, settle}) => {
         const g = window.__game, p = g.G.player;
         window.__resetMovement();
         keys.forEach(k => g.G.input.keys.add(k));
         p.pitch = pitch; p.avatar.inspectionView = view;
-        g.steps(18); p.updateCamera(0);
-      }, {keys, pitch, view});
+        g.steps(settle); p.updateCamera(0);
+      }, {keys, pitch, view, settle: name.includes('wide') ? 180 : 18});
       await shot(name);
       const result = await ev(() => {
         const {G, THREE: T} = window.__game, a = G.player.avatar;
@@ -127,6 +129,34 @@ fs.mkdirSync(OUT, { recursive: true });
       });
       check(name + ': skin joints follow solver', result.visible && result.finite && result.error < 1e-5, result);
       if (result.firstPerson) check(name + ': camera matches model eyes', result.cameraError < 1e-5, result.cameraError);
+      if (name.includes('wide')) {
+        const clearance = await ev(() => {
+          const {G,THREE:T} = window.__game;
+          const skin = G.player.avatar.survivor.model.getObjectByProperty('isSkinnedMesh',true);
+          skin.computeBoundingSphere(); skin.computeBoundingBox();
+          const mask = skin.geometry.getAttribute('avatarHide');
+          const ray = new T.Raycaster(), forward = G.camera.getWorldDirection(new T.Vector3());
+          let minDepth = Infinity, backHits = 0, clipped = 0, bodyHits = 0;
+          for (let y=-1; y<=1.001; y+=0.2) for (let x=-1; x<=1.001; x+=0.2) {
+            ray.setFromCamera(new T.Vector2(x,y),G.camera);
+            for (const hit of ray.intersectObject(skin,false)) {
+              const f=hit.face; if (!f) continue;
+              if (mask.getX(f.a)>0.5 || mask.getX(f.b)>0.5 || mask.getX(f.c)>0.5) continue;
+              const depth=hit.point.clone().sub(G.camera.position).dot(forward);
+              minDepth=Math.min(minDepth,depth); bodyHits++;
+              if (depth<G.camera.near) clipped++;
+              const a=skin.getVertexPosition(f.a,new T.Vector3()).applyMatrix4(skin.matrixWorld);
+              const b=skin.getVertexPosition(f.b,new T.Vector3()).applyMatrix4(skin.matrixWorld);
+              const c=skin.getVertexPosition(f.c,new T.Vector3()).applyMatrix4(skin.matrixWorld);
+              if (b.sub(a).cross(c.sub(a)).dot(ray.ray.direction)>0) backHits++;
+              break;
+            }
+          }
+          return {near:G.camera.near,minDepth,backHits,clipped,bodyHits};
+        });
+        check(name + ': body is outside camera and no visible surface is cut by near plane',
+          clearance.bodyHits>0 && clearance.backHits===0 && clearance.clipped===0, clearance);
+      }
       if (name === 'first-person-level') levelEyeOffset = result.eyeOffset;
       if (name === 'first-person') {
         const delta = Math.hypot(...result.eyeOffset.map((v, i) => v - levelEyeOffset[i]));
