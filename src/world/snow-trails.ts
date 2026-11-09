@@ -154,6 +154,8 @@ export class SnowTrailRenderer {
     return { x, z, base, mesh, pixels, texture, morph, coarseStep,
       active: new Uint8Array(SIZE * SIZE), activeCount: 0, minY: Infinity, maxY: -Infinity, signature: '', exposure: -Infinity };
   }
+  private initial = new Float64Array(RAW * RAW);
+
   private refresh(e: Entry, dirty?: SnowRect) {
     const gx = e.x * TILE_CELLS, gz = e.z * TILE_CELLS;
     const x0 = dirty ? Math.max(0, Math.floor(dirty.minX / CELL - gx)) : 0;
@@ -162,8 +164,13 @@ export class SnowTrailRenderer {
     const z1 = dirty ? Math.min(SIZE - 1, Math.ceil(dirty.maxZ / CELL - gz) + 4) : SIZE - 1;
     if (x0 > x1 || z0 > z1) { e.signature = this.signature(e.x,e.z); return e.activeCount > 0; }
     for (let z = z0; z <= z1 + 4; z++) for (let x = x0; x <= x1 + 4; x++) {
-      const ix = gx + x - 4, iz = gz + z - 4, state = this.field.gridState(ix, iz), i = z * RAW + x;
-      this.raw[i] = state.height - this.field.initialThickness(ix * CELL, iz * CELL);
+      const ix = gx + x - 4, iz = gz + z - 4, i = z * RAW + x;
+      // Sample the unchanged substrate once for this refresh. Both the material
+      // read and the output pixel need exactly this value; do not cache across
+      // frames, since roofs/shelters can change coverage.
+      const initial = this.initial[i] = this.field.initialThickness(ix * CELL, iz * CELL);
+      const state = this.field.gridState(ix, iz, initial);
+      this.raw[i] = state.height - initial;
       this.packed[i] = state.surfaceCompaction;
     }
     if (!dirty) { e.minY = Infinity; e.maxY = -Infinity; }
@@ -181,7 +188,7 @@ export class SnowTrailRenderer {
       const excavation=THREE.MathUtils.smoothstep(-this.raw[centre],.04,.16)*(1-THREE.MathUtils.smoothstep(this.packed[centre],.05,.25));
       if(excavation>0){let rounded=0;for(let dz=0;dz<5;dz++)for(let dx=0;dx<5;dx++)rounded+=this.raw[(z+dz)*RAW+x+dx]*wide[dx]*wide[dz];delta=THREE.MathUtils.lerp(delta,rounded,excavation);}
       const wx = (gx + x - 2) * CELL, wz = (gz + z - 2) * CELL, i = (z * SIZE + x) * 4;
-      const values = [this.field.baseHeight(wx, wz) - e.base, this.field.initialThickness(wx, wz), delta, packed];
+      const values = [this.field.baseHeight(wx, wz) - e.base, this.initial[(z + 2) * RAW + x + 2], delta, packed];
       e.minY = Math.min(e.minY, e.base + values[0] + values[1] + Math.min(0, delta));
       e.maxY = Math.max(e.maxY, e.base + values[0] + values[1] + Math.max(0, delta));
       for (let k = 0; k < 4; k++) {
