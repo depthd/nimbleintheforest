@@ -1,5 +1,5 @@
 // Real Rapier + browser checks. Uses the same Playwright setup as tests/e2e.cjs.
-// Optional: CHROMIUM_PATH=/usr/bin/chromium. Screenshots go to test-results/movement/.
+// Optional: CHROMIUM_PATH=/usr/bin/chromium. Screenshots go to test-results/survivor/.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -96,6 +96,7 @@ fs.mkdirSync(OUT, { recursive: true });
       ['idle-front', [], 0, 2], ['walk-side', ['KeyW'], 0, 1],
       ['run-side', ['KeyW', 'ShiftLeft'], 0, 1],
       ['crouch-front', ['ControlLeft'], 0, 2], ['first-person', [], -1.35, 0],
+      ['crouch-first-person', ['ControlLeft'], -1.35, 0],
     ]) {
       await ev(({keys, pitch, view}) => {
         const g = window.__game, p = g.G.player;
