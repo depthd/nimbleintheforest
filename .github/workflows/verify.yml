@@ -1,0 +1,30 @@
+name: Verify candidate
+on:
+  pull_request:
+    branches: [claude/friendly-archimedes-onmybq]
+  push:
+    branches: [claude/friendly-archimedes-onmybq]
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: git fetch origin claude/friendly-archimedes-onmybq
+      - run: node scripts/repo-check.mjs --base origin/claude/friendly-archimedes-onmybq
+      - run: python3 tests/repo-guard.py
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:statics && npm run test:resting
+      # Add existing browser suites once their local/CI setup is verified.
+      # This workflow alone does not establish visual QA or performance acceptance.

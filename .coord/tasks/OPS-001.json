@@ -1,0 +1,23 @@
+{
+  "id": "OPS-001",
+  "status": "developing",
+  "owner": "codex-coordinator",
+  "branch": "task/OPS-001-repository-workflow",
+  "base_sha": "ef7d9a297148d49422dd3ed1882ca5277bc71cdb",
+  "allowed_paths": [
+    "AGENTS.md",
+    ".coord/",
+    "scripts/repo-check.mjs",
+    "tests/repo-guard.py",
+    ".github/workflows/",
+    "docs/WORKFLOW.md"
+  ],
+  "acceptance": [
+    "Published game remains unchanged",
+    "PR CI verifies build and physics milestones",
+    "No deploy on ordinary push",
+    "New agents read one canonical branch configuration"
+  ],
+  "qa_sha": null,
+  "qa_result": "NOT_TESTED"
+}

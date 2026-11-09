@@ -1,41 +1,63 @@
-name: Deploy to GitHub Pages
-
+# No deploy on push. Dispatch a QA-tested, visually approved SHA explicitly.
+name: Release approved version
 on:
-  push:
   workflow_dispatch:
-
+    inputs:
+      sha:
+        description: Full SHA on the integration branch, already checked by Kimi and approved visually
+        required: true
+        type: string
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
 concurrency:
-  group: pages
-  cancel-in-progress: true
-
+  group: production-pages
+  cancel-in-progress: false
 jobs:
   build:
+    if: github.ref == 'refs/heads/claude/friendly-archimedes-onmybq'
     runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.pin.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: claude/friendly-archimedes-onmybq
+          fetch-depth: 0
+      - id: pin
+        env:
+          RELEASE_SHA: ${{ inputs.sha }}
+        run: |
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/claude/friendly-archimedes-onmybq
+          git checkout --detach "$RELEASE_SHA"
+          echo "sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
+      - run: npm run test:statics && npm run test:resting
+      - name: Record build identity
+        env:
+          RELEASE_SHA: ${{ steps.pin.outputs.sha }}
+        run: node -e 'require("fs").writeFileSync("dist/version.json",JSON.stringify({sha:process.env.RELEASE_SHA,run:process.env.GITHUB_RUN_ID}))'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
-
   deploy:
-    # only the default branch publishes the site
-    if: github.ref_name == github.event.repository.default_branch
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Display candidate for release review
+        env:
+          RELEASE_SHA: ${{ needs.build.outputs.sha }}
+        run: echo "Approved release SHA = $RELEASE_SHA"
       - id: deployment
         uses: actions/deploy-pages@v4
