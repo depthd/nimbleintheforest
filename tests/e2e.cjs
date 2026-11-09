@@ -29,7 +29,12 @@ function check(name, ok, extra = '') {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(url);
   await page.waitForFunction(() => window.__game, null, { timeout: 300000 });
-  await page.evaluate(ratio => { const g=window.__game;g.setManualStepping(true);g.G.input.enabled=true;g.G.renderer.setPixelRatio(ratio); }, Number(process.env.E2E_PIXEL_RATIO || 1));
+  await page.evaluate(ratio => { const g=window.__game;g.setManualStepping(true);g.G.input.enabled=true;g.G.renderer.setPixelRatio(ratio);
+    // Debug stepping bypasses the render loop. Refresh the rig before using its
+    // eye position for aiming, and converge the eye pivot after a pitch change.
+    const steps=g.steps.bind(g),look=g.lookAt.bind(g);
+    g.steps=n=>{steps(n);g.G.player.renderAlpha=1;g.G.player.updateCamera(0);};
+    g.lookAt=(...point)=>{g.G.player.renderAlpha=1;g.G.player.updateCamera(0);for(let i=0;i<4;i++)look(...point);}; }, Number(process.env.E2E_PIXEL_RATIO || 1));
   const shot = (n) => page.screenshot({ timeout: 180000, path: path.join(OUT, n + '.png') });
   const ev = (fn, arg) => page.evaluate(fn, arg);
 
