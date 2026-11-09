@@ -27,6 +27,8 @@ jobs:
           cache: npm
       - run: node scripts/repo-check.mjs --base e4dbfd7f1692b5300a0a569a749b4d68bcf4c273
       - run: npm ci && npm run build && npm run test:statics && npm run test:resting
+        env:
+          BUILD_CHANNEL: test
       - name: Restore exact published game and add test build
         env:
           GH_TOKEN: ${{ github.token }}
