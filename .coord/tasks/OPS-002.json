@@ -1,0 +1,17 @@
+{
+  "id": "OPS-002",
+  "status": "developing",
+  "owner": "codex-coordinator",
+  "branch": "task/OPS-002-test-pages",
+  "base_sha": "e5699d46d4af0e9382e11821d778c409367ca1ea",
+  "allowed_paths": [
+    ".coord/tasks/OPS-002.json",
+    ".github/workflows/test-pages.yml"
+  ],
+  "acceptance": [
+    "Publish tested avatar at /test/",
+    "Preserve deployed production artifact at site root"
+  ],
+  "qa_sha": null,
+  "qa_result": "NOT_TESTED"
+}
