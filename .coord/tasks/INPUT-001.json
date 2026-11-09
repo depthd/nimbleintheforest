@@ -1,0 +1,20 @@
+{
+  "id": "INPUT-001",
+  "owner": "codex-input",
+  "status": "review",
+  "branch": "task/INPUT-001-crouch-c",
+  "base_sha": "3cbd1dacc9f97b3f5ec0bc96b7d514f89c86f77f",
+  "allowed_paths": [
+    ".coord/tasks/INPUT-001.json",
+    "src/game/player.ts",
+    "index.html",
+    "README.md"
+  ],
+  "acceptance": [
+    "C is the only crouch key; Ctrl does not crouch",
+    "Preserve current test integration diagnostics, hands and performance",
+    "Build and movement/hand checks; publish only /test/ as requested"
+  ],
+  "qa_sha": null,
+  "qa_result": "External QA not performed"
+}

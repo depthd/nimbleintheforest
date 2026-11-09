@@ -1,0 +1,26 @@
+{
+  "id": "DIAG-001",
+  "status": "developing",
+  "owner": "codex-diagnostics",
+  "branch": "task/DIAG-001-world-report",
+  "base_sha": "de20db3bb8883af6ade9afb5bb418b708afd9d71",
+  "allowed_paths": [
+    ".coord/tasks/DIAG-001.json",
+    "src/game/motion-record.ts",
+    "src/game/motion-recorder.ts",
+    "src/game/diagnostics/",
+    "src/style.css",
+    "tests/motion-record.cjs",
+    "tests/motion-recorder-browser.cjs",
+    "tests/diagnostics.cjs",
+    "docs/MOTION_RECORDING.md"
+  ],
+  "acceptance": [
+    "Portable versioned bug package: exact build, generator settings, coordinates, expected/actual notes and map pins",
+    "Bounded local snapshots of nearby entities, collider geometry, transforms, velocities and relevant system state; explicit coverage and truncation",
+    "Recorded-state viewer with frame seeking, object IDs and collider/contact overlays; no mutations to live simulation",
+    "Load report into matching generated world with compatibility warnings and isolated local inspection; deterministic full simulation replay is not claimed",
+    "Preserve legacy motion recordings, enforce import size/schema limits and test malformed files",
+    "Build, recorder unit and browser checks; submit PR only, no merge or deployment"
+  ]
+}

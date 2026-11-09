@@ -103,6 +103,7 @@ export class Player {
   }
 
   addToInventory(e: Entity): boolean {
+    this.avatar?.hands.begin('reach');
     if (this.packWeight() + e.mass > this.maxPack()) {
       msg('Рюкзак переполнен', 'warn');
       return false;
@@ -163,6 +164,7 @@ export class Player {
   }
 
   wear(e: Entity) {
+    this.avatar.hands.begin('work', 0.8);
     const w = e.def?.wear;
     if (!w) return;
     const prev = this.worn.get(w.slot);
@@ -175,6 +177,7 @@ export class Player {
   }
 
   unwear(e: Entity) {
+    this.avatar.hands.begin('work', 0.8);
     for (const [k, v] of this.worn) if (v === e) this.worn.delete(k);
     this.recalcWetness();
   }
@@ -200,6 +203,8 @@ export class Player {
     if (e && !this.inventory.includes(e)) return;
     if (e && this.isWorn(e)) this.unwear(e);
     G.interact?.stopFlame();
+    if (G.interact) { G.interact.swinging = null; G.interact.timed = null; }
+    this.avatar.hands.begin('reach', 0.4);
     if (this.equipped?.defId === 'flashlight' && this.equipped !== e) this.equipped.lit = false;
     this.equipped = this.equipped === e ? null : e;
     G.audio.play('click');
@@ -207,6 +212,7 @@ export class Player {
 
   /** Put an item down in front of the player. */
   dropFromInventory(e: Entity) {
+    this.avatar.hands.begin('throw', 0.45);
     this.forget(e);
     const p = this.eyePos.add(this.forward().multiplyScalar(0.7));
     p.y -= 0.3;
@@ -227,6 +233,8 @@ export class Player {
       G.entities.placeInWorld(e, p);
     }
     this.carried = e;
+    this.avatar.hands.carryLost = false;
+    this.avatar.hands.begin('reach');
     this.dragging = e.mass > MAX_LIFT;
     for (const c of e.colliders) c.setCollisionGroups(GROUPS_HELD);
     e.body!.setGravityScale(this.dragging ? 1 : 0, true);
@@ -236,7 +244,7 @@ export class Player {
     this.carryBaseQ.copy(camQ.invert()).multiply(new THREE.Quaternion(r.x, r.y, r.z, r.w));
     this.carryYaw = 0;
     this.carryTilt = 0;
-    this.carryDist = this.dragging ? 1.6 : clamp(this.eyePos.distanceTo(e.position()), 1.0, 1.8);
+    this.carryDist = this.dragging ? 1.6 : 0.5;
     G.audio.play('pickup');
   }
 
@@ -244,6 +252,7 @@ export class Player {
     const e = this.carried;
     if (!e) return;
     this.carried = null;
+    this.avatar.hands.begin(throwIt ? 'throw' : 'reach', 0.45);
     if (!e.body) return;
     for (const c of e.colliders) c.setCollisionGroups(GROUPS_ITEM);
     e.body.setGravityScale(1, true);
@@ -262,16 +271,18 @@ export class Player {
   private updateCarry(dt: number) {
     const e = this.carried;
     if (!e || !e.body) return;
+    if (this.avatar.hands.carryLost) { this.releaseCarry(); msg('Предмет выскользнул: руки не удерживают хват', 'warn'); return; }
     if (e.removed || !e.inWorld) {
       this.carried = null;
       return;
     }
-    if (G.input.wheel) this.carryDist = clamp(this.carryDist - G.input.wheel * 0.12, 0.7, 2.4);
+    if (G.input.wheel) this.carryDist = clamp(this.carryDist - G.input.wheel * 0.06, 0.35, this.dragging ? 1.6 : 0.65);
     if (G.input.hit('KeyR')) this.carryYaw += Math.PI / 4;
     const wood = !!e.data.wood && !this.dragging;
     if (wood && G.input.hit('KeyB')) this.carryTilt = this.carryTilt === 0 ? Math.PI / 2 : this.carryTilt > 1 ? Math.PI / 4 : 0;
     const eye = this.eyePos;
     const target = eye.clone().add(this.forward().multiplyScalar(this.carryDist));
+    if (!this.dragging) target.y -= 0.3;
     const p = e.position();
     if (this.dragging) target.y = p.y;
     const diff = target.sub(p);
@@ -380,7 +391,7 @@ export class Player {
       if (inp.down('KeyD')) fx += 1;
     }
     const len = Math.hypot(fx, fz);
-    this.crouch = !busy && (inp.down('ControlLeft') || inp.down('KeyC'));
+    this.crouch = !busy && inp.down('KeyC');
     const wantSprint = !busy && inp.down('ShiftLeft') && fz < 0 && !this.crouch;
     const B = G.body;
     const maxStam = 1 - Math.max(0, B.fatigue - 0.6) * 1.5;
@@ -496,7 +507,7 @@ export class Player {
   }
 
   /** Camera placement after physics. */
-  updateCamera(dtReal: number) {
+  updateCamera(dtReal: number, poseHands = true) {
     const cam = G.camera;
     this.avatar.render(THREE.MathUtils.clamp(this.renderAlpha, 0, 1), dtReal);
     const rigEyes = this.avatar.eyePosition(new THREE.Vector3());
@@ -528,6 +539,7 @@ export class Player {
     cam.rotation.y = this.yaw;
     cam.rotation.x = this.pitch + (Math.random() - 0.5) * sh * 2;
     cam.rotation.z = 0;
+    if (poseHands) this.avatar.renderHands(dtReal);
     // breath vapour in cold air
     this.breathT -= dtReal;
     const air = G.thermal.tAt(cam.position);

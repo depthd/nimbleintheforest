@@ -168,14 +168,14 @@ export class SnowExperiment {
     if (this.enabled) this.renderer.update(G.player.pos);
     this.renderMs = performance.now() - start;
     this.cooldown -= dt; this.uiTime += dt;
-    if (G.input.enabled && (G.input.locked || (window as any).__test) && this.cooldown <= 0 && (G.input.lmb || G.input.rmb) && !G.paused) {
+    if (G.input.enabled && (G.input.locked || (window as any).__test) && this.cooldown <= 0 && (G.input.lmb || G.input.rmb) && !G.paused && !G.player.equipped && !G.player.carried && !G.player.handsWarming && (G.player.crouch || G.input.rmb)) {
       const origin = G.player.eyePos, direction = G.player.forward();
       const snow = this.raycast(origin, direction, 2.6);
       const hit = G.world.castRay(new G.R.Ray(origin, direction), 2.6, true, undefined, GROUPS_RAY, G.player.collider);
       const point = snow && (!hit || snow.distance < hit.timeOfImpact) ? snow.point : hit ? origin.clone().addScaledVector(direction, hit.timeOfImpact) : null;
       if (point && this.contains(point.x, point.z) && point.y < this.terrain.heightAt(point.x, point.z) + 0.7) {
-        if (G.input.lmb && this.enabled) this.carriedSnow += this.field.remove(point.x, point.z, 0.3, 0.09);
-        else if (this.enabled && this.carriedSnow > 0) { const volume = Math.min(this.carriedSnow, 0.012); this.carriedSnow -= this.field.add(point.x, point.z, 0.3, volume); }
+        if (G.input.lmb && this.enabled && G.player.crouch && !G.player.equipped && !G.player.carried) { G.player.avatar.hands.begin('dig', 0.3); this.carriedSnow += this.field.remove(point.x, point.z, 0.3, 0.09); }
+        else if (G.input.rmb && this.enabled && this.carriedSnow > 0) { G.player.avatar.hands.begin('pour', 0.3); const volume = Math.min(this.carriedSnow, 0.012); this.carriedSnow -= this.field.add(point.x, point.z, 0.3, volume); }
         G.audio.play('snow_scoop', { pos: point, vol: 0.5 }); this.cooldown = 0.3;
       }
     }

@@ -59,6 +59,32 @@ test('snow journals restore exact stored state forward and backward without exca
   changes.reverse().forEach(c => replay.applyRecordedCell(c[0], c[1], c[2], c[3]));
   assert.deepEqual(replay.recordedCells(), before);
 });
+const worldRecording = () => {
+  const d = recording();
+  d.diagnostics = { version: 1, radius: 32, interval: 0.25, coverage: ['local snapshot'], meshes: {
+    triangle: { positions: [0,0,0, 1,0,0, 0,0,1], indices: [0,1,2], color: 0xffffff }
+  }, samples: [{ id: 0, time: 0, center: [1,2,3], terrain: Array(289).fill(0), objects: [{
+    id: 1, name: 'Бревно', kind: 'item', definition: 'log', position: [1,2,3], state: { hp: 10 },
+    meshes: [{geometry: 'triangle', matrix: [1,0,0,0, 0,1,0,0, 0,0,1,0, 1,2,3,1]}], colliders: []
+  }], systems: { weather: { temp: -20 } }, truncated: false }] };
+  d.frames.forEach(f => f.worldSampleId = 0);
+  d.notes[0] = { ...d.notes[0], expected: 'Удержится', actual: 'Падает', position: [1,2,3] };
+  return d;
+};
+test('local world package preserves meshes, system state and expected/actual map pins', () => {
+  const d = worldRecording(); assert.deepEqual(validateRecording(JSON.parse(JSON.stringify(d))), d);
+});
+test('broken world references, oversized geometry and malformed pins are rejected', () => {
+  for (const mutate of [d => d.frames[0].worldSampleId = 9,
+    d => d.diagnostics.samples[0].objects[0].meshes[0].geometry = 'missing',
+    d => d.diagnostics.meshes.triangle.indices[0] = 99,
+    d => d.diagnostics.samples[0].terrain.pop(),
+    d => d.diagnostics.samples[0].objects[0].meshes[0].matrix[0] = Infinity,
+    d => d.notes[0].position = [1,2], d => d.notes[0].expected = 123,
+    d => d.diagnostics.samples.push(d.diagnostics.samples[0])]) {
+    const d = worldRecording(); mutate(d); assert.throws(() => validateRecording(d));
+  }
+});
 (async () => {
   const d = recording(), raw = new Blob([JSON.stringify(d)]);
   const gzip = await new Response(raw.stream().pipeThrough(new CompressionStream('gzip'))).blob();

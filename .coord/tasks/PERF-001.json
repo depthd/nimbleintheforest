@@ -1,0 +1,27 @@
+{
+  "id": "PERF-001",
+  "status": "qa",
+  "owner": "codex-performance",
+  "branch": "task/PERF-001-frame-stalls",
+  "base_sha": "de20db3bb8883af6ade9afb5bb418b708afd9d71",
+  "allowed_paths": [
+    ".coord/tasks/PERF-001.json",
+    "src/world/forest.ts",
+    "src/game/thermal.ts",
+    "tests/forest-instances.cjs",
+    "tests/thermal-equivalence.cjs",
+    "docs/PERF-001.md",
+    "src/world/snow-field.ts",
+    "src/world/snow-trails.ts",
+    "tests/trails.cjs",
+    "tests/perf-cost-browser.cjs"
+  ],
+  "acceptance": [
+    "Measure CPU frame spikes around the house and while streaming",
+    "Remove redundant work without changing geometry, visibility, physical simulation or thermal results",
+    "Provide reproducible before/after measurements and regression checks",
+    "Submit PR without merge or deployment"
+  ],
+  "qa_sha": null,
+  "qa_result": "NOT_TESTED"
+}
