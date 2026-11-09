@@ -29,7 +29,7 @@ export class SurvivorAvatar {
       const pos = o.geometry.getAttribute('position');
       const mask = new Float32Array(pos.count);
       // Bind-space mask follows skinning and affects only the main material, not shadows.
-      for (let i = 0; i < pos.count; i++) mask[i] = pos.getY(i) > 1.12 || (pos.getY(i) > 0.98 && Math.abs(pos.getX(i)) < 0.28) ? 1 : 0;
+      for (let i = 0; i < pos.count; i++) mask[i] = pos.getY(i) > 1.12 || (pos.getY(i) > 0.75 && Math.abs(pos.getX(i)) < 0.3) ? 1 : 0;
       o.geometry.setAttribute('avatarHide', new THREE.BufferAttribute(mask, 1));
       const materials = Array.isArray(o.material) ? o.material : [o.material];
       for (const material of materials) {
