@@ -64,7 +64,10 @@
     "tests/thermal-equivalence.cjs",
     "tests/trails.cjs",
     ".coord/tasks/RELEASE-001.json",
-    "docs/RELEASE-001.md"
+    "docs/RELEASE-001.md",
+    "tests/e2e.cjs",
+    ".github/workflows/pages.yml",
+    ".github/workflows/test-pages.yml"
   ],
   "acceptance": [
     "Review and test exact deployed test candidate 64090d8db6174bdfe02d0a82b10c437f1df00947",
@@ -74,5 +77,5 @@
   "source_sha": "64090d8db6174bdfe02d0a82b10c437f1df00947",
   "qa_sha": null,
   "qa_result": "IN_PROGRESS",
-  "coordination": "Release integration only. Component owners retain their paths; no source edits beyond the already deployed test merge. Supersedes component PRs only when coordinator integrates this PR."
+  "coordination": "User explicitly authorized continued testing, integration and publication after reviewing the working preview. Coordinator owns release workflows/tests sequentially; no gameplay source changes."
 }

@@ -16,19 +16,20 @@ function check(name, ok, extra = '') {
 
 (async () => {
   const { createServer } = await import('vite');
-  const server = await createServer({ root: path.join(__dirname, '..'), server: { port: 5199, strictPort: false, hmr: false, watch: null }, logLevel: 'error' });
+  const server = await createServer({ root: path.join(__dirname, '..'), server: { port: 5199, strictPort: true, hmr: false, watch: null }, logLevel: 'error' });
   await server.listen();
   const port = server.config.server.port;
   const url = `http://localhost:${port}/?test=1&seed=${process.env.SEED || 42}&hour=13&weather=cloudy`;
 
-  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? {executablePath:process.env.CHROMIUM_PATH} : {}), args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const page = await browser.newPage({ viewport: { width: 800, height: 450 } });
   const errors = [];
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('console', m => { if (m.type() === 'error' && !m.location().url?.endsWith('/favicon.ico')) errors.push(`${m.location().url}: ${m.text()}`); });
+  page.on('response', r => { if(r.status() >= 400 && !r.url().endsWith('/favicon.ico')) errors.push(`${r.status()} ${r.url()}`); });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(url);
-  await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
-  await page.waitForTimeout(1500);
+  await page.waitForFunction(() => window.__game, null, { timeout: 300000 });
+  await page.evaluate(ratio => { const g=window.__game;g.setManualStepping(true);g.G.input.enabled=true;g.G.renderer.setPixelRatio(ratio); }, Number(process.env.E2E_PIXEL_RATIO || 1));
   const shot = (n) => page.screenshot({ timeout: 180000, path: path.join(OUT, n + '.png') });
   const ev = (fn, arg) => page.evaluate(fn, arg);
 
@@ -261,19 +262,19 @@ function check(name, ok, extra = '') {
     g.act('LMB');
     out.ate = G.body.kcal > k0 + 500;
     // snow in a pot on the stove melts and boils
-    g.give('pot');
-    const pot = G.player.inventory.find((x) => x.defId === 'pot' && x.contents.water < 0.1);
-    g.equip('pot');
-    G.player.equip(pot);
+    const pot = g.entity(g.give('pot'));
+    if(G.player.equipped !== pot) G.player.equip(pot);
     pot.contents.snow = 1.0;
     pot.contents.water = 0;
     const sf = G.fires.stoveFire;
-    for (const id of ['paper', 'kindling', 'kindling', 'firewood']) G.fires.addFuel(sf, G.entities.spawnItem(id, new g.THREE.Vector3(0, -50, 0), { moisture: 0.05 }));
+    for (const id of ['paper', 'kindling', 'kindling', 'firewood', 'firewood', 'firewood']) G.fires.addFuel(sf, G.entities.spawnItem(id, new g.THREE.Vector3(0, -50, 0), { moisture: 0.05 }));
     G.fires.ignite(sf, 1);
     const sp = G.house.stove.data.front;
-    g.approach(sp.x, sp.y + 0.3, sp.z, 1.2);
-    g.steps(2);
-    g.act('G');
+    g.teleport(sp.x, G.house.Y0 + 0.02, sp.z + 1.1);
+    g.steps(30);
+    g.lookAt(sp.x, sp.y + 0.1, sp.z - 0.2);
+    out.potPlaced = g.act('G', 'Поставить');
+    if (!out.potPlaced || pot.pinned !== 'fire') throw Error('Pot fixture was not placed on stove: '+JSON.stringify(g.actions()));
     g.simulate(25 * 60);
     out.boiled = pot.contents.boiled && pot.contents.snow < 0.01;
     // a thrown log breaks a window
