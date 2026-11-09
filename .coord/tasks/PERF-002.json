@@ -1,0 +1,23 @@
+{
+  "id": "PERF-002",
+  "status": "qa",
+  "owner": "codex-performance",
+  "branch": "task/PERF-002-startup-warmup",
+  "base_sha": "3cbd1dacc9f97b3f5ec0bc96b7d514f89c86f77f",
+  "allowed_paths": [
+    ".coord/tasks/PERF-002.json",
+    "src/game/game.ts",
+    "src/game/startup-warmup.ts",
+    "tests/startup-warmup.cjs",
+    "tests/startup-browser.cjs",
+    "docs/STARTUP.md"
+  ],
+  "acceptance": [
+    "Prepare graphics before releasing loading screen",
+    "Preserve player, time, physics, hands and diagnostic state",
+    "Compare cold first views and repeat views",
+    "PR without production changes"
+  ],
+  "qa_sha": null,
+  "qa_result": "NOT_TESTED"
+}

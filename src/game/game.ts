@@ -1,6 +1,7 @@
 // Boot and main loop: builds the world, runs physics at a fixed step and all
 // simulation systems in game time.
 import * as THREE from 'three';
+import { warmStartup } from './startup-warmup';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { G, Settings, hourOf, msg } from './ctx';
 import { Rng } from '../core/rng';
@@ -186,6 +187,20 @@ export async function startGame(settings: Settings) {
     if (!G.input.locked && !G.hud.modal) G.hud.resume();
   });
 
+  // Snow coverage is installed after the original terrain loading pass. Finish
+  // that geometry before the first interactive frame, then submit real views
+  // so shader compilation and buffer uploads happen behind the loading screen.
+  G.player.updateCamera(0);
+  G.terrain.update(G.camera.position, 400);
+  G.snow?.update(0);
+  G.corpses.update();
+  G.vm.update(0);
+  // Explicit diagnostic A/B switch; normal play always warms the starting area.
+  if (new URLSearchParams(location.search).get('warmup') !== '0')
+    await warmStartup(renderer, G.scene, G.camera, new THREE.Vector3(0.5, G.house.Y0 + 1.6, 0),
+      text => { if (loadText) loadText.textContent = text; });
+  last = performance.now();
+  acc = 0;
   (window as any).__game = testApi();
   hud_intro();
   requestAnimationFrame(loop);
