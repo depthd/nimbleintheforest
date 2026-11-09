@@ -141,6 +141,11 @@ export class PlayerAvatar {
     }).catch(error => console.error('Survivor model failed to load; retaining procedural avatar', error));
   }
 
+  eyePosition(out: THREE.Vector3): THREE.Vector3 | null {
+    if (!this.survivor) return null;
+    return this.survivor.eyes.getWorldPosition(out);
+  }
+
   private input(): MotionInput {
     const p = this.player;
     return { position: p.pos, yaw: p.yaw, pitch: p.pitch, grounded: p.grounded,
