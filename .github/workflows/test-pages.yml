@@ -1,0 +1,54 @@
+name: Publish Survivor test alongside current game
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: production-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/claude/friendly-archimedes-onmybq'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 2871a0ee60d8a4ffe02a2bf86373b6d476d2eceb
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: node scripts/repo-check.mjs --base e5699d46d4af0e9382e11821d778c409367ca1ea
+      - run: npm ci && npm run build && npm run test:statics && npm run test:resting
+      - name: Restore exact published game and add test build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv dist preview-dist
+          gh run download 42676348641 --repo "$GITHUB_REPOSITORY" --name github-pages --dir original-pages
+          mkdir dist
+          tar -xf original-pages/artifact.tar -C dist
+          # Abort if the live root changed since this release was prepared.
+          curl --fail --silent --show-error --location https://depthd.github.io/nimbleintheforest/ -o live-index.html
+          cmp live-index.html dist/index.html
+          test ! -e dist/test
+          mkdir dist/test
+          cp -a preview-dist/. dist/test/
+          node -e 'require("fs").writeFileSync("dist/test/version.json", JSON.stringify({sha:"2871a0ee60d8a4ffe02a2bf86373b6d476d2eceb",pr:3,productionRun:42676348641}))'
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
