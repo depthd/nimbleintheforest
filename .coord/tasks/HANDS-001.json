@@ -1,6 +1,6 @@
 {
   "id": "HANDS-001",
-  "status": "developing",
+  "status": "review",
   "owner": "codex-task-2",
   "branch": "task/hand-actions-foundation",
   "base_sha": "de20db3bb8883af6ade9afb5bb418b708afd9d71",
@@ -26,6 +26,6 @@
     "Build and behavioral/browser validation; PR only, no merge or deployment"
   ],
   "coordination": "User assigned task 2 and explicitly authorized preparing the task card and isolated checkout. Diagnostics, clothing and journal remain separate tasks.",
-  "qa_sha": null,
-  "qa_result": "NOT_TESTED"
+  "qa_sha": "62067a55cdaa8ec5b95332dc608966cf03ebc416",
+  "qa_result": "SELF_QA_PASS_INDEPENDENT_REVIEW_PENDING"
 }
