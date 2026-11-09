@@ -7,6 +7,7 @@ export class SurvivorAvatar {
   private bones = new Map<string, THREE.Bone>();
   private rest = new Map<string, THREE.Quaternion>();
   private axis = new Map<string, THREE.Vector3>();
+  readonly eyes = new THREE.Object3D();
   private hide = { value: 1 };
 
   constructor(scene: THREE.Group) {
@@ -22,6 +23,13 @@ export class SurvivorAvatar {
         if (child) this.axis.set(o.name, child.position.clone().normalize());
       }
     });
+    // Midpoint of the painted eyes in the asset's 1.8 m bind pose.
+    // Convert the landmark once into Head space, so pitching/yawing the head
+    // moves the viewpoint along the same anatomical arc as the visible skull.
+    this.eyes.name = 'survivor-eyes';
+    const head = this.bone('Head');
+    this.eyes.position.copy(head.worldToLocal(new THREE.Vector3(0, 1.70, -0.135)));
+    head.add(this.eyes);
     scene.traverse(o => {
       if (!(o instanceof THREE.SkinnedMesh)) return;
       o.castShadow = true;

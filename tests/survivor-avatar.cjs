@@ -92,10 +92,12 @@ fs.mkdirSync(OUT, { recursive: true });
     });
     check('first-person mask hides only head; body and hands remain opaque and double-sided',
       opacity.incorrectlyHidden === 0 && opacity.hiddenHead > 0 && !opacity.transparent && opacity.opacity === 1 && opacity.side === 2, opacity);
+    let levelEyeOffset;
     for (const [name, keys, pitch, view] of [
       ['idle-front', [], 0, 2], ['walk-side', ['KeyW'], 0, 1],
       ['run-side', ['KeyW', 'ShiftLeft'], 0, 1],
-      ['crouch-front', ['ControlLeft'], 0, 2], ['first-person', [], -1.35, 0],
+      ['crouch-front', ['ControlLeft'], 0, 2],
+      ['first-person-level', [], 0, 0], ['first-person', [], -1.35, 0],
       ['crouch-first-person', ['ControlLeft'], -1.35, 0],
     ]) {
       await ev(({keys, pitch, view}) => {
@@ -118,9 +120,19 @@ fs.mkdirSync(OUT, { recursive: true });
             ['LowerLeg', endpoint(leg.thigh, -1)], ['Foot', endpoint(leg.shin, -1)]
           ]) error = Math.max(error, skin.skeleton.getBoneByName(name + side).getWorldPosition(new T.Vector3()).distanceTo(target));
         }
-        return {error, visible: skin.visible, finite: skin.skeleton.bones.every(b => b.matrixWorld.elements.every(Number.isFinite))};
+        const eyes = a.eyePosition(new T.Vector3());
+        const eyeOffset = eyes.clone().sub(skin.skeleton.getBoneByName('Head').getWorldPosition(new T.Vector3()));
+        return {error, cameraError: G.camera.position.distanceTo(eyes), eyeOffset: eyeOffset.toArray(),
+          firstPerson: a.inspectionView === 0, visible: skin.visible, finite: skin.skeleton.bones.every(b => b.matrixWorld.elements.every(Number.isFinite))};
       });
       check(name + ': skin joints follow solver', result.visible && result.finite && result.error < 1e-5, result);
+      if (result.firstPerson) check(name + ': camera matches model eyes', result.cameraError < 1e-5, result.cameraError);
+      if (name === 'first-person-level') levelEyeOffset = result.eyeOffset;
+      if (name === 'first-person') {
+        const delta = Math.hypot(...result.eyeOffset.map((v, i) => v - levelEyeOffset[i]));
+        const radiusChange = Math.abs(Math.hypot(...result.eyeOffset) - Math.hypot(...levelEyeOffset));
+        check('looking down moves eyes around head pivot without stretching the offset', delta > 0.05 && radiusChange < 1e-5, {delta, radiusChange});
+      }
     }
     check('no JavaScript, shader or resource failures', !pageErrors.length && !consoleErrors.length && !resources.length, {pageErrors, consoleErrors, resources});
     console.log(`${checks} survivor checks passed`);

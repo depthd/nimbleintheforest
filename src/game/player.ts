@@ -77,10 +77,13 @@ export class Player {
 
   private get eyeOffset() {
     const yaw = this.avatar?.motion.bodyYaw ?? this.yaw;
-    return new THREE.Vector3(-Math.sin(yaw) * 0.26, 0, -Math.cos(yaw) * 0.26);
+    return new THREE.Vector3(-Math.sin(yaw) * 0.12, 0, -Math.cos(yaw) * 0.12);
   }
 
   get eyePos() {
+    const eyes = this.avatar?.eyePosition(new THREE.Vector3());
+    // Gameplay queries use the current physics root, not the last interpolated root.
+    if (eyes) return eyes.add(this.pos).sub(this.avatar.root.position);
     return new THREE.Vector3(this.pos.x, this.pos.y + (this.crouch ? 1.05 : EYE), this.pos.z).add(this.eyeOffset);
   }
 
@@ -495,6 +498,8 @@ export class Player {
   /** Camera placement after physics. */
   updateCamera(dtReal: number) {
     const cam = G.camera;
+    this.avatar.render(THREE.MathUtils.clamp(this.renderAlpha, 0, 1), dtReal);
+    const rigEyes = this.avatar.eyePosition(new THREE.Vector3());
     const e = this.eyePos;
     // between physics steps: interpolate, so fast movement doesn't stutter
     const a = THREE.MathUtils.clamp(this.renderAlpha, 0, 1);
@@ -515,14 +520,14 @@ export class Player {
     e.x = ip.x + eyeOffset.x;
     e.z = ip.z + eyeOffset.z;
     e.y = this.camY;
+    if (rigEyes) e.copy(rigEyes);
     const sh = G.body.shiver > 20 ? (G.body.shiver / 260) * 0.006 : 0;
     const water = this.water ? Math.sin(performance.now() / 300) * 0.05 : 0;
-    cam.position.set(e.x + Math.cos(this.yaw) * bobX + (Math.random() - 0.5) * sh, e.y + bobY + water + (Math.random() - 0.5) * sh, e.z - Math.sin(this.yaw) * bobX);
+    cam.position.set(e.x + Math.cos(this.yaw) * (rigEyes ? 0 : bobX) + (Math.random() - 0.5) * sh, e.y + (rigEyes ? 0 : bobY) + water + (Math.random() - 0.5) * sh, e.z - Math.sin(this.yaw) * (rigEyes ? 0 : bobX));
     cam.rotation.order = 'YXZ';
     cam.rotation.y = this.yaw;
     cam.rotation.x = this.pitch + (Math.random() - 0.5) * sh * 2;
     cam.rotation.z = 0;
-    this.avatar.render(a, dtReal);
     // breath vapour in cold air
     this.breathT -= dtReal;
     const air = G.thermal.tAt(cam.position);

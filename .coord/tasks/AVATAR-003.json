@@ -1,0 +1,20 @@
+{
+  "id": "AVATAR-003",
+  "status": "developing",
+  "owner": "codex-coordinator",
+  "branch": "task/AVATAR-003-eye-camera",
+  "base_sha": "0272f4ac70b4285fce71d62551dc5a634f7b61e4",
+  "allowed_paths": [
+    ".coord/tasks/AVATAR-003.json",
+    "src/game/avatar.ts",
+    "src/game/survivor-avatar.ts",
+    "src/game/player.ts",
+    "tests/survivor-avatar.cjs"
+  ],
+  "acceptance": [
+    "Camera follows model eye landmark through head rotation and crouch",
+    "Opaque first-person body and unchanged main published game"
+  ],
+  "qa_sha": null,
+  "qa_result": "NOT_TESTED"
+}
