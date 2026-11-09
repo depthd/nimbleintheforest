@@ -103,6 +103,7 @@ export class Player {
   }
 
   addToInventory(e: Entity): boolean {
+    this.avatar?.hands.begin('reach');
     if (this.packWeight() + e.mass > this.maxPack()) {
       msg('Рюкзак переполнен', 'warn');
       return false;
@@ -163,6 +164,7 @@ export class Player {
   }
 
   wear(e: Entity) {
+    this.avatar.hands.begin('work', 0.8);
     const w = e.def?.wear;
     if (!w) return;
     const prev = this.worn.get(w.slot);
@@ -175,6 +177,7 @@ export class Player {
   }
 
   unwear(e: Entity) {
+    this.avatar.hands.begin('work', 0.8);
     for (const [k, v] of this.worn) if (v === e) this.worn.delete(k);
     this.recalcWetness();
   }
@@ -200,6 +203,8 @@ export class Player {
     if (e && !this.inventory.includes(e)) return;
     if (e && this.isWorn(e)) this.unwear(e);
     G.interact?.stopFlame();
+    if (G.interact) { G.interact.swinging = null; G.interact.timed = null; }
+    this.avatar.hands.begin('reach', 0.4);
     if (this.equipped?.defId === 'flashlight' && this.equipped !== e) this.equipped.lit = false;
     this.equipped = this.equipped === e ? null : e;
     G.audio.play('click');
@@ -207,6 +212,7 @@ export class Player {
 
   /** Put an item down in front of the player. */
   dropFromInventory(e: Entity) {
+    this.avatar.hands.begin('throw', 0.45);
     this.forget(e);
     const p = this.eyePos.add(this.forward().multiplyScalar(0.7));
     p.y -= 0.3;
@@ -227,6 +233,7 @@ export class Player {
       G.entities.placeInWorld(e, p);
     }
     this.carried = e;
+    this.avatar.hands.begin('reach');
     this.dragging = e.mass > MAX_LIFT;
     for (const c of e.colliders) c.setCollisionGroups(GROUPS_HELD);
     e.body!.setGravityScale(this.dragging ? 1 : 0, true);
@@ -244,6 +251,7 @@ export class Player {
     const e = this.carried;
     if (!e) return;
     this.carried = null;
+    this.avatar.hands.begin(throwIt ? 'throw' : 'reach', 0.45);
     if (!e.body) return;
     for (const c of e.colliders) c.setCollisionGroups(GROUPS_ITEM);
     e.body.setGravityScale(1, true);
