@@ -42,10 +42,9 @@ hide a broken interpolated frame behind a newly computed pose. Snow reconstructi
 uses a separate field, leaving live player physics, planner state and material
 untouched. The file supplies data for investigating the solver separately.
 
-This is deliberately not a deterministic replay of every system in the game.
-Animals, moving props, sound, weather history and other characters are not recorded.
-The surrounding scene is the currently loaded world; the character/camera and snow
-are replayed. A changed character rig is rejected rather than silently misplayed.
+Legacy recordings without a diagnostics block replay the character/camera and snow
+against the currently loaded world. New recordings also carry local object and
+system snapshots; see DIAG-001 below. Neither is a deterministic replay of every system. A changed character rig is rejected rather than silently misplayed.
 Files are versioned, bounded, validated and interpreted only as data. Gzip and raw
 input are limited to 64 MiB, including decompressed size.
 
@@ -59,3 +58,57 @@ snow journals and gzip/JSON round trips.
 F7/F8, fractional-frame pose preservation, camera views, stepping without changing
 live physics, marked download/import and returning to the original game state.
 Use `CHROMIUM_PATH` and `NODE_PATH` as for the other browser suites.
+
+## Пакет диагностики мира (DIAG-001)
+
+F7/F8 теперь записывают не только походку. В `.json.gz` добавлен необязательный
+блок `diagnostics` версии 1; прежние записи `nimble-motion` версии 1 читаются.
+
+После F8:
+
+- Заполните «Ожидалось» и «Произошло», выберите кадр и нажмите «Отметить кадр».
+- Нажмите на мини-карту для отметки места. Голубая точка — игрок, жёлтые —
+  объекты, розовые — отметки. Координаты отметки и текст находятся в `notes`.
+- Выберите «Свободная камера участка»: мышь вращает камеру, колесо приближает,
+  правая кнопка перемещает. «Коллайдеры и контакты» показывает простые формы
+  Rapier и нормали точек опоры, сохранённые физическими тиками.
+- Раскройте «Объекты, системы и границы восстановления»: там идентификаторы,
+  определения предметов, здоровье, влажность, содержимое, дерево, скорости,
+  карманы, экипировка, цели действий, огонь, погода, тело и локальное тепло.
+- Скачайте файл и приложите в чат. Выход восстанавливает отображение живой игры.
+
+Записанный участок открывается даже при другом seed. Геометрия берётся из файла,
+не из новой генерации. При несовпадении seed просмотр текущего мира отключён.
+При несовпадении рига доступен участок, но поза несовместимого персонажа не
+применяется. Ошибки JavaScript и необработанные Promise во время записи (до 40) находятся
+в `context.errors`, с временными отметками. SHA сборки хранится в `context.buildSha`; несовпадение показывает
+предупреждение. Пакет локальный, автоматически никуда не отправляется.
+
+### Состав и точность
+
+`frames[].worldSampleId` ссылается на `diagnostics.samples[].id`. Снимки состояния
+делаются с интервалом не чаще 250 мс по реальному времени. Геометрия вынесена в
+общий словарь `meshes`, каждый экземпляр хранит мировую матрицу. Снимки отсоединены
+от игровых объектов. Кольцевой буфер сохраняет предшествующий снимок, чтобы
+самый ранний оставшийся кадр продолжал иметь валидную ссылку.
+
+Пределы: радиус 32 м, сетка земли 17×17 с шагом 4 м, 128 объектов,
+64 меша и 32 коллайдера на объект, 512 мешей на снимок, 120 тысяч вершин и 128 общих геометрий,
+не более 100 снимков. Инвентарь входит независимо от расстояния. Сначала
+сохраняются ближайшие сущности, затем доступные локальные опоры Rapier.
+Превышение помечается `truncated`; ограничения перечислены в `coverage`.
+
+Это **локальная реконструкция для осмотра**, а не загрузка сохранения и не
+детерминированный запуск всей игры. Между снимками состояние не интерполируется.
+Не сохраняются полные текстуры, освещение, внешние skinned/instanced-модели,
+вся геометрия леса и удалённых сооружений. Сетка земли приблизительная; простые
+коллайдеры, trimesh и доступные вершины сложных опор — отдельные данные.
+Неподдерживаемые формы остаются описанием, а не выдуманной геометрией.
+Снег и походка продолжают использовать точную исходную запись; снег отображается
+только в совместимой сцене. Система не возобновляет симуляцию из снимка.
+
+Для разбора без браузера распакуйте gzip и прочитайте JSON: `context` определяет
+сборку и настройки генерации, `notes` — проблему и место, `selectedFrameId` —
+кадр, `diagnostics.samples` — окружающие объекты и системы, `frames[].ticks` —
+ввод, движение и пробы. Импорт проверяет структуру, размеры, числовые данные,
+ссылки на геометрию и снимки до изменения режима игры.

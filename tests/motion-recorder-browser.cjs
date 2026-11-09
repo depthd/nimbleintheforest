@@ -18,7 +18,7 @@ function check(name, ok, detail) { assert.ok(ok, `${name}: ${JSON.stringify(deta
       args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
     const page = await browser.newPage({ viewport: { width: 1120, height: 720 }, acceptDownloads: true });
     const errors = [];
-    page.on('pageerror', e => errors.push(e.message));
+    page.on('pageerror', e => { errors.push(e.message); console.log('PAGEERROR', e.message); });
     page.on('console', m => { if (m.type() === 'error' && !m.location().url?.endsWith('/favicon.ico')) errors.push(m.text()); });
     page.on('response', r => { if (r.status() >= 400 && !r.url().endsWith('/favicon.ico')) errors.push(`${r.status()} ${r.url()}`); });
     await page.goto('http://127.0.0.1:5206/?snow=1&test=1');
@@ -28,7 +28,7 @@ function check(name, ok, detail) { assert.ok(ok, `${name}: ${JSON.stringify(deta
       await ev(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
       await page.screenshot({ path: path.join(OUT, `${name}.png`), timeout: 120000 });
     };
-    await ev(() => { const g = window.__game; g.setManualStepping(true); g.G.input.enabled = true; g.steps(120); });
+    await ev(() => { const g = window.__game; g.setManualStepping(true); g.G.input.enabled = true; g.G.renderer.setPixelRatio(0.35); g.G.renderer.shadowMap.enabled = false; g.steps(120); });
     await page.keyboard.press('F7');
     check('F7 starts opt-in capture', await ev(() => window.__game.G.recorder.recording));
     await page.keyboard.down('KeyW'); await page.keyboard.down('ShiftLeft');
@@ -63,6 +63,8 @@ function check(name, ok, detail) { assert.ok(ok, `${name}: ${JSON.stringify(deta
     await shot('01-recorded-frame');
     await page.locator('[data-rec="view"]').selectOption('side'); await shot('02-side');
     await page.locator('[data-rec="view"]').selectOption('top'); await shot('03-top');
+    await page.locator('[data-rec="expected"]').fill('Стопа стоит на опоре');
+    await page.locator('[data-rec="actual"]').fill('Стопа скользит');
     await page.locator('[data-rec="note"]').fill('Здесь правая нога проскальзывает — тест записи');
     await page.locator('[data-rec="mark"]').click();
     const selected = await ev(() => window.__game.G.recorder.data.selectedFrameId);
@@ -79,12 +81,21 @@ function check(name, ok, detail) { assert.ok(ok, `${name}: ${JSON.stringify(deta
     const data = JSON.parse(raw.toString('utf8'));
     check('download carries the marked frame, notes, render alpha and scene context', data.format === 'nimble-motion' && data.context.snowScene && data.context.seed === 42 &&
       data.frames.some(f => f.alpha === 0.37) && data.notes.some(n => n.text.includes('правая нога')) && data.frames.some(f => f.id === data.selectedFrameId), { bytes: bytes.length, frames: data.frames.length, notes: data.notes.length });
-    await page.locator('[data-rec="exit"]').click();
-    check('leaving review restores original live pose, snow and pause state', await ev(() => {
-      const { G } = window.__game;
-      return !G.recorder.reviewing && G.paused && G.input.enabled && G.snow.renderer.field === G.snow.field &&
-        JSON.stringify(Array.from(G.player.avatar.recordedPose())) === JSON.stringify(window.__livePose);
+    check('package includes portable local geometry, system state and map pin', data.diagnostics?.samples.length > 0 && data.diagnostics.samples.every(s => s.terrain.length === 289 && s.systems.weather && s.systems.body) && data.notes.some(n => n.expected && n.actual && n.position?.length === 3));
+    await page.locator('[data-rec="view"]').selectOption('orbit');
+    await page.locator('[data-rec="colliders"]').check();
+    check('isolated world viewer and orbit controls operate without live physics changes', await ev(() => {
+      const {G} = window.__game, r = G.recorder; r.present();
+      return r.worldViewer.group.parent === G.scene && r.worldViewer.controls.enabled && JSON.stringify(G.player.body.translation()) === JSON.stringify(window.__liveBody);
     }));
+    const restored = await ev(() => {
+      document.querySelector('[data-rec="exit"]').click();
+      const { G } = window.__game;
+      const pose = Array.from(G.player.avatar.recordedPose());
+      return { reviewing: G.recorder.reviewing, paused: G.paused, enabled: G.input.enabled, snow: G.snow.renderer.field === G.snow.field,
+        pose: JSON.stringify(pose) === JSON.stringify(window.__livePose), differences: pose.map((x,i) => x === window.__livePose[i] ? null : [i,x,window.__livePose[i]]).filter(Boolean).slice(0,10) };
+    });
+    check('leaving review restores original live pose, snow and pause state', !restored.reviewing && restored.paused && restored.enabled && restored.snow && restored.pose, restored);
     await page.evaluate(() => window.__game.G.input.unlock());
     await page.locator('[data-rec="file"]').setInputFiles(file);
     await page.waitForFunction(() => window.__game.G.recorder.reviewing);
@@ -96,6 +107,11 @@ function check(name, ok, detail) { assert.ok(ok, `${name}: ${JSON.stringify(deta
     await page.locator('[data-rec="play"]').click();
     check('slow playback can be started and paused', await ev(() => window.__game.G.recorder.playing));
     await page.locator('[data-rec="play"]').click();
+    check('world package opens independently of current seed and keeps saved meshes', await ev(() => {
+      const r = window.__game.G.recorder, data = JSON.parse(JSON.stringify(r.exportData()));
+      data.context.seed += 1; r.load(data); r.present();
+      return r.reviewing && r.worldViewer.group.parent === window.__game.G.scene && document.querySelector('[data-rec="world"]').disabled;
+    }));
     // Corrupt imports leave the current valid recording intact.
     await page.locator('[data-rec="file"]').setInputFiles({ name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from('{"format":"broken"}') });
     await page.waitForFunction(() => document.querySelector('[data-rec="notice"]').textContent.includes('повреждён'));
