@@ -75,7 +75,9 @@ export async function startGame(settings: Settings) {
   document.getElementById('app')!.appendChild(renderer.domElement);
   G.renderer = renderer;
   G.scene = new THREE.Scene();
-  G.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 14000);
+  // The eye-anchored view can be within 10 cm of the chest when looking down.
+  // Keep that outer surface in front of the near plane instead of slicing it open.
+  G.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.02, 14000);
   G.scene.add(G.camera);
 
   G.audio = new GameAudio();
