@@ -1,0 +1,11 @@
+PASS  all LODs retain the affine world surface, upward winding and four complete skirts
+PASS  refinement preserves the original triangle planes and keeps the packed base unrefined
+PASS  snow normals include the snow slope while immutable positions and terrain normals stay fixed
+PASS  arbitrary pauses in the fallback generator produce exactly the synchronous arrays
+PASS  transferring complete results never detaches source terrain or cached index templates
+PASS  the actual worker matches roof and shoreline sampling and applies revised shelter data
+PASS  LOD hysteresis holds both sides of every boundary and catches up after teleports
+7 terrain geometry checks passed
+(node:1819) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

@@ -1,0 +1,5 @@
+PASS  triangle union is exact through the map hole, skipped tiles and partial edge tiles
+PASS  every attribute and seam normal is shared verbatim without duplicate vertex buffers
+PASS  bounds contain exactly the used vertex extent and permit camera culling of other tiles
+PASS  an empty grid produces no drawables and small grids retain all triangles
+4 spatial geometry checks passed

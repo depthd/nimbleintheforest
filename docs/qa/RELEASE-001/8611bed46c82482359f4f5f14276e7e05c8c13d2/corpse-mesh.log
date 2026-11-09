@@ -1,0 +1,6 @@
+  dressed corpse: 45 parts -> 13 draws per pass
+PASS  visible material batches retain the dressed pose and reduce per-pass draw calls
+PASS  clothing rebakes preserve root placement, entity identity and changed visible geometry
+PASS  rebakes release owned buffers while shared primitive geometry and materials survive
+PASS  batch bounds exactly enclose their baked vertices after clothing replacement
+4 corpse mesh checks passed

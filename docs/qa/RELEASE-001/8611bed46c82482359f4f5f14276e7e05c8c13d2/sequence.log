@@ -1,0 +1,4 @@
+ready
+PASS crouch ctrl { crouch: false }
+PASS crouch c { crouch: true }
+PASS sequence: six walk frames, three extreme crouch/look poses; no JS errors

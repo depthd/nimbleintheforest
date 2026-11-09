@@ -1,0 +1,16 @@
+PASS calm weather has no expiry timer; distance does not age a track
+PASS weather fills continuously and freshens the surface before relief is lost
+PASS snowstorm erases tracks faster than light snow; old and recent tracks differ
+PASS archived offscreen tracks have exactly the same weather history
+PASS fully covered storage can be reclaimed only after the last visible relief is gone
+PASS the shared swept contact supports paw-sized shapes and records weather losslessly
+PASS incremental trail updates equal complete reconstruction; fresh tracks return after burial
+PASS a long trail reduces distant geometry without losing material or its textures
+PASS idle frames and camera-only movement keep persistent trail textures without rescanning history
+PASS replayed cells invalidate cached neighbouring trail textures and field replacement clears old tiles
+PASS weather refreshes one oldest texture per frame without history scans, including exposure rewind
+PASS refresh shares substrate samples without caching stale shelter coverage
+12 trail lifetime checks passed
+(node:1345) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

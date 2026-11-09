@@ -1,0 +1,10 @@
+PASS  first-person mask hides only head; body and hands remain opaque and double-sided {"incorrectlyHidden":0,"hiddenHead":2192,"transparent":false,"opacity":1,"side":2}
+PASS  idle-front: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":7.105427357601002e-15,"eyeOffset":[0,0.1299999626053463,-0.14099999965422683],"firstPerson":false,"visible":true,"finite":true}
+PASS  walk-side: skin joints follow solver {"error":1.7404671430534633e-14,"cameraError":7.105427357601002e-15,"eyeOffset":[0,0.1299999626053463,-0.14099999965422683],"firstPerson":false,"visible":true,"finite":true}
+PASS  run-side: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":7.105427357601002e-15,"eyeOffset":[-1.8146161551158002e-7,0.1299999626074495,-0.14099999965216625],"firstPerson":false,"visible":true,"finite":true}
+PASS  crouch-front: skin joints follow solver {"error":2.0097183471152322e-14,"cameraError":1.0048591735576161e-14,"eyeOffset":[0,0.1299999626053463,-0.14099999965422683],"firstPerson":false,"visible":true,"finite":true}
+PASS  first-person-level: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":7.105427357601002e-15,"eyeOffset":[0,0.1299999626053463,-0.14099999965422683],"firstPerson":true,"visible":true,"finite":true}
+PASS  first-person-level: camera matches model eyes 7.105427357601002e-15
+PASS  first-person: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":0,"eyeOffset":[0,-0.049137891699025715,-0.1853819240898602],"firstPerson":true,"visible":true,"finite":true}
+PASS  first-person: camera matches model eyes 
+PASS  looking down moves eyes around head pivot without stretching the offset {"delta":0.18455385680441547,"radiusChange":1.2212453270876722e-15}

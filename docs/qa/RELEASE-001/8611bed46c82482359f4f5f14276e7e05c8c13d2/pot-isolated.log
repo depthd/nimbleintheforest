@@ -1,0 +1,3 @@
+ready
+{"actions":{"info":"Печь · горит · 0.0 кВт · 6 шт. · ещё ~46 мин · заслонка открыта · нет топлива в рюкзаке","target":"entity","actions":["G:Поставить на огонь"]},"placed":true,"contents":{"snow":0,"water":0.9592000000000006,"temp":100,"boiled":true,"tea":false,"dirty":false},"pinned":"fire","power":9}
+PASS fresh pot placement and boiling through real interaction

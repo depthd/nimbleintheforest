@@ -1,0 +1,7 @@
+PASS  all parts preserve transforms across signed chunk boundaries, including leaning crowns
+PASS  view and shadow cameras independently cull batches without removing off-screen casters
+PASS  capacity growth retains every tree and updates only the occupied matrix range
+PASS  streaming and forced rebuilds remove stale trees, refresh bounds, and release distant buffers
+PASS  the previous 4000-instance per-variant limit is preserved across spatial batches
+PASS  unchanged streamed chunks retain GPU versions and bounds; changed, removed and regrown slots refresh
+6 forest instance checks passed

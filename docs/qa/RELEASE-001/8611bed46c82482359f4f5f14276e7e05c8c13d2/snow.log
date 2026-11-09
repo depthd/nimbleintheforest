@@ -1,0 +1,23 @@
+PASS  pristine snow has one common thickness; reading never allocates detailed tiles
+PASS  a boot compacts rather than deletes snow; rims retain displaced material
+PASS  standing saturates; it cannot drill endlessly through the base
+PASS  settling feedback reaches a stable loaded height instead of pumping mass away
+PASS  continuous dragging fills the entire trajectory, including tile boundaries
+PASS  vertical extraction and flight do not create lateral marks
+PASS  rotation and toe-off affect only the swept boot volume
+PASS  sweep is stable across physics step sizes and teleport leaves no connecting trench
+PASS  firm snow supports the same boot higher than powder
+PASS  digging stops at the base and filling returns the measured quantity
+  1000 contacts / 650 m: {"tiles":409,"hotTiles":32,"bytes":2587141,"modifiedCells":73317,"raisedCells":47546}
+PASS  long exploration bounds hot storage and revisiting restores exact deformations
+PASS  fast renderer queries agree with material queries, including negative and archived tiles
+PASS  rendering a kilometre reuses the same GPU geometries, with fixed vertex/draw budgets
+PASS  a local boot updates a small dirty rectangle, and shared tile edges agree
+PASS  slope retention decreases continuously, keeping flats and exposing steep faces
+PASS  hill thickness derives from the immutable base; digging cannot change its slope rule
+PASS  near and far snow both follow hills; streaming retains the fixed mesh pool
+
+17 snow checks passed
+(node:1446) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

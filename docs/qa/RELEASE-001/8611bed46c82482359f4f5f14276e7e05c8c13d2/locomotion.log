@@ -1,0 +1,26 @@
+PASS  idle feet stay planted and silent; breathing cannot create steps
+PASS  standing ankles sit below hips instead of reaching in front of a displaced torso
+PASS  small look turns the head without turning hips or feet
+PASS  large look smoothly turns the body and replants feet instead of spinning soles
+PASS  running lengthens the stride instead of accelerating walking into a shuffle
+PASS  toe-off raises the heel while the toe contact stays fixed
+PASS  forward: contacts alternate, support feet do not slide, movement stops cleanly
+PASS  backward: contacts alternate, support feet do not slide, movement stops cleanly
+PASS  strafe: contacts alternate, support feet do not slide, movement stops cleanly
+PASS  diagonal: contacts alternate, support feet do not slide, movement stops cleanly
+PASS  sprint: contacts alternate, support feet do not slide, movement stops cleanly
+PASS  jump and suspension create no airborne contacts; landing is reported once
+PASS  crouch lowers pelvis without sliding planted feet
+PASS  slope support follows collision heights and normals
+PASS  teleport resets feet without a step or a stretched limb
+PASS  steep sliding releases old world anchors and follows the body without footsteps
+PASS  missing ground cannot leave a foot pinned to the previous floor
+PASS  unreachable IK targets still produce two fixed-length bones and a reachable boot
+PASS  two-bone IK preserves lengths, bends forward and stays finite at singularities
+PASS  recorded-circle-1: continuous sprint turns retain reach and recover released feet
+PASS  recorded-circle-2: continuous sprint turns retain reach and recover released feet
+
+21 locomotion checks passed
+(node:1367) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

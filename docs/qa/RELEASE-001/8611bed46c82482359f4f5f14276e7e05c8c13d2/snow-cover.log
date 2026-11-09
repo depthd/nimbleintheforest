@@ -1,0 +1,9 @@
+PASS a roof protects bare ground as well as a floor, including rotated and negative-coordinate buildings
+PASS floors mask ground only at their elevation; the ground beneath a high tower is retained
+PASS overlapping roofs combine without seams; GPU bins include rotated overhangs and floors
+PASS snow thins continuously into the actual drawn water surface, without nearest-cell steps
+PASS roof shelter removes only the loose layer and leaves immutable terrain/colliders unchanged
+5 snow cover checks passed
+(node:1574) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

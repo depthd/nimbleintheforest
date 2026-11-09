@@ -1,0 +1,30 @@
+PASS  F7 starts opt-in capture 
+PASS  review contains physics inputs, support probes and actual rendered frames {
+  reviewing: true,
+  frames: 8,
+  index: 7,
+  pose: undefined,
+  ticks: 37,
+  probes: true,
+  inputs: true
+}
+PASS  fractional render pose survives replay exactly 
+PASS  frame buttons step without moving live physics 
+PASS  download carries the marked frame, notes, render alpha and scene context { bytes: 51524, frames: 8, notes: 1 }
+PASS  player collision body is not duplicated as a solid world obstruction 
+PASS  package includes portable local geometry, system state and map pin 
+PASS  isolated world viewer and orbit controls operate without live physics changes 
+PASS  leaving review restores original live pose, snow and pause state {
+  reviewing: false,
+  paused: true,
+  enabled: true,
+  snow: true,
+  pose: true,
+  differences: []
+}
+PASS  downloaded gzip file opens at its saved frame and preserves note 
+PASS  slow playback can be started and paused 
+PASS  world package opens independently of current seed and keeps saved meshes 
+PASS  corrupt import reports a readable error and keeps current replay 
+PASS  no JavaScript, shader or application resource errors []
+14 recorder browser checks passed

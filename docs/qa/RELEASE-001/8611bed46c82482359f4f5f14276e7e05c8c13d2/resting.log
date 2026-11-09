@@ -1,0 +1,5 @@
+PASS  contact-connected wood sleeps together only after held, falling and moving members settle
+PASS  quiet sleeping wood draws merged with retained geometry and cave/distance culling
+PASS  wake and pickup immediately remove only their own triangles without waiting for a rebuild
+PASS  changing and cutting merged wood leave no ghost, preserve other members, and release only owned buffers
+4 resting wood integration checks passed

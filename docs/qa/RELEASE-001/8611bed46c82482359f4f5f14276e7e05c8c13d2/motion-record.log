@@ -1,0 +1,10 @@
+PASS  rolling history advances its snow baseline instead of losing old deformation
+PASS  rolling history retains resets and a fixed maximum frame count
+PASS  diagnostic snapshots own their data
+PASS  portable recording keeps interpolation, mouse input, selected frame and Unicode notes
+PASS  invalid rigs, timelines, coordinates and prototype keys are rejected
+PASS  snow journals restore exact stored state forward and backward without excavation
+PASS  local world package preserves meshes, system state and expected/actual map pins
+PASS  broken world references, oversized geometry and malformed pins are rejected
+PASS  gzip and plain JSON round-trip
+9 motion recording checks passed

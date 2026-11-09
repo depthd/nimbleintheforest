@@ -1,0 +1,4 @@
+PASS 503 arm reach/singular cases, action routing and one/two hand grip contracts
+(node:1222) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

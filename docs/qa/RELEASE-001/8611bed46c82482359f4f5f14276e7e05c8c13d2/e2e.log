@@ -1,0 +1,25 @@
+PASS  pick up axe  — {"info":"Топор · 1.6 кг","target":"entity","actions":["E:Взять: Топор","F:Взять в руки"]}
+PASS  chop upper-floor railing  — {"removed":true,"swings":3,"fw":2,"acts":{"info":"Перила (2 этаж)","target":"entity","actions":["LMB:Рубить перила"]}}
+PASS  carry blanket  — {"info":"Плед · 1.2 кг","target":"entity","actions":["E:Поднять: Плед"]}
+PASS  hang blanket on window  — UA 134.6 -> 130.9 {"info":"Окно · стекло цело","target":"entity","actions":["E:Завесить окно","F:Укутаться"]}
+PASS  feed stove  — {"info":"Печь · пусто","target":"entity","actions":["E:Подбросить: Бумага","F:Подбросить: Еловая щепа","G:Прикрыть заслонку (медленное тление)"]}
+PASS  light stove  — горит · 9.0 кВт · 3 шт. · ещё ~14 мин · заслонка открыта
+PASS  stove heats the house  — -12.0 -> -5.4 °C, 9.0 kW
+PASS  stove side warmer than far corner  — {"stove":6.8761491775512695,"corner":0.25580334663391113,"centre":2.243065357208252,"draftBefore":0,"draftBroken":1.1105444431304932,"nearBroken":-3.209866523742676,"centreBroken":0.06162865087389946,"draftCovered":0.2776361107826233}
+PASS  broken window: draught and a cold spot
+PASS  blanket over the hole cuts the draught
+PASS  fell a tree  — {"fell":true,"n":22,"acts":{"info":"Сосна · ⌀33 см · 13 м · наклон 2° вправо","target":"tree","actions":["LMB:Рубить дерево","F:Отломить еловую ветку (лапник)"]},"trunk":true,"branches":8,"stump":1.18,"info":"Пень (сосна) · высота 1,2 м · ⌀32 см"}
+PASS  felled tree lies as a trunk with branches, a stump remains  — {"fell":true,"n":22,"acts":{"info":"Сосна · ⌀33 см · 13 м · наклон 2° вправо","target":"tree","actions":["LMB:Рубить дерево","F:Отломить еловую ветку (лапник)"]},"trunk":true,"branches":8,"stump":1.18,"info":"Пень (сосна) · высота 1,2 м · ⌀32 см"}
+PASS  drill ice hole  — {"info":"Лёд","target":"ice","actions":["LMB:Сверлить лунку","G:Сложить кострище на льду"]}
+PASS  fill pot with lake water  — {"info":"Лунка · нужен котелок или удочка","target":"entity","actions":["LMB:Набрать воды"]}
+PASS  chop the door  — UA 207 -> 907 {"info":"Дверь · закрыта","target":"entity","actions":["LMB:Рубить дверь","E:Открыть дверь"]}
+PASS  eat a can
+FAIL  pot of snow boils on the stove
+PASS  thrown firewood breaks a window
+PASS  campfire lights
+PASS  fall through thin ice and climb out  — {"ate":true,"boiled":false,"windowBroken":true,"campfire":true,"fellIn":true,"wetInWater":true,"climbedOut":true}
+PASS  body cools in a blizzard  — 37.00 -> 34.84, hands -13.7
+PASS  walk into every shelter  — {"n":17,"fails":[]}
+FAIL  no page errors  — Failed to load resource: the server responded with a status of 404 (Not Found)
+
+2 check(s) failed

@@ -1,0 +1,10 @@
+PASS live frame order, grip gap 2.5121479338940403e-15
+PASS rigid grips across same-frame turns, pitch, stance, framerate and replaceable model/pose provider {
+  maxGap: 2.6645352591003757e-15,
+  maxAngle: 7.884953353001448e-8,
+  maxWrist: 1.0986160316453369e-14,
+  maxVisual: 0,
+  samples: 450,
+  carryContacts: 40,
+  carryGap: 0
+}

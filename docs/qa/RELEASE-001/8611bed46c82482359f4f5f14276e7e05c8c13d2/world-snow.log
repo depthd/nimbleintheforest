@@ -1,0 +1,5 @@
+page.waitForFunction: Timeout 180000ms exceeded.
+    at /workspace/work/release-001/tests/world-snow.cjs:16:14 {
+  log: [],
+  name: 'TimeoutError'
+}

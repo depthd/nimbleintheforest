@@ -1,0 +1,26 @@
+PASS  first-person mask hides only head; body and hands remain opaque and double-sided {"incorrectlyHidden":0,"hiddenHead":2192,"transparent":false,"opacity":1,"side":2}
+PASS  idle-front: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":1.0048591735576161e-14,"eyeOffset":[0,0.1299999626053463,-0.14099999965422683],"firstPerson":false,"visible":true,"finite":true}
+PASS  walk-side: skin joints follow solver {"error":1.7404671430534633e-14,"cameraError":7.105427357601002e-15,"eyeOffset":[0,0.1299999626053463,-0.14099999965422683],"firstPerson":false,"visible":true,"finite":true}
+PASS  run-side: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":0,"eyeOffset":[-1.8146161551158002e-7,0.1299999626074495,-0.14099999965216625],"firstPerson":false,"visible":true,"finite":true}
+PASS  crouch-front: skin joints follow solver {"error":2.0097183471152322e-14,"cameraError":1.0048591735576161e-14,"eyeOffset":[0,0.1299999626053463,-0.14099999965422683],"firstPerson":false,"visible":true,"finite":true}
+PASS  first-person-level: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":1.4210854715202004e-14,"eyeOffset":[0,0.1299999626053463,-0.14099999965422683],"firstPerson":true,"visible":true,"finite":true}
+PASS  first-person-level: camera matches model eyes 1.4210854715202004e-14
+PASS  first-person: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":0,"eyeOffset":[0,-0.049137891699025715,-0.1853819240898602],"firstPerson":true,"visible":true,"finite":true}
+PASS  first-person: camera matches model eyes 
+PASS  looking down moves eyes around head pivot without stretching the offset {"delta":0.18455385680441547,"radiusChange":1.2212453270876722e-15}
+PASS  crouch-first-person: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":0,"eyeOffset":[0,-0.049137891699025715,-0.1853819240898602],"firstPerson":true,"visible":true,"finite":true}
+PASS  crouch-first-person: camera matches model eyes 
+PASS  max-down-wide: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":0,"eyeOffset":[0,-0.05395272658453365,-0.18403829349887246],"firstPerson":true,"visible":true,"finite":true}
+PASS  max-down-wide: camera matches model eyes 
+PASS  max-down-wide: body is outside camera and no visible surface is cut by near plane {"near":0.02,"minDepth":0.12861936866440596,"backHits":0,"clipped":0,"bodyHits":32}
+PASS  crouch-max-down-wide: skin joints follow solver {"error":2.929642751054232e-14,"cameraError":0,"eyeOffset":[0,-0.05395272658453365,-0.18403829349887246],"firstPerson":true,"visible":true,"finite":true}
+PASS  crouch-max-down-wide: camera matches model eyes 
+PASS  crouch-max-down-wide: body is outside camera and no visible surface is cut by near plane {"near":0.02,"minDepth":0.1286193696639598,"backHits":0,"clipped":0,"bodyHits":36}
+PASS  turn-right-wide: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":7.105427357601002e-15,"eyeOffset":[-0.1742919884891876,0.02974145155029362,-0.07428821566409027],"firstPerson":true,"visible":true,"finite":true}
+PASS  turn-right-wide: camera matches model eyes 7.105427357601002e-15
+PASS  turn-right-wide: body is outside camera and no visible surface is cut by near plane {"near":0.02,"minDepth":0.11103145404433648,"backHits":0,"clipped":0,"bodyHits":35}
+PASS  turn-left-wide: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":0,"eyeOffset":[0.1742919884891876,0.02974145155029362,-0.07428821566409027],"firstPerson":true,"visible":true,"finite":true}
+PASS  turn-left-wide: camera matches model eyes 
+PASS  turn-left-wide: body is outside camera and no visible surface is cut by near plane {"near":0.02,"minDepth":0.11105681688134264,"backHits":0,"clipped":0,"bodyHits":26}
+PASS  no JavaScript, shader or resource failures {"pageErrors":[],"consoleErrors":[],"resources":[]}
+25 survivor checks passed

@@ -1,0 +1,25 @@
+PASS  pick up axe  — {"info":"Топор · 1.6 кг","target":"entity","actions":["E:Взять: Топор","F:Взять в руки"]}
+PASS  chop upper-floor railing  — {"removed":true,"swings":3,"fw":2,"acts":{"info":"Перила (2 этаж)","target":"entity","actions":["LMB:Рубить перила"]}}
+FAIL  carry blanket  — {"info":"Сундук · 18.0 кг","target":"entity","actions":["E:Поднять: Сундук"]}
+FAIL  hang blanket on window  — UA 134.6 -> 134.6 {"info":"Окно · стекло цело","target":"entity","actions":[]}
+FAIL  feed stove  — {"info":"Печь · пусто","target":"entity","actions":[]}
+FAIL  light stove  — пусто
+FAIL  stove heats the house  — -12.0 -> -11.7 °C, 0.0 kW
+FAIL  stove side warmer than far corner  — {"stove":-10.338031768798828,"corner":-10.680047035217285,"centre":-10.690190315246582,"draftBefore":0,"draftBroken":1.0785633325576782,"nearBroken":-10.20397663116455,"centreBroken":-10.452357292175293,"draftCovered":0.26964083313941956}
+FAIL  broken window: draught and a cold spot
+PASS  blanket over the hole cuts the draught
+PASS  fell a tree  — {"fell":true,"n":32,"acts":{"info":"Сосна · ⌀33 см · 13 м · наклон 2° вправо","target":"tree","actions":[]},"trunk":true,"branches":8,"stump":1.15,"info":"Пень (сосна) · высота 1,2 м · ⌀32 см"}
+PASS  felled tree lies as a trunk with branches, a stump remains  — {"fell":true,"n":32,"acts":{"info":"Сосна · ⌀33 см · 13 м · наклон 2° вправо","target":"tree","actions":[]},"trunk":true,"branches":8,"stump":1.15,"info":"Пень (сосна) · высота 1,2 м · ⌀32 см"}
+PASS  drill ice hole  — {"info":"Лёд","target":"ice","actions":[]}
+FAIL  fill pot with lake water  — {"info":"Лёд","target":"ice","actions":[]}
+PASS  chop the door  — UA 204 -> 884 {"info":"Дверь · закрыта","target":"entity","actions":[]}
+FAIL  eat a can
+FAIL  pot of snow boils on the stove
+PASS  thrown firewood breaks a window
+PASS  campfire lights
+PASS  fall through thin ice and climb out  — {"ate":false,"beforePot":{"actions":{"info":"","target":"none","actions":[]},"expected":1608,"pinned":null},"placed":false,"pot":{"contents":{"snow":1,"water":0,"temp":-5.3236467045121225,"boiled":false,"tea":false,"dirty":false},"pinned":null,"power":9,"onFire":false},"boiled":false,"windowBroken":true,"campfire":true,"fellIn":true,"wetInWater":true,"climbedOut":true}
+PASS  body cools in a blizzard  — 37.00 -> 34.88, hands -13.4
+FAIL  walk into every shelter  — {"n":17,"fails":["station","hut","hut","hut","hut","hut","grotto","fishing","fishing","fishing","leanto","leanto","leanto","leanto","leanto","leanto","leanto"]}
+FAIL  no page errors  — Failed to load resource: the server responded with a status of 404 (Not Found)
+
+12 check(s) failed
