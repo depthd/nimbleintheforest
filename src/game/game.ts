@@ -25,6 +25,7 @@ import { Fires } from './fire';
 import { Interaction } from './interact';
 import { ViewModel } from './viewmodel';
 import { journal } from './journal/journal';
+import './journal/journal.css';
 import { Effects } from './effects';
 import { HUD } from '../ui/hud';
 import { Horror } from './horror';

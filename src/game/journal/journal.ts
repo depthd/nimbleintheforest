@@ -48,6 +48,7 @@ class Journal {
     if (inp.pressed.has('Escape')) this.open = false;
     if (G.hud.modal || G.sleeping || G.dead || G.player.carried || G.recorder?.reviewing) { this.open = false; this.progress = 0; }
     this.progress = THREE.MathUtils.clamp(this.progress + (this.open ? 1 : -1) * dt / .65, 0, 1);
+    document.body.classList.toggle('journal-reading', this.active);
     if (this.active) inp.enabled = false;
     else if (!G.hud.modal) inp.enabled = true;
     if (!this.active || !this.art) return;
