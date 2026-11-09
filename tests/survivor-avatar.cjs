@@ -100,15 +100,18 @@ fs.mkdirSync(OUT, { recursive: true });
       ['first-person-level', [], 0, 0], ['first-person', [], -1.35, 0],
       ['crouch-first-person', ['ControlLeft'], -1.35, 0],
       ['max-down-wide', [], -1.5, 0], ['crouch-max-down-wide', ['ControlLeft'], -1.5, 0],
-    ]) {
+      ['turn-right-wide', [], -1.5, 0], ['turn-left-wide', [], -1.5, 0],
+    ].filter(([name]) => !process.env.AVATAR_CLEARANCE_ONLY || name.includes('wide'))) {
       if (name.includes('wide')) await page.setViewportSize({width:1080,height:400});
-      await ev(({keys, pitch, view, settle}) => {
+      await ev(({keys, pitch, view, settle, turn}) => {
         const g = window.__game, p = g.G.player;
         window.__resetMovement();
         keys.forEach(k => g.G.input.keys.add(k));
         p.pitch = pitch; p.avatar.inspectionView = view;
-        g.steps(settle); p.updateCamera(0);
-      }, {keys, pitch, view, settle: name.includes('wide') ? 180 : 18});
+        g.steps(settle);
+        if (turn) { p.yaw=turn; g.steps(1); }
+        p.updateCamera(0);
+      }, {keys, pitch, view, settle: name.includes('wide') ? 180 : 18, turn: name === 'turn-right-wide' ? 1.2 : name === 'turn-left-wide' ? -1.2 : 0});
       await shot(name);
       const result = await ev(() => {
         const {G, THREE: T} = window.__game, a = G.player.avatar;

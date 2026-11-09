@@ -9,7 +9,9 @@
     "src/game/game.ts",
     "src/game/survivor-avatar.ts",
     "src/game/player.ts",
-    "tests/survivor-avatar.cjs"
+    "tests/survivor-avatar.cjs",
+    "src/game/locomotion.ts",
+    "tests/locomotion.cjs"
   ],
   "acceptance": [
     "No clipped torso interiors at maximum downward pitch and wide viewport",

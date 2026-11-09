@@ -368,7 +368,11 @@ export class Locomotion {
     this.chestYaw = THREE.MathUtils.damp(this.chestYaw, clamp(twist * 0.3, -0.3, 0.3), 10, dt);
     this.headYaw = clamp(wrapAngle(twist - this.chestYaw), -1.2, 1.2);
     this.chestPitch = THREE.MathUtils.damp(this.chestPitch, input.pitch * 0.12 - this.runBlend * 0.19, 10, dt);
-    this.headPitch = clamp(input.pitch - this.chestPitch, -1.2, 1.2);
+    // Downward flexion and axial twist cannot both reach their independent
+    // maxima: that puts the skull/eyes through the clavicle on the skinned body.
+    // The remaining view tilt is eye rotation; mouse aim stays unrestricted.
+    const downLimit = 0.85 - 0.35 * Math.min(1, Math.abs(this.headYaw) / 1.2);
+    this.headPitch = clamp(input.pitch - this.chestPitch, -downLimit, 1.2);
   }
 
   private planStep(input: MotionInput, probe: GroundProbe) {
