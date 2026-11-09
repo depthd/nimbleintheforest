@@ -1,0 +1,15 @@
+PASS  first-person mask hides only head; body and hands remain opaque and double-sided {"incorrectlyHidden":0,"hiddenHead":2192,"transparent":false,"opacity":1,"side":2}
+PASS  max-down-wide: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":0,"eyeOffset":[0,-0.05395272658453365,-0.18403829349887246],"firstPerson":true,"visible":true,"finite":true}
+PASS  max-down-wide: camera matches model eyes 
+PASS  max-down-wide: body is outside camera and no visible surface is cut by near plane {"near":0.02,"minDepth":0.12861936866436594,"backHits":0,"clipped":0,"bodyHits":22}
+PASS  crouch-max-down-wide: skin joints follow solver {"error":2.929642751054232e-14,"cameraError":0,"eyeOffset":[0,-0.05395272658453365,-0.18403829349887246],"firstPerson":true,"visible":true,"finite":true}
+PASS  crouch-max-down-wide: camera matches model eyes 
+PASS  crouch-max-down-wide: body is outside camera and no visible surface is cut by near plane {"near":0.02,"minDepth":0.1286193696639117,"backHits":0,"clipped":0,"bodyHits":26}
+PASS  turn-right-wide: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":7.105427357601002e-15,"eyeOffset":[-0.1742919884891876,0.02974145155029362,-0.07428821566409027],"firstPerson":true,"visible":true,"finite":true}
+PASS  turn-right-wide: camera matches model eyes 7.105427357601002e-15
+PASS  turn-right-wide: body is outside camera and no visible surface is cut by near plane {"near":0.02,"minDepth":0.11103145404403174,"backHits":0,"clipped":0,"bodyHits":24}
+PASS  turn-left-wide: skin joints follow solver {"error":2.4613922385709617e-14,"cameraError":0,"eyeOffset":[0.1742919884891876,0.02974145155029362,-0.07428821566409027],"firstPerson":true,"visible":true,"finite":true}
+PASS  turn-left-wide: camera matches model eyes 
+PASS  turn-left-wide: body is outside camera and no visible surface is cut by near plane {"near":0.02,"minDepth":0.11105681688109864,"backHits":0,"clipped":0,"bodyHits":24}
+PASS  no JavaScript, shader or resource failures {"pageErrors":[],"consoleErrors":[],"resources":[]}
+14 survivor checks passed

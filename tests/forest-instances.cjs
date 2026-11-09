@@ -100,4 +100,25 @@ test('the previous 4000-instance per-variant limit is preserved across spatial b
   assert.equal(instanceCount(f.batch.meshes), 8000);
 });
 
+test('unchanged streamed chunks retain GPU versions and bounds; changed, removed and regrown slots refresh', () => {
+  const f = fixture(), inputs = [matrix(5, 5, 1.17, .13), matrix(15, 20), matrix(180, 180)];
+  fill(f.batch, inputs);
+  const state = f.batch.meshes.map(m => [m, m.instanceMatrix.version, m.boundingSphere.clone(), m.boundingBox.clone()]);
+  for (let i = 0; i < 5; i++) fill(f.batch, inputs);
+  for (const [m, version, sphere, box] of state) {
+    assert.equal(m.instanceMatrix.version, version); assert.deepEqual(m.boundingSphere, sphere); assert.deepEqual(m.boundingBox, box);
+  }
+  fill(f.batch, [matrix(6, 5, 1.17, .13), inputs[1], inputs[2]]);
+  for (const [m, version] of state) assert.equal(m.instanceMatrix.version, version + +(m.boundingBox.min.x < 128));
+  fill(f.batch, [inputs[0], inputs[2]]); fill(f.batch, inputs);
+  for (const m of f.batch.meshes) {
+    const expected = m.boundingBox.min.x < 128 ? inputs.slice(0, 2) : inputs.slice(2);
+    assert.equal(m.count, expected.length);
+    for (let i = 0; i < expected.length; i++) {
+      const found = new T.Matrix4(); m.getMatrixAt(i, found);
+      assert.deepEqual(found.elements, Array.from(new Float32Array(expected[i].elements)));
+    }
+  }
+});
+
 console.log(`${checks} forest instance checks passed`);

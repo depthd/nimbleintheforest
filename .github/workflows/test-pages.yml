@@ -35,16 +35,21 @@ jobs:
           TEST_SHA: ${{ inputs.sha }}
         run: |
           mv dist preview-dist
-          gh run download 42676348641 --repo "$GITHUB_REPOSITORY" --name github-pages --dir original-pages
+          curl --fail --silent --show-error --location https://depthd.github.io/nimbleintheforest/version.json -o production-version.json
+          PRODUCTION_RUN=$(node -e 'const v=require("./production-version.json");if(!/^[0-9]+$/.test(String(v.run)))process.exit(1);process.stdout.write(String(v.run))')
+          export PRODUCTION_RUN
+          gh run download "$PRODUCTION_RUN" --repo "$GITHUB_REPOSITORY" --name github-pages --dir original-pages
           mkdir dist
           tar -xf original-pages/artifact.tar -C dist
           # Abort if the live root changed since this release was prepared.
           curl --fail --silent --show-error --location https://depthd.github.io/nimbleintheforest/ -o live-index.html
           cmp live-index.html dist/index.html
-          test ! -e dist/test
+          curl --fail --silent --show-error --location https://depthd.github.io/nimbleintheforest/version.json -o live-version.json
+          cmp production-version.json live-version.json
+          rm -rf dist/test
           mkdir dist/test
           cp -a preview-dist/. dist/test/
-          node -e 'require("fs").writeFileSync("dist/test/version.json", JSON.stringify({sha:process.env.TEST_SHA,productionRun:42676348641}))'
+          node -e 'require("fs").writeFileSync("dist/test/version.json", JSON.stringify({sha:process.env.TEST_SHA,productionRun:process.env.PRODUCTION_RUN}))'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

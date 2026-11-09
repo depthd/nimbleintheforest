@@ -47,7 +47,7 @@ export class SnowField {
     const tx = Math.floor(ix / TILE_CELLS), tz = Math.floor(iz / TILE_CELLS);
     return { key: `${tx},${tz}`, index: (iz - tz * TILE_CELLS) * TILE_CELLS + ix - tx * TILE_CELLS };
   }
-  private read(ix: number, iz: number) {
+  private read(ix: number, iz: number, initial?: number) {
     const a = this.address(ix, iz), t = this.tiles.get(a.key);
     let delta = 0, compaction = 0, exposure = 0;
     if (t?.hot) { delta = t.hot.mass[a.index]; compaction = t.hot.packed[a.index] / 255; exposure = t.hot.exposure[a.index]; }
@@ -57,10 +57,9 @@ export class SnowField {
       while (lo < hi) { const mid = (lo + hi) >>> 1; if (c.indices[mid] < a.index) lo = mid + 1; else hi = mid; }
       if (c.indices[lo] === a.index) { delta = c.mass[lo]; compaction = c.packed[lo] / 255; exposure = c.exposure[lo]; }
     }
-    return this.weathered(ix, iz, delta, compaction, exposure);
+    return this.weathered(ix, iz, delta, compaction, exposure, initial);
   }
-  private weathered(ix: number, iz: number, delta: number, compaction: number, exposure: number) {
-    const initial = this.initialThickness(ix * CELL, iz * CELL);
+  private weathered(ix: number, iz: number, delta: number, compaction: number, exposure: number, initial = this.initialThickness(ix * CELL, iz * CELL)) {
     let mass = Math.max(0, initial + delta), height = mass / (1 + compaction * (this.densityRatio - 1));
     const dose = Math.max(0, this.weatherExposure - exposure);
     if (dose > 0 && (delta || compaction)) {
@@ -73,7 +72,7 @@ export class SnowField {
     }
     return { mass, compaction, height, surfaceCompaction: compaction * Math.exp(-dose / 0.012) };
   }
-  gridState(ix: number, iz: number) { return this.read(ix, iz); }
+  gridState(ix: number, iz: number, initial?: number) { return this.read(ix, iz, initial); }
   /** Game seconds, not frame count or distance. Calm clear weather preserves tracks. */
   advanceWeather(seconds: number, weather: { snow: number; wind: number }) {
     const snowfall = clamp(weather.snow, 0, 1) * 0.004 / 60;

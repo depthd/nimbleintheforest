@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       sha:
-        description: Full SHA on the integration branch, already checked by Kimi and approved visually
+        description: Full SHA on the integration branch, checked and explicitly approved for publication by the user
         required: true
         type: string
 permissions:
@@ -42,9 +42,19 @@ jobs:
         env:
           RELEASE_SHA: ${{ steps.pin.outputs.sha }}
         run: node -e 'require("fs").writeFileSync("dist/version.json",JSON.stringify({sha:process.env.RELEASE_SHA,run:process.env.GITHUB_RUN_ID}))'
+      - name: Build matching preview alongside production
+        env:
+          BUILD_CHANNEL: test
+          RELEASE_SHA: ${{ steps.pin.outputs.sha }}
+        run: |
+          npx vite build --outDir preview-dist
+          node -e 'require("fs").writeFileSync("preview-dist/version.json",JSON.stringify({sha:process.env.RELEASE_SHA,productionRun:process.env.GITHUB_RUN_ID}))'
+          mkdir dist/test
+          cp -a preview-dist/. dist/test/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+          retention-days: 90
   deploy:
     needs: build
     runs-on: ubuntu-latest

@@ -1,16 +1,17 @@
+import { validateDiagnostics, type DiagnosticBundle } from './diagnostics/schema';
 // Portable diagnostic data only. Imported recordings are data, never code.
 export type SnowCell = [number, number, number, number, number?]; // optional weather exposure at contact
 export type SnowChange = [number, number, number, number, number, number, number?, number?];
 export interface RecordedSnow { enabled: boolean; thickness: number; ratio: number; cells: SnowCell[]; weatherExposure?: number }
 export interface MotionFrame {
-  id: number; t: number; dt: number; alpha: number; pose: number[] | Float32Array; camera: number[]; view: number;
+  worldSampleId?: number; id: number; t: number; dt: number; alpha: number; pose: number[] | Float32Array; camera: number[]; view: number;
   input: any; player: any; animation: any; ticks: any[];
   snow: { enabled: boolean; reset?: RecordedSnow; changes: SnowChange[]; weatherExposure?: number } | null;
 }
 export interface MotionRecording {
-  format: 'nimble-motion'; version: 1; context: any; rig: string[];
+  format: 'nimble-motion'; version: 1; context: any; rig: string[]; diagnostics?: DiagnosticBundle;
   initialSnow: RecordedSnow | null; frames: MotionFrame[];
-  notes: { frameId: number; text: string }[]; selectedFrameId: number;
+  notes: { frameId: number; text: string; expected?: string; actual?: string; position?: number[] }[]; selectedFrameId: number;
 }
 export const MAX_RECORD_FRAMES = 1800;
 export const MAX_RECORD_SECONDS = 20;
@@ -82,6 +83,7 @@ export function validateRecording(value: any): MotionRecording {
     if (s.weatherExposure !== undefined && (typeof s.weatherExposure !== 'number' || s.weatherExposure < 0)) fail();
     for (const c of s.cells) if (!Array.isArray(c) || ![4, 5].includes(c.length) || (c[4] !== undefined && (typeof c[4] !== 'number' || c[4] < 0)) || !Number.isInteger(c[0]) || !Number.isInteger(c[1]) || Math.abs(c[0]) > 1e7 || Math.abs(c[1]) > 1e7 || typeof c[2] !== 'number' || Math.abs(c[2]) > 1e4 || !Number.isInteger(c[3]) || c[3] < 0 || c[3] > 255) fail();
   };
+  if (value.diagnostics) validateDiagnostics(value.diagnostics);
   snow(value.initialSnow);
   let lastId = -1, lastTime = -Infinity;
   for (const f of value.frames) {
@@ -97,9 +99,13 @@ export function validateRecording(value: any): MotionRecording {
       if (f.snow.reset) snow(f.snow.reset);
       for (const c of f.snow.changes) if (!Array.isArray(c) || ![6, 8].includes(c.length) || !c.every(x => typeof x === 'number') || (c.length === 8 && (c[6] < 0 || c[7] < 0)) || !Number.isInteger(c[0]) || !Number.isInteger(c[1]) || Math.abs(c[0]) > 1e7 || Math.abs(c[1]) > 1e7 || Math.abs(c[2]) > 1e4 || Math.abs(c[4]) > 1e4 || !Number.isInteger(c[3]) || !Number.isInteger(c[5]) || c[3] < 0 || c[3] > 255 || c[5] < 0 || c[5] > 255) fail();
     }
+    if (f.worldSampleId !== undefined && (!value.diagnostics || !value.diagnostics.samples.some(s => s.id === f.worldSampleId))) fail();
     lastId = f.id; lastTime = f.t;
   }
   for (const n of value.notes) if (!n || !Number.isInteger(n.frameId) || typeof n.text !== 'string' || n.text.length > 2000) fail();
+  for (const n of value.notes) {
+    if ((n.expected !== undefined && (typeof n.expected !== 'string' || n.expected.length > 2000)) || (n.actual !== undefined && (typeof n.actual !== 'string' || n.actual.length > 2000)) || (n.position !== undefined && (!Array.isArray(n.position) || n.position.length !== 3 || !n.position.every(x => typeof x === 'number'))) || !value.frames.some(f => f.id === n.frameId)) fail();
+  }
   if (!value.frames.some(f => f.id === value.selectedFrameId)) fail();
   return value;
 }

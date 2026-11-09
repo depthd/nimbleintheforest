@@ -117,6 +117,9 @@ export class Thermal {
   windowGlassT: number[] = [];
   zones: Record<ZoneName, Zone>;
   private Y0 = 0;
+  private draftSource = new Float32Array(N);
+  private draftTargets = new Int32Array(N * 12);
+  private draftFalloff = [1, 2, 3].map(d => Math.exp(-d * 0.55));
   overlay: THREE.InstancedMesh | null = null;
   overlayMode: 'off' | 'temp' | 'rh' | 'draft' = 'off';
   exchange = 0;
@@ -171,6 +174,20 @@ export class Thermal {
       this.active[c] = k < GL || yc < roofY(zc) ? 1 : 0;
       this.V[c] = DX * DX * LAYER_H[k];
       this.C[c] = RHO_C * this.V[c] * 3; // air plus light contents
+    }
+    // Geometry is fixed for this house. Resolve the exact cellAt mapping once,
+    // including the step down under the sloped roof, rather than allocating
+    // vectors and redoing those queries for every draught source every frame.
+    this.draftTargets.fill(-1);
+    const target = new THREE.Vector3();
+    for (let c = 0; c < N; c++) {
+      if (!this.active[c]) continue;
+      const p = this.cellCenter(c);
+      let i = c * 12;
+      for (let d = 1; d <= 3; d++) {
+        for (const [dx, dz] of [[d, 0], [-d, 0], [0, d], [0, -d]])
+          this.draftTargets[i++] = this.cellAt(target.set(p.x + dx * DX, p.y, p.z + dz * DX));
+      }
     }
     const inHole = (ix: number, iz: number) => {
       const x = X0 + (ix + 0.5) * DX, z = Z0 + (iz + 0.5) * DX;
@@ -457,17 +474,7 @@ export class Thermal {
       for (let s = 0; s < f.jet.length; s++) this.draft[f.jet[s]] = Math.max(this.draft[f.jet[s]], v * (1 - s * 0.2));
     }
     // spread draught a bit further with distance falloff
-    const draftSrc = [...this.draft];
-    for (let c = 0; c < N; c++) {
-      if (!this.active[c] || draftSrc[c] <= 0) continue;
-      const p = this.cellCenter(c);
-      for (let d = 1; d <= 3; d++) {
-        for (const off of [[d, 0], [-d, 0], [0, d], [0, -d]]) {
-          const q = this.cellAt(new THREE.Vector3(p.x + off[0] * DX, p.y, p.z + off[1] * DX));
-          if (q >= 0) this.draft[q] = Math.max(this.draft[q], draftSrc[c] * Math.exp(-d * 0.55));
-        }
-      }
-    }
+    this.spreadDraft();
 
     let left = dtGame;
     while (left > 1e-6) {
@@ -476,6 +483,18 @@ export class Thermal {
       this.step(dt, tout, tground, wind, ahOut, windows, wl, dl, winArea, doorArea);
     }
     this.aggregate(tout, wind);
+  }
+
+  private spreadDraft() {
+    const source = this.draftSource;
+    source.set(this.draft);
+    for (let c = 0; c < N; c++) {
+      if (!this.active[c] || source[c] <= 0) continue;
+      for (let i = 0; i < 12; i++) {
+        const q = this.draftTargets[c * 12 + i];
+        if (q >= 0) this.draft[q] = Math.max(this.draft[q], source[c] * this.draftFalloff[Math.floor(i / 4)]);
+      }
+    }
   }
 
   private step(dt: number, tout: number, tground: number, wind: number, ahOut: number, windows: WindowData[], wl: { u: number; flow: number; v: number }[], dl: { u: number; flow: number; v: number }, winArea: number[], doorArea: number) {

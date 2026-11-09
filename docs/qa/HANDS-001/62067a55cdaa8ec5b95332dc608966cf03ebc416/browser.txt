@@ -1,0 +1,28 @@
+initial {
+  state: 'idle',
+  progress: 0,
+  palms: [
+    [ 39.69089393530684, 47.131475667263274, 39.52015837338258 ],
+    [ 40.197725129115476, 47.149680237668676, 39.406416194625095 ]
+  ],
+  item: [ 40.19117200582791, 47.155382183702685, 39.42178234178328 ]
+}
+PASS airborne
+PASS brush
+PASS walk
+PASS run
+PASS crouch
+PASS warm
+PASS carry
+PASS hold
+PASS chop
+PASS saw
+PASS dig
+PASS pour
+PASS reach
+PASS work
+PASS eat
+PASS drink
+PASS ignite
+PASS throw
+PASS browser errors, all hand modes, actual skinned avatar
