@@ -1,0 +1,108 @@
+// Real Rapier + browser checks. Uses the same Playwright setup as tests/e2e.cjs.
+// Optional: CHROMIUM_PATH=/usr/bin/chromium. Screenshots go to test-results/movement/.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { chromium } = require('playwright');
+const OUT = process.argv[2] || path.join(__dirname, '../test-results/survivor');
+fs.mkdirSync(OUT, { recursive: true });
+
+(async () => {
+  const { createServer } = await import('vite');
+  const server = await createServer({ root: path.join(__dirname, '..'), server: { port: 5202, strictPort: true, hmr: false }, logLevel: 'error' });
+  let browser;
+  let checks = 0;
+  function check(name, ok, detail = '') {
+    assert.ok(ok, `${name}: ${JSON.stringify(detail)}`);
+    checks++;
+    console.log('PASS ', name, detail ? JSON.stringify(detail) : '');
+  }
+  try {
+    await server.listen();
+    browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
+      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+    const page = await browser.newPage({ viewport: { width: 960, height: 640 } });
+    const pageErrors = [], resources = [], consoleErrors = [];
+    page.on('pageerror', e => pageErrors.push(e.message));
+    page.on('console', m => {
+      if (m.type() === 'error' && !m.location().url?.endsWith('/favicon.ico')) consoleErrors.push(m.text());
+    });
+    // The existing repository has no favicon. Report other HTTP failures precisely.
+    page.on('response', r => { if (r.status() >= 400 && !r.url().endsWith('/favicon.ico')) resources.push(`${r.status()} ${r.url()}`); });
+    await page.goto('http://127.0.0.1:5202/?test=1&seed=42&hour=13&weather=clear&nocold=1&scale=0');
+    await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
+    const ev = (fn, arg) => page.evaluate(fn, arg);
+    const shot = async name => {
+      // Wait for the manual pose to be rendered, not for wall-clock gameplay.
+      await ev(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.screenshot({ path: path.join(OUT, name + '.png'), timeout: 180000 });
+    };
+    await ev(() => {
+      const g = window.__game, { G, THREE: T } = g;
+      g.setManualStepping(true);
+      G.input.enabled = true;
+      G.input.keys.clear();
+      const stage = { x: 40, z: 40, y: G.terrain.heightAt(40, 40) + 35 };
+      window.__stage = stage;
+      const body = G.world.createRigidBody(G.R.RigidBodyDesc.fixed());
+      G.world.createCollider(G.R.ColliderDesc.cuboid(30, 0.1, 30).setTranslation(stage.x, stage.y - 0.1, stage.z), body);
+      const mesh = new T.Mesh(new T.BoxGeometry(60, 0.2, 60), new T.MeshStandardMaterial({ color: 0xc8cdd0, roughness: 1 }));
+      mesh.position.set(stage.x, stage.y - 0.1, stage.z);
+      mesh.receiveShadow = true;
+      G.scene.add(mesh);
+      const grid = new T.GridHelper(60, 120, 0x7c8a91, 0xa7b0b5);
+      grid.position.set(stage.x, stage.y + 0.002, stage.z);
+      G.scene.add(grid);
+      window.__movementFixtures = [mesh, grid];
+      window.__stepSounds = [];
+      const play = G.audio.play.bind(G.audio);
+      G.audio.play = (name, opts = {}) => {
+        if (name.startsWith('step_')) window.__stepSounds.push({ name, pos: opts.pos?.toArray(), serial: G.player.avatar.motion.stepSerial });
+        play(name, opts);
+      };
+      window.__resetMovement = () => {
+        G.input.keys.clear(); G.input.pressed.clear(); G.input.enabled = true;
+        G.player.yaw = G.player.pitch = 0;
+        G.player.crouch = false; G.player.water = null;
+        G.player.stamina = 1; G.player.winded = false;
+        g.teleport(stage.x, stage.y + 0.05, stage.z);
+        g.steps(90);
+        window.__stepSounds.length = 0;
+      };
+      window.__resetMovement();
+    });
+
+    await page.waitForFunction(() => !!window.__game.G.player.avatar.survivor);
+    for (const [name, keys, pitch, view] of [
+      ['idle-front', [], 0, 2], ['walk-side', ['KeyW'], 0, 1],
+      ['run-side', ['KeyW', 'ShiftLeft'], 0, 1],
+      ['crouch-front', ['ControlLeft'], 0, 2], ['first-person', [], 1.1, 0],
+    ]) {
+      await ev(({keys, pitch, view}) => {
+        const g = window.__game, p = g.G.player;
+        window.__resetMovement();
+        keys.forEach(k => g.G.input.keys.add(k));
+        p.pitch = pitch; p.avatar.inspectionView = view;
+        g.steps(18); p.updateCamera(0);
+      }, {keys, pitch, view});
+      await shot(name);
+      const result = await ev(() => {
+        const {G, THREE: T} = window.__game, a = G.player.avatar;
+        const skin = a.survivor.model.getObjectByProperty('isSkinnedMesh', true);
+        let error = 0;
+        for (let i = 0; i < 2; i++) {
+          const side = i ? 'R' : 'L', leg = a.legs[i];
+          const endpoint = (mesh, sign) => mesh.localToWorld(new T.Vector3(0, sign * (mesh.scale.y - 0.025) / mesh.scale.y * 0.5, 0));
+          for (const [name, target] of [
+            ['UpperLeg', endpoint(leg.thigh, 1)],
+            ['LowerLeg', endpoint(leg.thigh, -1)], ['Foot', endpoint(leg.shin, -1)]
+          ]) error = Math.max(error, skin.skeleton.getBoneByName(name + side).getWorldPosition(new T.Vector3()).distanceTo(target));
+        }
+        return {error, visible: skin.visible, finite: skin.skeleton.bones.every(b => b.matrixWorld.elements.every(Number.isFinite))};
+      });
+      check(name + ': skin joints follow solver', result.visible && result.finite && result.error < 1e-5, result);
+    }
+    check('no JavaScript, shader or resource failures', !pageErrors.length && !consoleErrors.length && !resources.length, {pageErrors, consoleErrors, resources});
+    console.log(`${checks} survivor checks passed`);
+  } finally { await browser?.close(); await server.close(); }
+})().catch(e => { console.error(e); process.exitCode = 1; });
