@@ -1,0 +1,8 @@
+{
+  "repository": "depthd/nimbleintheforest",
+  "integration_branch": "claude/friendly-archimedes-onmybq",
+  "required_ancestors": [
+    "450184d87c070b45bb1f069d6d641db5588e7bf4"
+  ],
+  "policy": "Only this branch is the integration base. Legacy claude/* branches are historical. Do not infer a branch from its name."
+}
