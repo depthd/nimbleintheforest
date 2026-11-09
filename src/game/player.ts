@@ -388,7 +388,7 @@ export class Player {
       if (inp.down('KeyD')) fx += 1;
     }
     const len = Math.hypot(fx, fz);
-    this.crouch = !busy && (inp.down('ControlLeft') || inp.down('KeyC'));
+    this.crouch = !busy && inp.down('KeyC');
     const wantSprint = !busy && inp.down('ShiftLeft') && fz < 0 && !this.crouch;
     const B = G.body;
     const maxStam = 1 - Math.max(0, B.fatigue - 0.6) * 1.5;
