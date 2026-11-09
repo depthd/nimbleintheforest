@@ -45,6 +45,18 @@ const {chromium}=require('playwright');
  for(let k=0;k<8;k++)p.avatar.renderHands(.1);G.paused=true;
  if(!p.avatar.hands.carryLost||p.avatar.hands.contacts.some(Boolean)||before.distanceTo(object.position())>1e-8)throw Error('unreachable physical grasp not released explicitly');
  p.carried=null;return {maxGap,maxAngle,maxWrist,maxVisual,samples,carryContacts,carryGap};});
- assert.ok(result.maxGap<.0001,JSON.stringify(result));assert.ok(result.maxAngle<.0001,JSON.stringify(result));assert.ok(result.maxWrist<.0001,JSON.stringify(result));assert.equal(result.maxVisual,0);assert.deepEqual(errors,[]);console.log('PASS rigid grips across same-frame turns, pitch, stance, framerate and replaceable model/pose provider',result);
+ assert.ok(result.maxGap<.0001,JSON.stringify(result));assert.ok(result.maxAngle<.0001,JSON.stringify(result));assert.ok(result.maxWrist<.0001,JSON.stringify(result));assert.equal(result.maxVisual,0);
+ const live=await page.evaluate(async()=>{
+ const {G,THREE:T}=window.__game;const {handGrips}=await import('/src/game/hands.ts');const p=G.player;
+ p.equipped=G.entities.spawnItem('axe',new T.Vector3(0,-50,0));p.avatar.hands.cancel();G.paused=false;let gap=0;
+ for(let k=0;k<16;k++){
+ p.yaw+=.2;p.pitch=Math.sin(k)*.8;
+ await new Promise(requestAnimationFrame);
+ const h=p.avatar.hands,profile=handGrips.axe;
+ for(let i=0;i<2;i++)if(h.contacts[i])gap=Math.max(gap,h.palms[i].position.distanceTo((i?profile.right:profile.left).clone().applyQuaternion(h.item.quaternion).add(h.item.position)));
+ }
+ G.paused=true;return gap;
+ });assert.ok(live<.0001,'live render-loop grip gap '+live);console.log('PASS live frame order, grip gap',live);
+ assert.deepEqual(errors,[]);console.log('PASS rigid grips across same-frame turns, pitch, stance, framerate and replaceable model/pose provider',result);
  }finally{await browser?.close();await server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
