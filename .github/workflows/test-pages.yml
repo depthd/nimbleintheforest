@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: git fetch origin claude/friendly-archimedes-onmybq && node scripts/repo-check.mjs --base origin/claude/friendly-archimedes-onmybq
+      - run: node scripts/repo-check.mjs --base e5699d46d4af0e9382e11821d778c409367ca1ea
       - run: npm ci && npm run build && npm run test:statics && npm run test:resting
       - name: Restore exact published game and add test build
         env:
