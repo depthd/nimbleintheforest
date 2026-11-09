@@ -1,0 +1,3 @@
+require('/workspace/work/pose-preload.cjs');
+const {chromium}=require('playwright'),launch=chromium.launch.bind(chromium);
+chromium.launch=async opts=>{const b=await launch(opts),newPage=b.newPage.bind(b);b.newPage=async opts=>{const p=await newPage(opts),wait=p.waitForFunction.bind(p);let prepared=false;p.waitForFunction=async(...args)=>{const r=await wait(...args);if(!prepared){prepared=true;await p.evaluate(()=>{const {G}=window.__game;G.renderer.setPixelRatio(.35);G.renderer.shadowMap.enabled=false;for(const c of G.scene.children)if(c!==G.player.avatar.root&&c.name!=='held-equipment')c.visible=false;});}return r;};return p;};return b;};

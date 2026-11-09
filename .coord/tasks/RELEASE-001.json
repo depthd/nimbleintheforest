@@ -1,8 +1,8 @@
 {
   "id": "RELEASE-001",
-  "status": "qa",
+  "status": "review",
   "owner": "codex-release-coordinator",
-  "branch": "task/RELEASE-001-promote-test",
+  "branch": "task/RELEASE-001-qa-evidence",
   "base_sha": "de20db3bb8883af6ade9afb5bb418b708afd9d71",
   "allowed_paths": [
     ".coord/tasks/DIAG-001.json",
@@ -64,7 +64,8 @@
     "tests/thermal-equivalence.cjs",
     "tests/trails.cjs",
     ".coord/tasks/RELEASE-001.json",
-    "docs/RELEASE-001.md"
+    "docs/RELEASE-001.md",
+    "docs/qa/RELEASE-001/"
   ],
   "acceptance": [
     "Review and test exact deployed test candidate 64090d8db6174bdfe02d0a82b10c437f1df00947",
@@ -72,7 +73,7 @@
     "Production dispatch only after exact-SHA visual acceptance and required QA"
   ],
   "source_sha": "64090d8db6174bdfe02d0a82b10c437f1df00947",
-  "qa_sha": null,
-  "qa_result": "IN_PROGRESS",
-  "coordination": "Release integration only. Component owners retain their paths; no source edits beyond the already deployed test merge. Supersedes component PRs only when coordinator integrates this PR."
+  "qa_sha": "8611bed46c82482359f4f5f14276e7e05c8c13d2",
+  "qa_result": "SELF_QA_PARTIAL_NOT_RELEASE_APPROVAL",
+  "coordination": "Evidence-only branch; do not merge into integration. Release PR head remains 8611bed46c82482359f4f5f14276e7e05c8c13d2. No gameplay source changes."
 }

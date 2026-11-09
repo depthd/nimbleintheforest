@@ -1,0 +1,194 @@
+[
+  {
+    "before": {
+      "time": 46800,
+      "pos": [
+        4.1797120010727955,
+        6.213871299659598,
+        14.95711265998241
+      ],
+      "bodies": 319,
+      "colliders": 2100,
+      "inventory": [
+        "jeans",
+        "sweater",
+        "jacket_light",
+        "sneakers",
+        "chocolate"
+      ],
+      "snow": 16242
+    },
+    "after": {
+      "time": 46800,
+      "pos": [
+        4.1797120010727955,
+        6.213871299659598,
+        14.95711265998241
+      ],
+      "bodies": 319,
+      "colliders": 2100,
+      "inventory": [
+        "jeans",
+        "sweater",
+        "jacket_light",
+        "sneakers",
+        "chocolate"
+      ],
+      "snow": 16242
+    },
+    "programs": 0,
+    "views": [
+      {
+        "round": 0,
+        "view": 0,
+        "ms": 21389,
+        "newPrograms": 37
+      },
+      {
+        "round": 0,
+        "view": 1,
+        "ms": 146.29999999998836,
+        "newPrograms": 4
+      },
+      {
+        "round": 0,
+        "view": 2,
+        "ms": 134.30000000001746,
+        "newPrograms": 0
+      },
+      {
+        "round": 0,
+        "view": 3,
+        "ms": 171.39999999999418,
+        "newPrograms": 3
+      },
+      {
+        "round": 1,
+        "view": 0,
+        "ms": 48.70000000001164,
+        "newPrograms": 0
+      },
+      {
+        "round": 1,
+        "view": 1,
+        "ms": 10.199999999982538,
+        "newPrograms": 0
+      },
+      {
+        "round": 1,
+        "view": 2,
+        "ms": 17.5,
+        "newPrograms": 0
+      },
+      {
+        "round": 1,
+        "view": 3,
+        "ms": 103.79999999998836,
+        "newPrograms": 0
+      }
+    ],
+    "warmupMs": [],
+    "hands": true,
+    "diagnostics": true,
+    "warmup": 0,
+    "readyMs": 52189,
+    "errors": []
+  },
+  {
+    "before": {
+      "time": 46800,
+      "pos": [
+        4.1797120010727955,
+        6.213871299659598,
+        14.95711265998241
+      ],
+      "bodies": 319,
+      "colliders": 2100,
+      "inventory": [
+        "jeans",
+        "sweater",
+        "jacket_light",
+        "sneakers",
+        "chocolate"
+      ],
+      "snow": 16242
+    },
+    "after": {
+      "time": 46800,
+      "pos": [
+        4.1797120010727955,
+        6.213871299659598,
+        14.95711265998241
+      ],
+      "bodies": 319,
+      "colliders": 2100,
+      "inventory": [
+        "jeans",
+        "sweater",
+        "jacket_light",
+        "sneakers",
+        "chocolate"
+      ],
+      "snow": 16242
+    },
+    "programs": 42,
+    "views": [
+      {
+        "round": 0,
+        "view": 0,
+        "ms": 74.5,
+        "newPrograms": 0
+      },
+      {
+        "round": 0,
+        "view": 1,
+        "ms": 16.800000000046566,
+        "newPrograms": 0
+      },
+      {
+        "round": 0,
+        "view": 2,
+        "ms": 29.29999999998836,
+        "newPrograms": 0
+      },
+      {
+        "round": 0,
+        "view": 3,
+        "ms": 55.399999999965075,
+        "newPrograms": 0
+      },
+      {
+        "round": 1,
+        "view": 0,
+        "ms": 743.1000000000349,
+        "newPrograms": 0
+      },
+      {
+        "round": 1,
+        "view": 1,
+        "ms": 41.899999999965075,
+        "newPrograms": 0
+      },
+      {
+        "round": 1,
+        "view": 2,
+        "ms": 26.399999999965075,
+        "newPrograms": 0
+      },
+      {
+        "round": 1,
+        "view": 3,
+        "ms": 74.10000000003492,
+        "newPrograms": 0
+      }
+    ],
+    "warmupMs": [
+      51390.899999999965
+    ],
+    "hands": true,
+    "diagnostics": true,
+    "warmup": 1,
+    "readyMs": 84064,
+    "errors": []
+  }
+]
