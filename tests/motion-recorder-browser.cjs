@@ -81,6 +81,7 @@ function check(name, ok, detail) { assert.ok(ok, `${name}: ${JSON.stringify(deta
     const data = JSON.parse(raw.toString('utf8'));
     check('download carries the marked frame, notes, render alpha and scene context', data.format === 'nimble-motion' && data.context.snowScene && data.context.seed === 42 &&
       data.frames.some(f => f.alpha === 0.37) && data.notes.some(n => n.text.includes('правая нога')) && data.frames.some(f => f.id === data.selectedFrameId), { bytes: bytes.length, frames: data.frames.length, notes: data.notes.length });
+    check('player collision body is not duplicated as a solid world obstruction', await ev(() => !window.__game.G.recorder.data.diagnostics.samples.some(s => s.objects.some(o => o.kind === 'world-collider' && window.__game.G.player.body.collider(0).handle === o.state.handle))));
     check('package includes portable local geometry, system state and map pin', data.diagnostics?.samples.length > 0 && data.diagnostics.samples.every(s => s.terrain.length === 289 && s.systems.weather && s.systems.body) && data.notes.some(n => n.expected && n.actual && n.position?.length === 3));
     await page.locator('[data-rec="view"]').selectOption('orbit');
     await page.locator('[data-rec="colliders"]').check();

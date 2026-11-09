@@ -60,7 +60,7 @@ export class WorldCapture {
     const handles = new Set(nearby.flatMap(e => e.colliders.map(c => c.handle)));
     const staticColliders: any[] = [];
     G.world.forEachCollider(c => {
-      if (handles.has(c.handle)) return;
+      if (handles.has(c.handle) || c.parent()?.handle === p.body.handle) return;
       const v = c.translation();
       const distance = Math.hypot(v.x - center[0], v.y - center[1], v.z - center[2]);
       if (distance < 32) staticColliders.push({ c, distance });
@@ -71,7 +71,7 @@ export class WorldCapture {
       const v = c.translation(), q = c.rotation(), shape = c.shape as any, h = shape.halfExtents;
       const meshes: DiagnosticObject['meshes'] = [];
       // Trimesh/convex collision geometry is evidence even when no entity owns it.
-      if (shape.vertices?.length && shape.vertices.length / 3 + this.vertices <= 120000 && Object.keys(this.bundle.meshes).length < 128) {
+      if (shape.vertices?.length && shape.indices?.length && shape.vertices.length / 3 + this.vertices <= 120000 && Object.keys(this.bundle.meshes).length < 128) {
         const key = `collider-${c.handle}`;
         if (!this.bundle.meshes[key]) {
           this.bundle.meshes[key] = { positions: Array.from(shape.vertices), indices: shape.indices ? Array.from(shape.indices) : null, color: 0x687e88 };
