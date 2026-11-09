@@ -45,7 +45,7 @@ export class SurvivorAvatar {
         let headWeight = 0;
         for (let k = 0; k < 4; k++) {
           const name = o.skeleton.bones[joints.getComponent(i, k)].name;
-          if (name === 'Head' || name === 'Neck') headWeight += weights.getComponent(i, k);
+          if (name === 'Head') headWeight += weights.getComponent(i, k);
         }
         mask[i] = headWeight > 0.5 ? 1 : 0;
       }
@@ -59,7 +59,7 @@ export class SurvivorAvatar {
           shader.fragmentShader = 'uniform float uAvatarFirstPerson; varying float vAvatarHide;\n' + shader.fragmentShader;
           shader.fragmentShader = shader.fragmentShader.replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (uAvatarFirstPerson > 0.5 && vAvatarHide > 0.5) discard;');
         };
-        material.customProgramCacheKey = () => 'survivor-head-only-v2';
+        material.customProgramCacheKey = () => 'survivor-head-only-v3';
       }
     });
   }

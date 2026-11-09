@@ -83,7 +83,7 @@ fs.mkdirSync(OUT, { recursive: true });
       for (let i = 0; i < mask.count; i++) {
         let headWeight = 0;
         for (let k = 0; k < 4; k++) {
-          if (['Head', 'Neck'].includes(skin.skeleton.bones[joints.getComponent(i, k)].name)) headWeight += weights.getComponent(i, k);
+          if (skin.skeleton.bones[joints.getComponent(i, k)].name === 'Head') headWeight += weights.getComponent(i, k);
         }
         if (mask.getX(i) && headWeight <= 0.5) incorrectlyHidden++;
         if (mask.getX(i) && headWeight > 0.5) hiddenHead++;
