@@ -8,6 +8,7 @@ export class SurvivorAvatar {
   private bones = new Map<string, THREE.Bone>();
   private rest = new Map<string, THREE.Quaternion>();
   private axis = new Map<string, THREE.Vector3>();
+  private handToDown = new Map<string, THREE.Quaternion>();
   readonly eyes = new THREE.Object3D();
   private hide = { value: 1 };
 
@@ -24,6 +25,13 @@ export class SurvivorAvatar {
         if (child) this.axis.set(o.name, child.position.clone().normalize());
       }
     });
+    // The authored hands point sideways in the bind pose. Map that axis to the
+    // controller's -Y palm frame before applying camera/world orientation.
+    for (const side of ['L', 'R']) {
+      const hand = this.bone(`Hand${side}`), forearm = this.bone(`ForeArm${side}`);
+      const direction = hand.getWorldPosition(new THREE.Vector3()).sub(forearm.getWorldPosition(new THREE.Vector3())).normalize();
+      this.handToDown.set(side, new THREE.Quaternion().setFromUnitVectors(direction, new THREE.Vector3(0, -1, 0)));
+    }
     // Midpoint of the painted eyes in the asset's 1.8 m bind pose.
     // Convert the landmark once into Head space, so pitching/yawing the head
     // moves the viewpoint along the same anatomical arc as the visible skull.
@@ -124,7 +132,7 @@ export class SurvivorAvatar {
       const wrist = arm.wrist ?? arm.elbow.localToWorld(new THREE.Vector3(0, -0.245, 0));
       this.segment(`UpperArm${side}`, `ForeArm${side}`, shoulder, elbow, frame);
       this.segment(`ForeArm${side}`, `Hand${side}`, elbow, wrist, frame);
-      this.orient(`Hand${side}`, arm.handRotation ?? arm.elbow.getWorldQuaternion(new THREE.Quaternion()));
+      this.orient(`Hand${side}`, arm.handRotation ? arm.handRotation.clone().multiply(this.handToDown.get(side)!) : arm.elbow.getWorldQuaternion(new THREE.Quaternion()));
     }
     this.model.updateMatrixWorld(true);
   }

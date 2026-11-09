@@ -104,6 +104,7 @@ export class Hands {
           desired.lerp(contact, this.state === 'work' ? 0.65 + Math.sin(phase * Math.PI * 8) * 0.12 : pulse);
         }
       } else if ((this.state === 'eat' || this.state === 'drink') && i === 1) desired = toWorld(new THREE.Vector3(0.04, -0.13, -0.2));
+      if (eq && (i === 1 || spec.left) || p.carried) desired.add(new THREE.Vector3(0, 0, 0.06).applyQuaternion(cameraQ));
       if (!this.ready) this.targets[i].copy(desired);
       this.targets[i].lerp(desired, 1 - Math.exp(-Math.min(dt, 0.1) * 22));
       const shoulder = arm.shoulder.getWorldPosition(new THREE.Vector3());
