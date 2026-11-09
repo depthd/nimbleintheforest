@@ -10,9 +10,9 @@ const {chromium}=require('playwright');
  G.paused=true;const p=G.player;G.input.keys.clear();p.handsWarming=false;p.carried=null;G.interact.timed=null;G.interact.swinging=null;
  let maxGap=0,maxAngle=0,maxWrist=0,maxVisual=0,samples=0;
  for(const id of ['axe','saw','knife','shovel','journal-fixture']){
- const old=handGrips[id];if(id==='journal-fixture')handGrips[id]={right:new T.Vector3(),rotation:new T.Euler(),sockets:{right:{position:new T.Vector3(.12,0,0),rotation:new T.Quaternion().setFromEuler(new T.Euler(Math.PI/2,0,0))},left:{position:new T.Vector3(-.12,0,0),rotation:new T.Quaternion().setFromEuler(new T.Euler(Math.PI/2,0,0))}},createVisual:()=>new T.Group(),samplePose:({position,rotation,phase})=>{position.add(new T.Vector3(0,.02,0));rotation.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),phase*.3));}};
- const e=G.entities.spawnItem(id==='journal-fixture'?'knife':id,new T.Vector3(0,-50,0));if(id==='journal-fixture')e.defId=id;p.equipped=e;p.avatar.hands.cancel();
- const profile=handGrips[id];
+ const key=id==='journal-fixture'?'knife':id;const old=handGrips[key];if(id==='journal-fixture')handGrips[key]={right:new T.Vector3(),rotation:new T.Euler(),sockets:{right:{position:new T.Vector3(.12,0,0),rotation:new T.Quaternion().setFromEuler(new T.Euler(Math.PI/2,0,0))},left:{position:new T.Vector3(-.12,0,0),rotation:new T.Quaternion().setFromEuler(new T.Euler(Math.PI/2,0,0))}},createVisual:()=>new T.Group(),samplePose:({position,rotation,phase})=>{position.add(new T.Vector3(0,.02,0));rotation.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),phase*.3));}};
+ const e=G.entities.spawnItem(id==='journal-fixture'?'knife':id,new T.Vector3(0,-50,0));p.equipped=e;p.avatar.hands.cancel();
+ const profile=handGrips[key];
  for(let k=0;k<90;k++){
  p.yaw=k*.25;p.pitch=Math.sin(k*.31)*1.3;p.moving=true;p.sprinting=k%2===0;p.crouch=k%3===0;
  if(k%4===0)G.interact.swinging={tool:e,t:(k%17)/17*.6,dur:.6,hit:false};else G.interact.swinging=null;
@@ -29,7 +29,7 @@ const {chromium}=require('playwright');
  }
  maxVisual=Math.max(maxVisual,G.scene.getObjectByName('held-equipment').position.distanceTo(h.item.position));samples++;
  }
- if(old)handGrips[id]=old;else delete handGrips[id];
+ if(old)handGrips[key]=old;else delete handGrips[key];
  }
  G.interact.swinging=null;p.equipped=null;p.yaw=0;p.pitch=0;p.updateCamera(1/60);
  const object=G.entities.spawnItem('knife',G.camera.position.clone().add(new T.Vector3(0,-.3,-.35)));p.carry(object);
