@@ -1,341 +1,275 @@
-// Procedural sound: wind, fire crackle, footsteps, chopping and so on.
-// Everything is synthesized with WebAudio, no sound files.
+// Original procedural Foley, prepared once into variant banks. Weather stays
+// live; there are no recordings, audio requests or wall-clock playback timers.
 import * as THREE from 'three';
 import { Music, MusicMood } from './music';
+import { SFX_NAMES, SFX_RATE, synthesizeSound, variantCount } from './sfx';
+import type { SoundName } from './sfx';
+export type { SoundName } from './sfx';
 
-export type SoundName =
-  | 'chop' | 'thud' | 'step_snow' | 'step_wood' | 'glass' | 'crack' | 'ice_break'
-  | 'match' | 'match_fail' | 'plink' | 'splash' | 'knock' | 'howl' | 'whisper'
-  | 'swing' | 'saw' | 'pickup' | 'drop' | 'tree_fall' | 'creak' | 'hammer'
-  | 'tear' | 'eat' | 'drink' | 'click' | 'fire_ignite' | 'snow_scoop';
+export interface FootstepSound {
+  footwear: 'soft' | 'boot' | 'sneaker' | 'bare';
+  speed: number;
+  landing: boolean;
+  compaction?: number;
+}
+export interface SoundOptions { pos?: THREE.Vector3; vol?: number; footstep?: FootstepSound }
+interface Voice {
+  source: AudioBufferSourceNode; gain: GainNode; filter: BiquadFilterNode; panner: StereoPannerNode;
+  pos?: THREE.Vector3; volume: number; pan: number; priority: number; started: number;
+}
+const MAX_VOICES = 24;
+const MAX_RETIRING = 4; // short crossfades count toward a separate hard bound
+const clamp = THREE.MathUtils.clamp;
+const priority = (name: SoundName) => name === 'ice_break' || name === 'howl' || name === 'knock' ? 3
+  : name.startsWith('step_') || name === 'click' || name === 'pickup' ? 1 : 2;
 
 export class GameAudio {
   ctx: AudioContext | null = null;
   master!: GainNode;
-  private noise!: AudioBuffer;
-  private windSrc?: AudioBufferSourceNode;
-  private windBP!: BiquadFilterNode;
-  private windLP!: BiquadFilterNode;
-  private windGain!: GainNode;
-  private gust = 0;
-  private howlBP: BiquadFilterNode[] = [];
-  private howlGain: GainNode[] = [];
-  private rumbleGain!: GainNode;
-  private howlPhase = [Math.random() * 10, Math.random() * 10];
   music: Music | null = null;
-  private crackleLevel = 0;
-  private crackleTimer = 0;
-  private cracklePan = 0;
   listener = new THREE.Vector3();
   listenerDir = new THREE.Vector3(0, 0, -1);
   volume = 0.8;
+  private effects!: GainNode;
+  private ambience!: GainNode;
+  private roomWet!: GainNode;
+  private noise!: AudioBuffer;
+  private windBP!: BiquadFilterNode;
+  private windLP!: BiquadFilterNode;
+  private windGain!: GainNode;
+  private howlBP: BiquadFilterNode[] = [];
+  private howlGain: GainNode[] = [];
+  private rumbleGain!: GainNode;
+  private gust = 0;
+  private howlPhase = [1.7, 4.2];
+  private banks = new Map<SoundName, AudioBuffer[]>();
+  private bags = new Map<SoundName, number[]>();
+  private recent = new Map<SoundName, number[]>();
+  private prepared = new Map<SoundName, Float32Array[]>();
+  private voices = new Set<Voice>();
+  private retiring = new Set<Voice>();
+  private crackleTimer = 0;
+
+  constructor() {
+    // Prepare during game loading, before the user gesture. The Start click only
+    // uploads PCM to WebAudio; synthesis never stalls a foot-contact frame.
+    for (const name of SFX_NAMES) {
+      this.prepared.set(name, Array.from({ length: variantCount(name) }, (_, v) => synthesizeSound(name, v)));
+    }
+  }
 
   start() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') this.ctx.resume();
+      if (this.ctx.state === 'suspended') void this.ctx.resume().catch(() => {});
       return;
     }
-    try {
-      this.ctx = new AudioContext();
-    } catch {
-      return;
+    let ctx: AudioContext;
+    try { ctx = new AudioContext(); } catch { return; }
+    this.ctx = ctx;
+    this.master = ctx.createGain(); this.master.gain.value = this.volume;
+    // Headroom for coincident impacts; music bypasses the retro SFX bus.
+    const safety = ctx.createDynamicsCompressor();
+    safety.threshold.value = -8; safety.knee.value = 4; safety.ratio.value = 12;
+    safety.attack.value = 0.002; safety.release.value = 0.14;
+    this.master.connect(safety).connect(ctx.destination);
+    this.effects = ctx.createGain(); this.effects.gain.value = 0.85;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 28; hp.Q.value = 0.5;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 8000; lp.Q.value = 0.5;
+    this.effects.connect(hp).connect(lp).connect(this.master);
+    // One original short room impulse, silent outdoors. No IR asset needed.
+    const room = ctx.createConvolver(); room.normalize = false;
+    // ConvolverNode requires an impulse at the context rate (unlike sources).
+    const irRate = ctx.sampleRate;
+    const impulse = ctx.createBuffer(2, Math.ceil(irRate * 0.36), irRate);
+    let seed = 76129;
+    const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) | 0; return (seed >>> 0) / 4294967296; };
+    for (let c = 0; c < 2; c++) {
+      const data = impulse.getChannelData(c);
+      let filtered = 0;
+      for (let i = 0; i < data.length; i++) {
+        const t = i / irRate;
+        filtered += (1 - Math.exp(-Math.PI * 2 * 900 / irRate)) * (random() * 2 - 1 - filtered);
+        data[i] = t > 0.018 ? filtered * Math.exp(-t * 23) * 0.08 : 0;
+      }
+      for (const [t, a] of [[0.024, 0.19], [0.047, 0.11], [0.079, 0.065]])
+        data[Math.round((t + c * 0.0027) * irRate)] += a;
     }
-    const ctx = this.ctx;
-    this.master = ctx.createGain();
-    this.master.gain.value = this.volume;
-    this.master.connect(ctx.destination);
-    const len = ctx.sampleRate * 2;
-    this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = this.noise.getChannelData(0);
-    // brown-ish noise
+    room.buffer = impulse;
+    this.roomWet = ctx.createGain(); this.roomWet.gain.value = 0;
+    lp.connect(room).connect(this.roomWet).connect(this.master);
+    for (const name of SFX_NAMES) {
+      const bank: AudioBuffer[] = [];
+      for (const samples of this.prepared.get(name)!) {
+        const buffer = ctx.createBuffer(1, samples.length, SFX_RATE);
+        buffer.getChannelData(0).set(samples); bank.push(buffer);
+      }
+      this.banks.set(name, bank);
+    }
+    this.prepared.clear();
+    this.ambience = ctx.createGain(); this.ambience.gain.value = 0.65;
+    this.ambience.connect(this.master);
+    const len = SFX_RATE * 5;
+    this.noise = ctx.createBuffer(1, len, SFX_RATE);
+    const data = this.noise.getChannelData(0);
     let last = 0;
     for (let i = 0; i < len; i++) {
-      const w = Math.random() * 2 - 1;
-      last = (last + 0.02 * w) / 1.02;
-      d[i] = last * 3.5 + w * 0.08;
+      const w = random() * 2 - 1;
+      last = (last + 0.025 * w) / 1.025;
+      data[i] = last * 2.9 + w * 0.035;
     }
-    // wind loop
-    this.windSrc = ctx.createBufferSource();
-    this.windSrc.buffer = this.noise;
-    this.windSrc.loop = true;
-    this.windBP = ctx.createBiquadFilter();
-    this.windBP.type = 'bandpass';
-    this.windBP.frequency.value = 400;
-    this.windBP.Q.value = 0.6;
-    this.windLP = ctx.createBiquadFilter();
-    this.windLP.type = 'lowpass';
-    this.windLP.frequency.value = 3000;
-    this.windGain = ctx.createGain();
-    this.windGain.gain.value = 0;
-    this.windSrc.connect(this.windBP).connect(this.windLP).connect(this.windGain).connect(this.master);
-    this.windSrc.start();
-    // whistling gusts: narrow resonant bands that slide up and down, left and right
+    // Blend end into the head, then loop at the matching head sample.
+    const seam = Math.floor(SFX_RATE * 0.04);
+    for (let i = 0; i < seam; i++) {
+      const f = i / (seam - 1);
+      data[len - seam + i] = data[len - seam + i] * (1 - f) + data[i] * f;
+    }
+    const loopStart = (seam - 1) / SFX_RATE;
+    const wind = ctx.createBufferSource(); wind.buffer = this.noise; wind.loop = true; wind.loopStart = loopStart;
+    this.windBP = ctx.createBiquadFilter(); this.windBP.type = 'bandpass'; this.windBP.frequency.value = 400; this.windBP.Q.value = 0.6;
+    this.windLP = ctx.createBiquadFilter(); this.windLP.type = 'lowpass'; this.windLP.frequency.value = 3000;
+    this.windGain = ctx.createGain(); this.windGain.gain.value = 0;
+    wind.connect(this.windBP).connect(this.windLP).connect(this.windGain).connect(this.ambience); wind.start();
     for (let i = 0; i < 2; i++) {
-      const src = ctx.createBufferSource();
-      src.buffer = this.noise;
-      src.loop = true;
-      src.playbackRate.value = 0.9 + i * 0.23;
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.Q.value = 14;
-      bp.frequency.value = 500;
-      const gn = ctx.createGain();
-      gn.gain.value = 0;
-      const pan = ctx.createStereoPanner();
-      pan.pan.value = i ? 0.6 : -0.6;
-      src.connect(bp).connect(gn).connect(pan).connect(this.master);
-      src.start(0, i * 0.7);
-      this.howlBP.push(bp);
-      this.howlGain.push(gn);
+      const source = ctx.createBufferSource(); source.buffer = this.noise; source.loop = true;
+      source.loopStart = loopStart; source.playbackRate.value = 0.88 + i * 0.17;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 5; bp.frequency.value = 450;
+      const gain = ctx.createGain(); gain.gain.value = 0;
+      const pan = ctx.createStereoPanner(); pan.pan.value = i ? 0.58 : -0.58;
+      source.connect(bp).connect(gain).connect(pan).connect(this.ambience); source.start(0, i * 0.7);
+      this.howlBP.push(bp); this.howlGain.push(gain);
     }
-    // low roar of a blizzard
-    const rs = ctx.createBufferSource();
-    rs.buffer = this.noise;
-    rs.loop = true;
-    rs.playbackRate.value = 0.5;
-    const rl = ctx.createBiquadFilter();
-    rl.type = 'lowpass';
-    rl.frequency.value = 140;
-    this.rumbleGain = ctx.createGain();
-    this.rumbleGain.gain.value = 0;
-    rs.connect(rl).connect(this.rumbleGain).connect(this.master);
-    rs.start();
+    const rumble = ctx.createBufferSource(); rumble.buffer = this.noise; rumble.loop = true;
+    rumble.loopStart = loopStart; rumble.playbackRate.value = 0.5;
+    const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 125;
+    this.rumbleGain = ctx.createGain(); this.rumbleGain.gain.value = 0;
+    rumble.connect(rl).connect(this.rumbleGain).connect(this.ambience); rumble.start();
     this.music = new Music(ctx, this.master);
     if (new URLSearchParams(location.search).get('music') === '0') this.music.setEnabled(false);
   }
 
-  setMood(m: MusicMood) {
-    this.music?.setMood(m);
-  }
-
+  setMood(mood: MusicMood) { this.music?.setMood(mood); }
   setListener(pos: THREE.Vector3, dir: THREE.Vector3) {
-    this.listener.copy(pos);
-    this.listenerDir.copy(dir);
+    this.listener.copy(pos); this.listenerDir.copy(dir);
+    if (this.ctx) for (const voice of this.voices) this.positionVoice(voice, false);
   }
 
   update(dt: number, wind: number, indoors: boolean, nearestFire: { level: number; pos?: THREE.Vector3 }) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.gust += dt * (0.3 + Math.random() * 0.4);
+    this.gust += Math.max(0, dt) * 0.42;
     const gustF = 0.75 + 0.25 * Math.sin(this.gust) * Math.sin(this.gust * 0.37 + 1.3);
-    const level = Math.min(1, wind / 16) * gustF;
-    const g = (indoors ? 0.18 : 0.55) * (0.08 + level);
-    this.windGain.gain.setTargetAtTime(g, t, 0.3);
-    this.windBP.frequency.setTargetAtTime(250 + level * 900 * gustF, t, 0.4);
-    this.windLP.frequency.setTargetAtTime(indoors ? 500 : 4000, t, 0.3);
-    // howling: starts with a fresh breeze, screams in a blizzard
-    const howl = Math.max(0, (wind - 4) / 12);
+    const level = clamp(wind / 16, 0, 1) * gustF;
+    this.windGain.gain.setTargetAtTime((indoors ? 0.16 : 0.43) * (0.08 + level), t, 0.3);
+    this.windBP.frequency.setTargetAtTime(240 + level * 740 * gustF, t, 0.4);
+    this.windLP.frequency.setTargetAtTime(indoors ? 480 : 3600, t, 0.3);
+    const howl = clamp((wind - 4) / 12, 0, 1.5);
     for (let i = 0; i < 2; i++) {
-      this.howlPhase[i] += dt * (0.15 + 0.1 * i) * (0.5 + level);
+      this.howlPhase[i] += Math.max(0, dt) * (0.15 + 0.1 * i) * (0.5 + level);
       const sweep = 0.5 + 0.5 * Math.sin(this.howlPhase[i]) * Math.sin(this.howlPhase[i] * 0.41 + i);
-      this.howlBP[i].frequency.setTargetAtTime((indoors ? 260 : 380) + sweep * (indoors ? 300 : 700) * (0.6 + howl), t, 0.25);
-      const hg = howl * howl * (indoors ? 0.05 : 0.11) * (0.3 + 0.7 * sweep) * gustF;
-      this.howlGain[i].gain.setTargetAtTime(hg, t, 0.35);
+      this.howlBP[i].frequency.setTargetAtTime((indoors ? 230 : 340) + sweep * (indoors ? 260 : 570), t, 0.25);
+      this.howlGain[i].gain.setTargetAtTime(howl * howl * (indoors ? 0.035 : 0.075) * (0.3 + 0.7 * sweep) * gustF, t, 0.35);
     }
-    this.rumbleGain.gain.setTargetAtTime(Math.max(0, (wind - 8) / 10) * (indoors ? 0.25 : 0.6), t, 0.8);
+    this.rumbleGain.gain.setTargetAtTime(clamp((wind - 8) / 10, 0, 1.5) * (indoors ? 0.15 : 0.34), t, 0.8);
+    this.roomWet.gain.setTargetAtTime(indoors ? 0.2 : 0, t, 0.16);
     this.music?.update();
-
-    // fire crackle
-    let lvl = 0;
-    if (nearestFire.level > 0 && nearestFire.pos) {
-      const d = nearestFire.pos.distanceTo(this.listener);
-      lvl = nearestFire.level / (1 + d * d * 0.15);
-      this.cracklePan = this.panFor(nearestFire.pos);
-    }
-    this.crackleLevel = lvl;
-    this.crackleTimer -= dt;
-    if (this.crackleLevel > 0.02 && this.crackleTimer <= 0) {
-      this.crackleTimer = 0.03 + Math.random() * (0.35 / (0.3 + this.crackleLevel));
-      this.burst(0.01 + Math.random() * 0.03, 1500 + Math.random() * 3000, 'highpass', Math.min(0.5, this.crackleLevel * (0.2 + Math.random() * 0.6)), this.cracklePan);
+    // Ambient crackles aren't gameplay action notifications. The same voice
+    // path keeps their position stable as the listener turns.
+    this.crackleTimer -= Math.max(0, dt);
+    if (this.crackleTimer <= 0 && nearestFire.level > 0 && nearestFire.pos) {
+      const fire = clamp(nearestFire.level, 0, 2);
+      this.crackleTimer = 0.12 + Math.random() * 0.45 / (0.3 + fire);
+      this.playVoice('crack', { pos: nearestFire.pos, vol: fire * (0.045 + Math.random() * 0.05) }, 0);
     }
   }
 
   private panFor(pos: THREE.Vector3): number {
-    const dx = pos.x - this.listener.x;
-    const dz = pos.z - this.listener.z;
-    const len = Math.hypot(dx, dz) || 1;
-    // right vector of listener dir
-    const rx = -this.listenerDir.z, rz = this.listenerDir.x;
-    const rl = Math.hypot(rx, rz) || 1;
-    return Math.max(-1, Math.min(1, (dx * rx + dz * rz) / (len * rl)));
+    const dx = pos.x - this.listener.x, dz = pos.z - this.listener.z, len = Math.hypot(dx, dz) || 1;
+    const rx = -this.listenerDir.z, rz = this.listenerDir.x, rl = Math.hypot(rx, rz) || 1;
+    return clamp((dx * rx + dz * rz) / (len * rl), -1, 1);
   }
-
-  private out(pan: number): AudioNode {
-    const ctx = this.ctx!;
-    if (pan === 0) return this.master;
-    const p = ctx.createStereoPanner();
-    p.pan.value = pan;
-    p.connect(this.master);
-    return p;
-  }
-
-  private burst(dur: number, freq: number, type: BiquadFilterType, vol: number, pan = 0, q = 1) {
-    const ctx = this.ctx!;
-    const src = ctx.createBufferSource();
-    src.buffer = this.noise;
-    const f = ctx.createBiquadFilter();
-    f.type = type;
-    f.frequency.value = freq;
-    f.Q.value = q;
-    const g = ctx.createGain();
-    const t = ctx.currentTime;
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(f).connect(g).connect(this.out(pan));
-    src.start(t, Math.random() * 1.5, dur + 0.05);
-  }
-
-  private tone(freq: number, dur: number, vol: number, type: OscillatorType = 'sine', glide = 0, pan = 0, delay = 0) {
-    const ctx = this.ctx!;
-    const o = ctx.createOscillator();
-    o.type = type;
-    const t = ctx.currentTime + delay;
-    o.frequency.setValueAtTime(freq, t);
-    if (glide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq + glide), t + dur);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(this.out(pan));
-    o.start(t);
-    o.stop(t + dur + 0.05);
-  }
-
-  /** called for every sound with its loudness radius (animals listen to it) */
-  onSound: ((name: SoundName, pos: THREE.Vector3 | undefined) => void) | null = null;
-
-  play(name: SoundName, opts: { pos?: THREE.Vector3; vol?: number } = {}) {
-    this.onSound?.(name, opts.pos);
-    if (!this.ctx) return;
-    let vol = opts.vol ?? 1;
-    let pan = 0;
-    if (opts.pos) {
-      const d = opts.pos.distanceTo(this.listener);
-      vol *= 1 / (1 + d * d * 0.02);
-      pan = this.panFor(opts.pos) * Math.min(1, d / 3);
-      if (vol < 0.01) return;
+  private positionVoice(voice: Voice, immediate: boolean) {
+    const t = this.ctx!.currentTime, distance = voice.pos?.distanceTo(this.listener) ?? 0;
+    const volume = voice.volume / (1 + distance * distance * 0.02);
+    const pan = voice.pos ? this.panFor(voice.pos) * Math.min(1, distance / 3) : voice.pan;
+    if (immediate) {
+      voice.gain.gain.setValueAtTime(volume, t); voice.panner.pan.setValueAtTime(pan, t);
+    } else {
+      voice.gain.gain.setTargetAtTime(volume, t, 0.035); voice.panner.pan.setTargetAtTime(pan, t, 0.035);
     }
-    switch (name) {
-      case 'chop':
-        this.tone(140 + Math.random() * 40, 0.18, 0.5 * vol, 'triangle', -60, pan);
-        this.burst(0.09, 900, 'bandpass', 0.6 * vol, pan, 1.2);
-        break;
-      case 'saw':
-        this.burst(0.22, 2500 + Math.random() * 800, 'bandpass', 0.25 * vol, pan, 4);
-        break;
-      case 'thud':
-        this.tone(90, 0.2, 0.45 * vol, 'sine', -40, pan);
-        this.burst(0.06, 400, 'lowpass', 0.4 * vol, pan);
-        break;
-      case 'hammer':
-        this.tone(900, 0.06, 0.25 * vol, 'square', -300, pan);
-        this.tone(180, 0.12, 0.35 * vol, 'triangle', -50, pan);
-        break;
-      case 'step_snow':
-        this.burst(0.09 + Math.random() * 0.04, 1800 + Math.random() * 1500, 'bandpass', 0.18 * vol, pan, 0.8);
-        break;
-      case 'step_wood':
-        this.tone(110 + Math.random() * 30, 0.08, 0.2 * vol, 'triangle', -30, pan);
-        this.burst(0.03, 600, 'lowpass', 0.12 * vol, pan);
-        break;
-      case 'glass':
-        for (let i = 0; i < 7; i++) this.tone(2000 + Math.random() * 4000, 0.15 + Math.random() * 0.3, 0.12 * vol, 'sine', 0, pan, i * 0.02);
-        this.burst(0.25, 5000, 'highpass', 0.5 * vol, pan);
-        break;
-      case 'crack':
-        this.burst(0.05, 3000, 'highpass', 0.5 * vol, pan);
-        this.tone(600, 0.4, 0.15 * vol, 'sawtooth', -500, pan);
-        break;
-      case 'ice_break':
-        this.burst(0.5, 800, 'lowpass', 0.9 * vol, pan);
-        this.tone(80, 0.8, 0.5 * vol, 'sine', -30, pan);
-        this.burst(0.6, 3000, 'highpass', 0.4 * vol, pan);
-        break;
-      case 'splash':
-        this.burst(0.6, 1200, 'bandpass', 0.6 * vol, pan, 0.5);
-        break;
-      case 'match':
-        this.burst(0.08, 3500, 'highpass', 0.35 * vol, pan);
-        this.burst(0.5, 1500, 'bandpass', 0.15 * vol, pan, 0.6);
-        break;
-      case 'match_fail':
-        this.burst(0.07, 3000, 'highpass', 0.3 * vol, pan);
-        break;
-      case 'fire_ignite':
-        this.burst(0.9, 600, 'lowpass', 0.3 * vol, pan);
-        break;
-      case 'plink':
-        this.tone(1400, 0.25, 0.25 * vol, 'sine', -200, pan);
-        break;
-      case 'knock':
-        for (let i = 0; i < 3; i++) {
-          this.tone(120, 0.12, 0.6 * vol, 'triangle', -40, pan, i * 0.42);
-        }
-        break;
-      case 'howl': {
-        const ctx = this.ctx;
-        const o = ctx.createOscillator();
-        const lfo = ctx.createOscillator();
-        const lg = ctx.createGain();
-        lfo.frequency.value = 5;
-        lg.gain.value = 8;
-        lfo.connect(lg).connect(o.frequency);
-        const t = ctx.currentTime;
-        o.frequency.setValueAtTime(380, t);
-        o.frequency.linearRampToValueAtTime(620, t + 0.8);
-        o.frequency.linearRampToValueAtTime(560, t + 2.4);
-        o.frequency.linearRampToValueAtTime(330, t + 3.4);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.06 * vol, t + 0.6);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 3.6);
-        const f = ctx.createBiquadFilter();
-        f.type = 'lowpass';
-        f.frequency.value = 1200;
-        o.connect(f).connect(g).connect(this.out(pan));
-        o.start(t);
-        lfo.start(t);
-        o.stop(t + 3.8);
-        lfo.stop(t + 3.8);
-        break;
+  }
+  private nextBuffer(name: SoundName): AudioBuffer {
+    const bank = this.banks.get(name)!;
+    let bag = this.bags.get(name);
+    if (!bag?.length) {
+      bag = bank.map((_, i) => i);
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]];
       }
-      case 'whisper':
-        for (let i = 0; i < 6; i++) {
-          setTimeout(() => this.ctx && this.burst(0.15 + Math.random() * 0.2, 2500 + Math.random() * 2000, 'bandpass', 0.07 * vol, Math.random() * 2 - 1, 3), i * 180 + Math.random() * 120);
-        }
-        break;
-      case 'swing':
-        this.burst(0.18, 700, 'bandpass', 0.15 * vol, pan, 0.7);
-        break;
-      case 'pickup':
-        this.burst(0.06, 1200, 'bandpass', 0.15 * vol, pan);
-        break;
-      case 'drop':
-        this.tone(160, 0.1, 0.2 * vol, 'triangle', -60, pan);
-        break;
-      case 'tree_fall':
-        this.burst(1.5, 300, 'lowpass', 0.9 * vol, pan);
-        for (let i = 0; i < 5; i++) this.burst(0.08, 2000, 'highpass', 0.3 * vol, pan);
-        this.tone(55, 1.2, 0.5 * vol, 'sine', -15, pan, 1.2);
-        break;
-      case 'creak':
-        this.tone(220 + Math.random() * 80, 0.5, 0.06 * vol, 'sawtooth', 40, pan);
-        break;
-      case 'tear':
-        this.burst(0.3, 2200, 'bandpass', 0.3 * vol, pan, 1.5);
-        break;
-      case 'eat':
-        for (let i = 0; i < 3; i++) setTimeout(() => this.ctx && this.burst(0.06, 1000, 'bandpass', 0.2 * vol, pan), i * 220);
-        break;
-      case 'drink':
-        for (let i = 0; i < 3; i++) this.tone(300 + Math.random() * 100, 0.1, 0.15 * vol, 'sine', 100, pan, i * 0.3);
-        break;
-      case 'click':
-        this.tone(1800, 0.03, 0.12 * vol, 'square', 0, pan);
-        break;
-      case 'snow_scoop':
-        this.burst(0.25, 1500, 'bandpass', 0.3 * vol, pan, 0.6);
-        break;
+      this.bags.set(name, bag);
     }
+    const recent = this.recent.get(name) ?? [];
+    const eligible = bag.findIndex(i => !recent.includes(i));
+    const index = bag.splice(eligible < 0 ? bag.length - 1 : eligible, 1)[0];
+    recent.push(index);
+    while (recent.length > Math.min(3, bank.length - 1)) recent.shift();
+    this.recent.set(name, recent);
+    return bank[index];
+  }
+  private playVoice(name: SoundName, opts: SoundOptions, rank: number) {
+    const ctx = this.ctx;
+    if (!ctx || !this.banks.has(name)) return;
+    const requested = opts.vol ?? 1;
+    if (!Number.isFinite(requested) || requested <= 0) return;
+    const distance = opts.pos?.distanceTo(this.listener) ?? 0;
+    if (requested / (1 + distance * distance * 0.02) < 0.005) return;
+    // Reserve four foreground slots for danger cues. A burst cannot allocate
+    // unlimited fading sources while the audio clock hasn't advanced.
+    const budget = rank < 3 ? MAX_VOICES - 4 : MAX_VOICES;
+    if (this.voices.size >= budget) {
+      if (this.retiring.size >= MAX_RETIRING) return;
+      const victim = [...this.voices].filter(v => v.priority <= rank)
+        .sort((a, b) => a.priority - b.priority || a.started - b.started)[0];
+      if (!victim) return;
+      this.voices.delete(victim);
+      this.retiring.add(victim);
+      const t = ctx.currentTime;
+      victim.gain.gain.cancelAndHoldAtTime(t); victim.gain.gain.linearRampToValueAtTime(0, t + 0.012);
+      victim.source.stop(t + 0.015);
+    }
+    const source = ctx.createBufferSource(); source.buffer = this.nextBuffer(name);
+    const gain = ctx.createGain(), filter = ctx.createBiquadFilter(), panner = ctx.createStereoPanner();
+    filter.type = rank === 0 ? 'highpass' : 'lowpass';
+    filter.Q.value = 0.5; filter.frequency.value = rank === 0 ? 1500 : 9000;
+    let volume = clamp(requested, 0, 4) * (0.93 + Math.random() * 0.14);
+    let rate = 0.975 + Math.random() * 0.05;
+    const foot = opts.footstep;
+    if (foot) {
+      const soft = foot.footwear === 'soft' || foot.footwear === 'bare';
+      volume *= foot.footwear === 'bare' ? 0.62 : foot.footwear === 'soft' ? 0.78 : 1;
+      rate *= foot.footwear === 'boot' ? 0.94 : soft ? 1.025 : 1;
+      rate *= 1 + clamp((foot.speed - 1.4) * 0.012, -0.02, 0.035);
+      volume *= 1 + clamp((foot.speed - 1.4) * 0.045, -0.04, 0.16);
+      filter.frequency.value = soft ? 3700 : 8200;
+      if (name === 'step_snow') {
+        const packed = clamp(foot.compaction ?? 0, 0, 1);
+        filter.frequency.value *= 1 - 0.3 * packed; rate *= 1 + 0.07 * packed;
+      }
+      if (foot.landing) { rate *= 0.9; volume *= 1.12; }
+    }
+    source.playbackRate.value = rate;
+    const voice: Voice = { source, gain, filter, panner, pos: opts.pos?.clone(), volume,
+      pan: name === 'whisper' && !opts.pos ? (Math.random() * 2 - 1) * 0.65 : 0,
+      priority: rank, started: ctx.currentTime };
+    source.connect(filter).connect(gain).connect(panner).connect(this.effects);
+    this.positionVoice(voice, true); this.voices.add(voice);
+    source.onended = () => {
+      this.voices.delete(voice); this.retiring.delete(voice); source.disconnect(); filter.disconnect(); gain.disconnect(); panner.disconnect(); source.onended = null;
+    };
+    source.start();
+  }
+  /** One gameplay notification even when audio is muted or hasn't started. */
+  onSound: ((name: SoundName, pos: THREE.Vector3 | undefined) => void) | null = null;
+  play(name: SoundName, opts: SoundOptions = {}) {
+    this.onSound?.(name, opts.pos); this.playVoice(name, opts, priority(name));
   }
 }

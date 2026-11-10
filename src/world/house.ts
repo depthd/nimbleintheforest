@@ -63,9 +63,12 @@ export class House {
   railings: Entity[] = [];
   bed: Entity | null = null;
   chimneyTop = new THREE.Vector3();
+  /** Actual wooden collision supports; audio must not infer material from room bounds. */
+  readonly woodenSupports = new Set<number>();
   private body!: RAPIER_T.RigidBody;
   private wallMat!: THREE.Material;
   private floorMat!: THREE.Material;
+  private woodenMaterials = new Set<THREE.Material>();
 
   build(rng: Rng) {
     this.Y0 = G.terrain.houseY + 0.45;
@@ -79,6 +82,8 @@ export class House {
     this.floorMat = mat('floor', () => new THREE.MeshStandardMaterial({ map: Tex.planks(), color: 0xb8a088, roughness: 0.85 }));
     const stoneMat = mat('stoneplinth', () => new THREE.MeshStandardMaterial({ map: Tex.stone(), roughness: 1 }));
     const roofMat = mat('roof', () => new THREE.MeshStandardMaterial({ map: Tex.planks(), color: 0x5a4a40, roughness: 0.9 }));
+    this.woodenSupports.clear();
+    this.woodenMaterials = new Set([this.wallMat, this.floorMat, roofMat, M.wood(), M.woodDark()]);
 
     // foundation & floors
     G.snowCover.add({ name: 'Пол дома', kind: 'floor', x: 0, z: 0, hx: HX, hz: HZ, y: Y0 });
@@ -152,7 +157,10 @@ export class House {
     if (collide) {
       const cd = G.R.ColliderDesc.cuboid(w / 2, h / 2, d / 2).setTranslation(x, this.Y0 + y, z).setCollisionGroups(GROUPS_STATIC).setFriction(0.9);
       if (quat) cd.setRotation({ x: quat.x, y: quat.y, z: quat.z, w: quat.w });
-      G.world.createCollider(cd, this.body);
+      const collider = G.world.createCollider(cd, this.body);
+      if (this.woodenMaterials.has(m)) {
+        this.woodenSupports.add(collider.handle);
+      }
     }
     return me;
   }
@@ -451,10 +459,11 @@ export class House {
       // solid block under the walking ramp so you can't walk through the staircase
       const under = i * rise - 0.03;
       if (under > 0.05) {
-        G.world.createCollider(
+        const support = G.world.createCollider(
           G.R.ColliderDesc.cuboid(w / 2, under / 2, run / 2).setTranslation(cx, this.Y0 + under / 2, z).setCollisionGroups(GROUPS_STATIC),
           this.body,
         );
+        this.woodenSupports.add(support.handle);
       }
     }
     const len = Math.hypot(zBottom + 1.0, UPPER);
@@ -462,10 +471,11 @@ export class House {
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), ang);
     const n = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
     const c = new THREE.Vector3(cx, UPPER / 2, (zBottom - 1.0) / 2).addScaledVector(n, -0.03);
-    G.world.createCollider(
+    const ramp = G.world.createCollider(
       G.R.ColliderDesc.cuboid(w / 2, 0.05, len / 2).setTranslation(c.x, this.Y0 + c.y, c.z).setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }).setCollisionGroups(GROUPS_STATIC),
       this.body,
     );
+    this.woodenSupports.add(ramp.handle);
   }
 
   private makeRailingSegment(a: THREE.Vector3, b: THREE.Vector3, name = 'Перила'): Entity {
@@ -575,10 +585,11 @@ export class House {
     const rampLen = Math.hypot(0.9, -ground);
     const ang = Math.atan2(-ground, 0.9);
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), ang);
-    G.world.createCollider(
+    const ramp = G.world.createCollider(
       G.R.ColliderDesc.cuboid((sx1 - sx0) / 2, 0.04, rampLen / 2).setTranslation((sx0 + sx1) / 2, this.Y0 + ground / 2 - 0.04, pz1 + 0.45).setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }).setCollisionGroups(GROUPS_STATIC),
       this.body,
     );
+    this.woodenSupports.add(ramp.handle);
     // posts and a shed roof of real pieces: chop a post and the roof comes down
     const porchRoof = this.shedRoof('Навес крыльца', {
       posts: [px0 + 0.1, px1 - 0.1].map((x) => [new THREE.Vector3(x, this.Y0, pz1 - 0.1), new THREE.Vector3(x, this.Y0 + 2.7, pz1 - 0.1)]),
