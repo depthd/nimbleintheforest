@@ -60,7 +60,7 @@ export async function addC1Lab() {
   const preset = (name: string) => {
     if (name === 'front') G.player.teleport(home);
     else {
-      const distance = name === 'close' ? 2.5 : name === 'far' ? 26 : 14;
+      const distance = name === 'close' ? 4 : name === 'far' ? 26 : 14;
       const angle = initialAngle + (name === 'side' ? Math.PI / 2 : 0);
       let found = false;
       for (const delta of [0, 0.2, -0.2, 0.4, -0.4, 0.8, -0.8]) {
@@ -82,7 +82,7 @@ export async function addC1Lab() {
   panel.innerHTML = `<strong>C1 — осмотр дерева в игре</strong>
     <p>Высота 10 м. Восстановленная модель. Крона пока без снега и качания; рубка этого образца отключена.</p>
     <div><button data-c1-view="front">Спереди</button><button data-c1-view="side">Сбоку</button>
-    <button data-c1-view="close">Под кроной</button><button data-c1-view="far">Издалека</button></div>
+    <button data-c1-view="close">Вблизи</button><button data-c1-view="far">Издалека</button></div>
     <p>Щёлкните по игре, чтобы ходить. WASD — движение, мышь — взгляд. Esc — освободить курсор.</p>
     <a href="./">Обычная тестовая игра</a>`;
   panel.style.maxWidth = '350px';

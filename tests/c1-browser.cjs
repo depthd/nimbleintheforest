@@ -28,7 +28,7 @@ const { chromium } = require('playwright');
       const box = new T.Box3().setFromObject(lab.root);
       return { meshes, triangles, materials: materials.size, nearest, opaque, position: lab.position.toArray(), home: lab.home.toArray(), height: box.max.y - box.min.y,
         ground: G.terrain.heightAt(lab.position.x, lab.position.z), base: box.min.y, dry: Number.isNaN(G.region.waterAt(lab.position.x, lab.position.z)),
-        existingTrees: G.region.trees.x.length, diary: !!document.querySelector('link[href*="neucha"]') || !!G.player.avatar.hands, assetSha256: lab.assetSha256 };
+        existingTrees: G.region.trees.x.length, assetSha256: lab.assetSha256 };
     });
     assert.equal(state.meshes, 2); assert.equal(state.triangles, 2068); assert.equal(state.materials, 1);
     assert.ok(state.nearest && state.opaque && state.dry); assert.ok(Math.abs(state.height - 10) < 1e-5);
