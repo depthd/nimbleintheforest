@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { fitGrip, socketWrist, type HandSocket } from './grip-solver';
 import { G } from './ctx';
+import { journal } from './journal/journal';
 
 export type HandAction = 'idle' | 'brush' | 'airborne' | 'walk' | 'run' | 'crouch' | 'hold' | 'carry' | 'warm' | 'chop' | 'saw' | 'reach' | 'work' | 'eat' | 'drink' | 'ignite' | 'dig' | 'pour' | 'throw';
 export interface HandPoseInput { state: HandAction; phase: number; dt: number; position: THREE.Vector3; rotation: THREE.Quaternion }
@@ -84,7 +85,7 @@ export class Hands {
     const p = G.player, interaction = G.interact;
     const active = !G.paused && !G.dead && !G.sleeping && !G.recorder?.reviewing;
     if (active) { this.elapsed += dt; if (this.transient) { this.transient.t += dt; if (this.transient.t >= this.transient.duration) this.transient = null; } }
-    const eq = p.carried ? null : p.equipped;
+    const eq = journal.active ? journal.entity : p.carried ? null : p.equipped;
     const spec = handGrips[eq?.defId ?? ''] ?? fallback;
     const timed = interaction?.timed, swing = interaction?.swinging;
     this.state = p.handsWarming ? 'warm' : swing ? (swing.tool.defId === 'saw' ? 'saw' : 'chop') : timed ? actionFor(timed.action.label) : this.transient?.kind ?? (p.carried ? 'carry' : eq ? 'hold' : !p.grounded ? 'airborne' : p.sprinting ? 'run' : p.moving ? 'walk' : p.crouch ? 'crouch' : 'idle');
