@@ -1,0 +1,49 @@
+{
+  "source_sha": "932bd30649b41733f5638d649c3d34e399e87ed1",
+  "main_game_preserved": true,
+  "technical_result": "PASS",
+  "artistic_result": "NOT ACCEPTED",
+  "crossing_physics_seeds": [
+    1,
+    6,
+    19,
+    42,
+    71
+  ],
+  "independent_crossing_checks": 52,
+  "independent_crossing_seeds": [
+    0,
+    3,
+    17,
+    113,
+    2026,
+    4294967295
+  ],
+  "cave_physics_seeds": [
+    1,
+    6,
+    19,
+    42,
+    71
+  ],
+  "cave_slow_walk_seeds": [
+    42
+  ],
+  "independent_cave_seeds": [
+    3,
+    17,
+    113,
+    2026,
+    4294967295
+  ],
+  "browser_legs": 10,
+  "browser_errors": [],
+  "requests_during_walk": [],
+  "limitations": [
+    "one authored hybrid fragment, not a general generator",
+    "one straight convex dead-end cave",
+    "not integrated into the original mountain scene or main game",
+    "no RockSkin/decor in the hybrid experiment",
+    "Kimi review and user artistic approval not performed"
+  ]
+}
