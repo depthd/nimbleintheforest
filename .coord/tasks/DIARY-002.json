@@ -1,0 +1,39 @@
+{
+  "id": "DIARY-002",
+  "status": "qa",
+  "owner": "codex-test-coordinator",
+  "branch": "task/DIARY-002-test-combined",
+  "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
+  "allowed_paths": [
+    ".coord/tasks/DIARY-001.json",
+    ".coord/tasks/MOUNTAINS-001.json",
+    "docs/DIARY-001.md",
+    "docs/MOUNTAINS-001.md",
+    "experiments/mountains/browser.cjs",
+    "experiments/mountains/index.html",
+    "experiments/mountains/landforms.ts",
+    "experiments/mountains/main.ts",
+    "experiments/mountains/style.css",
+    "experiments/mountains/test.cjs",
+    "experiments/mountains/tsconfig.json",
+    "experiments/mountains/vite.config.mjs",
+    "index.html",
+    "public/fonts/neucha.ttf",
+    "src/game/game.ts",
+    "src/game/hands.ts",
+    "src/game/interact.ts",
+    "src/game/journal/journal.css",
+    "src/game/journal/journal.ts",
+    "src/game/journal/model.ts",
+    "src/game/journal/textures.ts",
+    "src/game/viewmodel.ts",
+    "tests/journal-browser.cjs",
+    "vite.config.ts",
+    ".coord/tasks/DIARY-002.json"
+  ],
+  "coordination": "User requests re-publication of diary. Preserve current published mountain laboratory by history merge; no gameplay source edits. No integration merge or production dispatch.",
+  "source_shas": [
+    "4a658c2ed563bc6ca9bd5cc7fa950ea6a6ba21de",
+    "0097792e3c1c43a9110cef43590ded5b0211a5a9"
+  ]
+}

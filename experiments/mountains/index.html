@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Nimble — горные долины</title>
+  </head>
+  <body>
+    <div id="world"></div>
+    <section id="panel">
+      <small>NIMBLE IN THE FOREST · ИССЛЕДОВАНИЕ РЕЛЬЕФА</small>
+      <h1>Горные долины</h1>
+      <p>
+        Снежный склон, извилистая ложбина и полка вокруг скального плеча
+        соединяют нижний лес с верхней долиной.
+      </p>
+      <div class="row">
+        <label>Мир <input id="seed" type="number" value="42" /></label
+        ><button id="generate">Создать</button
+        ><button id="collapse">Свернуть</button>
+      </div>
+      <div id="views"></div>
+      <div class="row">
+        <button id="walk">Идти по миру</button
+        ><button id="fly">Свободный полёт</button
+        ><button id="routes">Показать пути</button>
+      </div>
+      <label
+        >Освещение
+        <select id="light">
+          <option value="day">Ясный день</option>
+          <option value="overcast">Пасмурно</option>
+          <option value="evening">Вечер</option>
+        </select></label
+      >
+      <p class="hint">
+        WASD — движение · мышь — взгляд · Shift — быстрее · пробел — прыжок ·
+        Esc — меню. В полёте: пробел вверх, Ctrl вниз.
+      </p>
+      <p class="hint">
+        Изолированный прототип крупной формы. Канаты, пещеры и мосты появятся на
+        следующих этапах.
+      </p>
+    </section>
+    <div id="crosshair">·</div>
+    <aside id="status">Подготовка…</aside>
+    <div id="veil">Создаём горный район…</div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
