@@ -568,6 +568,10 @@ async function generate(seed: number) {
   $("veil").style.display = "grid";
   await new Promise((r) => setTimeout(r, 30));
   const start = performance.now();
+  // Build and verify before releasing the current world. A rejected generation
+  // must leave the preceding scene available for inspection.
+  const nextLand = new URLSearchParams(location.search).get("mode") === "control"
+    ? new Landforms(seed) : new GeneratedLandforms(seed);
   disposeGroup(group);
   disposeGroup(routeGroup);
   world?.free();
@@ -576,8 +580,7 @@ async function generate(seed: number) {
   rockCenter = { x: Infinity, z: Infinity };
   group = new THREE.Group();
   scene.add(group);
-  land = new URLSearchParams(location.search).get("mode") === "control"
-    ? new Landforms(seed) : new GeneratedLandforms(seed);
+  land = nextLand;
   world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   const g = terrainGeometry(),
     mat = new THREE.MeshStandardMaterial({

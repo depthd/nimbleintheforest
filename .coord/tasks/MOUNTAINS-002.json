@@ -19,6 +19,6 @@
     "Control and held-out seeds, final-geometry physics walks",
     "Preserve main game, batched rendering and local rock colliders"
   ],
-  "qa_sha": "932bd30649b41733f5638d649c3d34e399e87ed1",
-  "qa_result": "Continuing after user expedition design input: whole mountain composition, upper wreck and sheltered service site, optional return shortcut. Previous hybrid QA retained at932bd30; no new artistic acceptance yet."
+  "qa_sha": null,
+  "qa_result": "Current priority: self-generating mountain geography only. Landmark integration is deferred, preserved locally at task/MOUNTAINS-002-landmarks-deferred / 32728a482cf763fc3c17203dacf61aa2dbded3a0. New geography generator is undergoing exact-source QA; no artistic or Kimi acceptance. Nothing published."
 }

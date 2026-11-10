@@ -48,7 +48,7 @@ fs.mkdirSync(out, { recursive: true });
       if (m.type() === "error" && !m.location().url.endsWith("/favicon.ico"))
         errors.push(m.text());
     });
-    await page.goto("http://127.0.0.1:5222/experiments/mountains/?seed=42");
+    await page.goto("http://127.0.0.1:5222/experiments/mountains/?seed=42&mode=control");
     await page.waitForFunction(() => window.__mountains?.ready, null, {
       timeout: 180000,
     });
