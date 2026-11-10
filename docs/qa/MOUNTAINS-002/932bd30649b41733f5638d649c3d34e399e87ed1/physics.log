@@ -1,0 +1,77 @@
+{
+  "status": "PASS",
+  "stage": "hybrid-crossing-prototype",
+  "walkSpeed": 1.72,
+  "reports": [
+    {
+      "seed": 1,
+      "clearance": 38.78602771259608,
+      "surfaceResidual": 0.04526366606182286,
+      "ticks": 56803,
+      "waypoints": 807,
+      "crossingSamples": {
+        "terrain": 70,
+        "bridge": 75
+      },
+      "maxWaypointYError": 0.16541449565787048
+    },
+    {
+      "seed": 6,
+      "clearance": 39.90399532890389,
+      "surfaceResidual": 0.045228403968113895,
+      "ticks": 56568,
+      "waypoints": 803,
+      "crossingSamples": {
+        "terrain": 71,
+        "bridge": 78
+      },
+      "maxWaypointYError": 0.167658141190401
+    },
+    {
+      "seed": 19,
+      "clearance": 38.17950213102189,
+      "surfaceResidual": 0.07444885358835229,
+      "ticks": 56697,
+      "waypoints": 805,
+      "crossingSamples": {
+        "terrain": 70,
+        "bridge": 74
+      },
+      "maxWaypointYError": 0.15522201537306302
+    },
+    {
+      "seed": 42,
+      "clearance": 41.3781994289353,
+      "surfaceResidual": 0.08537959713281928,
+      "ticks": 56729,
+      "waypoints": 801,
+      "crossingSamples": {
+        "terrain": 70,
+        "bridge": 70
+      },
+      "maxWaypointYError": 0.18231158130044633
+    },
+    {
+      "seed": 71,
+      "clearance": 39.41220354825023,
+      "surfaceResidual": 0.059387822030339876,
+      "ticks": 56702,
+      "waypoints": 803,
+      "crossingSamples": {
+        "terrain": 69,
+        "bridge": 74
+      },
+      "maxWaypointYError": 0.16933866731476144
+    }
+  ],
+  "noBridge": {
+    "reached": 161,
+    "total": 266,
+    "end": {
+      "x": -29.6776065826416,
+      "y": 54.71424102783203,
+      "z": 1.703311562538147
+    }
+  },
+  "limitation": "This is one predefined crossing structure with varied dimensions; physics route checks do not certify the absence of every unplanned terrain bypass."
+}

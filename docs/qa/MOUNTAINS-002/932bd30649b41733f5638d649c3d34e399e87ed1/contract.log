@@ -1,0 +1,235 @@
+{
+  "status": "PASS",
+  "sourceSHA256": {
+    "bakedModule": "ad71e0c62d7272c1fca3cbd3958ac2819bc08fca4f868650368d4635699e56b6",
+    "contractTest": "5f2fc5439a33a0797b0c535e8f7ecf43d0de53a066458ab236d15f9fd248c127"
+  },
+  "seeds": [
+    0,
+    3,
+    17,
+    113,
+    2026,
+    4294967295
+  ],
+  "checks": 52,
+  "reports": [
+    {
+      "name": "dry-terrain-connectivity:0",
+      "seed": 0,
+      "resolution": 2,
+      "maxSlopeDegrees": 48,
+      "dryOnly": true,
+      "visitedFaces": 30301
+    },
+    {
+      "name": "core-area:0:valley",
+      "seed": 0,
+      "region": "valley",
+      "area": 10498.074838608503,
+      "minimum": 1700
+    },
+    {
+      "name": "core-area:0:west",
+      "seed": 0,
+      "region": "west",
+      "area": 6917.91209173312,
+      "minimum": 2800
+    },
+    {
+      "name": "core-area:0:east",
+      "seed": 0,
+      "region": "east",
+      "area": 8253.45494884362,
+      "minimum": 4200
+    },
+    {
+      "name": "lateral-surface-width:0",
+      "seed": 0,
+      "maximumSlope": 0.3669766335820022,
+      "maximumResidual": 1.9413450568635824,
+      "bridgeSamples": 8
+    },
+    {
+      "name": "dry-terrain-connectivity:3",
+      "seed": 3,
+      "resolution": 2,
+      "maxSlopeDegrees": 48,
+      "dryOnly": true,
+      "visitedFaces": 29999
+    },
+    {
+      "name": "core-area:3:valley",
+      "seed": 3,
+      "region": "valley",
+      "area": 10549.076065063477,
+      "minimum": 1700
+    },
+    {
+      "name": "core-area:3:west",
+      "seed": 3,
+      "region": "west",
+      "area": 6882.282792500178,
+      "minimum": 2800
+    },
+    {
+      "name": "core-area:3:east",
+      "seed": 3,
+      "region": "east",
+      "area": 8232.26469271533,
+      "minimum": 4200
+    },
+    {
+      "name": "lateral-surface-width:3",
+      "seed": 3,
+      "maximumSlope": 0.3732787311794344,
+      "maximumResidual": 1.9724897595521256,
+      "bridgeSamples": 8
+    },
+    {
+      "name": "dry-terrain-connectivity:17",
+      "seed": 17,
+      "resolution": 2,
+      "maxSlopeDegrees": 48,
+      "dryOnly": true,
+      "visitedFaces": 29884
+    },
+    {
+      "name": "core-area:17:valley",
+      "seed": 17,
+      "region": "valley",
+      "area": 10442.156776428223,
+      "minimum": 1700
+    },
+    {
+      "name": "core-area:17:west",
+      "seed": 17,
+      "region": "west",
+      "area": 6948.469641105874,
+      "minimum": 2800
+    },
+    {
+      "name": "core-area:17:east",
+      "seed": 17,
+      "region": "east",
+      "area": 8309.681366638884,
+      "minimum": 4200
+    },
+    {
+      "name": "lateral-surface-width:17",
+      "seed": 17,
+      "maximumSlope": 0.3637007521336495,
+      "maximumResidual": 1.9253029102541745,
+      "bridgeSamples": 8
+    },
+    {
+      "name": "dry-terrain-connectivity:113",
+      "seed": 113,
+      "resolution": 2,
+      "maxSlopeDegrees": 48,
+      "dryOnly": true,
+      "visitedFaces": 29976
+    },
+    {
+      "name": "core-area:113:valley",
+      "seed": 113,
+      "region": "valley",
+      "area": 10504.573383331299,
+      "minimum": 1700
+    },
+    {
+      "name": "core-area:113:west",
+      "seed": 113,
+      "region": "west",
+      "area": 6901.42248506574,
+      "minimum": 2800
+    },
+    {
+      "name": "core-area:113:east",
+      "seed": 113,
+      "region": "east",
+      "area": 8219.925640178008,
+      "minimum": 4200
+    },
+    {
+      "name": "lateral-surface-width:113",
+      "seed": 113,
+      "maximumSlope": 0.3592150533339824,
+      "maximumResidual": 1.882023445050777,
+      "bridgeSamples": 8
+    },
+    {
+      "name": "dry-terrain-connectivity:2026",
+      "seed": 2026,
+      "resolution": 2,
+      "maxSlopeDegrees": 48,
+      "dryOnly": true,
+      "visitedFaces": 29952
+    },
+    {
+      "name": "core-area:2026:valley",
+      "seed": 2026,
+      "region": "valley",
+      "area": 10434.290521621704,
+      "minimum": 1700
+    },
+    {
+      "name": "core-area:2026:west",
+      "seed": 2026,
+      "region": "west",
+      "area": 6948.427315341347,
+      "minimum": 2800
+    },
+    {
+      "name": "core-area:2026:east",
+      "seed": 2026,
+      "region": "east",
+      "area": 8249.27412377488,
+      "minimum": 4200
+    },
+    {
+      "name": "lateral-surface-width:2026",
+      "seed": 2026,
+      "maximumSlope": 0.37653733197977535,
+      "maximumResidual": 1.8006311276588889,
+      "bridgeSamples": 8
+    },
+    {
+      "name": "dry-terrain-connectivity:4294967295",
+      "seed": 4294967295,
+      "resolution": 2,
+      "maxSlopeDegrees": 48,
+      "dryOnly": true,
+      "visitedFaces": 29793
+    },
+    {
+      "name": "core-area:4294967295:valley",
+      "seed": 4294967295,
+      "region": "valley",
+      "area": 10541.982833862305,
+      "minimum": 1700
+    },
+    {
+      "name": "core-area:4294967295:west",
+      "seed": 4294967295,
+      "region": "west",
+      "area": 6825.450549071085,
+      "minimum": 2800
+    },
+    {
+      "name": "core-area:4294967295:east",
+      "seed": 4294967295,
+      "region": "east",
+      "area": 8149.450549071085,
+      "minimum": 4200
+    },
+    {
+      "name": "lateral-surface-width:4294967295",
+      "seed": 4294967295,
+      "maximumSlope": 0.38524746746511385,
+      "maximumResidual": 1.7303738566764864,
+      "bridgeSamples": 8
+    }
+  ],
+  "failures": []
+}

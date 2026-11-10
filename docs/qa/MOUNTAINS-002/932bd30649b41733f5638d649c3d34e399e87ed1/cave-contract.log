@@ -1,0 +1,58 @@
+{
+  "status": "PASS",
+  "testSourceSHA256": "47992000b0c728517c672bcc1d7977a6220af9fbf8f69841abd23515fdf7fa4e",
+  "bundleSHA256": "a0e252961bc0902bfd8e1f8c2a0cc98f6d4d0c27823bafd6029b74238aec4ef4",
+  "reports": [
+    {
+      "seed": 3,
+      "oldPortalBarrierX": -23.198589324951172,
+      "newFirstHitX": -54.999996185302734,
+      "sectionRays": 81,
+      "backRays": 81,
+      "roofRays": 25,
+      "oldRouteRays": 160,
+      "maxProtrusion": 3.1789143761784544e-7
+    },
+    {
+      "seed": 17,
+      "oldPortalBarrierX": -22.390026092529297,
+      "newFirstHitX": -54.999996185302734,
+      "sectionRays": 81,
+      "backRays": 81,
+      "roofRays": 25,
+      "oldRouteRays": 161,
+      "maxProtrusion": 3.178914393942023e-7
+    },
+    {
+      "seed": 113,
+      "oldPortalBarrierX": -22.69464874267578,
+      "newFirstHitX": -54.999996185302734,
+      "sectionRays": 81,
+      "backRays": 81,
+      "roofRays": 25,
+      "oldRouteRays": 162,
+      "maxProtrusion": 0
+    },
+    {
+      "seed": 2026,
+      "oldPortalBarrierX": -22.406503677368164,
+      "newFirstHitX": -55,
+      "sectionRays": 81,
+      "backRays": 81,
+      "roofRays": 25,
+      "oldRouteRays": 162,
+      "maxProtrusion": 0
+    },
+    {
+      "seed": 4294967295,
+      "oldPortalBarrierX": -22.448514938354492,
+      "newFirstHitX": -55,
+      "sectionRays": 81,
+      "backRays": 81,
+      "roofRays": 25,
+      "oldRouteRays": 161,
+      "maxProtrusion": 0
+    }
+  ],
+  "failures": []
+}

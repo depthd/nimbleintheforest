@@ -1,0 +1,23 @@
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 17 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/mountains-lab/experiments/mountains/index.html               2.72 kB │ gzip:     1.27 kB
+dist/mountains-lab/experiments/mountains/plan-preview.html        4.19 kB │ gzip:     2.06 kB
+dist/mountains-lab/assets/main-vfwSP27C.css                       1.62 kB │ gzip:     0.76 kB
+dist/mountains-lab/assets/modulepreload-polyfill-B5Qt9EMX.js      0.71 kB │ gzip:     0.40 kB
+dist/mountains-lab/assets/mountains-bZxELXEU.js                   1.60 kB │ gzip:     0.96 kB
+dist/mountains-lab/assets/plan-DPRiCapS.js                       14.17 kB │ gzip:     6.06 kB
+dist/mountains-lab/assets/main-CPmU7Y-p.js                    4,903.91 kB │ gzip: 1,794.68 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.59s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice
