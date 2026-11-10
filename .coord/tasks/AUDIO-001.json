@@ -1,0 +1,52 @@
+{
+  "id": "AUDIO-001",
+  "title": "Replace procedural SFX with layered survival-horror audio and PS1 coloration",
+  "status": "review",
+  "coordinator": "Codex root, coordinating this user-authorized isolated task",
+  "owner": "Codex root",
+  "branch": "task/AUDIO-001-procedural-sfx",
+  "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
+  "allowed_paths": [
+    ".coord/tasks/AUDIO-001.json",
+    "src/core/audio.ts",
+    "src/core/sfx.ts",
+    "src/game/avatar.ts",
+    "src/game/locomotion.ts",
+    "src/game/footstep-surface.ts",
+    "src/world/house.ts",
+    "tests/audio.cjs",
+    "tests/footstep-surface.cjs",
+    "package.json"
+  ],
+  "assignments": {
+    "synthesis": [
+      "src/core/sfx.ts"
+    ],
+    "surface": [
+      "src/game/avatar.ts",
+      "src/game/locomotion.ts",
+      "src/game/footstep-surface.ts",
+      "src/world/house.ts",
+      "tests/footstep-surface.cjs"
+    ],
+    "integration_and_qa": [
+      "src/core/audio.ts",
+      "tests/audio.cjs",
+      "package.json",
+      ".coord/tasks/AUDIO-001.json"
+    ]
+  },
+  "acceptance": [
+    "Replace existing one-shot SFX using original code-generated layered variants with restrained retro coloration; no third-party audio or services",
+    "Preserve onSound notifications and gameplay hearing, contact-driven steps, music controls and user-gesture audio startup",
+    "Select footstep material from actual accepted support where available, including lake ice; use current footwear",
+    "Bound decoded memory and concurrent sources, avoid abrupt envelopes, clipping and stale delayed callbacks",
+    "Build, audio signal/browser checks, locomotion and movement regression tests pass on final commit",
+    "No merge or deployment; isolated task branch and reviewable PR"
+  ],
+  "review_notes": [
+    "Independent source review completed; confirmed voice-allocation and furniture-classification issues fixed.",
+    "Kimi-specific review is not available in this session; do not treat independent review as Kimi sign-off.",
+    "Audio audition has not been performed. Automated tests inspect PCM, real WebAudio output, lifecycle and gameplay dispatch."
+  ]
+}
