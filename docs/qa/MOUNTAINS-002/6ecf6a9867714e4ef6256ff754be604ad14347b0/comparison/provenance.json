@@ -1,0 +1,6 @@
+{
+  "before": "Internal diagnostic source snapshot, not a committed release. See before-landforms.ts and manifest; cameras match the after set.",
+  "before_sha256": "c3485d70312df8fba62e5034a53319b8b4b37b97635c1f877014f0ad771516ba",
+  "after_source_sha": "6ecf6a9867714e4ef6256ff754be604ad14347b0",
+  "after_landforms_sha256": "66be297225316a8c75bec4a34092a6271fc79215c9ff47b6e8b76d0c76e7747e"
+}
