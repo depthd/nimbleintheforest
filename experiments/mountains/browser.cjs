@@ -22,7 +22,7 @@ fs.mkdirSync(out, { recursive: true });
   const server = await createServer({
     root,
     configFile: false,
-    server: { port: 5221, strictPort: true, hmr: false },
+    server: { host: "127.0.0.1", port: 5221, strictPort: true, hmr: false },
     logLevel: "error",
   });
   let browser;
