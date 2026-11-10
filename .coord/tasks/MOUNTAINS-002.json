@@ -1,6 +1,6 @@
 {
   "id": "MOUNTAINS-002",
-  "status": "review",
+  "status": "developing",
   "owner": "codex-mountains",
   "branch": "task/MOUNTAINS-002-connected-uplands",
   "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
@@ -20,5 +20,5 @@
     "Preserve main game, batched rendering and local rock colliders"
   ],
   "qa_sha": "932bd30649b41733f5638d649c3d34e399e87ed1",
-  "qa_result": "PASS exact source932bd30: builds/typecheck, crossing physics5seeds at1.72m/s, independent52checks/6seeds, cave physics5seeds+normal walk42, independent cave rays5seeds, browser10continuous legs/no loads/no errors/mobile. Main game/control geometry preserved. Artistic target NOT accepted; one hybrid prototype, no general generator; Kimi/user art review not performed."
+  "qa_result": "Continuing after user expedition design input: whole mountain composition, upper wreck and sheltered service site, optional return shortcut. Previous hybrid QA retained at932bd30; no new artistic acceptance yet."
 }

@@ -56,8 +56,11 @@ interface Mass {
     // The back of a ridge rises through snow-covered shoulders instead of
     // repeating its exposed cliff all the way around the polygon.
     back?: { x: number; z: number; width: number; inset: number };
+    // Broken ridge axis: height belongs to a crest and its flanks, not a flat cap.
+    spine?: number[][];
+    referenceHeight?: number;
 }
-export const VERSION = 'connected-uplands-1';
+export const VERSION = 'expedition-uplands-2';
 export const SIZE = 1600, CELL = 4;
 const stream = (seed: number, id: string) => new Rng(seed ^ hashString(VERSION + '/' + id));
 function polygonDistance(poly: number[][], x: number, z: number) {
@@ -99,6 +102,22 @@ function axis(id: string, p: number[][]): Axis {
     nodes.push({ x: a[0], y: a[1], z: a[2], width: a[3], right: a[4] ?? a[3] });
     return { id, nodes };
 }
+// The closest crest section defines a continuous flank. A broad back and a
+// sharper inward face are selected by the signed side of the crest axis.
+function crestProfile(nodes: number[][], x: number, z: number) {
+    let best = { distance: Infinity, height: 0, width: 1, side: 0 };
+    for (let i = 1; i < nodes.length; i++) {
+        const a = nodes[i - 1], b = nodes[i], dx = b[0] - a[0], dz = b[1] - a[1];
+        const t = clamp(((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz), 0, 1);
+        const ox = x - a[0] - t * dx, oz = z - a[1] - t * dz, distance = Math.hypot(ox, oz);
+        if (distance < best.distance) {
+            const side = dx * oz - dz * ox;
+            best = { distance, height: lerp(a[2], b[2], t), width: lerp(side < 0 ? a[3] : (a[4] ?? a[3]), side < 0 ? b[3] : (b[4] ?? b[3]), t), side };
+        }
+    }
+    return best;
+}
+
 export class Landforms {
     readonly n = SIZE / CELL;
     readonly heights = new Float32Array((this.n + 1) ** 2);
@@ -197,6 +216,20 @@ export class Landforms {
                 m.back = { x: b[0] / n, z: b[1] / n, width: b[2], inset: b[3] ?? 0 };
             }
         }
+        // A common inclined land body now supports the districts. The former
+        // level 150 m foundation produced a continuous defensive perimeter.
+        const spines: Record<string, number[][]> = {
+            'foreground-buttress': [[-108, 270, 93, 70, 125], [-25, 210, 156, 55, 100], [34, 128, 127, 60, 120]],
+            'west-gate': [[-472, 50, 137, 90, 42], [-395, 28, 180, 95, 43], [-350, -70, 167, 90, 45]],
+            'inner-nose': [[-180, 36, 140, 42, 92], [-120, 8, 185, 44, 100], [-75, -45, 170, 47, 110]],
+            'east-divide': [[160, 62, 216, 65, 135], [172, -88, 282, 52, 120], [140, -235, 245, 55, 130]],
+            'west-highland': [[-493, -35, 184, 155, 75], [-438, -160, 258, 175, 65], [-378, -290, 241, 160, 60]],
+            'north-highland': [[-350, -328, 204, 170, 70], [-223, -314, 249, 190, 64], [-82, -310, 257, 145, 58], [95, -365, 262, 130, 60]],
+            'cirque-wall': [[-15, -317, 262, 42, 90], [50, -355, 312, 42, 100], [55, -436, 293, 46, 100]],
+            'connecting-divide': [[115, -562, 248, 85, 145], [243, -510, 270, 75, 145], [280, -365, 231, 62, 130]],
+            'east-crown': [[338, -357, 304, 100, 135], [424, -391, 365, 75, 120], [493, -460, 300, 115, 150]],
+        };
+        for (const m of this.masses) { m.spine = spines[m.id]; m.referenceHeight = m.height; }
         this.ridges = this.masses;
         // Seed changes physical shapes, while preserving ports of this composition.
         // Topology variants are deliberately deferred until this family is reviewed.
@@ -279,8 +312,25 @@ export class Landforms {
     private form(wx: number, wz: number) {
         const { x, z } = this.local(wx, wz), N = this.noise;
         const nx = x + N.noise(x / 110 + 4, z / 140) * 6, nz = z + N.noise(x / 130, z / 115 - 7) * 6;
-        let h = 20 + N.fbm(x / 240, z / 240, 3) * 5;
+        const foothill = 20 + N.fbm(x / 240, z / 240, 3) * 5;
+        const ascent = smoothstep(300, -680, z);
+        const westEdge = -570 + 60 * Math.sin((z + 200) / 260);
+        const eastEdge = 555 - 30 * Math.sin(z / 210);
+        const lateral = smoothstep(westEdge - 170, westEdge + 90, x) * (1 - smoothstep(eastEdge - 65, eastEdge + 155, x));
+        const northFall = 1 - smoothstep(-650, -900, z);
+        let h = foothill + (16 + 245 * ascent) * lateral * northFall;
         for (const m of this.masses) {
+            if (m.id === 'upland-bedrock') continue;
+            if (m.spine) {
+                const crest = crestProfile(m.spine, nx, nz);
+                const t = Math.max(0, 1 - crest.distance / crest.width);
+                // A narrow hard upper face grows from a long natural flank. The
+                // crest breaks in height along its axis rather than closing a ring.
+                const flank = .42 * t + .58 * smoothstep(.15, .8, t);
+                const roof = crest.height + (m.height - (m.referenceHeight ?? m.height)) + N.noise(x / 145, z / 130) * 3;
+                h = Math.max(h, foothill + (roof - foothill) * flank);
+                continue;
+            }
             const d = polygonDistance(m.polygon, nx, nz);
             const cx = m.polygon.reduce((v, p) => v + p[0], 0) / m.polygon.length, cz = m.polygon.reduce((v, p) => v + p[1], 0) / m.polygon.length;
             const back = m.back ? smoothstep(-.2, .7, ((x - cx) * m.back.x + (z - cz) * m.back.z) / Math.max(1, Math.hypot(x - cx, z - cz))) : 0;
@@ -311,7 +361,31 @@ export class Landforms {
             if (d < -feather)
                 continue;
             const nose = r.rolloff ? Math.max(0, (x - r.x) * r.rolloff.x + (z - r.z) * r.rolloff.z) : 0;
-            const floor = r.y + (x - r.x) * r.tiltX + (z - r.z) * r.tiltZ - nose * nose * (r.rolloff?.curvature ?? 0) + N.noise(x / 72 + 1, z / 90) * 2.8 + N.noise(x / 28, z / 30) * .35;
+            let relief = 0;
+            if (r.id === 'cirque') {
+                const spur = crestProfile([[-170, -515, 15, 26], [-123, -486, 16, 30], [-80, -464, 9, 24]], x, z);
+                relief = spur.height * smoothstep(1, 0, spur.distance / spur.width);
+                // The wreck occupies a broad gently tilted bay; the side spur
+                // separates it from the climbing path without dividing access.
+                relief -= 3 * Math.exp(-Math.pow((x + 35) / 58, 2) - ((z + 473) / 46) ** 2);
+            } else if (r.id === 'lake') {
+                const shelf = crestProfile([[-165, -225, 10, 38], [-94, -240, 13, 45], [-20, -260, 8, 35]], x, z);
+                relief = shelf.height * smoothstep(1, 0, shelf.distance / shelf.width);
+            } else if (r.id === 'shoulder') {
+                const fold = crestProfile([[292, -90, 10, 30], [321, -65, 13, 36], [363, -67, 7, 32]], x, z);
+                relief = fold.height * smoothstep(1, 0, fold.distance / fold.width);
+                relief -= 3 * Math.exp(-Math.pow((x - 365) / 55, 2) - ((z + 170) / 45) ** 2);
+            }
+            const routeReserve = Math.min(...projections.map(p => p.d));
+            relief *= smoothstep(10, 32, routeReserve);
+            let floor = r.y + (x - r.x) * r.tiltX + (z - r.z) * r.tiltZ - nose * nose * (r.rolloff?.curvature ?? 0) + relief + N.noise(x / 72 + 1, z / 90) * 2.8 + N.noise(x / 28, z / 30) * .35;
+            if (r.id === 'shoulder') {
+                // A small engineered court belongs to this district's plan.
+                // Only its 64 x 44 m working floor is level; the whole valley
+                // and its pedestrian approaches retain their own profiles.
+                const outsideCourt = Math.hypot(Math.max(Math.abs(x - 365) - 32, 0), Math.max(Math.abs(z + 170) - 22, 0));
+                floor = lerp(floor, 179, 1 - smoothstep(0, 24, outsideCourt));
+            }
             const w = smoothstep(-feather, 0, d);
             h = lerp(h, floor, w);
             basinFloors.push({ floor, weight: w });
