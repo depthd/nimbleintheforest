@@ -8,6 +8,7 @@ import { Tex } from '../core/textures';
 import { ANKLE, Locomotion, footPose, solveLeg, wrapAngle } from './locomotion';
 import type { FootSurface, MotionInput } from './locomotion';
 import type { Player } from './player';
+import { footstepSound, footstepSurface, footwearFor, isWoodenFootstepOwner } from './footstep-surface';
 
 const up = new THREE.Vector3(0, 1, 0);
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
@@ -166,7 +167,23 @@ export class PlayerAvatar {
     if (!hit || hit.normal.y < 0.05) { G.recorder?.probe(x, z, referenceY, null); return null; }
     const surface = { point: new THREE.Vector3(x, this.origin.y - hit.timeOfImpact + 0.012, z),
       normal: new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z).normalize(), support: hit.collider.handle };
-    const result = G.snow?.probe(surface) ?? surface;
+    const result: FootSurface = G.snow?.probe(surface) ?? surface;
+    const handle = result.support;
+    const owner = handle === undefined ? undefined : G.entities?.byCollider.get(handle);
+    const terrainSupport = handle !== undefined && G.terrain.handles.has(handle);
+    const snow = G.snow;
+    const state = result.snowDepth !== undefined ? snow?.field.sample(x, z) : undefined;
+    const acoustic = footstepSurface({
+      support: handle,
+      woodenSupport: handle !== undefined && (G.house?.woodenSupports.has(handle) || isWoodenFootstepOwner(owner)),
+      iceSupport: handle !== undefined && G.lake?.handles.has(handle),
+      terrainSupport,
+      snowDepth: result.snowDepth,
+      packedSnow: terrainSupport && !!snow && !snow.isExperiment && snow.packedBase(x, z),
+      compaction: state?.surfaceCompaction,
+    });
+    result.material = acoustic.material;
+    result.compaction = acoustic.compaction;
     G.recorder?.probe(x, z, referenceY, result);
     return result;
   };
@@ -179,12 +196,14 @@ export class PlayerAvatar {
 
   update(dt: number) {
     this.motion.update(dt, this.input(), this.probe);
+    if (dt <= 0) return;
     G.snow?.step();
     for (const contact of this.motion.contacts) {
       const pos = contact.position;
-      const indoors = !!G.house.zoneAt(pos) || (Math.abs(pos.x) < 5 && pos.z > 3.9 && pos.z < 6.1 && Math.abs(pos.y - G.house.Y0) < 0.3);
-      G.audio.play(indoors ? 'step_wood' : 'step_snow', {
+      G.audio.play(footstepSound(contact.material), {
         pos, vol: (this.player.crouch ? 0.4 : 1) * (contact.landing ? 1.1 : 1),
+        footstep: { footwear: footwearFor(this.player.worn.get('feet')?.defId), speed: contact.speed,
+          landing: contact.landing, compaction: contact.compaction },
       });
     }
   }

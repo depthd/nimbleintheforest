@@ -10,9 +10,19 @@
     "docs/MOUNTAINS-002.md",
     "docs/qa/MOUNTAINS-002/",
     "index.html",
-    "vite.config.ts"
+    "vite.config.ts",
+    ".coord/tasks/AUDIO-001.json",
+    "package.json",
+    "src/core/audio.ts",
+    "src/core/sfx.ts",
+    "src/game/avatar.ts",
+    "src/game/footstep-surface.ts",
+    "src/game/locomotion.ts",
+    "src/world/house.ts",
+    "tests/audio.cjs",
+    "tests/footstep-surface.cjs"
   ],
-  "coordination": "Scope proposed explicitly in this chat and accepted by the user ('окей', 2026-11-10). New task starts at the freshly fetched integration base. Existing isolated lab imported from 185989f95ec260455608bb1410eae2a54220b487 for revision. No src/, shared Vite, diary, publication or merge changes. User requested putting the existing mountain changes into the accessible test game on 2026-11-10. Test-delivery scope includes index.html entry and Vite multipage packaging. Based on the live test SHA c8083c5 (it contains the fresh e17417d integration base), preserving its diary and C1 changes; merge the mountain work only in this isolated test branch. Authorized test-pages publication only; production contents restored byte-for-byte by the existing workflow.",
+  "coordination": "Scope proposed explicitly in this chat and accepted by the user ('окей', 2026-11-10). New task starts at the freshly fetched integration base. Existing isolated lab imported from 185989f95ec260455608bb1410eae2a54220b487 for revision. No src/, shared Vite, diary, publication or merge changes. User requested putting the existing mountain changes into the accessible test game on 2026-11-10. Test-delivery scope includes index.html entry and Vite multipage packaging. Based on the live test SHA c8083c5 (it contains the fresh e17417d integration base), preserving its diary and C1 changes; merge the mountain work only in this isolated test branch. Authorized test-pages publication only; production contents restored byte-for-byte by the existing workflow. Latest /test/ audio SHA cff563f arrived during validation; merge it intact before delivery. Cancelled stale candidate workflow 42882601290 before deploy.",
   "acceptance": [
     "Convincing primary terrain before decoration",
     "Spacious upper valley with its own floor profile and side spaces",
@@ -22,5 +32,21 @@
     "Preserve main game, batched rendering and local rock colliders"
   ],
   "qa_sha": "138542d705ec45b3e98195c9403aff106642fb73",
-  "qa_result": "Combined test candidate under validation. Terrain runtime unchanged from source 138542d; live preview diary/C1 code retained. User requested accessible /test/ publication. Visual WIP, not a production release."
+  "qa_result": "Combined test candidate under validation. Terrain runtime unchanged from source 138542d; live preview diary/C1 code retained. User requested accessible /test/ publication. Visual WIP, not a production release.",
+  "test_preview_import": {
+    "source": "cff563f399ee8c22366e6f2a208d11af7a3436de",
+    "paths": [
+      ".coord/tasks/AUDIO-001.json",
+      "package.json",
+      "src/core/audio.ts",
+      "src/core/sfx.ts",
+      "src/game/avatar.ts",
+      "src/game/footstep-surface.ts",
+      "src/game/locomotion.ts",
+      "src/world/house.ts",
+      "tests/audio.cjs",
+      "tests/footstep-surface.cjs"
+    ],
+    "reason": "Live /test/ changed to AUDIO-001 during validation. Import its exact changes without editing them, preserving prior live diary/C1 and the mountain preview. The added paths are for this integration only."
+  }
 }
