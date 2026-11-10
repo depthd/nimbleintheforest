@@ -1,0 +1,26 @@
+{
+  "id": "MOUNTAINS-002",
+  "status": "developing",
+  "owner": "codex-mountains",
+  "branch": "task/MOUNTAINS-002-test-preview",
+  "base_sha": "c8083c5e02a6770974f3a8023aa84ce3974bd25f",
+  "allowed_paths": [
+    ".coord/tasks/MOUNTAINS-002.json",
+    "experiments/mountains/",
+    "docs/MOUNTAINS-002.md",
+    "docs/qa/MOUNTAINS-002/",
+    "index.html",
+    "vite.config.ts"
+  ],
+  "coordination": "Scope proposed explicitly in this chat and accepted by the user ('окей', 2026-11-10). New task starts at the freshly fetched integration base. Existing isolated lab imported from 185989f95ec260455608bb1410eae2a54220b487 for revision. No src/, shared Vite, diary, publication or merge changes. User requested putting the existing mountain changes into the accessible test game on 2026-11-10. Test-delivery scope includes index.html entry and Vite multipage packaging. Based on the live test SHA c8083c5 (it contains the fresh e17417d integration base), preserving its diary and C1 changes; merge the mountain work only in this isolated test branch. Authorized test-pages publication only; production contents restored byte-for-byte by the existing workflow.",
+  "acceptance": [
+    "Convincing primary terrain before decoration",
+    "Spacious upper valley with its own floor profile and side spaces",
+    "Distinct natural walking approaches, no default circular shelf",
+    "Comparable layer views and approach/reveal sequences in three lighting modes",
+    "Control and held-out seeds, final-geometry physics walks",
+    "Preserve main game, batched rendering and local rock colliders"
+  ],
+  "qa_sha": "138542d705ec45b3e98195c9403aff106642fb73",
+  "qa_result": "Combined test candidate under validation. Terrain runtime unchanged from source 138542d; live preview diary/C1 code retained. User requested accessible /test/ publication. Visual WIP, not a production release."
+}

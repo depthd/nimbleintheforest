@@ -1,0 +1,9 @@
+{
+  "result": "PASS",
+  "candidate": "6ecf6a9867714e4ef6256ff754be604ad14347b0",
+  "integration_base": "e17417d059d4bf6e096ec6e059de769f71a71914",
+  "milestones": [
+    "450184d87c070b45bb1f069d6d641db5588e7bf4"
+  ],
+  "note": "Ancestry/scope only. Build, behavior, QA and visual approval are separate."
+}

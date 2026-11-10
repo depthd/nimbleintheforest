@@ -9,10 +9,10 @@
     <div id="world"></div>
     <section id="panel">
       <small>NIMBLE IN THE FOREST · ИССЛЕДОВАНИЕ РЕЛЬЕФА</small>
-      <h1>Горные долины</h1>
+      <h1>Новые горные долины</h1>
       <p>
-        Снежный склон, извилистая ложбина и полка вокруг скального плеча
-        соединяют нижний лес с верхней долиной.
+        Горный массив вырастает из ветвящейся долины. Мир определяет число и
+        расположение районов, высоты, гребни и подходы к верхним пространствам.
       </p>
       <div class="row">
         <label>Мир <input id="seed" type="number" value="42" /></label
@@ -26,6 +26,15 @@
         ><button id="routes">Показать пути</button>
       </div>
       <label
+        >Показывать
+        <select id="layers">
+          <option value="full">Весь район</option>
+          <option value="clay">Только форма</option>
+          <option value="terrain">Грунт и снег</option>
+          <option value="rocks">Грунт со скалами</option>
+        </select></label
+      >
+      <label
         >Освещение
         <select id="light">
           <option value="day">Ясный день</option>
@@ -38,13 +47,21 @@
         Esc — меню. В полёте: пробел вверх, Ctrl вниз.
       </p>
       <p class="hint">
-        Изолированный прототип крупной формы. Канаты, пещеры и мосты появятся на
-        следующих этапах.
+        Генерируемая география. <a href="?seed=42&amp;mode=control">Сохранённая контрольная композиция</a>.
+        Отдельные опыты: <a href="./plan-preview.html">план живых районов</a> и
+        <a href="./crossing.html">пересечение высот и пещера в склоне</a>.
       </p>
+      <p class="hint"><a href="../../">К тестовой игре</a></p>
+      <!-- build-info -->
     </section>
     <div id="crosshair">·</div>
     <aside id="status">Подготовка…</aside>
     <div id="veil">Создаём горный район…</div>
-    <script type="module" src="./main.ts"></script>
+    <script type="module">
+      import("./main.ts").catch((error) => {
+        console.error(error);
+        document.getElementById("veil").textContent = "Не удалось загрузить сцену: " + (error?.message || error);
+      });
+    </script>
   </body>
 </html>

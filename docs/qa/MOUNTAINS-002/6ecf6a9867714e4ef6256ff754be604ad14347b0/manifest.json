@@ -1,0 +1,2927 @@
+{
+  "workingTreeDirty": false,
+  "renderSourceSHA256": {
+    "main.ts": "464bfb4cc8ab74fbedbcd40b63e26ba07fe599fef9a552cc3cd47507eab0aa5e",
+    "landforms.ts": "66be297225316a8c75bec4a34092a6271fc79215c9ff47b6e8b76d0c76e7747e",
+    "index.html": "d6145b448a8b5385ec03bc30185f88deb36c8f6d4d9e399302b75c1491a109dd",
+    "style.css": "837ac91b76857ce7b5bc3eae294da4bbad3bc131331d10c42143f8a109afef5b"
+  },
+  "sha": "6ecf6a9867714e4ef6256ff754be604ad14347b0",
+  "viewport": [
+    1100,
+    700
+  ],
+  "renderer": "Chromium ANGLE SwiftShader",
+  "seeds": [
+    {
+      "seed": 7,
+      "stats": {
+        "trees": 1213,
+        "rocks": 426,
+        "strata": 8432,
+        "generationMs": 3955.0999999996275,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 2026,
+      "stats": {
+        "trees": 1247,
+        "rocks": 450,
+        "strata": 11697,
+        "generationMs": 3042.9000000003725,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    }
+  ],
+  "movement": {
+    "before": {
+      "x": -209.9998321533203,
+      "y": 21.04841003417969,
+      "z": 505
+    },
+    "after": {
+      "x": -210.574462890625,
+      "y": 21.66129837036133,
+      "z": 500.2926330566406
+    },
+    "displacement": 4.742309988147961
+  },
+  "route": [
+    {
+      "seed": 42,
+      "routeId": "gully",
+      "direction": "up",
+      "fraction": 0.25,
+      "reached": 25,
+      "goal": 24,
+      "ticks": 2245,
+      "position": {
+        "x": -252.7893829345703,
+        "y": 27.56533203125,
+        "z": 461.8531494140625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -252.80050659179688,
+            "y": 27.53551483154297,
+            "z": 461.8405456542969
+          },
+          "normal": {
+            "x": 0.060099124908447266,
+            "y": 0.9962448477745056,
+            "z": 0.062325019389390945
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gully",
+      "direction": "up",
+      "fraction": 0.55,
+      "reached": 53,
+      "goal": 52,
+      "ticks": 2665,
+      "position": {
+        "x": -284.62054443359375,
+        "y": 36.067403411865236,
+        "z": 399.0599365234375
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -284.6250305175781,
+            "y": 36.040496826171875,
+            "z": 399.01324462890625
+          },
+          "normal": {
+            "x": 0.026114726439118385,
+            "y": 0.9840096235275269,
+            "z": 0.1761903464794159
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gully",
+      "direction": "up",
+      "fraction": 0.8,
+      "reached": 76,
+      "goal": 75,
+      "ticks": 2355,
+      "position": {
+        "x": -286.56903076171875,
+        "y": 46.31203994750977,
+        "z": 337.7320556640625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -286.5675048828125,
+            "y": 46.28438949584961,
+            "z": 337.68829345703125
+          },
+          "normal": {
+            "x": -0.006406629923731089,
+            "y": 0.986315906047821,
+            "z": 0.16474191844463348
+          }
+        },
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -286.5672302246094,
+            "y": 46.28450393676758,
+            "z": 337.6876525878906
+          },
+          "normal": {
+            "x": -0.011108215898275375,
+            "y": 0.9812257289886475,
+            "z": 0.1925424039363861
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gully",
+      "direction": "up",
+      "fraction": 1,
+      "reached": 94,
+      "goal": 93,
+      "ticks": 1800,
+      "position": {
+        "x": -285.036865234375,
+        "y": 54.75335464477539,
+        "z": 291.3558349609375
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -285.02508544921875,
+            "y": 54.72823715209961,
+            "z": 291.29888916015625
+          },
+          "normal": {
+            "x": -0.03096522018313408,
+            "y": 0.978455662727356,
+            "z": 0.204121395945549
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gully",
+      "direction": "down",
+      "fraction": 0.25,
+      "reached": 25,
+      "goal": 24,
+      "ticks": 2060,
+      "position": {
+        "x": -286.8778076171875,
+        "y": 44.120252227783205,
+        "z": 351.0473327636719
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -286.8766174316406,
+            "y": 44.10101318359375,
+            "z": 350.98095703125
+          },
+          "normal": {
+            "x": -0.00231388327665627,
+            "y": 0.9869123697280884,
+            "z": 0.1612403839826584
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gully",
+      "direction": "down",
+      "fraction": 0.55,
+      "reached": 53,
+      "goal": 52,
+      "ticks": 2460,
+      "position": {
+        "x": -278.62664794921875,
+        "y": 31.6930290222168,
+        "z": 423.2030334472656
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -278.64263916015625,
+            "y": 31.666643142700195,
+            "z": 423.1607666015625
+          },
+          "normal": {
+            "x": 0.03329291567206383,
+            "y": 0.9953234791755676,
+            "z": 0.09067944437265396
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gully",
+      "direction": "down",
+      "fraction": 0.8,
+      "reached": 76,
+      "goal": 75,
+      "ticks": 2035,
+      "position": {
+        "x": -243.82310485839844,
+        "y": 26.42165336608887,
+        "z": 471.4811706542969
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -243.8526153564453,
+            "y": 26.39421272277832,
+            "z": 471.4495544433594
+          },
+          "normal": {
+            "x": 0.06225385144352913,
+            "y": 0.995958149433136,
+            "z": 0.06474512070417404
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gully",
+      "direction": "down",
+      "fraction": 1,
+      "reached": 94,
+      "goal": 93,
+      "ticks": 1570,
+      "position": {
+        "x": -210.8489990234375,
+        "y": 21.25355682373047,
+        "z": 504.0691833496094
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -210.89695739746094,
+            "y": 21.230998992919922,
+            "z": 504.01654052734375
+          },
+          "normal": {
+            "x": 0.1147739365696907,
+            "y": 0.9852721691131592,
+            "z": 0.12675067782402039
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gates",
+      "direction": "up",
+      "fraction": 0.25,
+      "reached": 30,
+      "goal": 29,
+      "ticks": 3095,
+      "position": {
+        "x": -256.80767822265625,
+        "y": 72.01359710693359,
+        "z": 218.72743225097656
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -256.7898864746094,
+            "y": 71.9902114868164,
+            "z": 218.66299438476562
+          },
+          "normal": {
+            "x": -0.061934515833854675,
+            "y": 0.9732787013053894,
+            "z": 0.2211170792579651
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 155,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gates",
+      "direction": "up",
+      "fraction": 0.55,
+      "reached": 64,
+      "goal": 63,
+      "ticks": 3640,
+      "position": {
+        "x": -261.605712890625,
+        "y": 94.7225128173828,
+        "z": 131.43006896972656
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -261.5987548828125,
+            "y": 94.70266723632812,
+            "z": 131.34817504882812
+          },
+          "normal": {
+            "x": -0.02143643982708454,
+            "y": 0.9614554047584534,
+            "z": 0.27412405610084534
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 188,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gates",
+      "direction": "up",
+      "fraction": 0.8,
+      "reached": 93,
+      "goal": 92,
+      "ticks": 2990,
+      "position": {
+        "x": -235.76199340820312,
+        "y": 107.16393432617187,
+        "z": 58.16732406616211
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -235.76913452148438,
+            "y": 107.13800048828125,
+            "z": 58.11507034301758
+          },
+          "normal": {
+            "x": 0.008079642429947853,
+            "y": 0.9839535355567932,
+            "z": 0.1782418042421341
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 58,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gates",
+      "direction": "up",
+      "fraction": 1,
+      "reached": 115,
+      "goal": 114,
+      "ticks": 2195,
+      "position": {
+        "x": -210.51055908203125,
+        "y": 115.76184997558593,
+        "z": 6.324885845184326
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -210.5107421875,
+            "y": 115.73218536376953,
+            "z": 6.3052544593811035
+          },
+          "normal": {
+            "x": -0.026712512597441673,
+            "y": 0.9954907298088074,
+            "z": 0.09102026373147964
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 9,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gates",
+      "direction": "down",
+      "fraction": 0.25,
+      "reached": 30,
+      "goal": 29,
+      "ticks": 2580,
+      "position": {
+        "x": -243.0841522216797,
+        "y": 104.65235290527343,
+        "z": 73.77381896972656
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -243.06922912597656,
+            "y": 104.62783813476562,
+            "z": 73.71488952636719
+          },
+          "normal": {
+            "x": -0.023729218170046806,
+            "y": 0.9883579015731812,
+            "z": 0.1502850502729416
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 40,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gates",
+      "direction": "down",
+      "fraction": 0.55,
+      "reached": 64,
+      "goal": 63,
+      "ticks": 2925,
+      "position": {
+        "x": -260.4396057128906,
+        "y": 87.97391662597656,
+        "z": 157.007568359375
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -260.4482421875,
+            "y": 87.9576187133789,
+            "z": 156.9141845703125
+          },
+          "normal": {
+            "x": 0.03408966585993767,
+            "y": 0.9689539074897766,
+            "z": 0.2448797971010208
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 187,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gates",
+      "direction": "down",
+      "fraction": 0.8,
+      "reached": 93,
+      "goal": 92,
+      "ticks": 2645,
+      "position": {
+        "x": -261.2973937988281,
+        "y": 68.29673919677734,
+        "z": 233.97805786132812
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -261.264404296875,
+            "y": 68.27872467041016,
+            "z": 233.89501953125
+          },
+          "normal": {
+            "x": -0.08576667308807373,
+            "y": 0.9737624526023865,
+            "z": 0.2107863575220108
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 169,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "gates",
+      "direction": "down",
+      "fraction": 1,
+      "reached": 115,
+      "goal": 114,
+      "ticks": 2005,
+      "position": {
+        "x": -284.4503173828125,
+        "y": 55.27940902709961,
+        "z": 288.75250244140625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -284.4365234375,
+            "y": 55.2574462890625,
+            "z": 288.6801452636719
+          },
+          "normal": {
+            "x": -0.027318065986037254,
+            "y": 0.9832624793052673,
+            "z": 0.18013502657413483
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 54,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "apron",
+      "direction": "up",
+      "fraction": 0.25,
+      "reached": 105,
+      "goal": 104,
+      "ticks": 10020,
+      "position": {
+        "x": -471.1277770996094,
+        "y": 33.78788528442383,
+        "z": 441.75469970703125
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -471.1966552734375,
+            "y": 33.768856048583984,
+            "z": 441.7048645019531
+          },
+          "normal": {
+            "x": 0.24443598091602325,
+            "y": 0.955995500087738,
+            "z": 0.1622457206249237
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "apron",
+      "direction": "up",
+      "fraction": 0.55,
+      "reached": 229,
+      "goal": 228,
+      "ticks": 11180,
+      "position": {
+        "x": -543.2432250976562,
+        "y": 75.88759765625,
+        "z": 167.41275024414062
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -543.2323608398438,
+            "y": 75.85839080810547,
+            "z": 167.38832092285156
+          },
+          "normal": {
+            "x": -0.035979196429252625,
+            "y": 0.9935567378997803,
+            "z": 0.10747352242469788
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 212,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "apron",
+      "direction": "up",
+      "fraction": 0.8,
+      "reached": 333,
+      "goal": 332,
+      "ticks": 9660,
+      "position": {
+        "x": -417.3625183105469,
+        "y": 108.01143798828124,
+        "z": -42.477237701416016
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -417.32708740234375,
+            "y": 107.98291778564453,
+            "z": -42.47402572631836
+          },
+          "normal": {
+            "x": -0.1351335495710373,
+            "y": 0.9901577234268188,
+            "z": 0.036422260105609894
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 646,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "apron",
+      "direction": "up",
+      "fraction": 1,
+      "reached": 415,
+      "goal": 414,
+      "ticks": 7730,
+      "position": {
+        "x": -211.31814575195312,
+        "y": 115.8977294921875,
+        "z": 4.6050238609313965
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -211.32049560546875,
+            "y": 115.869384765625,
+            "z": 4.569972991943359
+          },
+          "normal": {
+            "x": -0.027868257835507393,
+            "y": 0.9953970909118652,
+            "z": 0.0916958600282669
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "apron",
+      "direction": "down",
+      "fraction": 0.25,
+      "reached": 105,
+      "goal": 104,
+      "ticks": 9330,
+      "position": {
+        "x": -462.3736877441406,
+        "y": 101.3315216064453,
+        "z": -16.28933334350586
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -462.3326416015625,
+            "y": 101.3050765991211,
+            "z": -16.317628860473633
+          },
+          "normal": {
+            "x": -0.09249261766672134,
+            "y": 0.9938464164733887,
+            "z": 0.06094474345445633
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 646,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "apron",
+      "direction": "down",
+      "fraction": 0.55,
+      "reached": 229,
+      "goal": 228,
+      "ticks": 10325,
+      "position": {
+        "x": -549.075439453125,
+        "y": 61.61547622680664,
+        "z": 265.58636474609375
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -549.0720825195312,
+            "y": 61.591007232666016,
+            "z": 265.525390625
+          },
+          "normal": {
+            "x": -0.016964813694357872,
+            "y": 0.9878132343292236,
+            "z": 0.15471616387367249
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 159,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "apron",
+      "direction": "down",
+      "fraction": 0.8,
+      "reached": 333,
+      "goal": 332,
+      "ticks": 8555,
+      "position": {
+        "x": -426.3063049316406,
+        "y": 21.00264701843262,
+        "z": 471.7033996582031
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -426.2646789550781,
+            "y": 20.974992752075195,
+            "z": 471.7040100097656
+          },
+          "normal": {
+            "x": -0.15618038177490234,
+            "y": 0.9876003265380859,
+            "z": -0.01591411419212818
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "apron",
+      "direction": "down",
+      "fraction": 1,
+      "reached": 415,
+      "goal": 414,
+      "ticks": 7725,
+      "position": {
+        "x": -211.34410095214844,
+        "y": 21.205743408203126,
+        "z": 504.88873291015625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -211.39602661132812,
+            "y": 21.18274688720703,
+            "z": 504.843505859375
+          },
+          "normal": {
+            "x": 0.11477214097976685,
+            "y": 0.9852717518806458,
+            "z": 0.12675520777702332
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "east",
+      "direction": "up",
+      "fraction": 0.25,
+      "reached": 44,
+      "goal": 43,
+      "ticks": 4220,
+      "position": {
+        "x": 167.7142333984375,
+        "y": 129.01500854492187,
+        "z": -151.3804473876953
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 167.74703979492188,
+            "y": 128.98849487304688,
+            "z": -151.41766357421875
+          },
+          "normal": {
+            "x": -0.12196184694766998,
+            "y": 0.9835537075996399,
+            "z": 0.13321921229362488
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 398,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "east",
+      "direction": "up",
+      "fraction": 0.55,
+      "reached": 96,
+      "goal": 95,
+      "ticks": 5710,
+      "position": {
+        "x": 287.19677734375,
+        "y": 163.4288116455078,
+        "z": -180.1540069580078
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 287.2245178222656,
+            "y": 163.40065002441406,
+            "z": -180.12884521484375
+          },
+          "normal": {
+            "x": -0.10941588878631592,
+            "y": 0.9893422722816467,
+            "z": -0.09607267379760742
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 365,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "east",
+      "direction": "up",
+      "fraction": 0.8,
+      "reached": 138,
+      "goal": 137,
+      "ticks": 4275,
+      "position": {
+        "x": 348.1946716308594,
+        "y": 181.03508911132812,
+        "z": -90.8648681640625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 348.2492980957031,
+            "y": 181.00949096679688,
+            "z": -90.85272979736328
+          },
+          "normal": {
+            "x": -0.178225576877594,
+            "y": 0.9818047285079956,
+            "z": -0.06553757190704346
+          }
+        },
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 348.2510070800781,
+            "y": 181.0100860595703,
+            "z": -90.84838104248047
+          },
+          "normal": {
+            "x": -0.18019144237041473,
+            "y": 0.9805954098701477,
+            "z": -0.07722490280866623
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 124,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "east",
+      "direction": "up",
+      "fraction": 1,
+      "reached": 172,
+      "goal": 171,
+      "ticks": 3050,
+      "position": {
+        "x": 345.32763671875,
+        "y": 176.80060729980468,
+        "z": -6.359318256378174
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 345.35723876953125,
+            "y": 176.77349853515625,
+            "z": -6.39386510848999
+          },
+          "normal": {
+            "x": -0.0781770721077919,
+            "y": 0.9948291182518005,
+            "z": 0.06483177840709686
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "east",
+      "direction": "down",
+      "fraction": 0.25,
+      "reached": 44,
+      "goal": 43,
+      "ticks": 3885,
+      "position": {
+        "x": 339.6005554199219,
+        "y": 179.08658752441406,
+        "z": -108.37686920166016
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 339.64764404296875,
+            "y": 179.05972290039062,
+            "z": -108.37953186035156
+          },
+          "normal": {
+            "x": -0.12362392246723175,
+            "y": 0.9914698600769043,
+            "z": 0.0412871353328228
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 52,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "east",
+      "direction": "down",
+      "fraction": 0.55,
+      "reached": 96,
+      "goal": 95,
+      "ticks": 4490,
+      "position": {
+        "x": 247.1907501220703,
+        "y": 158.67823181152343,
+        "z": -190.49908447265625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 247.26727294921875,
+            "y": 158.65792846679688,
+            "z": -190.52500915527344
+          },
+          "normal": {
+            "x": -0.18889358639717102,
+            "y": 0.9791925549507141,
+            "z": 0.07416980713605881
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 353,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "east",
+      "direction": "down",
+      "fraction": 0.8,
+      "reached": 138,
+      "goal": 137,
+      "ticks": 3815,
+      "position": {
+        "x": 152.07415771484375,
+        "y": 126.8082290649414,
+        "z": -136.14096069335938
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 152.07261657714844,
+            "y": 126.7782974243164,
+            "z": -136.1575164794922
+          },
+          "normal": {
+            "x": 0.03045453131198883,
+            "y": 0.9992785453796387,
+            "z": 0.022695576772093773
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 450,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "east",
+      "direction": "down",
+      "fraction": 1,
+      "reached": 172,
+      "goal": 171,
+      "ticks": 3265,
+      "position": {
+        "x": 90.91426849365234,
+        "y": 124.7934585571289,
+        "z": -65.97218322753906
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 91.04313659667969,
+            "y": 124.80877685546875,
+            "z": -66.0794677734375
+          },
+          "normal": {
+            "x": -0.3597773611545563,
+            "y": 0.8854947686195374,
+            "z": 0.2940395176410675
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 23,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "high",
+      "direction": "up",
+      "fraction": 0.25,
+      "reached": 51,
+      "goal": 50,
+      "ticks": 4730,
+      "position": {
+        "x": -279.2744445800781,
+        "y": 119.35070190429687,
+        "z": -108.86107635498047
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -279.30718994140625,
+            "y": 119.32244110107422,
+            "z": -108.8490982055664
+          },
+          "normal": {
+            "x": 0.1146199181675911,
+            "y": 0.9931811690330505,
+            "z": -0.02129237726330757
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 139,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "high",
+      "direction": "up",
+      "fraction": 0.55,
+      "reached": 112,
+      "goal": 111,
+      "ticks": 8270,
+      "position": {
+        "x": -280.6031799316406,
+        "y": 189.53531799316406,
+        "z": -259.3412170410156
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -280.47430419921875,
+            "y": 189.5564422607422,
+            "z": -259.4621276855469
+          },
+          "normal": {
+            "x": -0.39531078934669495,
+            "y": 0.8376821279525757,
+            "z": 0.37685278058052063
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 116,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "high",
+      "direction": "up",
+      "fraction": 0.8,
+      "reached": 161,
+      "goal": 160,
+      "ticks": 5560,
+      "position": {
+        "x": -187.58677673339844,
+        "y": 221.96837768554687,
+        "z": -332.514892578125
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -187.60772705078125,
+            "y": 221.93887329101562,
+            "z": -332.515869140625
+          },
+          "normal": {
+            "x": 0.02521478198468685,
+            "y": 0.9996526837348938,
+            "z": 0.0076578594744205475
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 128,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "high",
+      "direction": "up",
+      "fraction": 1,
+      "reached": 201,
+      "goal": 200,
+      "ticks": 3610,
+      "position": {
+        "x": -86.33648681640625,
+        "y": 220.52265319824218,
+        "z": -320.3061218261719
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -86.3733901977539,
+            "y": 220.49542236328125,
+            "z": -320.33001708984375
+          },
+          "normal": {
+            "x": 0.07289088517427444,
+            "y": 0.995415210723877,
+            "z": 0.06193144619464874
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "high",
+      "direction": "down",
+      "fraction": 0.25,
+      "reached": 51,
+      "goal": 50,
+      "ticks": 4505,
+      "position": {
+        "x": -209.88462829589844,
+        "y": 222.22089538574218,
+        "z": -327.9911193847656
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -209.87750244140625,
+            "y": 222.19198608398438,
+            "z": -328.0198669433594
+          },
+          "normal": {
+            "x": 0.0158991701900959,
+            "y": 0.9970335960388184,
+            "z": 0.07530692219734192
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 124,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "high",
+      "direction": "down",
+      "fraction": 0.55,
+      "reached": 112,
+      "goal": 111,
+      "ticks": 5410,
+      "position": {
+        "x": -300.18682861328125,
+        "y": 156.26680908203124,
+        "z": -208.69168090820312
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -300.18939208984375,
+            "y": 156.28196716308594,
+            "z": -208.85910034179688
+          },
+          "normal": {
+            "x": 0.013806929811835289,
+            "y": 0.8861464858055115,
+            "z": 0.4631994366645813
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 154,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "high",
+      "direction": "down",
+      "fraction": 0.8,
+      "reached": 161,
+      "goal": 160,
+      "ticks": 4355,
+      "position": {
+        "x": -268.4167175292969,
+        "y": 120.11284790039062,
+        "z": -90.11241149902344
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -268.4151916503906,
+            "y": 120.08255767822266,
+            "z": -90.10828399658203
+          },
+          "normal": {
+            "x": -0.022502021864056587,
+            "y": 0.998634397983551,
+            "z": -0.04714709520339966
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 174,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "high",
+      "direction": "down",
+      "fraction": 1,
+      "reached": 201,
+      "goal": 200,
+      "ticks": 3815,
+      "position": {
+        "x": -210.71963500976562,
+        "y": 115.97493133544921,
+        "z": 3.9172840118408203
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -210.7168731689453,
+            "y": 115.9463119506836,
+            "z": 3.884631633758545
+          },
+          "normal": {
+            "x": -0.02793174609541893,
+            "y": 0.9974849820137024,
+            "z": 0.06514103710651398
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "saddle",
+      "direction": "up",
+      "fraction": 0.25,
+      "reached": 71,
+      "goal": 70,
+      "ticks": 6640,
+      "position": {
+        "x": 70.30704498291016,
+        "y": 238.0980010986328,
+        "z": -405.80511474609375
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 70.30091857910156,
+            "y": 238.0680389404297,
+            "z": -405.81817626953125
+          },
+          "normal": {
+            "x": -0.0167536698281765,
+            "y": 0.998643159866333,
+            "z": 0.04930717498064041
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 46,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "saddle",
+      "direction": "up",
+      "fraction": 0.55,
+      "reached": 155,
+      "goal": 154,
+      "ticks": 7635,
+      "position": {
+        "x": 237.0179443359375,
+        "y": 190.61211547851562,
+        "z": -303.0977783203125
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 236.98326110839844,
+            "y": 190.60195922851562,
+            "z": -303.2056884765625
+          },
+          "normal": {
+            "x": 0.09307906776666641,
+            "y": 0.9515748023986816,
+            "z": 0.29298752546310425
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 227,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "saddle",
+      "direction": "up",
+      "fraction": 0.8,
+      "reached": 225,
+      "goal": 224,
+      "ticks": 6555,
+      "position": {
+        "x": 314.8258361816406,
+        "y": 169.95269165039062,
+        "z": -137.00230407714844
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 314.8357238769531,
+            "y": 169.94236755371094,
+            "z": -136.88987731933594
+          },
+          "normal": {
+            "x": -0.04550332576036453,
+            "y": 0.9323235750198364,
+            "z": -0.3587508499622345
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 247,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "saddle",
+      "direction": "up",
+      "fraction": 1,
+      "reached": 281,
+      "goal": 280,
+      "ticks": 5420,
+      "position": {
+        "x": 345.3190612792969,
+        "y": 176.7979522705078,
+        "z": -6.329208850860596
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 345.34869384765625,
+            "y": 176.7708740234375,
+            "z": -6.363766670227051
+          },
+          "normal": {
+            "x": -0.07817675173282623,
+            "y": 0.9948288202285767,
+            "z": 0.06483729183673859
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "saddle",
+      "direction": "down",
+      "fraction": 0.25,
+      "reached": 71,
+      "goal": 70,
+      "ticks": 6320,
+      "position": {
+        "x": 294.3769226074219,
+        "y": 165.82843933105468,
+        "z": -163.56597900390625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 294.3997802734375,
+            "y": 165.8031005859375,
+            "z": -163.51380920410156
+          },
+          "normal": {
+            "x": -0.045360714197158813,
+            "y": 0.9912136793136597,
+            "z": -0.12424973398447037
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 244,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "saddle",
+      "direction": "down",
+      "fraction": 0.55,
+      "reached": 155,
+      "goal": 154,
+      "ticks": 9275,
+      "position": {
+        "x": 200.03065490722656,
+        "y": 215.34420166015624,
+        "z": -362.268310546875
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 199.96286010742188,
+            "y": 215.3285675048828,
+            "z": -362.33758544921875
+          },
+          "normal": {
+            "x": 0.2200310379266739,
+            "y": 0.9487845301628113,
+            "z": 0.2267027199268341
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 172,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "saddle",
+      "direction": "down",
+      "fraction": 0.8,
+      "reached": 225,
+      "goal": 224,
+      "ticks": 7105,
+      "position": {
+        "x": 38.196617126464844,
+        "y": 232.98565063476562,
+        "z": -395.1175231933594
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 38.3162727355957,
+            "y": 232.98486328125,
+            "z": -395.1832580566406
+          },
+          "normal": {
+            "x": -0.3216593265533447,
+            "y": 0.9291579723358154,
+            "z": 0.18221057951450348
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 46,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "saddle",
+      "direction": "down",
+      "fraction": 1,
+      "reached": 281,
+      "goal": 280,
+      "ticks": 4910,
+      "position": {
+        "x": -83.82781219482422,
+        "y": 220.3706298828125,
+        "z": -320.7091064453125
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -83.82786560058594,
+            "y": 220.34158325195312,
+            "z": -320.7377014160156
+          },
+          "normal": {
+            "x": 0.031180649995803833,
+            "y": 0.9975847005844116,
+            "z": 0.062067341059446335
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "balcony",
+      "direction": "up",
+      "fraction": 0.25,
+      "reached": 95,
+      "goal": 94,
+      "ticks": 8120,
+      "position": {
+        "x": 394.7523193359375,
+        "y": 129.6032958984375,
+        "z": 223.06341552734375
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 394.7489318847656,
+            "y": 129.58792114257812,
+            "z": 222.9649200439453
+          },
+          "normal": {
+            "x": 0.0011142923031002283,
+            "y": 0.9700823426246643,
+            "z": 0.24277347326278687
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 22,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "balcony",
+      "direction": "up",
+      "fraction": 0.55,
+      "reached": 208,
+      "goal": 207,
+      "ticks": 9665,
+      "position": {
+        "x": 211.19113159179688,
+        "y": 52.36993942260742,
+        "z": 429.3574523925781
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 211.22999572753906,
+            "y": 52.34295654296875,
+            "z": 429.33209228515625
+          },
+          "normal": {
+            "x": -0.08210227638483047,
+            "y": 0.9949865341186523,
+            "z": 0.057105645537376404
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "balcony",
+      "direction": "up",
+      "fraction": 0.8,
+      "reached": 302,
+      "goal": 301,
+      "ticks": 8125,
+      "position": {
+        "x": -12.174038887023926,
+        "y": 25.89182052612305,
+        "z": 504.17559814453125
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -12.167171478271484,
+            "y": 25.862329483032227,
+            "z": 504.1494140625
+          },
+          "normal": {
+            "x": 0.015964282676577568,
+            "y": 0.9970476031303406,
+            "z": 0.07510851323604584
+          }
+        },
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -12.168924331665039,
+            "y": 25.862285614013672,
+            "z": 504.1505126953125
+          },
+          "normal": {
+            "x": 0.03830794245004654,
+            "y": 0.9966050386428833,
+            "z": 0.07287487387657166
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "balcony",
+      "direction": "up",
+      "fraction": 1,
+      "reached": 377,
+      "goal": 376,
+      "ticks": 6860,
+      "position": {
+        "x": -208.58787536621094,
+        "y": 20.96568069458008,
+        "z": 504.9720458984375
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -208.5753936767578,
+            "y": 20.93563461303711,
+            "z": 504.9772644042969
+          },
+          "normal": {
+            "x": 6.209538696566597e-7,
+            "y": 0.9998720288276672,
+            "z": -0.015998752787709236
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "balcony",
+      "direction": "down",
+      "fraction": 0.25,
+      "reached": 95,
+      "goal": 94,
+      "ticks": 8555,
+      "position": {
+        "x": 31.141647338867188,
+        "y": 23.30722579956055,
+        "z": 497.8343811035156
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 31.134368896484375,
+            "y": 23.27695083618164,
+            "z": 497.83099365234375
+          },
+          "normal": {
+            "x": -0.0320800244808197,
+            "y": 0.9993318915367126,
+            "z": 0.01750631257891655
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "balcony",
+      "direction": "down",
+      "fraction": 0.55,
+      "reached": 208,
+      "goal": 207,
+      "ticks": 11275,
+      "position": {
+        "x": 289.3509521484375,
+        "y": 75.19262084960937,
+        "z": 374.51312255859375
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 289.4152526855469,
+            "y": 75.17374420166016,
+            "z": 374.4562683105469
+          },
+          "normal": {
+            "x": -0.2136770635843277,
+            "y": 0.9583975672721863,
+            "z": 0.18925195932388306
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "balcony",
+      "direction": "down",
+      "fraction": 0.8,
+      "reached": 302,
+      "goal": 301,
+      "ticks": 10275,
+      "position": {
+        "x": 393.159912109375,
+        "y": 148.56319580078124,
+        "z": 179.80616760253906
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 393.1225891113281,
+            "y": 148.57598876953125,
+            "z": 179.64772033691406
+          },
+          "normal": {
+            "x": 0.11450228840112686,
+            "y": 0.8621654510498047,
+            "z": 0.4935179352760315
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 28,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "balcony",
+      "direction": "down",
+      "fraction": 1,
+      "reached": 377,
+      "goal": 376,
+      "ticks": 7505,
+      "position": {
+        "x": 345.32440185546875,
+        "y": 176.61751708984374,
+        "z": -3.637146472930908
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": 345.3513488769531,
+            "y": 176.58828735351562,
+            "z": -3.641247510910034
+          },
+          "normal": {
+            "x": -0.07224360853433609,
+            "y": 0.9958285689353943,
+            "z": 0.05573334917426109
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "summit",
+      "direction": "up",
+      "fraction": 0.25,
+      "reached": 54,
+      "goal": 53,
+      "ticks": 5020,
+      "position": {
+        "x": -159.2669219970703,
+        "y": 226.38538513183593,
+        "z": -438.8312072753906
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -159.2130889892578,
+            "y": 226.36459350585938,
+            "z": -438.88848876953125
+          },
+          "normal": {
+            "x": -0.13648907840251923,
+            "y": 0.9712523221969604,
+            "z": 0.19503769278526306
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 199,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "summit",
+      "direction": "up",
+      "fraction": 0.55,
+      "reached": 118,
+      "goal": 117,
+      "ticks": 8265,
+      "position": {
+        "x": -282.954345703125,
+        "y": 293.7012878417969,
+        "z": -516.7916259765625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -283.0009765625,
+            "y": 293.67486572265625,
+            "z": -516.7738647460938
+          },
+          "normal": {
+            "x": 0.16715598106384277,
+            "y": 0.9838808178901672,
+            "z": -0.06354070454835892
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 133,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "summit",
+      "direction": "up",
+      "fraction": 0.8,
+      "reached": 170,
+      "goal": 169,
+      "ticks": 5790,
+      "position": {
+        "x": -288.4464111328125,
+        "y": 333.7504516601563,
+        "z": -449.6961669921875
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -288.29150390625,
+            "y": 333.76007080078125,
+            "z": -449.7220458984375
+          },
+          "normal": {
+            "x": -0.4835108518600464,
+            "y": 0.8716508746147156,
+            "z": 0.08026150614023209
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 182,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "summit",
+      "direction": "up",
+      "fraction": 1,
+      "reached": 212,
+      "goal": 211,
+      "ticks": 4120,
+      "position": {
+        "x": -204.36732482910156,
+        "y": 311.83318481445315,
+        "z": -396.1575012207031
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -204.39691162109375,
+            "y": 311.850341796875,
+            "z": -396.32562255859375
+          },
+          "normal": {
+            "x": 0.04989838972687721,
+            "y": 0.8705892562866211,
+            "z": 0.4894738793373108
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 329,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "summit",
+      "direction": "down",
+      "fraction": 0.25,
+      "reached": 54,
+      "goal": 53,
+      "ticks": 5965,
+      "position": {
+        "x": -313.6395263671875,
+        "y": 326.8895202636719,
+        "z": -449.68994140625
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -313.56439208984375,
+            "y": 326.868408203125,
+            "z": -449.67962646484375
+          },
+          "normal": {
+            "x": -0.20593957602977753,
+            "y": 0.9782593250274658,
+            "z": -0.024446066468954086
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 204,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "summit",
+      "direction": "down",
+      "fraction": 0.55,
+      "reached": 118,
+      "goal": 117,
+      "ticks": 5465,
+      "position": {
+        "x": -229.69076538085938,
+        "y": 278.6105590820313,
+        "z": -518.778564453125
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -229.80609130859375,
+            "y": 278.6055603027344,
+            "z": -518.8314819335938
+          },
+          "normal": {
+            "x": 0.30997180938720703,
+            "y": 0.9405345916748047,
+            "z": 0.13896824419498444
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 137,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "summit",
+      "direction": "down",
+      "fraction": 0.8,
+      "reached": 170,
+      "goal": 169,
+      "ticks": 4550,
+      "position": {
+        "x": -144.51988220214844,
+        "y": 224.23046264648437,
+        "z": -419.09600830078125
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -144.52220153808594,
+            "y": 224.2024688720703,
+            "z": -419.1344299316406
+          },
+          "normal": {
+            "x": -0.01379150990396738,
+            "y": 0.9965009093284607,
+            "z": 0.08243601769208908
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 224,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "routeId": "summit",
+      "direction": "down",
+      "fraction": 1,
+      "reached": 212,
+      "goal": 211,
+      "ticks": 3960,
+      "position": {
+        "x": -85.67768096923828,
+        "y": 220.52752075195312,
+        "z": -321.15899658203125
+      },
+      "grounded": true,
+      "contacts": [
+        {
+          "shape": 6,
+          "centre": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "point": {
+            "x": -85.70881652832031,
+            "y": 220.50033569335938,
+            "z": -321.1907958984375
+          },
+          "normal": {
+            "x": 0.0729009285569191,
+            "y": 0.995414674282074,
+            "z": 0.06192806735634804
+          }
+        }
+      ],
+      "stats": {
+        "trees": 1214,
+        "rocks": 446,
+        "strata": 8233,
+        "generationMs": 3860.5,
+        "version": "connected-uplands-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    }
+  ],
+  "errors": []
+}

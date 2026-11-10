@@ -1,339 +1,427 @@
-// Pure-data experiment. No Region mutations or renderer/physics dependencies.
-import { Rng, Simplex2, clamp, lerp, smoothstep } from "../../src/core/rng";
+// Connected uplands: broad basin patches, independently shaped rock masses and
+// asymmetric passes. The graph describes actual geographic connections, not
+// floating paths or stacked horizontal platforms. RockSkin is a separate layer.
+import { Rng, Simplex2, clamp, lerp, smoothstep, hashString } from '../../src/core/rng';
 export interface Point {
-  x: number;
-  y: number;
-  z: number;
+    x: number;
+    y: number;
+    z: number;
 }
 export interface Route {
-  id: string;
-  name: string;
-  width: number;
-  points: Point[];
+    id: string;
+    name: string;
+    width: number;
+    points: Point[];
+    status: 'planned';
+    from: string;
+    to: string;
 }
 export interface View {
-  id: string;
-  name: string;
-  position: Point;
-  target: Point;
+    id: string;
+    name: string;
+    position: Point;
+    target: Point;
 }
-export const VERSION = "landforms-lab-2";
-export const SIZE = 1600,
-  CELL = 4;
-export class Landforms {
-  readonly n = SIZE / CELL;
-  readonly heights = new Float32Array((this.n + 1) ** 2);
-  readonly routes: Route[];
-  readonly views: View[];
-  readonly upper: number;
-  readonly yaw: number;
-  readonly mirror: number;
-  readonly noise: Simplex2;
-  readonly lake: {
+interface Node extends Point {
+    width: number;
+    right: number;
+}
+interface Axis {
+    id: string;
+    nodes: Node[];
+    supportSlope?: number;
+}
+interface Region {
+    id: string;
+    name: string;
     x: number;
     z: number;
     y: number;
-    rx: number;
-    rz: number;
-  };
-  readonly drainage: Point[];
-  /** Bedrock core shared by the massif and its attached contour shelf. */
-  readonly shoulderCore = { x: 125, z: 75 };
-  constructor(readonly seed: number) {
-    const rng = new Rng(seed),
-      noiseRng = new Rng(seed ^ 0x6a73f);
-    this.noise = new Simplex2(() => noiseRng.next());
-    this.upper = rng.float(101, 121);
-    this.yaw = rng.float(-0.35, 0.35);
-    this.mirror = rng.chance(0.5) ? 1 : -1;
-    const H = this.upper,
-      bend = rng.float(-18, 18);
-    const route = (
-      id: string,
-      name: string,
-      width: number,
-      points: number[][],
-    ): Route => ({
-      id,
-      name,
-      width,
-      points: this.spline(points.map(([x, y, z]) => ({ x, y, z }))),
-    });
-    this.routes = [
-      route("apron", "Широкий снежный склон", 29 + rng.float(0, 10), [
-        [-420, 20, 300],
-        [-490, 34, 185],
-        [-470, 57, 65],
-        [-360, 83, -70],
-        [-195, H, -165],
-        [-40, H, -210],
-      ]),
-      route("gully", "Извилистая ложбина", 12 + rng.float(0, 5), [
-        [-220, 20, 300],
-        [-120, 32, 200],
-        [-210 + bend, 49, 100],
-        [-120, 66, 5],
-        [-165, 85, -80],
-        [-40, H, -175],
-        [70, H, -210],
-      ]),
-      route("shoulder", "Полка вокруг скального плеча", 10 + rng.float(0, 4), [
-        [-210 + bend, 49, 100],
-        [-65, 61, 170],
-        [100, 81, 205],
-        [275, 107, 140],
-        [315, H + 13, 0],
-        [255, H, -140],
-        [150, H, -200],
-      ]),
-    ];
-    this.lake = {
-      x: 205,
-      z: -235,
-      y: H + 0.3,
-      rx: 52 + rng.float(0, 12),
-      rz: 31 + rng.float(0, 8),
-    };
-    this.drainage = this.spline([
-      { x: 235, y: H + 0.3, z: -215 },
-      { x: 305, y: H - 1, z: -195 },
-      { x: 370, y: H - 8, z: -150 },
-      { x: 412, y: H - 35, z: -60 },
-      { x: 440, y: 45, z: 60 },
-      { x: 465, y: 22, z: 200 },
-    ]);
-    for (let j = 0; j <= this.n; j++)
-      for (let i = 0; i <= this.n; i++)
-        this.heights[j * (this.n + 1) + i] = this.form(
-          i * CELL - SIZE / 2,
-          j * CELL - SIZE / 2,
-        );
-    const view = (
-      id: string,
-      name: string,
-      x: number,
-      z: number,
-      tx: number,
-      tz: number,
-      dy = 1.8,
-      tdy = 18,
-    ): View => {
-      const p = this.world(x, z),
-        t = this.world(tx, tz);
-      return {
-        id,
-        name,
-        position: { ...p, y: this.heightAt(p.x, p.z) + dy },
-        target: { ...t, y: this.heightAt(t.x, t.z) + tdy },
-      };
-    };
-    this.views = [
-      view("lower", "Нижняя долина", -290, 360, 120, -160),
-      view("reveal", "Выход в верхнюю долину", -100, -172, 250, -250),
-      view("upper", "Верхний лес и озеро", 110, -200, 260, -270),
-      view("slope", "Снежный склон", -465, 150, -380, -70),
-      view("gully", "Поворот ложбины", -165, 150, -180, 65),
-      view("ledge", "На круговой полке", 135, 201, 270, 100),
-      view("back", "Взгляд вниз", 290, 45, -180, 340, 1.8, 8),
-      view("overview", "Общий вид", -400, 520, 100, -120, 330, 45),
-    ];
-  }
-  local(x: number, z: number) {
-    const c = Math.cos(this.yaw),
-      s = Math.sin(this.yaw);
-    return { x: (c * x + s * z) * this.mirror, z: -s * x + c * z };
-  }
-  world(x: number, z: number) {
-    x *= this.mirror;
-    const c = Math.cos(this.yaw),
-      s = Math.sin(this.yaw);
-    return { x: c * x - s * z, z: s * x + c * z };
-  }
-  private spline(p: Point[]) {
-    const out: Point[] = [];
+    polygon: number[][];
+    feather: number;
+    tiltX: number;
+    tiltZ: number;
+    access: { core: { x: number; z: number }; minConnectedArea: number };
+    openSide?: { x: number; z: number; feather: number };
+    rolloff?: { x: number; z: number; curvature: number };
+}
+interface Mass {
+    id: string;
+    polygon: number[][];
+    height: number;
+    skirt: number;
+    wall: number;
+    dipX: number;
+    dipZ: number;
+    // The back of a ridge rises through snow-covered shoulders instead of
+    // repeating its exposed cliff all the way around the polygon.
+    back?: { x: number; z: number; width: number; inset: number };
+    // Broken ridge axis: height belongs to a crest and its flanks, not a flat cap.
+    spine?: number[][];
+    referenceHeight?: number;
+}
+export const VERSION = 'expedition-uplands-2';
+export const SIZE = 1600, CELL = 4;
+const stream = (seed: number, id: string) => new Rng(seed ^ hashString(VERSION + '/' + id));
+function polygonDistance(poly: number[][], x: number, z: number) {
+    let inside = false, d = Infinity;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const a = poly[j], b = poly[i], dx = b[0] - a[0], dz = b[1] - a[1];
+        const t = clamp(((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz), 0, 1);
+        d = Math.min(d, (x - a[0] - t * dx) ** 2 + (z - a[1] - t * dz) ** 2);
+        if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0])
+            inside = !inside;
+    }
+    return (inside ? 1 : -1) * Math.sqrt(d);
+}
+function project(a: Axis, x: number, z: number) {
+    let best = { d: Infinity, side: 0, y: 0, width: 1, right: 1 };
+    for (let i = 1; i < a.nodes.length; i++) {
+        const p = a.nodes[i - 1], q = a.nodes[i], dx = q.x - p.x, dz = q.z - p.z;
+        const t = clamp(((x - p.x) * dx + (z - p.z) * dz) / (dx * dx + dz * dz), 0, 1), ux = x - p.x - t * dx, uz = z - p.z - t * dz, d = ux * ux + uz * uz;
+        if (d < best.d)
+            best = { d, side: dx * uz - dz * ux, y: lerp(p.y, q.y, t), width: lerp(p.width, q.width, t), right: lerp(p.right, q.right, t) };
+    }
+    best.d = Math.sqrt(best.d);
+    return best;
+}
+// Cubic plan curvature; monotonic interpolated height and width avoid humps at
+// the transitions. This is a valley axis, not an independently rendered ribbon.
+function axis(id: string, p: number[][]): Axis {
+    const nodes: Node[] = [];
+    const cubic = (a: number, b: number, c: number, d: number, t: number) => .5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
     for (let k = 0; k < p.length - 1; k++) {
-      const a = p[Math.max(0, k - 1)],
-        b = p[k],
-        c = p[k + 1],
-        d = p[Math.min(p.length - 1, k + 2)],
-        n = Math.ceil(Math.hypot(c.x - b.x, c.z - b.z) / 4);
-      for (let j = 0; j < n; j++) {
-        const t = j / n;
-        const f = (v: keyof Point) =>
-          0.5 *
-          (2 * b[v] +
-            (-a[v] + c[v]) * t +
-            (2 * a[v] - 5 * b[v] + 4 * c[v] - d[v]) * t * t +
-            (-a[v] + 3 * b[v] - 3 * c[v] + d[v]) * t * t * t);
-        out.push({
-          x: f("x"),
-          y: lerp(b.y, c.y, t * t * (3 - 2 * t)),
-          z: f("z"),
-        });
-      }
+        const a = p[Math.max(0, k - 1)], b = p[k], c = p[k + 1], d = p[Math.min(p.length - 1, k + 2)];
+        const count = Math.ceil(Math.hypot(c[0] - b[0], c[2] - b[2]) / 10);
+        for (let i = 0; i < count; i++) {
+            const t = i / count;
+            nodes.push({ x: cubic(a[0], b[0], c[0], d[0], t), z: cubic(a[2], b[2], c[2], d[2], t), y: lerp(b[1], c[1], t), width: lerp(b[3], c[3], t), right: lerp(b[4] ?? b[3], c[4] ?? c[3], t) });
+        }
     }
-    out.push(p[p.length - 1]);
-    return out;
-  }
-  private near(points: Point[], x: number, z: number) {
-    let d = Infinity,
-      y = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      const a = points[i],
-        b = points[i + 1],
-        dx = b.x - a.x,
-        dz = b.z - a.z,
-        t = clamp(
-          ((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz),
-          0,
-          1,
-        ),
-        dist = Math.hypot(x - a.x - t * dx, z - a.z - t * dz);
-      if (dist < d) {
-        d = dist;
-        y = lerp(a.y, b.y, t);
-      }
+    const a = p[p.length - 1];
+    nodes.push({ x: a[0], y: a[1], z: a[2], width: a[3], right: a[4] ?? a[3] });
+    return { id, nodes };
+}
+// The closest crest section defines a continuous flank. A broad back and a
+// sharper inward face are selected by the signed side of the crest axis.
+function crestProfile(nodes: number[][], x: number, z: number) {
+    let best = { distance: Infinity, height: 0, width: 1, side: 0 };
+    for (let i = 1; i < nodes.length; i++) {
+        const a = nodes[i - 1], b = nodes[i], dx = b[0] - a[0], dz = b[1] - a[1];
+        const t = clamp(((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz), 0, 1);
+        const ox = x - a[0] - t * dx, oz = z - a[1] - t * dz, distance = Math.hypot(ox, oz);
+        if (distance < best.distance) {
+            const side = dx * oz - dz * ox;
+            best = { distance, height: lerp(a[2], b[2], t), width: lerp(side < 0 ? a[3] : (a[4] ?? a[3]), side < 0 ? b[3] : (b[4] ?? b[3]), t), side };
+        }
     }
-    return { d, y };
-  }
-  /** Fill inward from the shelf along radial sections of its shared rock core.
-   * Radial intersections stay continuous across bends; nearest-route projection
-   * changes sides inside the massif and would introduce artificial tall fins.
-   */
-  private shelfSupport(x: number, z: number) {
-    const shelf = this.routes[2],
-      core = this.shoulderCore,
-      dx = x - core.x,
-      dz = z - core.z,
-      distance = Math.hypot(dx, dz),
-      ux = dx / Math.max(distance, 1e-6),
-      uz = dz / Math.max(distance, 1e-6);
-    let support = 0;
-    for (let i = 0; i < shelf.points.length - 1; i++) {
-      const a = shelf.points[i],
-        b = shelf.points[i + 1],
-        ax = a.x - core.x,
-        az = a.z - core.z,
-        sx = b.x - a.x,
-        sz = b.z - a.z,
-        cross = sx * uz - sz * ux;
-      if (Math.abs(cross) < 1e-8) continue;
-      const t = -(ax * uz - az * ux) / cross;
-      if (t < 0 || t > 1) continue;
-      const radius = (ax + sx * t) * ux + (az + sz * t) * uz;
-      if (radius <= distance) continue;
-      const along = (i + t) / (shelf.points.length - 1),
-        attachment =
-          smoothstep(0.06, 0.17, along) * (1 - smoothstep(0.78, 0.93, along)),
-        tread = lerp(a.y, b.y, t),
-        inward = Math.max(0, radius - distance - shelf.width * 0.38),
-        headroom = 235 - tread,
-        wall = tread + headroom * (1 - Math.exp((-inward * 1.65) / headroom));
-      // The profile steepens beside the tread and rounds into the existing peak.
-      // It never extrapolates an unbounded wall through the centre of the massif.
-      support = Math.max(support, wall * attachment);
+    return best;
+}
+
+export class Landforms {
+    readonly n = SIZE / CELL;
+    readonly heights = new Float32Array((this.n + 1) ** 2);
+    readonly routes: Route[] = [];
+    readonly views: View[] = [];
+    readonly upper = 118;
+    // Keep the playable northern crest inside RockSkin's detailed interior.
+    // Outer rows are intentionally coarse and belong beyond walkable destinations.
+    readonly offsetZ = 120;
+    readonly yaw: number;
+    readonly mirror: number;
+    readonly noise: Simplex2;
+    readonly lake = { x: 35, z: -155, y: 119, rx: 64, rz: 43 };
+    readonly drainage: Point[] = [];
+    readonly regions: Region[];
+    readonly masses: Mass[];
+    readonly valleys: Axis[] = [];
+    readonly ridges: Mass[];
+    readonly plan: {
+        version: string;
+        family: string;
+        geography: string[];
+        drainage: string[];
+        traversal: {
+            id: string;
+            from: string;
+            to: string;
+            status: 'planned';
+        }[];
+    };
+    private drainageAxis: Axis;
+    private routeAxes: Axis[] = [];
+    constructor(readonly seed: number) {
+        const rng = stream(seed, 'layout'), nr = stream(seed, 'surface');
+        this.noise = new Simplex2(() => nr.next());
+        this.yaw = seed === 42 ? 0 : rng.float(-.2, .2);
+        this.mirror = seed === 42 ? 1 : rng.chance(.5) ? 1 : -1;
+        const usefulFloor: Record<string, number> = { lowland: 25600, pocket: 3840, lake: 24000, shoulder: 12000, cirque: 12000, summit: 800 };
+        const region = (id: string, name: string, x: number, z: number, y: number, polygon: number[][], feather: number, tiltX = 0, tiltZ = 0): Region => ({ id, name, x, z, y, polygon, feather, tiltX, tiltZ, access: { core: { x, z }, minConnectedArea: usefulFloor[id] } });
+        this.regions = [
+            region('lowland', 'Нижний лес', -190, 400, 22, [[-470, 530], [-40, 530], [90, 380], [-40, 290], [-230, 280], [-420, 350]], 80, .012, -.025),
+            region('pocket', 'Тихая котловина', -285, 170, 59, [[-370, 205], [-300, 240], [-200, 200], [-185, 135], [-260, 105], [-350, 125]], 65, .035, -.1),
+            region('lake', 'Озёрная долина', -15, -170, 122, [[-260, -75], [-100, -65], [10, -80], [150, -55], [210, -140], [170, -240], [20, -290], [-125, -260], [-250, -210]], 45, .018, -.028),
+            region('shoulder', 'Восточная лесная долина', 345, -125, 177, [[240, -40], [335, 20], [420, -45], [460, -145], [395, -230], [315, -230], [250, -170]], 32, .035, -.04),
+            region('cirque', 'Высокая снежная котловина', -90, -440, 222, [[-230, -425], [-165, -350], [-40, -350], [60, -410], [20, -515], [-105, -550], [-205, -510]], 30, .018, -.04),
+        ];
+        // A basin has a cliff side and an open shoulder. Without this transition
+        // it would cut a fresh defensive wall even through a massif's gentle back.
+        const openings: Record<string, [number, number, number]> = {
+            pocket: [-1, .2, 100],
+            lake: [-.7, -.4, 150],
+            shoulder: [1, .2, 110],
+            cirque: [-1, .1, 120],
+        };
+        for (const r of this.regions) {
+            const o = openings[r.id];
+            if (o) {
+                const n = Math.hypot(o[0], o[1]);
+                r.openSide = { x: o[0] / n, z: o[1] / n, feather: o[2] };
+            }
+        }
+        const mass = (id: string, height: number, polygon: number[][], wall = 28, skirt = 100, dipX = .025, dipZ = -.025): Mass => ({ id, height, polygon, wall, skirt, dipX, dipZ });
+        this.masses = [
+            mass('upland-bedrock', 150, [[-480, 160], [-300, 230], [-90, 135], [105, 210], [315, 130], [470, 40], [530, -170], [435, -415], [220, -590], [-210, -610], [-465, -390], [-525, -100]], 58, 160),
+            mass('foreground-buttress', 155, [[-140, 245], [-55, 300], [35, 245], [90, 150], [30, 100], [-65, 140], [-135, 165]], 22, 65, .08, -.04),
+            mass('west-gate', 172, [[-455, 80], [-365, 95], [-315, 35], [-330, -75], [-395, -105], [-460, -15]], 23, 80, -.04, -.035),
+            mass('inner-nose', 183, [[-185, 50], [-125, 90], [-55, 40], [-65, -40], [-145, -75], [-210, -20]], 19, 62, .035, -.08),
+            mass('east-terrace', 205, [[205, 95], [355, 150], [490, 35], [510, -170], [420, -300], [270, -280], [195, -150]], 30, 90, .025, -.05),
+            mass('east-divide', 290, [[130, 55], [200, 80], [255, 5], [230, -80], [230, -175], [160, -265], [100, -225], [110, -90]], 25, 85, .06, -.09),
+            mass('west-highland', 252, [[-515, -60], [-450, -30], [-375, -100], [-320, -220], [-350, -325], [-440, -345], [-525, -230]], 30, 115, -.03, -.08),
+            mass('north-highland', 265, [[-370, -340], [-230, -285], [-65, -290], [75, -315], [200, -410], [110, -585], [-115, -640], [-335, -555]], 35, 110, .025, -.045),
+            mass('north-crown', 348, [[-320, -525], [-220, -505], [-155, -555], [-155, -630], [-260, -660], [-350, -615]], 32, 85, -.08, .03),
+            mass('cirque-wall', 315, [[-55, -325], [5, -285], [80, -340], [90, -430], [35, -460], [-20, -410]], 24, 65, .06, -.03),
+            mass('connecting-divide', 260, [[80, -550], [185, -600], [280, -540], [330, -420], [310, -310], [235, -285], [175, -390]], 65, 120, .02, -.02),
+            mass('eastern-apron', 170, [[310, -40], [440, 30], [475, 125], [375, 230], [225, 290], [165, 190], [245, 70]], 130, 160, .04, -.14),
+            mass('east-crown', 356, [[315, -335], [430, -265], [530, -325], [510, -465], [405, -515], [310, -455]], 26, 95, .06, -.06),
+        ];
+        const backs: Record<string, [number, number, number, number?]> = {
+            'foreground-buttress': [0, -1, 165],
+            'west-gate': [-1, -.2, 180],
+            'inner-nose': [.2, 1, 190],
+            'east-terrace': [1, .2, 230],
+            'east-divide': [1, -.1, 260],
+            'west-highland': [-1, .3, 240],
+            // This back continues through the western part of the rock mass.
+            // It opens the high ascent onto a shoulder rather than two walls.
+            'north-highland': [-.8, .6, 250, 160],
+            'north-crown': [-1, -.2, 290],
+            'cirque-wall': [.8, -.6, 250],
+            'east-crown': [1, -.2, 290],
+        };
+        for (const m of this.masses) {
+            const b = backs[m.id];
+            if (b) {
+                const n = Math.hypot(b[0], b[1]);
+                m.back = { x: b[0] / n, z: b[1] / n, width: b[2], inset: b[3] ?? 0 };
+            }
+        }
+        // A common inclined land body now supports the districts. The former
+        // level 150 m foundation produced a continuous defensive perimeter.
+        const spines: Record<string, number[][]> = {
+            'foreground-buttress': [[-108, 270, 93, 70, 125], [-25, 210, 156, 55, 100], [34, 128, 127, 60, 120]],
+            'west-gate': [[-472, 50, 137, 90, 42], [-395, 28, 180, 95, 43], [-350, -70, 167, 90, 45]],
+            'inner-nose': [[-180, 36, 140, 42, 92], [-120, 8, 185, 44, 100], [-75, -45, 170, 47, 110]],
+            'east-divide': [[160, 62, 216, 65, 135], [172, -88, 282, 52, 120], [140, -235, 245, 55, 130]],
+            'west-highland': [[-493, -35, 184, 155, 75], [-438, -160, 258, 175, 65], [-378, -290, 241, 160, 60]],
+            'north-highland': [[-350, -328, 204, 170, 70], [-223, -314, 249, 190, 64], [-82, -310, 257, 145, 58], [95, -365, 262, 130, 60]],
+            'cirque-wall': [[-15, -317, 262, 42, 90], [50, -355, 312, 42, 100], [55, -436, 293, 46, 100]],
+            'connecting-divide': [[115, -562, 248, 85, 145], [243, -510, 270, 75, 145], [280, -365, 231, 62, 130]],
+            'east-crown': [[338, -357, 304, 100, 135], [424, -391, 365, 75, 120], [493, -460, 300, 115, 150]],
+        };
+        for (const m of this.masses) { m.spine = spines[m.id]; m.referenceHeight = m.height; }
+        this.ridges = this.masses;
+        // Seed changes physical shapes, while preserving ports of this composition.
+        // Topology variants are deliberately deferred until this family is reviewed.
+        if (seed !== 42)
+            for (const m of this.masses) {
+                const r = stream(seed, m.id);
+                m.height += r.float(-8, 8);
+                m.wall *= r.float(.9, 1.1);
+                m.polygon = m.polygon.map(([x, z]) => [x + r.float(-9, 9), z + r.float(-9, 9)]);
+            }
+        const connect = (id: string, name: string, from: string, to: string, p: number[][], supportSlope = .45) => {
+            const a = axis(id, p);
+            a.supportSlope = supportSlope;
+            this.valleys.push(a);
+            this.routeAxes.push(a);
+            this.routes.push({ id, name, from, to, width: Math.min(...p.map(p => p[3])), points: [], status: 'planned' });
+        };
+        connect('gully', 'Лесная ложбина к котловине', 'lowland', 'pocket', [
+            [-210, 23, 385, 52, 62], [-280, 34, 300, 28, 40], [-285, 57, 170, 40, 62]
+        ]);
+        connect('gates', 'Каменные ворота к озеру', 'pocket', 'lake', [
+            [-285, 57, 170, 40, 62], [-255, 75, 90, 16, 30], [-260, 99, 0, 22, 38], [-210, 119, -115, 45, 55]
+        ]);
+        connect('apron', 'Западный снежный обход', 'lowland', 'lake', [
+            [-210, 23, 385, 60], [-430, 30, 350, 65], [-535, 50, 225, 50], [-545, 74, 65, 42], [-505, 93, -90, 32], [-385, 113, -170, 28], [-210, 119, -115, 45]
+        ]);
+        connect('east', 'Восточный перевал', 'lake', 'shoulder', [
+            [90, 122, -185, 40], [185, 132, -285, 25, 40], [280, 162, -305, 22, 35], [355, 178, -195, 36, 50], [345, 177, -125, 45]
+        ]);
+        connect('high', 'Подъём в высокую котловину', 'lake', 'cirque', [
+            [-210, 119, -115, 42], [-280, 128, -230, 26, 42], [-290, 135, -260, 24, 36], [-300, 158, -330, 22, 32], [-245, 189, -430, 20, 28], [-160, 220, -455, 35], [-85, 222, -440, 45]
+        ]);
+        connect('saddle', 'Седловина между верхними районами', 'cirque', 'shoulder', [
+            [-85, 222, -440, 42], [25, 235, -510, 20, 30], [140, 242, -530, 20, 32], [225, 199, -450, 25, 38], [245, 178, -385, 24, 35], [280, 162, -305, 22, 35], [355, 178, -195, 36, 50], [345, 177, -125, 45]
+        ]);
+        connect('balcony', 'Обход по лесному плечу', 'shoulder', 'lowland', [
+            [345, 177, -125, 45], [385, 155, 10, 30, 44], [390, 122, 130, 30, 60], [320, 87, 225, 42, 70], [210, 52, 310, 50, 72], [20, 32, 380, 60], [-210, 23, 385, 60]
+        ]);
+        connect('summit', 'Восхождение на северный гребень', 'cirque', 'summit', [
+            [-85, 222, -440, 40], [-145, 225, -540, 26, 40], [-160, 230, -560, 26, 36], [-190, 257, -595, 26, 36], [-245, 285, -645, 24, 36], [-330, 305, -610, 22, 30], [-315, 326, -570, 22, 30], [-245, 340, -570, 26, 32], [-211, 312, -518, 28, 36]
+        ], .85);
+        this.drainageAxis = axis('outlet', [[35, 119, -155, 5], [-60, 118, -155, 5], [-155, 117, -125, 5], [-220, 109, -70, 5], [-260, 98, 0, 5], [-255, 74, 90, 5], [-285, 55, 170, 5], [-280, 32, 300, 5], [-210, 21, 385, 5]]);
+        this.drainage.push(...this.drainageAxis.nodes.map(({ x, y, z }) => ({ x, y, z })));
+        this.regions.push(region('summit', 'Северный гребень', -245, -570, 340, [[-270, -590], [-230, -590], [-187, -520], [-202, -495], [-250, -525], [-280, -555]], 26, 0, -.32));
+        // The viewing nose rounds down into the cirque, so standing a safe step
+        // back from the edge still reveals its floor. It remains part of the ridge.
+        this.regions[this.regions.length - 1].rolloff = { x: .55, z: .835, curvature: .0024 };
+        this.plan = { version: VERSION, family: 'interlocking-upland-basins', geography: [...this.regions.map(r => r.id), ...this.masses.map(m => m.id)], drainage: ['lake', 'pocket', 'lowland'], traversal: this.routes.map(r => ({ id: r.id, from: r.from, to: r.to, status: 'planned' })) };
+        for (let j = 0; j <= this.n; j++)
+            for (let i = 0; i <= this.n; i++)
+                this.heights[j * (this.n + 1) + i] = this.form(i * CELL - SIZE / 2, j * CELL - SIZE / 2);
+        // The final few walking metres follow the formed crest to its viewing edge.
+        // They remain inside the planned pass envelope; they do not carve a new road.
+        const summitAxis = this.routeAxes[this.routeAxes.length - 1];
+        const overlook = this.world(-203, -516);
+        this.routeAxes[this.routeAxes.length - 1] = { ...summitAxis, nodes: [...summitAxis.nodes, { x: -203, z: -516, y: this.heightAt(overlook.x, overlook.z), width: 16, right: 16 }] };
+        this.routes.forEach((r, i) => { const a = this.routeAxes[i]; for (let k = 1; k < a.nodes.length; k++) {
+            const p = a.nodes[k - 1], q = a.nodes[k], n = Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / 3);
+            for (let t = 0; t < n; t++) {
+                const x = lerp(p.x, q.x, t / n), z = lerp(p.z, q.z, t / n), w = this.world(x, z);
+                r.points.push({ x, z, y: this.heightAt(w.x, w.z) });
+            }
+        } const p = a.nodes[a.nodes.length - 1], w = this.world(p.x, p.z); r.points.push({ x: p.x, z: p.z, y: this.heightAt(w.x, w.z) }); });
+        const view = (id: string, name: string, x: number, z: number, tx: number, tz: number, dy = 1.8, tdy = 8) => { const p = this.world(x, z), t = this.world(tx, tz); this.views.push({ id, name, position: { ...p, y: this.heightAt(p.x, p.z) + dy }, target: { ...t, y: this.heightAt(t.x, t.z) + tdy } }); };
+        view('lower', 'Подножие · выбор пути', -210, 385, -255, 135);
+        view('slope', 'Западный снежный склон', -535, 225, -505, 50);
+        view('gully', 'Промежуточная котловина', -285, 205, -255, 65);
+        view('ledge', 'Поворот между массивами', -255, 75, -265, -15);
+        view('reveal', 'За воротами · озёрная долина', -195, -150, 35, -155);
+        view('upper', 'Озеро · следующие высоты', -30, -105, 65, -265);
+        view('back', 'Обратный вид в нижний лес', -255, 40, -280, 230);
+        view('cirque', 'Высокая котловина', -150, -430, 5, -415);
+        view('shoulder', 'Восточная лесная долина', 340, -100, 295, -250);
+        view('saddle', 'Связь двух верхних районов', 125, -530, 245, -390);
+        view('summit', 'Северный гребень · вид на котловину', -203, -516, -80, -430, 1.8, 30);
+        view('overview', 'Весь связанный район', -630, 710, 0, -170, 520, 60);
     }
-    return support;
-  }
-  routeDistance(x: number, z: number) {
-    const p = this.local(x, z);
-    return Math.min(...this.routes.map((r) => this.near(r.points, p.x, p.z).d));
-  }
-  waterAt(x: number, z: number) {
-    const p = this.local(x, z),
-      l = this.lake;
-    return Math.hypot((p.x - l.x) / l.rx, (p.z - l.z) / l.rz) < 1 ? l.y : NaN;
-  }
-  private form(wx: number, wz: number) {
-    const { x, z } = this.local(wx, wz),
-      N = this.noise,
-      H = this.upper;
-    let h = 22 + N.fbm(x / 410, z / 410, 3) * 11 + N.noise(x / 90, z / 90) * 2;
-    const e = Math.hypot((x - 130) / 360, (z + 210) / 220);
-    h = Math.max(h, H * (1 - smoothstep(0.85, 1.16, e)));
-    const rx = x + 17 * N.noise(x / 90 + 13, z / 120),
-      rz = z + 13 * N.noise(x / 110, z / 85 + 9);
-    const ridge = (
-      cx: number,
-      cz: number,
-      sx: number,
-      sz: number,
-      height: number,
-    ) =>
-      height * Math.exp(-(((rx - cx) / sx) ** 2 + ((rz - cz) / sz) ** 2) * 1.9);
-    // Overlapping elongated shoulders, unequal peaks; an open southern lowland.
-    h +=
-      ridge(80, -440, 350, 115, 160) +
-      ridge(-300, -320, 125, 210, 183) +
-      ridge(490, -260, 135, 265, 220) +
-      ridge(this.shoulderCore.x, this.shoulderCore.z, 120, 90, 202) +
-      ridge(-80, -440, 125, 115, 100);
-    h += N.fbm(x / 70, z / 70, 3) * 22 * smoothstep(65, 180, h);
-    const floor = H + 2.7 * N.noise(x / 120, z / 135) + 1.7 * Math.sin(x / 110);
-    h = lerp(h, floor, 1 - smoothstep(0.59, 0.91, e));
-    const lower = Math.hypot((x + 250) / 300, (z - 340) / 150);
-    h = lerp(
-      h,
-      20 + N.noise(x / 100, z / 100) * 1.2,
-      1 - smoothstep(0.6, 1.2, lower),
-    );
-    // The contour shelf belongs to the massif: close the entire inner cross-section
-    // before cutting its walkable tread. A symmetric route support alone would leave
-    // a free-standing ring and a trench between the tread and the original peak.
-    h = Math.max(h, this.shelfSupport(x, z));
-    // Corridors preserve space, not identical steps. Width varies smoothly along their length.
-    let total = 0,
-      target = 0,
-      weight = 0;
-    for (const r of this.routes) {
-      const a = this.near(r.points, x, z),
-        w = r.width * (1 + 0.14 * N.noise(x / 80 + 11, z / 80));
-      const f = 1 - smoothstep(w * 0.45, w * 1.55, a.d);
-      total += f;
-      target += f * (a.y + 0.18 * N.noise(x / 12, z / 12));
-      weight = Math.max(weight, f);
+    local(x: number, z: number) { z -= this.offsetZ; const c = Math.cos(this.yaw), s = Math.sin(this.yaw); return { x: (c * x + s * z) * this.mirror, z: -s * x + c * z }; }
+    world(x: number, z: number) { x *= this.mirror; const c = Math.cos(this.yaw), s = Math.sin(this.yaw); return { x: c * x - s * z, z: s * x + c * z + this.offsetZ }; }
+    private form(wx: number, wz: number) {
+        const { x, z } = this.local(wx, wz), N = this.noise;
+        const nx = x + N.noise(x / 110 + 4, z / 140) * 6, nz = z + N.noise(x / 130, z / 115 - 7) * 6;
+        const foothill = 20 + N.fbm(x / 240, z / 240, 3) * 5;
+        const ascent = smoothstep(300, -680, z);
+        const westEdge = -570 + 60 * Math.sin((z + 200) / 260);
+        const eastEdge = 555 - 30 * Math.sin(z / 210);
+        const lateral = smoothstep(westEdge - 170, westEdge + 90, x) * (1 - smoothstep(eastEdge - 65, eastEdge + 155, x));
+        const northFall = 1 - smoothstep(-650, -900, z);
+        let h = foothill + (16 + 245 * ascent) * lateral * northFall;
+        for (const m of this.masses) {
+            if (m.id === 'upland-bedrock') continue;
+            if (m.spine) {
+                const crest = crestProfile(m.spine, nx, nz);
+                const t = Math.max(0, 1 - crest.distance / crest.width);
+                // A narrow hard upper face grows from a long natural flank. The
+                // crest breaks in height along its axis rather than closing a ring.
+                const flank = .42 * t + .58 * smoothstep(.15, .8, t);
+                const roof = crest.height + (m.height - (m.referenceHeight ?? m.height)) + N.noise(x / 145, z / 130) * 3;
+                h = Math.max(h, foothill + (roof - foothill) * flank);
+                continue;
+            }
+            const d = polygonDistance(m.polygon, nx, nz);
+            const cx = m.polygon.reduce((v, p) => v + p[0], 0) / m.polygon.length, cz = m.polygon.reduce((v, p) => v + p[1], 0) / m.polygon.length;
+            const back = m.back ? smoothstep(-.2, .7, ((x - cx) * m.back.x + (z - cz) * m.back.z) / Math.max(1, Math.hypot(x - cx, z - cz))) : 0;
+            const wall = lerp(m.wall, m.back?.width ?? m.wall, back);
+            if (d < -m.skirt - wall)
+                continue;
+            const crown = m.id.includes('crown'), rib = m.id === 'east-divide' || m.id === 'cirque-wall';
+            const cap = m.id === 'upland-bedrock' ? 0 : Math.abs(x - cx) * (crown ? .85 : rib ? .52 : .24) + Math.abs(z - cz) * (crown ? .65 : .18);
+            const roof = m.height + m.dipX * (x - cx) + m.dipZ * (z - cz) - cap + N.noise(x / 100, z / 110) * 6;
+            // Broad apron, steep face, shoulder: separate slope regimes, not one cone.
+            const apron = smoothstep(-m.skirt - wall, -wall, d) * .22;
+            const face = smoothstep(-wall, 8 + back * (m.back?.inset ?? 0), d) * .78;
+            h = Math.max(h, 22 + (roof - 22) * (apron + face) + smoothstep(0, 45, d) * 8);
+        }
+        // Connections need a bedrock foundation, but that support must precede
+        // the basins: a distant summit must not refill an already carved cirque.
+        const projections = this.valleys.map(a => ({ ...project(a, x, z), supportSlope: a.supportSlope ?? .45 }));
+        for (const p of projections)
+            h = Math.max(h, p.y - p.supportSlope * p.d);
+        // Basins own an area and a gently tilted, internally undulating floor.
+        const basinFloors: { floor: number; weight: number }[] = [];
+        for (const r of this.regions) {
+            // Traversable domains are stable geography. Noise deforms the rock
+            // masses outside them, never the ownership of a basin floor or port.
+            const d = polygonDistance(r.polygon, x, z);
+            const opening = r.openSide ? smoothstep(-.2, .7, ((x - r.x) * r.openSide.x + (z - r.z) * r.openSide.z) / Math.max(1, Math.hypot(x - r.x, z - r.z))) : 0;
+            const feather = lerp(r.feather, r.openSide?.feather ?? r.feather, opening);
+            if (d < -feather)
+                continue;
+            const nose = r.rolloff ? Math.max(0, (x - r.x) * r.rolloff.x + (z - r.z) * r.rolloff.z) : 0;
+            let relief = 0;
+            if (r.id === 'cirque') {
+                const spur = crestProfile([[-170, -515, 15, 26], [-123, -486, 16, 30], [-80, -464, 9, 24]], x, z);
+                relief = spur.height * smoothstep(1, 0, spur.distance / spur.width);
+                // The wreck occupies a broad gently tilted bay; the side spur
+                // separates it from the climbing path without dividing access.
+                relief -= 3 * Math.exp(-Math.pow((x + 35) / 58, 2) - ((z + 473) / 46) ** 2);
+            } else if (r.id === 'lake') {
+                const shelf = crestProfile([[-165, -225, 10, 38], [-94, -240, 13, 45], [-20, -260, 8, 35]], x, z);
+                relief = shelf.height * smoothstep(1, 0, shelf.distance / shelf.width);
+            } else if (r.id === 'shoulder') {
+                const fold = crestProfile([[292, -90, 10, 30], [321, -65, 13, 36], [363, -67, 7, 32]], x, z);
+                relief = fold.height * smoothstep(1, 0, fold.distance / fold.width);
+                relief -= 3 * Math.exp(-Math.pow((x - 365) / 55, 2) - ((z + 170) / 45) ** 2);
+            }
+            const routeReserve = Math.min(...projections.map(p => p.d));
+            relief *= smoothstep(10, 32, routeReserve);
+            let floor = r.y + (x - r.x) * r.tiltX + (z - r.z) * r.tiltZ - nose * nose * (r.rolloff?.curvature ?? 0) + relief + N.noise(x / 72 + 1, z / 90) * 2.8 + N.noise(x / 28, z / 30) * .35;
+            if (r.id === 'shoulder') {
+                // A small engineered court belongs to this district's plan.
+                // Only its 64 x 44 m working floor is level; the whole valley
+                // and its pedestrian approaches retain their own profiles.
+                const outsideCourt = Math.hypot(Math.max(Math.abs(x - 365) - 32, 0), Math.max(Math.abs(z + 170) - 22, 0));
+                floor = lerp(floor, 179, 1 - smoothstep(0, 24, outsideCourt));
+            }
+            const w = smoothstep(-feather, 0, d);
+            h = lerp(h, floor, w);
+            basinFloors.push({ floor, weight: w });
+        }
+        // Apply the same basin composition to the pass grade. Taking only the
+        // minimum of two unrelated surfaces left steep tangencies at basin exits.
+        // Small corrections at the pass centre join those surfaces continuously;
+        // the sides remain incisions and every basin still owns its interior.
+        let valleySum = 0, valleyWeight = 0, maxWeight = 0;
+        for (const p of projections) {
+            const width = p.side < 0 ? p.width : p.right, q = p.d / width;
+            if (q > 2)
+                continue;
+            const rise = q < .6 ? 3 * q * q : 1.08 + 38 * Math.pow((q - .6) / 1.4, 1.55);
+            let floor = p.y + rise + N.noise(x / 80, z / 85) * .8;
+            for (const basin of basinFloors)
+                floor = lerp(floor, basin.floor, basin.weight);
+            const w = (1 - smoothstep(.35, 2, q)) ** 2;
+            const grade = lerp(Math.min(h, floor), floor, 1 - smoothstep(.2, .7, q));
+            valleySum += grade * w;
+            valleyWeight += w;
+            maxWeight = Math.max(maxWeight, w);
+        }
+        if (valleyWeight > 0)
+            h = lerp(h, valleySum / valleyWeight, maxWeight);
+        const l = this.lake, d = Math.hypot((x - l.x) / l.rx, (z - l.z) / l.rz);
+        h = lerp(h, l.y - 3 + 2 * d * d, 1 - smoothstep(.9, 1.2, d));
+        const river = project(this.drainageAxis, x, z), channel = river.y - .12 + .008 * river.d * river.d;
+        h = lerp(h, channel, 1 - smoothstep(8, 38, river.d));
+        return h;
     }
-    // A passage is supported by a broad shoulder, not a narrow raised ribbon.
-    for (const r of this.routes) {
-      const a = this.near(r.points, x, z),
-        grade = r.id === "apron" ? 0.34 : r.id === "gully" ? 0.55 : 1.35;
-      h = Math.max(h, a.y - Math.max(0, a.d - r.width * 0.3) * grade);
-    }
-    if (total > 0) h = lerp(h, target / total, weight);
-    const l = this.lake,
-      ld = Math.hypot((x - l.x) / l.rx, (z - l.z) / l.rz);
-    h = lerp(h, l.y - 3.2 + ld * ld * 2.7, 1 - smoothstep(0.82, 1.13, ld));
-    const river = this.near(this.drainage, x, z),
-      rw = 4 + smoothstep(20, H, river.y) * 2;
-    h = lerp(h, river.y - 1.3, 1 - smoothstep(rw * 0.45, rw * 1.9, river.d));
-    return h;
-  }
-  /** Triangle interpolation matches both the displayed mesh and Rapier heightfield. */
-  heightAt(x: number, z: number) {
-    const u = clamp((x + SIZE / 2) / CELL, 0, this.n - 1e-5),
-      v = clamp((z + SIZE / 2) / CELL, 0, this.n - 1e-5),
-      i = Math.floor(u),
-      j = Math.floor(v),
-      a = u - i,
-      b = v - j,
-      k = j * (this.n + 1) + i,
-      H = this.heights,
-      n = this.n + 1;
-    return a + b <= 1
-      ? H[k] + (H[k + 1] - H[k]) * a + (H[k + n] - H[k]) * b
-      : H[k + n + 1] +
-          (H[k + n] - H[k + n + 1]) * (1 - a) +
-          (H[k + 1] - H[k + n + 1]) * (1 - b);
-  }
-  slopeAt(x: number, z: number) {
-    return (
-      Math.hypot(
-        this.heightAt(x + 2, z) - this.heightAt(x - 2, z),
-        this.heightAt(x, z + 2) - this.heightAt(x, z - 2),
-      ) / 4
-    );
-  }
-  worldRoute(r: Route) {
-    return r.points.map((p) => ({ ...this.world(p.x, p.z), y: p.y }));
-  }
+    forestAt(x: number, z: number) { const p = this.local(x, z); return this.regions.some(r => r.id !== 'cirque' && r.id !== 'summit' && polygonDistance(r.polygon, p.x, p.z) > -20 && this.heightAt(x, z) < r.y + 30); }
+    routeDistance(x: number, z: number) { const p = this.local(x, z); return Math.min(...this.routeAxes.map(r => project(r, p.x, p.z).d)); }
+    waterAt(x: number, z: number) { const p = this.local(x, z), l = this.lake; if (Math.hypot((p.x - l.x) / l.rx, (p.z - l.z) / l.rz) < 1)
+        return l.y; const r = project(this.drainageAxis, p.x, p.z); return r.d < 2.3 ? r.y : NaN; }
+    heightAt(x: number, z: number) { const u = clamp((x + SIZE / 2) / CELL, 0, this.n - 1e-5), v = clamp((z + SIZE / 2) / CELL, 0, this.n - 1e-5), i = Math.floor(u), j = Math.floor(v), a = u - i, b = v - j, k = j * (this.n + 1) + i, H = this.heights, n = this.n + 1; return a + b <= 1 ? H[k] + (H[k + 1] - H[k]) * a + (H[k + n] - H[k]) * b : H[k + n + 1] + (H[k + n] - H[k + n + 1]) * (1 - a) + (H[k + 1] - H[k + n + 1]) * (1 - b); }
+    slopeAt(x: number, z: number) { return Math.hypot(this.heightAt(x + 2, z) - this.heightAt(x - 2, z), this.heightAt(x, z + 2) - this.heightAt(x, z - 2)) / 4; }
+    worldRoute(r: Route) { return r.points.map(p => ({ ...this.world(p.x, p.z), y: p.y })); }
 }

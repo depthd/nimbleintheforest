@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { Landforms, SIZE, CELL, VERSION, type Point } from "./landforms";
+import { Landforms, SIZE, CELL, type Point } from "./landforms";
+import { GeneratedLandforms } from "./generated-landforms";
 import { Rng, clamp, smoothstep } from "../../src/core/rng";
 import { RockSkin } from "../../src/gen/rock-skin";
 import { blockTriangles, type CliffBlock } from "../../src/gen/cliffs";
@@ -55,7 +56,7 @@ const skyGeo = new THREE.SphereGeometry(2500, 24, 16),
   });
 const sky = new THREE.Mesh(skyGeo, skyMat);
 scene.add(sky);
-let land: Landforms,
+let land: Landforms | GeneratedLandforms,
   group = new THREE.Group(),
   routeGroup = new THREE.Group(),
   world: RAPIER.World,
@@ -78,11 +79,42 @@ let rockCenter = { x: Infinity, z: Infinity };
 let movement = { x: 0, z: 0 };
 const keys = new Set<string>();
 let jump = false;
+type Layer = "clay" | "terrain" | "rocks" | "full";
+let activeLayer: Layer = "full";
+function supportAt(x: number, z: number) {
+  const ground = land.heightAt(x, z),
+    ice = land.waterAt(x, z);
+  return Number.isNaN(ice) ? ground : Math.max(ground, ice);
+}
+function layers(value: Layer) {
+  activeLayer = value;
+  const terrain = group.children[0] as THREE.Mesh | undefined;
+  if (!terrain?.userData.baseMaterial) return;
+  terrain.material =
+    value === "clay"
+      ? terrain.userData.clayMaterial
+      : terrain.userData.baseMaterial;
+  group.children.forEach(
+    (o, i) =>
+      (o.visible =
+        value === "full" ||
+        i === 0 ||
+        (value === "rocks" && (i === 3 || i === 4))),
+  );
+  renderer.shadowMap.needsUpdate = true;
+  dirty = true;
+}
+$("layers").onchange = () =>
+  layers(($("layers") as HTMLSelectElement).value as Layer);
 function disposeGroup(g: THREE.Group) {
   g.traverse((o) => {
     if (o instanceof THREE.Mesh || o instanceof THREE.Line) {
       o.geometry.dispose();
       const mats = Array.isArray(o.material) ? o.material : [o.material];
+      if (o.userData.baseMaterial && o.userData.baseMaterial !== o.material)
+        mats.push(o.userData.baseMaterial);
+      if (o.userData.clayMaterial && o.userData.clayMaterial !== o.material)
+        mats.push(o.userData.clayMaterial);
       for (const m of mats) m.dispose();
     }
   });
@@ -152,10 +184,7 @@ function iceGeometry() {
   const N = 100;
   for (let i = 0; i <= N; i++) {
     const a = (i / N) * Math.PI * 2,
-      p = land.world(
-        l.x + Math.cos(a) * l.rx * 0.94,
-        l.z + Math.sin(a) * l.rz * 0.94,
-      );
+      p = land.world(l.x + Math.cos(a) * l.rx, l.z + Math.sin(a) * l.rz);
     P.push(p.x, l.y, p.z);
     if (i < N) I.push(0, i + 1, i + 2);
   }
@@ -191,12 +220,12 @@ function addForest() {
         slope = land.slopeAt(wx, wz),
         noise = land.noise.noise(wx / 130, wz / 130),
         p = land.local(wx, wz),
-        upper = Math.hypot((p.x - 100) / 300, (p.z + 200) / 150) < 1;
+        upper = land.forestAt(wx, wz);
       if (
         !Number.isNaN(land.waterAt(wx, wz)) ||
-        land.routeDistance(wx, wz) < 7 ||
+        land.routeDistance(wx, wz) < 4.5 ||
         slope > 0.72 ||
-        y > 180 + noise * 30 ||
+        y > (upper ? 225 : 180) + noise * 30 ||
         rng.next() > (upper ? 0.66 : 0.46) * (noise > 0.1 ? 1 : 0.45)
       )
         continue;
@@ -380,6 +409,7 @@ function streamRock(force = false) {
   }
 }
 function addDrainage() {
+  if (land.drainage.length < 2) { group.add(new THREE.Group()); return; }
   const points = land.drainage,
     positions: number[] = [],
     idx: number[] = [];
@@ -401,6 +431,9 @@ function addDrainage() {
       idx.push(k - 2, k, k - 1, k - 1, k, k + 1);
     }
   }
+  if (land.mirror === 1)
+    for (let i = 0; i < idx.length; i += 3)
+      [idx[i + 1], idx[i + 2]] = [idx[i + 2], idx[i + 1]];
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   g.setIndex(idx);
@@ -414,6 +447,12 @@ function addDrainage() {
     }),
   );
   group.add(m);
+  world.createCollider(
+    RAPIER.ColliderDesc.trimesh(
+      (g.getAttribute("position").array as Float32Array).slice(),
+      Uint32Array.from(g.index!.array),
+    ).setFriction(0.8),
+  );
 }
 function addRoutes() {
   routeGroup = new THREE.Group();
@@ -425,7 +464,7 @@ function addRoutes() {
     routeGroup.add(
       new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(p),
-        new THREE.LineBasicMaterial({ color: colors[i], depthTest: false }),
+        new THREE.LineBasicMaterial({ color: colors[i % colors.length], depthTest: false }),
       ),
     );
   });
@@ -529,6 +568,10 @@ async function generate(seed: number) {
   $("veil").style.display = "grid";
   await new Promise((r) => setTimeout(r, 30));
   const start = performance.now();
+  // Build and verify before releasing the current world. A rejected generation
+  // must leave the preceding scene available for inspection.
+  const nextLand = new URLSearchParams(location.search).get("mode") === "control"
+    ? new Landforms(seed) : new GeneratedLandforms(seed);
   disposeGroup(group);
   disposeGroup(routeGroup);
   world?.free();
@@ -537,7 +580,7 @@ async function generate(seed: number) {
   rockCenter = { x: Infinity, z: Infinity };
   group = new THREE.Group();
   scene.add(group);
-  land = new Landforms(seed);
+  land = nextLand;
   world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   const g = terrainGeometry(),
     mat = new THREE.MeshStandardMaterial({
@@ -566,6 +609,11 @@ async function generate(seed: number) {
   const terrain = new THREE.Mesh(g, mat);
   terrain.receiveShadow = true;
   terrain.castShadow = true;
+  terrain.userData.baseMaterial = mat;
+  terrain.userData.clayMaterial = new THREE.MeshStandardMaterial({
+    color: "#b9b9b9",
+    roughness: 1,
+  });
   group.add(terrain);
   world.createCollider(
     RAPIER.ColliderDesc.trimesh(
@@ -613,6 +661,7 @@ async function generate(seed: number) {
   renderer.shadowMap.needsUpdate = true;
   generationMs = performance.now() - start;
   ready = true;
+  layers(activeLayer);
   view("lower");
   for (let i = 0; i < 10; i++) fixed(1 / 60);
   $("veil").style.display = "none";
@@ -662,7 +711,7 @@ $("routes").onclick = () => {
 };
 $("walk").onclick = () => {
   if (fly) {
-    const h = land.heightAt(position.x, position.z);
+    const h = supportAt(position.x, position.z);
     teleport({ x: position.x, y: h + 1.85, z: position.z });
   }
   fly = false;
@@ -756,7 +805,7 @@ Object.assign(window, {
       return {
         ...stats,
         generationMs,
-        version: VERSION,
+        version: land.plan.version,
         rockColliders: rockCols.size,
         triangles: land.n ** 2 * 2,
       };
@@ -770,7 +819,18 @@ Object.assign(window, {
     get fly() {
       return fly;
     },
+    collisions: () => Array.from({ length: kcc.numComputedCollisions() }, (_, i) => {
+      const hit = kcc.computedCollision(i)!;
+      return { shape: hit.collider?.shape.type, centre: hit.collider?.translation(), point: hit.witness1, normal: hit.normal1 };
+    }),
     view,
+    layers,
+    supportAt,
+    cameraAt: (eye: Point, target: Point) => {
+      fly = true;
+      teleport(eye);
+      lookAt(target);
+    },
     generate,
     lighting,
     manual: (v = true) => {

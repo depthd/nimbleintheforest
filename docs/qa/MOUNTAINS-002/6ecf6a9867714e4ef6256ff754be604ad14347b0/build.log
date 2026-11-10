@@ -1,0 +1,22 @@
+
+> nimble-in-the-forest@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 95 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                              8.74 kB │ gzip:     3.23 kB
+dist/assets/terrain-worker-CnNmfg5S.js      69.98 kB
+dist/assets/index-CPnYFkRC.css              16.69 kB │ gzip:     4.37 kB
+dist/assets/preview_animals-rutoD5PH.js      1.56 kB │ gzip:     0.93 kB
+dist/assets/preview-BZrjUp2m.js              1.61 kB │ gzip:     0.92 kB
+dist/assets/preview_wood-DJ0viioV.js         1.95 kB │ gzip:     1.04 kB
+dist/assets/index-Ch5md5vQ.js            5,805.08 kB │ gzip: 2,100.01 kB
+✓ built in 9.38s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

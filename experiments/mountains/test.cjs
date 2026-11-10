@@ -102,102 +102,155 @@ function walk(l, route) {
     total: points.length,
     ticks,
     maxDelta: +maxDelta.toFixed(2),
+    position: body.translation(),
   };
   world.free();
   return result;
 }
+function upperSpace(a) {
+  const step = 8,
+    nx = 101,
+    nz = 48,
+    valid = new Uint8Array(nx * nz),
+    ys = new Float32Array(nx * nz);
+  for (let j = 0; j < nz; j++)
+    for (let i = 0; i < nx; i++) {
+      const p = a.world(-420 + i * step, -490 + j * step),
+        h = a.heightAt(p.x, p.z),
+        k = j * nx + i;
+      ys[k] = h;
+      if (
+        h > a.upper - 14 &&
+        h < a.upper + 65 &&
+        a.slopeAt(p.x, p.z) < 0.4 &&
+        Number.isNaN(a.waterAt(p.x, p.z))
+      )
+        valid[k] = 1;
+    }
+  let largest = { area: 0, range: 0 };
+  for (let k = 0; k < valid.length; k++)
+    if (valid[k]) {
+      const queue = [k];
+      valid[k] = 0;
+      let lo = Infinity,
+        hi = -Infinity;
+      for (let q = 0; q < queue.length; q++) {
+        const c = queue[q],
+          x = c % nx,
+          z = Math.floor(c / nx);
+        lo = Math.min(lo, ys[c]);
+        hi = Math.max(hi, ys[c]);
+        for (const [dx, dz] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          const xx = x + dx,
+            zz = z + dz,
+            u = zz * nx + xx;
+          if (xx >= 0 && xx < nx && zz >= 0 && zz < nz && valid[u]) {
+            valid[u] = 0;
+            queue.push(u);
+          }
+        }
+      }
+      if (queue.length * step * step > largest.area)
+        largest = { area: queue.length * step * step, range: hi - lo };
+    }
+  return largest;
+}
 (async () => {
   await R.init();
-  let checks = 0;
-  for (const seed of [1, 2, 3, 7, 19, 42, 123, 2026]) {
+  let checks = 0,
+    walks = 0;
+  const seeds = process.env.SEEDS
+    ? process.env.SEEDS.split(",").map(Number)
+    : [1, 2, 3, 7, 19, 42, 123, 2026, 11, 71, 314, 8191];
+  for (const seed of seeds) {
     const a = new Landforms(seed),
       b = new Landforms(seed);
     assert.deepEqual(a.heights, b.heights);
+    console.log("CONNECTIVITY", seed, require("./connectivity.cjs").checkConnectivity(a));
     checks++;
     assert.ok(a.heights.every(Number.isFinite));
-    let area = 0,
-      lo = Infinity,
-      hi = -Infinity;
-    for (let z = -330; z < -90; z += 8)
-      for (let x = -80; x < 320; x += 8) {
-        const p = a.world(x, z),
-          h = a.heightAt(p.x, p.z);
-        if (
-          Number.isNaN(a.waterAt(p.x, p.z)) &&
-          a.slopeAt(p.x, p.z) < 0.35 &&
-          h > a.upper - 6
-        ) {
-          area += 64;
-          lo = Math.min(lo, h);
-          hi = Math.max(hi, h);
-        }
-      }
-    assert.ok(area > 35000, `seed ${seed}: upper floor area ${area}`);
-    assert.ok(hi - lo > 2, `seed ${seed}: upper floor is flat`);
+    checks++;
+    const space = upperSpace(a);
+    console.log("UPPER", seed, JSON.stringify(space));
+    assert.ok(
+      space.area > 30000,
+      `seed ${seed}: upper connected space ${space.area}`,
+    );
+    assert.ok(
+      space.range > 8,
+      `seed ${seed}: upper floor too flat ${space.range}`,
+    );
     checks++;
     for (let i = 1; i < a.drainage.length; i++)
-      assert.ok(a.drainage[i].y <= a.drainage[i - 1].y + 1e-6);
+      assert.ok(
+        a.drainage[i].y <= a.drainage[i - 1].y + 1e-6,
+        `seed ${seed}: uphill drainage plan`,
+      );
     checks++;
-    console.log(
-      "SEED",
-      seed,
-      "upper area",
-      area,
-      "range",
-      lo.toFixed(1),
-      hi.toFixed(1),
-    );
-    // Sample actual final terrain across the shelf, not just its route centre.
-    // A walkable free-standing ring used to pass all traversal tests.
-    const shelf = a.routes.find((r) => r.id === "shoulder");
-    let minInnerSupport = Infinity,
-      minWallRise = Infinity;
-    for (
-      let i = Math.ceil(shelf.points.length * 0.18);
-      i < shelf.points.length * 0.77;
-      i += 3
-    ) {
-      const p = shelf.points[i];
-      const dx = a.shoulderCore.x - p.x,
-        dz = a.shoulderCore.z - p.z;
-      const length = Math.hypot(dx, dz);
-      const origin = a.world(p.x, p.z),
-        tread = a.heightAt(origin.x, origin.z);
-      for (let offset = 8; offset <= Math.min(length - 12, 96); offset += 4) {
-        const q = a.world(
-          p.x + (dx / length) * offset,
-          p.z + (dz / length) * offset,
-        );
-        minInnerSupport = Math.min(
-          minInnerSupport,
-          a.heightAt(q.x, q.z) - tread,
+    for (let k = 0; k < a.drainage.length - 1; k++) {
+      const p = a.drainage[k],
+        q = a.drainage[k + 1];
+      for (let i = 0; i <= 50; i++) {
+        const t = i / 50,
+          w = a.world(p.x + (q.x - p.x) * t, p.z + (q.z - p.z) * t),
+          y = p.y + (q.y - p.y) * t;
+        assert.ok(
+          a.heightAt(w.x, w.z) < y + 0.25,
+          `seed ${seed}: buried outlet at ${k}/${i}`,
         );
       }
-      const q = a.world(p.x + (dx / length) * 36, p.z + (dz / length) * 36);
-      minWallRise = Math.min(minWallRise, a.heightAt(q.x, q.z) - tread);
     }
-    assert.ok(
-      minInnerSupport > -1,
-      `seed ${seed}: trench behind shelf (${minInnerSupport} m)`,
-    );
-    assert.ok(
-      minWallRise > 10,
-      `seed ${seed}: shelf has no uphill rock wall (${minWallRise} m)`,
-    );
     checks++;
-    console.log("ATTACHMENT", seed, { minInnerSupport, minWallRise });
-    for (const route of a.routes) {
-      const r = walk(a, route);
-      console.log("ROUTE", seed, JSON.stringify(r));
-      assert.equal(r.reached, r.total, `seed ${seed} ${route.id} stuck`);
-      assert.ok(r.maxDelta < 2, `seed ${seed} ${route.id} unsupported`);
+    assert.ok(a.plan.traversal.every((r) => r.status === "planned"));
+    checks++;
+    for (const route of a.routes.filter(r => !process.env.ROUTES || process.env.ROUTES.split(",").includes(r.id))) {
+      for (const direction of ["up", "down"]) {
+        const rr =
+          direction === "up"
+            ? route
+            : { ...route, points: [...route.points].reverse() };
+        const result = walk(a, rr);
+        console.log("ROUTE", seed, direction, JSON.stringify(result));
+        assert.equal(
+          result.reached,
+          result.total,
+          `seed ${seed}: ${route.id} ${direction} stuck`,
+        );
+        assert.ok(
+          result.maxDelta < 2,
+          `seed ${seed}: ${route.id} lost support`,
+        );
+        checks++;
+        walks++;
+      }
+      // Check useful lateral room on actual triangles; a line alone is insufficient.
+      for (let i = 2; i < route.points.length - 2; i += 4) {
+        const p = route.points[i],
+          q = route.points[i + 1],
+          len = Math.hypot(q.x - p.x, q.z - p.z),
+          origin = a.world(p.x, p.z),
+          h = a.heightAt(origin.x, origin.z);
+        for (const side of [-1, 1]) {
+          const w = a.world(
+            p.x - ((q.z - p.z) / len) * side * 2,
+            p.z + ((q.x - p.x) / len) * side * 2,
+          );
+          assert.ok(
+            Math.abs(a.heightAt(w.x, w.z) - h) < 1.3,
+            `seed ${seed}: ${route.id} narrow at ${i}`,
+          );
+        }
+      }
       checks++;
     }
   }
   console.log(
-    "PASS",
-    checks,
-    "checks; 24 routes traversed with Rapier at walking speed",
+    `PASS ${checks} checks; ${walks} Rapier walks in both directions; ${seeds.length} seeds`,
   );
 })().catch((e) => {
   console.error(e);

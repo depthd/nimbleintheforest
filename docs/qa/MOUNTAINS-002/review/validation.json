@@ -1,0 +1,175 @@
+{
+  "kind": "precommit validation of the rendering/model bytes recorded in provenance.json; final exact-SHA QA is recorded in PR",
+  "render_source_sha256": {
+    "main.ts": "a5d4ce00f8556432b10706b191c20f9f577e7dfdedb780f9768fa8eaa4619719",
+    "landforms.ts": "77f04461fb844d7ebe0628ff72acaee320dcc6b1b87722cdc4e6b6017ae5ffa3",
+    "index.html": "3b4381547438e80e0e508f86bb5566f22bd254ead5552146f78a89d26cd3ba5b",
+    "style.css": "837ac91b76857ce7b5bc3eae294da4bbad3bc131331d10c42143f8a109afef5b"
+  },
+  "checks": 144,
+  "ground_walks": 48,
+  "seeds": [
+    1,
+    2,
+    3,
+    7,
+    19,
+    42,
+    123,
+    2026,
+    11,
+    71,
+    314,
+    8191
+  ],
+  "scene_route_chunks": 32,
+  "scene_full_walks": 8,
+  "browser_page_errors": [],
+  "scene_stats": [
+    {
+      "seed": 1,
+      "stats": {
+        "trees": 1247,
+        "rocks": 385,
+        "strata": 5206,
+        "generationMs": 2530,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 2,
+      "stats": {
+        "trees": 1322,
+        "rocks": 368,
+        "strata": 4499,
+        "generationMs": 2751,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 3,
+      "stats": {
+        "trees": 1281,
+        "rocks": 357,
+        "strata": 4299,
+        "generationMs": 2412,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 7,
+      "stats": {
+        "trees": 1328,
+        "rocks": 361,
+        "strata": 4334,
+        "generationMs": 1973.1000000005588,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 19,
+      "stats": {
+        "trees": 1312,
+        "rocks": 379,
+        "strata": 4818,
+        "generationMs": 2063,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 42,
+      "stats": {
+        "trees": 1399,
+        "rocks": 367,
+        "strata": 5005,
+        "generationMs": 2040.1000000005588,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 123,
+      "stats": {
+        "trees": 1327,
+        "rocks": 408,
+        "strata": 4834,
+        "generationMs": 2434.100000000559,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 2026,
+      "stats": {
+        "trees": 1315,
+        "rocks": 360,
+        "strata": 5214,
+        "generationMs": 2300.9000000003725,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 11,
+      "stats": {
+        "trees": 1271,
+        "rocks": 359,
+        "strata": 5154,
+        "generationMs": 2605.4000000003725,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 71,
+      "stats": {
+        "trees": 1284,
+        "rocks": 391,
+        "strata": 4335,
+        "generationMs": 2496.100000000559,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 314,
+      "stats": {
+        "trees": 1377,
+        "rocks": 390,
+        "strata": 4607,
+        "generationMs": 2339.399999999441,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    },
+    {
+      "seed": 8191,
+      "stats": {
+        "trees": 1279,
+        "rocks": 371,
+        "strata": 4968,
+        "generationMs": 2462.2999999998137,
+        "version": "terrain-frame-1",
+        "rockColliders": 0,
+        "triangles": 320000
+      }
+    }
+  ],
+  "notes": "Scene walks include trees, rock hulls and lake/outlet ice. Ground walks test the actual terrain triangles in both directions. No artistic approval or user-device FPS claim."
+}

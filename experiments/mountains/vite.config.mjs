@@ -6,7 +6,7 @@ export default defineConfig({
     target: "es2022",
     outDir: "dist/mountains-lab",
     emptyOutDir: true,
-    rollupOptions: { input: resolve("experiments/mountains/index.html") },
+    rollupOptions: { input: { mountains: resolve("experiments/mountains/index.html"), plan: resolve("experiments/mountains/plan-preview.html"), crossing: resolve("experiments/mountains/crossing.html") } },
   },
   server: { host: true },
 });
