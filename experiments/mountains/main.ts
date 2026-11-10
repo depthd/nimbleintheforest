@@ -219,12 +219,12 @@ function addForest() {
         slope = land.slopeAt(wx, wz),
         noise = land.noise.noise(wx / 130, wz / 130),
         p = land.local(wx, wz),
-        upper = p.z < -160 && y < land.upper + 55;
+        upper = land.forestAt(wx, wz);
       if (
         !Number.isNaN(land.waterAt(wx, wz)) ||
         land.routeDistance(wx, wz) < 4.5 ||
         slope > 0.72 ||
-        y > 180 + noise * 30 ||
+        y > (upper ? 225 : 180) + noise * 30 ||
         rng.next() > (upper ? 0.66 : 0.46) * (noise > 0.1 ? 1 : 0.45)
       )
         continue;
@@ -324,43 +324,26 @@ function addForest() {
   return { trees: trees.length, rocks: rocks.length };
 }
 function addRockSkin() {
-  // The reference rock shell used 4–9 m beds everywhere. Here the same generator
-  // operates in a scaled domain: slopes are invariant, but beds and joint blocks
-  // have a readable middle scale rather than thousands of thin parallel stripes.
-  const scale = 1.6;
   const water = new Float32Array(land.heights.length).fill(NaN);
   const skin = new RockSkin(
     {
       seed: land.seed,
-      size: SIZE / scale,
+      size: SIZE,
       n: land.n,
-      cell: CELL / scale,
-      h: Float32Array.from(land.heights, (h) => h / scale),
+      cell: CELL,
+      h: land.heights,
       water,
-      ox: SIZE / (2 * scale),
-      oz: SIZE / (2 * scale),
-      edgeDist: (x, z) =>
-        SIZE / 2 - Math.max(Math.abs(x * scale), Math.abs(z * scale)),
+      ox: SIZE / 2,
+      oz: SIZE / 2,
+      edgeDist: (x, z) => SIZE / 2 - Math.max(Math.abs(x), Math.abs(z)),
     },
     {
-      border: 60 / scale,
+      border: 60,
       minDeg: 51,
       exclude: (x, z) =>
-        land.routeDistance(x * scale, z * scale) < 17 ||
-        !Number.isNaN(land.waterAt(x * scale, z * scale)),
+        land.routeDistance(x, z) < 17 || !Number.isNaN(land.waterAt(x, z)),
     },
   );
-  for (const b of skin.blocks) {
-    for (let i = 0; i < b.pts.length; i++) b.pts[i] *= scale;
-    b.minX *= scale;
-    b.maxX *= scale;
-    b.minY *= scale;
-    b.maxY *= scale;
-    b.minZ *= scale;
-    b.maxZ *= scale;
-  }
-  for (let i = 0; i < skin.caps.positions.length; i++)
-    skin.caps.positions[i] *= scale;
   rockBlocks = skin.blocks;
   const pos: number[] = [],
     colors: number[] = [];
@@ -479,7 +462,7 @@ function addRoutes() {
     routeGroup.add(
       new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(p),
-        new THREE.LineBasicMaterial({ color: colors[i], depthTest: false }),
+        new THREE.LineBasicMaterial({ color: colors[i % colors.length], depthTest: false }),
       ),
     );
   });

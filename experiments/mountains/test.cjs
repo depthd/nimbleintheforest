@@ -102,6 +102,7 @@ function walk(l, route) {
     total: points.length,
     ticks,
     maxDelta: +maxDelta.toFixed(2),
+    position: body.translation(),
   };
   world.free();
   return result;
@@ -170,6 +171,7 @@ function upperSpace(a) {
     const a = new Landforms(seed),
       b = new Landforms(seed);
     assert.deepEqual(a.heights, b.heights);
+    console.log("CONNECTIVITY", seed, require("./connectivity.cjs").checkConnectivity(a));
     checks++;
     assert.ok(a.heights.every(Number.isFinite));
     checks++;
@@ -206,7 +208,7 @@ function upperSpace(a) {
     checks++;
     assert.ok(a.plan.traversal.every((r) => r.status === "planned"));
     checks++;
-    for (const route of a.routes) {
+    for (const route of a.routes.filter(r => !process.env.ROUTES || process.env.ROUTES.split(",").includes(r.id))) {
       for (const direction of ["up", "down"]) {
         const rr =
           direction === "up"
