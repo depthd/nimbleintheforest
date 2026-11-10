@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { Landforms, SIZE, CELL, VERSION, type Point } from "./landforms";
+import { Landforms, SIZE, CELL, type Point } from "./landforms";
+import { GeneratedLandforms } from "./generated-landforms";
 import { Rng, clamp, smoothstep } from "../../src/core/rng";
 import { RockSkin } from "../../src/gen/rock-skin";
 import { blockTriangles, type CliffBlock } from "../../src/gen/cliffs";
@@ -55,7 +56,7 @@ const skyGeo = new THREE.SphereGeometry(2500, 24, 16),
   });
 const sky = new THREE.Mesh(skyGeo, skyMat);
 scene.add(sky);
-let land: Landforms,
+let land: Landforms | GeneratedLandforms,
   group = new THREE.Group(),
   routeGroup = new THREE.Group(),
   world: RAPIER.World,
@@ -408,6 +409,7 @@ function streamRock(force = false) {
   }
 }
 function addDrainage() {
+  if (land.drainage.length < 2) { group.add(new THREE.Group()); return; }
   const points = land.drainage,
     positions: number[] = [],
     idx: number[] = [];
@@ -574,7 +576,8 @@ async function generate(seed: number) {
   rockCenter = { x: Infinity, z: Infinity };
   group = new THREE.Group();
   scene.add(group);
-  land = new Landforms(seed);
+  land = new URLSearchParams(location.search).get("mode") === "control"
+    ? new Landforms(seed) : new GeneratedLandforms(seed);
   world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   const g = terrainGeometry(),
     mat = new THREE.MeshStandardMaterial({
@@ -799,7 +802,7 @@ Object.assign(window, {
       return {
         ...stats,
         generationMs,
-        version: VERSION,
+        version: land.plan.version,
         rockColliders: rockCols.size,
         triangles: land.n ** 2 * 2,
       };
