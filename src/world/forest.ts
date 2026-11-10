@@ -6,6 +6,7 @@
 // game/wood/felling). It tips over the hinge toward the side the load leans to,
 // leaves a stump of the height you cut at and lands as a trunk with its branches.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Props } from '../gen/region';
 import { Sp } from '../gen/biomes';
@@ -317,6 +318,22 @@ export class Forest {
   private active = new Map<number, Tree>();
   private falling: Falling[] = [];
 
+  private c1: { geos: THREE.BufferGeometry[]; mats: THREE.Material[] } | null = null;
+
+  async loadC1() {
+    const gltf = await new GLTFLoader().loadAsync('models/conifer_c1.glb');
+    gltf.scene.updateMatrixWorld(true);
+    const geos: THREE.BufferGeometry[] = [], mats: THREE.Material[] = [];
+    gltf.scene.traverse(o => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      geos.push(mesh.geometry.clone().applyMatrix4(mesh.matrixWorld));
+      mats.push(mesh.material as THREE.Material);
+    });
+    if (geos.length !== 2) throw new Error('Invalid C1 forest asset');
+    this.c1 = { geos, mats };
+  }
+
   build(rng: Rng) {
     const R = G.region;
     this.P = R.trees;
@@ -347,6 +364,12 @@ export class Forest {
     kind('pine', 0, 10, 0.2, 0.3, spruceBands(1, rng, 10), pineMat, foliageMat, 7, 6);
     // species → kind indices (see gen/biomes Sp)
     this.kindOfSp = [[0, 1, 2], [7], [3, 4], [5], [6], [0, 1, 2]];
+    if (this.c1) {
+      for (const old of this.kinds) for (const geo of old.geos) geo.dispose();
+      this.kinds = [{ type: 'spruce', variant: 0, H: 10, R: 0.55, top: 0.1,
+        bands: [], meshes: [], geos: this.c1.geos, mats: this.c1.mats }];
+      this.kindOfSp = this.kindOfSp.map(() => [0]);
+    }
     for (const kind of this.kinds) {
       kind.instances = new InstanceChunks(G.scene, kind.geos, kind.mats, kind);
       kind.meshes = kind.instances.meshes;
@@ -442,6 +465,7 @@ export class Forest {
   private scaleOf(i: number) {
     const P = this.P;
     const sp = P.kind[i];
+    if (this.c1) return { sx: P.s[i], sy: P.s[i] };
     const s = P.s[i] * (sp === Sp.Pine ? 1.15 : 1) * (sp === Sp.Dwarf ? 0.55 : 1);
     return sp === Sp.Pine ? { sx: s * 0.8, sy: s * 1.25 } : { sx: s, sy: s };
   }
@@ -686,6 +710,7 @@ export class Forest {
 
   /** One blow at a standing tree. */
   chopTree(t: Tree, point: THREE.Vector3, power: number, saw: boolean) {
+    if (this.c1) { msg('C1: пока только осмотр, рубка ещё не подключена.', 'info'); return; }
     if (!t.alive) return;
     tip('fell', 'Зарубка там, куда целитесь. Дерево падает туда, куда смещён его вес: в сторону подруба, наклона или ветра. Подсказка у прицела скажет, куда оно упадёт. Чтобы уронить от себя — подрубите с той стороны, куда валите, и допилите со своей.');
     this.activate(t);
@@ -916,6 +941,7 @@ export class Forest {
 
   /** Break off one low branch by hand: you get exactly that branch. */
   breakBranch(t: Tree) {
+    if (this.c1) return null;
     const stem = this.activate(t);
     const w = stem.whorls.filter((x) => x.u - x.h / 2 < 2.3 && x.branches.length).sort((a, b) => a.u - b.u)[0];
     if (!w) return null;

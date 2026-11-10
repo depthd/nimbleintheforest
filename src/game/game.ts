@@ -112,6 +112,7 @@ export async function startGame(settings: Settings) {
   G.house = new House();
   G.house.build(rng);
   G.forest = new Forest();
+  await G.forest.loadC1();
   G.forest.build(rng);
   G.thermal = new Thermal();
   G.body = new Body();
