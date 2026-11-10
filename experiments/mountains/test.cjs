@@ -147,6 +147,45 @@ function walk(l, route) {
       lo.toFixed(1),
       hi.toFixed(1),
     );
+    // Sample actual final terrain across the shelf, not just its route centre.
+    // A walkable free-standing ring used to pass all traversal tests.
+    const shelf = a.routes.find((r) => r.id === "shoulder");
+    let minInnerSupport = Infinity,
+      minWallRise = Infinity;
+    for (
+      let i = Math.ceil(shelf.points.length * 0.18);
+      i < shelf.points.length * 0.77;
+      i += 3
+    ) {
+      const p = shelf.points[i];
+      const dx = a.shoulderCore.x - p.x,
+        dz = a.shoulderCore.z - p.z;
+      const length = Math.hypot(dx, dz);
+      const origin = a.world(p.x, p.z),
+        tread = a.heightAt(origin.x, origin.z);
+      for (let offset = 8; offset <= Math.min(length - 12, 96); offset += 4) {
+        const q = a.world(
+          p.x + (dx / length) * offset,
+          p.z + (dz / length) * offset,
+        );
+        minInnerSupport = Math.min(
+          minInnerSupport,
+          a.heightAt(q.x, q.z) - tread,
+        );
+      }
+      const q = a.world(p.x + (dx / length) * 36, p.z + (dz / length) * 36);
+      minWallRise = Math.min(minWallRise, a.heightAt(q.x, q.z) - tread);
+    }
+    assert.ok(
+      minInnerSupport > -1,
+      `seed ${seed}: trench behind shelf (${minInnerSupport} m)`,
+    );
+    assert.ok(
+      minWallRise > 10,
+      `seed ${seed}: shelf has no uphill rock wall (${minWallRise} m)`,
+    );
+    checks++;
+    console.log("ATTACHMENT", seed, { minInnerSupport, minWallRise });
     for (const route of a.routes) {
       const r = walk(a, route);
       console.log("ROUTE", seed, JSON.stringify(r));
