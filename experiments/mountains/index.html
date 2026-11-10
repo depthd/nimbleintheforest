@@ -54,6 +54,11 @@
     <div id="crosshair">·</div>
     <aside id="status">Подготовка…</aside>
     <div id="veil">Создаём горный район…</div>
-    <script type="module" src="./main.ts"></script>
+    <script type="module">
+      import("./main.ts").catch((error) => {
+        console.error(error);
+        document.getElementById("veil").textContent = "Не удалось загрузить сцену: " + (error?.message || error);
+      });
+    </script>
   </body>
 </html>

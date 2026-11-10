@@ -813,6 +813,10 @@ Object.assign(window, {
     get fly() {
       return fly;
     },
+    collisions: () => Array.from({ length: kcc.numComputedCollisions() }, (_, i) => {
+      const hit = kcc.computedCollision(i)!;
+      return { shape: hit.collider?.shape.type, centre: hit.collider?.translation(), point: hit.witness1, normal: hit.normal1 };
+    }),
     view,
     layers,
     supportAt,

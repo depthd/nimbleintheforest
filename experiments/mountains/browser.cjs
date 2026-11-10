@@ -42,6 +42,7 @@ fs.mkdirSync(out, { recursive: true });
     });
     page.setDefaultTimeout(120000);
     const errors = [];
+    const onlyWalk = process.env.WALK_ONLY === "1";
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (m) => {
       if (m.type() === "error" && !m.location().url.endsWith("/favicon.ico"))
@@ -106,7 +107,7 @@ fs.mkdirSync(out, { recursive: true });
     );
     manifest.movement = { before, after, displacement };
     await page.locator("#collapse").click();
-    for (const id of [
+    for (const id of (onlyWalk ? [] : [
       "lower",
       "reveal",
       "upper",
@@ -116,11 +117,11 @@ fs.mkdirSync(out, { recursive: true });
       "back",
       "cirque",
       "shoulder", "saddle", "summit", "overview",
-    ]) {
+    ])) {
       await ev((id) => window.__mountains.view(id), id);
       await shot("42-" + id);
     }
-    for (const id of ["overview", "reveal"]) {
+    for (const id of (onlyWalk ? [] : ["overview", "reveal"])) {
       for (const layer of ["clay", "terrain", "rocks", "full"]) {
         await ev(
           ({ id, layer }) => {
@@ -132,7 +133,7 @@ fs.mkdirSync(out, { recursive: true });
         await shot(`42-${id}-${layer}`);
       }
     }
-    for (const mode of ["overcast", "evening"])
+    for (const mode of (onlyWalk ? [] : ["overcast", "evening"]))
       for (const id of ["upper"]) {
         await ev(
           ({ mode, id }) => {
@@ -157,7 +158,7 @@ fs.mkdirSync(out, { recursive: true });
     for (const seed of [42]) {
       await ev((seed) => window.__mountains.generate(seed), seed);
       await ev(() => window.__mountains.manual(true));
-      for (const routeId of ["gully", "gates", "apron", "east", "high", "saddle", "balcony", "summit"])
+      for (const routeId of (process.env.ROUTES ? process.env.ROUTES.split(",") : ["gully", "gates", "apron", "east", "high", "saddle", "balcony", "summit"]))
         for (const direction of ["up", "down"]) {
           const total = await ev(
             ({ routeId, direction }) => {
@@ -220,6 +221,7 @@ fs.mkdirSync(out, { recursive: true });
                   ticks,
                   position: m.position,
                   grounded: m.grounded,
+                  contacts: m.collisions(),
                   stats: m.stats,
                 };
               },
@@ -250,7 +252,7 @@ fs.mkdirSync(out, { recursive: true });
         }
     }
     // The same composition must survive parameter variation and held-out seeds.
-    for (const seed of [7, 2026]) {
+    for (const seed of (onlyWalk ? [] : [7, 2026])) {
       await ev((seed) => window.__mountains.generate(seed), seed);
       await ev(() => {
         window.__mountains.manual(true);
@@ -281,7 +283,7 @@ fs.mkdirSync(out, { recursive: true });
       JSON.stringify(manifest, null, 2),
     );
     console.log(
-      "PASS keyboard, eight geographic connections and returns with scene collisions on seed 42, two held-out visual seeds, four layers, three lighting modes, mobile menu, no browser errors",
+      `PASS keyboard, ${new Set(manifest.route.map(r=>r.routeId)).size} connections and returns with scene collisions; ${manifest.seeds.length} held-out visual seeds; mobile menu; no browser errors. See manifest for exact coverage.`,
     );
   } finally {
     await browser?.close();

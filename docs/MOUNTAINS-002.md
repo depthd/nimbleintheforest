@@ -6,13 +6,13 @@ The rejected terrain-frame-1 produced variants of a ridge/valley profile. This r
 
 - Irregular polygonal bedrock masses have separate apron, face and shoulder profiles, sloping crowns and asymmetric sides. Basin patches own areas and floor gradients, not just centre lines.
 - Curved pass axes constrain a broad regional bedrock envelope and valley incision. The foundation prevents unsupported paths where an axis leaves a massif; it extends into the mountain rather than forming a narrow elevated road.
-- Overlapping valley fields are blended together instead of taking a discontinuous lowest surface. River banks join the valley floor over a broad shallow profile.
+- Overlapping valley fields are blended together instead of taking a discontinuous lowest surface. River banks join the valley floor over a broad shallow profile. Frozen channels also fill incidental depressions under the ice: otherwise the ice edge becomes a blocking vertical step even when the ground-only walk passes.
 - Final terrain remains a 4 m heightfield, triangulated identically for rendering, sampling and Rapier. Overhangs, stacked paths, bridges and through caves are not implemented.
 - Seed 42 is the designed control composition. Other seeds perturb mass contours, heights, wall widths, noise and orientation. This is one parametric family, not yet a generator of different graph topologies.
 
 ## Preserved assets
 
-`addRockSkin()` is restored byte-for-byte from 185989f95ec260455608bb1410eae2a54220b487. The 1.6 scaling was removed. `src/gen/rock-skin.ts` and all other shared sources are unchanged. Existing lab trees are retained; their placement recognises sheltered upper forest areas. No publication, external PR, or merge is performed.
+`addRockSkin()` is restored byte-for-byte from 185989f95ec260455608bb1410eae2a54220b487. The 1.6 scaling was removed. `src/gen/rock-skin.ts` and all other shared sources are unchanged. Existing lab trees are retained; their placement recognises sheltered upper forest areas. No publication, external PR, or merge is performed. Startup import failures are shown on screen, including unavailable WebGL, instead of leaving an endless loading veil.
 
 ## Internal visual review
 

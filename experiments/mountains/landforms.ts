@@ -268,8 +268,8 @@ export class Landforms {
             h = lerp(h, valleySum / valleyWeight, maxWeight);
         const l = this.lake, d = Math.hypot((x - l.x) / l.rx, (z - l.z) / l.rz);
         h = lerp(h, l.y - 3 + 2 * d * d, 1 - smoothstep(.9, 1.2, d));
-        const river = project(this.drainageAxis, x, z), channel = river.y - .6 + .008 * river.d * river.d;
-        h = lerp(h, Math.min(h, channel), 1 - smoothstep(8, 38, river.d));
+        const river = project(this.drainageAxis, x, z), channel = river.y - .12 + .008 * river.d * river.d;
+        h = lerp(h, channel, 1 - smoothstep(8, 38, river.d));
         return h;
     }
     forestAt(x: number, z: number) { const p = this.local(x, z); return this.regions.some(r => r.id !== 'cirque' && r.id !== 'summit' && polygonDistance(r.polygon, p.x, p.z) > -20 && this.heightAt(x, z) < r.y + 30); }
