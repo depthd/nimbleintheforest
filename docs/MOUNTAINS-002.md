@@ -1,29 +1,87 @@
-# MOUNTAINS-002: connected uplands
+# MOUNTAINS-002 — пространство гор и план живых районов
 
-The rejected terrain-frame-1 produced variants of a ridge/valley profile. This revision constructs a traversable mountain district: lower forest (22 m), intermediate basin (57 m), lake valley (122 m), eastern forest valley (177 m), high cirque (222 m), northern crest (340 m). Eight geographic connections give three independent loops. A summit visible from below is a destination; the upper valleys have their own floor areas and onward routes.
+Цель — исследуемые многоуровневые горы, где подъём открывает полноценный район и дальнейшие направления. Эталон пространства — The Long Dark, особенно Ash Canyon и Timberwolf Mountain. Художественная готовность не определяется сборкой или числом тестов.
 
-## Geometry
+## Что сделано и где проходит граница
 
-- Irregular polygonal bedrock masses have separate apron, face and shoulder profiles, sloping crowns and asymmetric sides. Basin patches own areas and floor gradients, not just centre lines.
-- Curved pass axes constrain a broad regional bedrock envelope and valley incision. The foundation prevents unsupported paths where an axis leaves a massif; it extends into the mountain rather than forming a narrow elevated road.
-- Overlapping valley fields are blended together instead of taking a discontinuous lowest surface. River banks join the valley floor over a broad shallow profile. Frozen channels also fill incidental depressions under the ice: otherwise the ice edge becomes a blocking vertical step even when the ground-only walk passes.
-- Final terrain remains a 4 m heightfield, triangulated identically for rendering, sampling and Rapier. Overhangs, stacked paths, bridges and through caves are not implemented.
-- Seed 42 is the designed control composition. Other seeds perturb mass contours, heights, wall widths, noise and orientation. This is one parametric family, not yet a generator of different graph topologies.
+Работа остаётся в изолированной лаборатории `experiments/mountains/`. Общие источники игры, публикация и интеграционная ветка не меняются. Восстановленная `addRockSkin()` побайтно совпадает с `185989f95ec260455608bb1410eae2a54220b487`; масштабирование 1.6 удалено. Старые скалы и деревья сохранены.
 
-## Preserved assets
+**Трёхмерная контрольная композиция** содержит нижний лес, промежуточную котловину, озёрную долину, восточную лесную долину, высокий цирк и северный гребень. Восемь наземных связей образуют три независимых цикла. Seed42 служит композиционным образцом; другие seed этого режима меняют параметры и ориентацию одной семьи. Это пока не разнообразие графов.
 
-`addRockSkin()` is restored byte-for-byte from 185989f95ec260455608bb1410eae2a54220b487. The 1.6 scaling was removed. `src/gen/rock-skin.ts` and all other shared sources are unchanged. Existing lab trees are retained; their placement recognises sheltered upper forest areas. No publication, external PR, or merge is performed. Startup import failures are shown on screen, including unavailable WebGL, instead of leaving an endless loading veil.
+**Новый самостоятельный планировщик** `plan.ts` строит до рельефа 4–8 живых областей с разными площадями, локальными высотами и связями. `attachRegion` принимает область только вместе с входом, портами и внутренним доступом к ядру. `addLoop` предлагает дополнительные соединения с учётом площади. Отказ кандидата сохраняет прежний связный план. Проверяются контур острова и запас до берега, сухая поверхность относительно уровня моря, длины, уклоны, ширина и полный геометрический резерв переходов; конфликтующие пересечения отклоняются. Ошибка размещения возвращается явно, без подмены одной запасной картой.
 
-## Internal visual review
+В старой контрольной сцене высоты осевых узлов — исходные управляющие значения, а не независимый контракт конечного пути: в переходах они согласуются с дном области. Измеренное расхождение исходной оси и поверхности достигает около 29 м на входе high в cirque; проходимость и площадь проверены отдельно. Это ограничение контрольного моделирования, которое нельзя переносить как гарантию в новый исполнитель плана.
 
-The first polygon prototype was rejected internally: tall cylinders with flat caps and disconnected transitions. Subsequent revisions slope and taper crowns, add continuous bedrock beneath passes, give the northern crest a climbable approach, and connect arrival/departure points inside each basin. The goal is a complete exploratory district, not the highest number of tests.
+Планировщик хранит исходные высотные профили неизменными. Bridge/cave имеют отдельные типы, но их геометрия пока не реализована; проверка плана не подменяет их наземными путями. `plan-preview.html` показывает план, высоты, ядра и входы, позволяет менять seed и скачать JSON. **Этот новый план ещё не исполняется существующим Landforms.** Выпуклые эллиптические области и прямые резервируемые переходы — инженерная проверка контракта, не окончательная география или готовые горы. Трёхмерный берег и океан ещё не реализованы.
 
-Remaining artistic limits: the existing lab trees are simplified; long rock walls still expose repeated bedding, and the light/material treatment is not equivalent to The Long Dark. This revision should be evaluated as improved spatial structure, not a claim of matching the reference's finished art. Wider terrain variety requires additional reviewed composition families.
+## Крупная форма и найденные ошибки
 
-## Validation
+Модель контрольной сцены использует площади бассейнов, отдельные скальные массивы, наклонные днища, широкую опорную поверхность и извилистые оси проходов. Это 4-метровый heightfield, одинаково триангулированный для визуализации, семплирования и Rapier. Настоящих перекрывающихся поверхностей, навесов и внутренних пещер в нём нет.
 
-`node experiments/mountains/test.cjs`: deterministic heights, geographic graph connectivity/cycles, open destination floors, raster connectivity between ports, drainage, lateral clearance, and Rapier walks over final triangles in both directions. Use `SEEDS` and optional `ROUTES` for focused runs.
+Независимый разбор выявил конфликт порядка операций: опора пути на вершину повторно поднимала уже сформированное дно цирка, местами примерно на 80 м. Опора теперь формируется до областей. У массивов появились направленные пологие спины, у бассейнов — открытые плечи: одинаковый крутой периметр больше не является единственным профилем границы. Защищённая граница района больше не сдвигается шумом, а дно полностью владеет своей внутренней территорией. Профиль прохода согласуется с этим же дном, чтобы на стыке не возникал случайный уступ. Это не замена скальной оболочки.
 
-`node experiments/mountains/browser.cjs [output]`: actual keyboard input; all eight paths and returns on seed 42 with terrain, rock, tree and boulder collisions; ground-level and continuous walk frames; clay/terrain/rock/full views; lighting comparison; held-out seeds 7 and 2026; mobile menu and browser errors. Software rendering is not a measurement of the user's device performance.
+Длинный верхний коридор разомкнут снежным плечом: уменьшено вмешательство опоры вершины в соседний склон и изменена крупная форма спины массива. До/после проверяются с одинаковых точек.
 
-QA is stored under `docs/qa/MOUNTAINS-002/<source SHA>/`. The manifest records exact rendering source hashes and source SHA. Independent Kimi review and user artistic acceptance are not asserted by automated checks.
+Гребень доведён до доступного обзорного носа со скругляющимся профилем. Его путь и точка обзора принадлежат верхнему району. Район сдвинут внутри домена карты, чтобы северный играбельный гребень не попадал в предусмотренную RockSkin зону укрупнения дальних пограничных скал.
+
+Ещё одна исправленная ошибка: отдельная ледяная поверхность могла выступать над углублением грунта и блокировать движение, хотя тест без декора проходил. Замёрзшее русло теперь согласует грунт и лёд, в том числе заполняет локальные впадины под ним. Ошибки запуска, включая недоступный WebGL, показываются на экране вместо бесконечной загрузки.
+
+## Автономная проверка
+
+- Проверка геометрического графа не требует обязательного числа циклов: маленькая зона с одним входом допустима.
+- Все входы каждого района, включая терминальные, должны достигать его ядра **внутри собственного полигона**. Обход через соседний район больше не считается доказательством.
+- Полезная площадь считается одной компонентой от ядра, а не суммой разрозненных открытых пятен. Непригодный старт BFS и узкие пересечения границы между raster-узлами отвергаются.
+- Проверяются дренаж, боковой запас, фактический проход по финальным треугольникам в обе стороны, видимость цирка с гребня с высоты глаз. Геометрическая видимость по грунту не заменяет просмотр кадра со скалами.
+- Браузерные проходы используют тот же контроллер, скалы, деревья, валуны и лёд, что сцена; сохраняются кадры с маршрутов, режимы слоёв и освещения. Программный рендеринг не является измерением производительности пользовательского устройства.
+- У нового планировщика отдельно проверяются детерминизм, отказ без осиротевших областей, разные числа областей и графы, границы/резервы/уклоны, сухая поверхность и неизменность проекта.
+
+Художественная оценка остаётся строгой: повторяющиеся стены и некоторые замкнутые формы всё ещё читаются как укрепления; пространственное разнообразие единственной 3D-семьи ограничено. Это известные недостатки формы, их нельзя объявить решёнными количеством скал, материалами или успешными тестами. Соответствие уровню The Long Dark не заявляется.
+
+## Запуск и материалы
+
+- `npx vite --host 0.0.0.0 --port 5221`; сцена `/experiments/mountains/?seed=42`, план `/experiments/mountains/plan-preview.html?seed=42`.
+- `npx tsc -p experiments/mountains/tsconfig.json`
+- `npm run build`
+- `npx vite build --config experiments/mountains/vite.config.mjs`
+- `node experiments/mountains/plan.test.cjs`
+- `node experiments/mountains/connectivity.test.cjs`
+- `SEEDS=42,7,2026 node experiments/mountains/test.cjs`; `ROUTES` позволяет выбрать связи для диагностики.
+- `CHROMIUM_PATH=/usr/bin/chromium node experiments/mountains/browser.cjs [output]`
+
+QA хранится в `docs/qa/MOUNTAINS-002/<source SHA>/`: исходный SHA, хеши кода рендера, журнал и кадры. Старый каталог `review/` относится к отклонённому предыдущему этапу. Независимая Kimi-проверка и художественное одобрение пользователя автоматическими проверками не подменяются.
+
+## Архитектурное решение для следующего этапа
+
+Требование задаётся исследуемым пространством: конечный остров, живые районы на разных высотах, неравномерные локальные ярусы, заранее предусмотренный вход в каждый живой район. Массив породы и живой район — разные сущности: один массив может поддерживать несколько районов, а часть его объёма нужна только для разделения, силуэта и закрытия обзора. Декоративный пик не получает автоматически лес, ресурсы, события и обещание доступа. Новый живой район принимается вместе с переходом, площадками входов и внутренним выходом к полезной территории.
+
+Большая зона чаще нуждается в дополнительных подходах. Это мягкая цель, зависящая также от длины обхода и роли района. Единственный мост к небольшому верхнему району допустим. Число циклов и число высотных ярусов не должны быть глобальными константами. Несколько нарисованных рёбер могут сходиться в один физический вход; считать их разными подходами без проверки геометрии нельзя.
+
+Контракт: planWorld(seed, options) → план пространства; bakeWorld(plan, capabilities) → геометрия, реализованные пути и сертификаты областей, либо объяснимая неудача. План хранит исходный вертикальный профиль отдельно от полученной поверхности. Перепроецировать точки на землю и затем объявить исходный замысел выполненным недостаточно. Ядра районов и резерв коридоров принадлежат плану; следующие операции рельефа не могут бесконтрольно поднимать/срезать их.
+
+Проверка живого района: все его входы достигают ядра внутри его территории; полезная площадь измеряется одной связанной компонентой, а не суммой островков и не обходом через соседнюю долину. Проверка перехода: запланированные высоты/ширины/уклон и физический проход по финальным коллайдерам. Проверка художественного результата: подход, сокрытие продолжения, раскрытие, узнавание пройденного места сверху, различимость районов. Эти проверки дополняют друг друга.
+
+Носитель геометрии пока не выбран окончательно. Heightfield остаётся подходящим инструментом для долин, плеч и седловин. Он принципиально не хранит две поверхности над одной точкой XZ. Локальные меши могут нести мост, уступ с навесом и внутренний проход; при тоннеле нужны настоящие отверстия и согласованные коллайдеры. Полный объёмный мир нужен лишь если выигрыши для наших пространств/деформации оправдывают стоимость плотностей, построения сетки, швов и стриминга. Полная смена носителя сама по себе не создаёт интересных маршрутов.
+
+Следующий опыт для выбора носителя: одна нижняя долина и верхний живой район с единственным мостом; мост пересекает существующий нижний маршрут в XZ. Оба пути должны независимо проходиться туда и обратно, не переносить игрока на чужую высоту и сохранять корректные коллизии. Затем отдельный проход снизу с настоящим порталом. Только после этого решать, достаточен ли гибрид или нужна локальная объёмная генерация. Это проверка нашей архитектуры, а не воспроизведение технологии другой игры.
+
+## Наблюдения из открытых источников
+
+Minecraft. Mojang разделяет вариативность формы/высоты и биомы; документы 1.18.2 описывают density functions для пещер. В журнале экспериментальной генерации 1.18 есть локальная правка рек в горах через фьорды/седловины. Это примеры представления объёма, стадий и локальных эвристик, а не доказательство связности всех горных районов. Источники:
+https://www.minecraft.net/en-us/article/caves---cliffs--part-ii-out-today-java
+https://www.minecraft.net/en-us/article/new-world-generation-java-available-testing
+https://www.minecraft.net/en-us/article/minecraft-java-edition-1-18-2
+https://learn.microsoft.com/en-us/minecraft/creator/documents/world-generation?view=minecraft-bedrock-stable (документация Bedrock; не смешивать с внутренним pipeline Java).
+
+Valheim. Официальный patch 0.214.300 прямо называет heightmaps при исправлении расхождения поверхности PC/Xbox. Frost Caves объявлены отдельным dungeon. Это подтверждает составляющие системы, но не раскрывает всю реализацию пещер или гарантии маршрутов. Полезная гипотеза — сочетать крупную поверхность с отдельными вертикальными пространствами; переносить биомную боевую прогрессию в нашу игру оснований нет. Источники:
+https://store.steampowered.com/news/posts/?appids=892970&enddate=1680697960&feed=steam_community_announcements
+https://steamcommunity.com/games/892970/announcements/detail/3131694924763932005
+https://www.valheimgame.com/faq/
+
+Skyrim. В первичном докладе Joel Burgess/Nathan Purkeypile о модульном проектировании описаны измеримые габариты, проверка циклических стыков и отдельных вертикальных модулей, различие границ модуля и проходимого пространства. Для нас полезны контракты стыков и ранние проверки масштаба; жёсткая модульная сетка всего горного мира может усилить одинаковость и не принимается автоматически. Доклад преимущественно о dungeon kits и не является описанием процедурного генератора гор.
+https://www.gamedeveloper.com/design/skyrim-s-modular-approach-to-level-design
+
+The Forest. Ben Falcone в интервью 2014 года описывает переход от полностью процедурной идеи к смеси авторского устройства и процедурного размещения объектов. Anna Terekhova в интервью 2018 выделяет контраст наземного мира и подземной сети пещер. Вывод для нас: автоматизировать формальные связи недостаточно для разных по характеру мест; нужен набор выразительных пространственных приёмов. Это не довод делать одну фиксированную карту и не техническое описание способа вырезания пещер.
+https://www.gamedeveloper.com/design/fine-young-cannibals-developing-early-access-hit-i-the-forest-i-
+https://gamingbolt.com/the-forest-interview-talking-about-influences-multiplayer-plans-for-the-future-and-more
+
+Общая граница выводов: архитектуры этих игр не принимаются готовым решением. Планирование горных районов для Nimble проектируется под собственные требования; отдельные заимствованные приёмы принимаются после испытания на тех же пространствах, контроллере и бюджете браузера.

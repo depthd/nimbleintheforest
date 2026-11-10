@@ -10,7 +10,7 @@
     "docs/MOUNTAINS-002.md",
     "docs/qa/MOUNTAINS-002/"
   ],
-  "coordination": "Scope proposed explicitly in this chat and accepted by the user ('\u043e\u043a\u0435\u0439', 2026-11-10). New task starts at the freshly fetched integration base. Existing isolated lab imported from 185989f95ec260455608bb1410eae2a54220b487 for revision. No src/, shared Vite, diary, publication or merge changes.",
+  "coordination": "Scope proposed explicitly in this chat and accepted by the user ('окей', 2026-11-10). New task starts at the freshly fetched integration base. Existing isolated lab imported from 185989f95ec260455608bb1410eae2a54220b487 for revision. No src/, shared Vite, diary, publication or merge changes.",
   "acceptance": [
     "Convincing primary terrain before decoration",
     "Spacious upper valley with its own floor profile and side spaces",
@@ -20,5 +20,5 @@
     "Preserve main game, batched rendering and local rock colliders"
   ],
   "qa_sha": null,
-  "qa_result": "Source frozen for committed-SHA checks; internal visual revision completed; no artistic approval asserted"
+  "qa_result": "Source freeze: protected basin domains, directed slopes, crest view, strict region access and separate pre-terrain planner. Final committed-SHA QA pending; artistic target not accepted."
 }
