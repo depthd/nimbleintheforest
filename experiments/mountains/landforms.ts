@@ -17,7 +17,7 @@ export interface View {
   position: Point;
   target: Point;
 }
-export const VERSION = "landforms-lab-1";
+export const VERSION = "landforms-lab-2";
 export const SIZE = 1600,
   CELL = 4;
 export class Landforms {
@@ -37,6 +37,8 @@ export class Landforms {
     rz: number;
   };
   readonly drainage: Point[];
+  /** Bedrock core shared by the massif and its attached contour shelf. */
+  readonly shoulderCore = { x: 125, z: 75 };
   constructor(readonly seed: number) {
     const rng = new Rng(seed),
       noiseRng = new Rng(seed ^ 0x6a73f);
@@ -194,6 +196,45 @@ export class Landforms {
     }
     return { d, y };
   }
+  /** Fill inward from the shelf along radial sections of its shared rock core.
+   * Radial intersections stay continuous across bends; nearest-route projection
+   * changes sides inside the massif and would introduce artificial tall fins.
+   */
+  private shelfSupport(x: number, z: number) {
+    const shelf = this.routes[2],
+      core = this.shoulderCore,
+      dx = x - core.x,
+      dz = z - core.z,
+      distance = Math.hypot(dx, dz),
+      ux = dx / Math.max(distance, 1e-6),
+      uz = dz / Math.max(distance, 1e-6);
+    let support = 0;
+    for (let i = 0; i < shelf.points.length - 1; i++) {
+      const a = shelf.points[i],
+        b = shelf.points[i + 1],
+        ax = a.x - core.x,
+        az = a.z - core.z,
+        sx = b.x - a.x,
+        sz = b.z - a.z,
+        cross = sx * uz - sz * ux;
+      if (Math.abs(cross) < 1e-8) continue;
+      const t = -(ax * uz - az * ux) / cross;
+      if (t < 0 || t > 1) continue;
+      const radius = (ax + sx * t) * ux + (az + sz * t) * uz;
+      if (radius <= distance) continue;
+      const along = (i + t) / (shelf.points.length - 1),
+        attachment =
+          smoothstep(0.06, 0.17, along) * (1 - smoothstep(0.78, 0.93, along)),
+        tread = lerp(a.y, b.y, t),
+        inward = Math.max(0, radius - distance - shelf.width * 0.38),
+        headroom = 235 - tread,
+        wall = tread + headroom * (1 - Math.exp((-inward * 1.65) / headroom));
+      // The profile steepens beside the tread and rounds into the existing peak.
+      // It never extrapolates an unbounded wall through the centre of the massif.
+      support = Math.max(support, wall * attachment);
+    }
+    return support;
+  }
   routeDistance(x: number, z: number) {
     const p = this.local(x, z);
     return Math.min(...this.routes.map((r) => this.near(r.points, p.x, p.z).d));
@@ -225,7 +266,7 @@ export class Landforms {
       ridge(80, -440, 350, 115, 160) +
       ridge(-300, -320, 125, 210, 183) +
       ridge(490, -260, 135, 265, 220) +
-      ridge(125, 75, 120, 90, 202) +
+      ridge(this.shoulderCore.x, this.shoulderCore.z, 120, 90, 202) +
       ridge(-80, -440, 125, 115, 100);
     h += N.fbm(x / 70, z / 70, 3) * 22 * smoothstep(65, 180, h);
     const floor = H + 2.7 * N.noise(x / 120, z / 135) + 1.7 * Math.sin(x / 110);
@@ -236,6 +277,10 @@ export class Landforms {
       20 + N.noise(x / 100, z / 100) * 1.2,
       1 - smoothstep(0.6, 1.2, lower),
     );
+    // The contour shelf belongs to the massif: close the entire inner cross-section
+    // before cutting its walkable tread. A symmetric route support alone would leave
+    // a free-standing ring and a trench between the tread and the original peak.
+    h = Math.max(h, this.shelfSupport(x, z));
     // Corridors preserve space, not identical steps. Width varies smoothly along their length.
     let total = 0,
       target = 0,
