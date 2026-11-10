@@ -267,6 +267,7 @@ function handleGlobalKeys() {
     if (hud.mapOpen) hud.toggleMap(false);
     if (hud.helpOpen) hud.toggleHelp(false);
   }
+  if (journal.active) { P.handsWarming = false; return; }
   if (!inp.enabled || G.sleeping || G.dead) return;
   P.handsWarming = inp.down('KeyH') && !P.carried && !G.interact.swinging;
   if (inp.hit('KeyX') && G.body.snow > 0.02) {
