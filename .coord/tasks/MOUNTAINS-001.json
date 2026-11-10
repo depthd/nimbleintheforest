@@ -1,0 +1,14 @@
+{
+  "id": "MOUNTAINS-001",
+  "status": "developing",
+  "owner": null,
+  "requested_owner": "codex-mountains",
+  "branch": "task/MOUNTAINS-001-landform-lab",
+  "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
+  "allowed_paths": [],
+  "requested_paths": [".coord/tasks/MOUNTAINS-001.json", "experiments/mountains/", "docs/MOUNTAINS-001.md", "docs/qa/MOUNTAINS-001/"],
+  "coordination": "New isolated experiment only. Owner and allowed_paths await coordinator assignment; no shared game files requested. User authorized preparation of this task checkout and reviewable prototype. Draft PR must not merge before scope assignment.",
+  "acceptance": ["Seeded lower and upper valleys with varied continuous approaches", "Walkable Rapier controller and inspectable views", "Preserve ordinary game source and runtime", "Physical route tests and sequential browser views"],
+  "qa_sha": null,
+  "qa_result": "NOT_TESTED"
+}
