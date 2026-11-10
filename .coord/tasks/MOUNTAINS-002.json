@@ -1,0 +1,24 @@
+{
+  "id": "MOUNTAINS-002",
+  "status": "review",
+  "owner": "codex-mountains",
+  "branch": "task/MOUNTAINS-002-terrain-frame",
+  "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
+  "allowed_paths": [
+    ".coord/tasks/MOUNTAINS-002.json",
+    "experiments/mountains/",
+    "docs/MOUNTAINS-002.md",
+    "docs/qa/MOUNTAINS-002/"
+  ],
+  "coordination": "Scope proposed explicitly in this chat and accepted by the user ('окей', 2026-11-10). New task starts at the freshly fetched integration base. Existing isolated lab imported from 185989f95ec260455608bb1410eae2a54220b487 for revision. No src/, shared Vite, diary, publication or merge changes.",
+  "acceptance": [
+    "Convincing primary terrain before decoration",
+    "Spacious upper valley with its own floor profile and side spaces",
+    "Distinct natural walking approaches, no default circular shelf",
+    "Comparable layer views and approach/reveal sequences in three lighting modes",
+    "Control and held-out seeds, final-geometry physics walks",
+    "Preserve main game, batched rendering and local rock colliders"
+  ],
+  "qa_sha": null,
+  "qa_result": "EXACT_COMMITTED_SHA_QA_RECORDED_IN_PR; ARTISTIC_AND_KIMI_REVIEW_PENDING"
+}

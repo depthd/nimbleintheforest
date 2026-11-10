@@ -1,0 +1,29 @@
+{
+  "baseline_sha": "185989f95ec260455608bb1410eae2a54220b487",
+  "kind": "working-tree review captures; rendering source fingerprints identify the exact committed renderer/model independently of the later Git commit ID",
+  "render_source_sha256": {
+    "main.ts": "a5d4ce00f8556432b10706b191c20f9f577e7dfdedb780f9768fa8eaa4619719",
+    "landforms.ts": "77f04461fb844d7ebe0628ff72acaee320dcc6b1b87722cdc4e6b6017ae5ffa3",
+    "index.html": "3b4381547438e80e0e508f86bb5566f22bd254ead5552146f78a89d26cd3ba5b",
+    "style.css": "837ac91b76857ce7b5bc3eae294da4bbad3bc131331d10c42143f8a109afef5b"
+  },
+  "seed": 42,
+  "viewport": [
+    1100,
+    700
+  ],
+  "graphics": "Chromium / ANGLE SwiftShader",
+  "fixed_camera": {
+    "eye": [
+      -550,
+      560,
+      690
+    ],
+    "target": [
+      0,
+      120,
+      -170
+    ]
+  },
+  "notes": "Only the before/after fixed overview uses identical absolute world cameras. Named approach/upper views are semantic comparisons of the redesigned geography. No image retouching. Final committed-SHA checks are recorded in the draft PR."
+}
