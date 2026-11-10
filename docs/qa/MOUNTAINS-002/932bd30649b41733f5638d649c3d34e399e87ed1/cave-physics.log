@@ -1,0 +1,155 @@
+{
+  "status": "PASS",
+  "stage": "same-scene-dead-end-cave",
+  "walkSpeed": 4.58,
+  "reports": [
+    {
+      "seed": 1,
+      "cutTriangles": 60,
+      "roofCover": 33.42890949711204,
+      "floorY": 12.58873347774148,
+      "ceilingY": 18.588733477741478,
+      "exteriorY": 52.017642974853516,
+      "caveTriangles": 903,
+      "roundTrip": {
+        "reached": 229,
+        "total": 229,
+        "ticks": 4621,
+        "maxError": 0.07710147930619549,
+        "caveSupportFrames": 513,
+        "end": {
+          "x": 0.020576201379299164,
+          "y": 13.982819557189941,
+          "z": 134.59185791015625
+        }
+      },
+      "upperRoute": {
+        "reached": 715,
+        "total": 715
+      },
+      "ceilingCenterY": 17.659168243408203,
+      "backX": -54.66990280151367,
+      "uncutNegativeControl": {
+        "reached": 94,
+        "total": 115,
+        "ticks": 2155,
+        "maxError": 0.17889957889914498,
+        "caveSupportFrames": 0,
+        "end": {
+          "x": -21.9783878326416,
+          "y": 14.127209663391113,
+          "z": 20.336040496826172
+        }
+      }
+    },
+    {
+      "seed": 6,
+      "cutTriangles": 44,
+      "roofCover": 31.354186653010547,
+      "floorY": 12.183361412175,
+      "ceilingY": 18.183361412175,
+      "exteriorY": 49.53754806518555,
+      "caveTriangles": 855,
+      "roundTrip": {
+        "reached": 231,
+        "total": 231,
+        "ticks": 4632,
+        "maxError": 0.07702888743330938,
+        "caveSupportFrames": 513,
+        "end": {
+          "x": 0.019006632268428802,
+          "y": 13.577427864074707,
+          "z": 134.62049865722656
+        }
+      },
+      "upperRoute": {
+        "reached": 709,
+        "total": 709
+      },
+      "ceilingCenterY": 17.25379753112793,
+      "backX": -54.66990661621094
+    },
+    {
+      "seed": 19,
+      "cutTriangles": 42,
+      "roofCover": 31.72009937565774,
+      "floorY": 10.366478993482888,
+      "ceilingY": 16.366478993482886,
+      "exteriorY": 48.086578369140625,
+      "caveTriangles": 875,
+      "roundTrip": {
+        "reached": 229,
+        "total": 229,
+        "ticks": 4620,
+        "maxError": 0.10746447265769099,
+        "caveSupportFrames": 513,
+        "end": {
+          "x": 0.02236594632267952,
+          "y": 12.058564186096191,
+          "z": 134.55340576171875
+        }
+      },
+      "upperRoute": {
+        "reached": 711,
+        "total": 711
+      },
+      "ceilingCenterY": 15.43783187866211,
+      "backX": -54.66990280151367
+    },
+    {
+      "seed": 42,
+      "cutTriangles": 35,
+      "roofCover": 34.60549104072153,
+      "floorY": 12.556141497120262,
+      "ceilingY": 18.55614149712026,
+      "exteriorY": 53.1616325378418,
+      "caveTriangles": 902,
+      "roundTrip": {
+        "reached": 229,
+        "total": 229,
+        "ticks": 4622,
+        "maxError": 0.11884225236251922,
+        "caveSupportFrames": 513,
+        "end": {
+          "x": 0.022192925214767456,
+          "y": 14.35987377166748,
+          "z": 134.55612182617188
+        }
+      },
+      "upperRoute": {
+        "reached": 711,
+        "total": 711
+      },
+      "ceilingCenterY": 17.62795066833496,
+      "backX": -54.66990280151367
+    },
+    {
+      "seed": 71,
+      "cutTriangles": 37,
+      "roofCover": 32.63869624782354,
+      "floorY": 13.156290477029978,
+      "ceilingY": 19.156290477029977,
+      "exteriorY": 51.794986724853516,
+      "caveTriangles": 883,
+      "roundTrip": {
+        "reached": 229,
+        "total": 229,
+        "ticks": 4623,
+        "maxError": 0.09179818021443964,
+        "caveSupportFrames": 513,
+        "end": {
+          "x": 0.020250417292118073,
+          "y": 14.694643020629883,
+          "z": 134.5956573486328
+        }
+      },
+      "upperRoute": {
+        "reached": 711,
+        "total": 711
+      },
+      "ceilingCenterY": 18.227128982543945,
+      "backX": -54.66990280151367
+    }
+  ],
+  "limitation": "One straight convex dead-end cavity. These tests certify its designated paths, roof, walls and source immutability; they do not certify all arbitrary cave plans."
+}

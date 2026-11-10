@@ -1,3 +1,4 @@
+import { journal } from './journal/journal';
 // What the player looks at, which actions are possible and what happens:
 // chopping, picking up, hanging blankets, lighting fires, fishing and more.
 import * as THREE from 'three';
@@ -596,7 +597,7 @@ export class Interaction {
     G.build?.placement.update(dt);
     this.computeTarget();
     this.actions = this.compute();
-    if (G.sleeping || G.dead || !inp.enabled) { this.swinging = null; this.timed = null; G.player.avatar.hands.cancel(); return; }
+    if (G.sleeping || G.dead || !inp.enabled || journal.active) { this.swinging = null; this.timed = null; G.player.avatar.hands.cancel(); return; }
     if (dt <= 0) return;
     const P = G.player;
 

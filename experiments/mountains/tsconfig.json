@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "types": [] },
+  "include": ["main.ts", "landforms.ts", "plan.ts", "crossing.ts", "crossing-form.ts", "crossing-view.ts", "cave.ts"]
+}

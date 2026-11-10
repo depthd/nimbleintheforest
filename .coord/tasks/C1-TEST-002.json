@@ -1,0 +1,13 @@
+{
+  "id": "C1-TEST-002",
+  "owner": "codex-primary",
+  "status": "qa",
+  "branch": "task/C1-TEST-002-forest",
+  "base_sha": "49f2b3bec82d9903062f4c67200742f0289a9cd7",
+  "allowed_paths": [
+    ".coord/tasks/C1-TEST-002.json",
+    "src/world/forest.ts",
+    "src/game/game.ts"
+  ],
+  "scope": "Replace all standing forest species with restored C1 instances; preserve published preview; publish test only; visual static trees, no felling/snow/wind."
+}

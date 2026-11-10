@@ -1,0 +1,28 @@
+{
+  "id": "C1-TEST-001",
+  "title": "Publish restored C1 in the existing game test world for visual inspection",
+  "owner": "codex-primary",
+  "status": "qa",
+  "branch": "task/C1-TEST-001-preview",
+  "base_sha": "f6db29bab0b9bece765831301e76dee5f74b283c",
+  "integration_base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
+  "inherited_preview_sha": "f6db29bab0b9bece765831301e76dee5f74b283c",
+  "allowed_paths": [
+    ".coord/tasks/C1-TEST-001.json",
+    "src/main.ts",
+    "src/game/c1-lab.ts",
+    "public/models/conifer_c1.glb",
+    "public/models/conifer_c1.json",
+    "tests/c1-browser.cjs"
+  ],
+  "authorization": "User explicitly requested publishing the new model to the test version to inspect its appearance. Production is excluded.",
+  "base_note": "Created from fresh configured integration base, then fast-forwarded to the currently published preview to preserve its diary and mountain changes. Own diff is measured from that deployed preview.",
+  "acceptance": [
+    "Use the restored pass-3 C1 GLB, SHA256 daf6d05bf185b3273768095aef94572381285176079455ac578661c07d9e2df8",
+    "Opt-in c1=1 in the real world, full-size tree on dry ground, walk-around and inspection viewpoints",
+    "No snow, wind or felling implementation is implied by this visual preview",
+    "Existing normal forest, diary and mountain preview are retained",
+    "Build, repository scope guard and browser model/placement/input checks pass",
+    "Publish exact checked SHA through existing test-pages workflow; verify /test/version.json and production root are unchanged"
+  ]
+}

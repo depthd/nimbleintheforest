@@ -17,6 +17,12 @@ export default defineConfig({
   plugins: [{ name: 'build-info', transformIndexHtml: html => html.replaceAll('<!-- build-info -->', buildInfo) }],
   build: {
     target: 'es2022',
+    rollupOptions: { input: {
+      main: 'index.html',
+      mountains: 'experiments/mountains/index.html',
+      mountainPlan: 'experiments/mountains/plan-preview.html',
+      mountainCrossing: 'experiments/mountains/crossing.html',
+    } },
     chunkSizeWarningLimit: 6000,
   },
   server: { host: true },

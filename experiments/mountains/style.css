@@ -1,0 +1,142 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #c7d6e1;
+  color: #f1f5f6;
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+  overflow: hidden;
+}
+canvas {
+  display: block;
+}
+#panel {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  width: 350px;
+  padding: 22px;
+  background: rgba(19, 34, 44, 0.91);
+  border: 1px solid #ffffff23;
+  border-radius: 12px;
+  max-height: calc(100vh - 100px);
+  overflow: auto;
+  backdrop-filter: blur(12px);
+}
+small {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: #b9d4dc;
+}
+h1 {
+  font-size: 27px;
+  font-weight: 550;
+  line-height: 1.1;
+  margin: 14px 0;
+}
+p {
+  color: #d2dfe5;
+}
+.row {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 12px 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+  border: 1px solid #91a9b44d;
+  background: #ffffff0b;
+  padding: 7px 10px;
+  border-radius: 5px;
+}
+button {
+  cursor: pointer;
+}
+button:hover,
+button.active {
+  background: #54798588;
+}
+input {
+  width: 78px;
+}
+#views {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 16px 0;
+}
+#views button {
+  font-size: 12px;
+  text-align: left;
+}
+.hint {
+  font-size: 11px;
+  color: #a9bec9;
+}
+#status {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  background: #13222ccc;
+  padding: 11px 16px;
+  border-radius: 7px;
+  font-size: 12px;
+  pointer-events: none;
+}
+#crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: white;
+  pointer-events: none;
+}
+#veil {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #152a35;
+  font-size: 20px;
+}
+body.locked #panel {
+  display: none;
+}
+body.folded #panel > *:not(h1):not(.row) {
+  display: none;
+}
+body.folded #panel {
+  width: 240px;
+}
+body.folded h1 {
+  font-size: 20px;
+  margin: 0;
+}
+body.folded .row {
+  margin-bottom: 0;
+}
+body.folded #seed,
+body.folded label {
+  display: none;
+}
+@media (max-width: 600px) {
+  #panel {
+    left: 10px;
+    top: 10px;
+    width: 290px;
+    padding: 16px;
+  }
+  #status {
+    right: 10px;
+    bottom: 10px;
+    font-size: 10px;
+    max-width: 90vw;
+  }
+}

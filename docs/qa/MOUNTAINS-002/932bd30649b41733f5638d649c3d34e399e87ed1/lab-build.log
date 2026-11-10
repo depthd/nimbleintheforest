@@ -1,0 +1,28 @@
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 24 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/mountains-lab/experiments/mountains/index.html               2.93 kB │ gzip:     1.34 kB
+dist/mountains-lab/experiments/mountains/plan-preview.html        4.27 kB │ gzip:     2.10 kB
+dist/mountains-lab/experiments/mountains/crossing.html            4.84 kB │ gzip:     2.19 kB
+dist/mountains-lab/assets/main-vfwSP27C.css                       1.62 kB │ gzip:     0.76 kB
+dist/mountains-lab/assets/crossing-F7vRvsVM.js                    0.45 kB │ gzip:     0.36 kB
+dist/mountains-lab/assets/mountains-3I6qUMv7.js                   0.46 kB │ gzip:     0.37 kB
+dist/mountains-lab/assets/modulepreload-polyfill-B5Qt9EMX.js      0.71 kB │ gzip:     0.40 kB
+dist/mountains-lab/assets/preload-helper-PPVm8Dsz.js              1.23 kB │ gzip:     0.71 kB
+dist/mountains-lab/assets/plan-DPRiCapS.js                       14.17 kB │ gzip:     6.06 kB
+dist/mountains-lab/assets/crossing-view-KXl5yIr-.js              30.42 kB │ gzip:    12.99 kB
+dist/mountains-lab/assets/main-DGGrYZBF.js                       38.32 kB │ gzip:    16.74 kB
+dist/mountains-lab/assets/rapier-BXKgA8bb.js                  4,867.67 kB │ gzip: 1,778.56 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.89s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

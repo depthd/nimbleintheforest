@@ -1,0 +1,15 @@
+{
+  "name": "C1 restored pass 3",
+  "sha256": "daf6d05bf185b3273768095aef94572381285176079455ac578661c07d9e2df8",
+  "height_m": 10,
+  "up": "+Y",
+  "triangles": 2068,
+  "meshes": 2,
+  "materials": 1,
+  "atlas": [
+    256,
+    256
+  ],
+  "scope": "static visual preview; no wind/snow/chopping/felling",
+  "source": "C1_restored_package.zip"
+}

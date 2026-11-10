@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Nimble — горные долины</title>
+  </head>
+  <body>
+    <div id="world"></div>
+    <section id="panel">
+      <small>NIMBLE IN THE FOREST · ИССЛЕДОВАНИЕ РЕЛЬЕФА</small>
+      <h1>Новые горные долины</h1>
+      <p>
+        Горный массив вырастает из ветвящейся долины. Мир определяет число и
+        расположение районов, высоты, гребни и подходы к верхним пространствам.
+      </p>
+      <div class="row">
+        <label>Мир <input id="seed" type="number" value="42" /></label
+        ><button id="generate">Создать</button
+        ><button id="collapse">Свернуть</button>
+      </div>
+      <div id="views"></div>
+      <div class="row">
+        <button id="walk">Идти по миру</button
+        ><button id="fly">Свободный полёт</button
+        ><button id="routes">Показать пути</button>
+      </div>
+      <label
+        >Показывать
+        <select id="layers">
+          <option value="full">Весь район</option>
+          <option value="clay">Только форма</option>
+          <option value="terrain">Грунт и снег</option>
+          <option value="rocks">Грунт со скалами</option>
+        </select></label
+      >
+      <label
+        >Освещение
+        <select id="light">
+          <option value="day">Ясный день</option>
+          <option value="overcast">Пасмурно</option>
+          <option value="evening">Вечер</option>
+        </select></label
+      >
+      <p class="hint">
+        WASD — движение · мышь — взгляд · Shift — быстрее · пробел — прыжок ·
+        Esc — меню. В полёте: пробел вверх, Ctrl вниз.
+      </p>
+      <p class="hint">
+        Генерируемая география. <a href="?seed=42&amp;mode=control">Сохранённая контрольная композиция</a>.
+        Отдельные опыты: <a href="./plan-preview.html">план живых районов</a> и
+        <a href="./crossing.html">пересечение высот и пещера в склоне</a>.
+      </p>
+      <p class="hint"><a href="../../">К тестовой игре</a></p>
+      <!-- build-info -->
+    </section>
+    <div id="crosshair">·</div>
+    <aside id="status">Подготовка…</aside>
+    <div id="veil">Создаём горный район…</div>
+    <script type="module">
+      import("./main.ts").catch((error) => {
+        console.error(error);
+        document.getElementById("veil").textContent = "Не удалось загрузить сцену: " + (error?.message || error);
+      });
+    </script>
+  </body>
+</html>

@@ -3,6 +3,11 @@ import type { Settings } from './game/ctx';
 import { G } from './game/ctx';
 
 const params = new URLSearchParams(location.search);
+// Inspect the imported C1 in the real world, with daylight and normal movement.
+if (params.get('c1') === '1') {
+  for (const [key, value] of Object.entries({ seed: '42', hour: '13', weather: 'clear', nocold: '1', horror: '0', scale: '0' }))
+    if (!params.has(key)) params.set(key, value);
+}
 // The old laboratory remains available for diagnostics. Ordinary play now uses
 // the same snow material in the generated world, with normal survival settings.
 if (params.get('snow') === '1') {
@@ -57,6 +62,7 @@ async function go() {
   await new Promise((r) => setTimeout(r, 30));
   try {
     await startGame(settings);
+    if (params.get('c1') === '1') await (await import('./game/c1-lab')).addC1Lab();
   } catch (e) {
     loading.innerHTML = `<h2>Ошибка запуска</h2><pre style="white-space:pre-wrap;max-width:80vw">${String((e as Error)?.stack ?? e)}</pre>`;
     throw e;
@@ -76,4 +82,4 @@ document.getElementById('st-go')!.addEventListener('click', go);
 if (params.get('preview') === 'map') import('./preview').then((m) => m.previewMap(params));
 else if (params.get('preview') === 'animals') import('./preview_animals').then((m) => m.previewAnimals(params));
 else if (params.get('preview') === 'wood') import('./preview_wood').then((m) => m.previewWood(params));
-else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1' || params.get('cliffs') === '1' || params.get('cave') === '1' || params.get('deer') === '1') go();
+else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1' || params.get('cliffs') === '1' || params.get('cave') === '1' || params.get('deer') === '1' || params.get('c1') === '1') go();

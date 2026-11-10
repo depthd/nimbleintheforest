@@ -1,0 +1,47 @@
+{
+  "status": "PASS",
+  "stage": "same-scene-dead-end-cave",
+  "walkSpeed": 1.72,
+  "reports": [
+    {
+      "seed": 42,
+      "cutTriangles": 35,
+      "roofCover": 34.60549104072153,
+      "floorY": 12.556141497120262,
+      "ceilingY": 18.55614149712026,
+      "exteriorY": 53.1616325378418,
+      "caveTriangles": 902,
+      "roundTrip": {
+        "reached": 229,
+        "total": 229,
+        "ticks": 11929,
+        "maxError": 0.11878693925216766,
+        "caveSupportFrames": 1365,
+        "end": {
+          "x": 0.022588694468140602,
+          "y": 14.359888076782227,
+          "z": 134.5542449951172
+        }
+      },
+      "upperRoute": {
+        "reached": 711,
+        "total": 711
+      },
+      "ceilingCenterY": 17.62795066833496,
+      "backX": -54.66990280151367,
+      "uncutNegativeControl": {
+        "reached": 94,
+        "total": 115,
+        "ticks": 5143,
+        "maxError": 0.11878693925216766,
+        "caveSupportFrames": 0,
+        "end": {
+          "x": -21.74322509765625,
+          "y": 13.486357688903809,
+          "z": 20.027196884155273
+        }
+      }
+    }
+  ],
+  "limitation": "One straight convex dead-end cavity. These tests certify its designated paths, roof, walls and source immutability; they do not certify all arbitrary cave plans."
+}

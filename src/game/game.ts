@@ -24,6 +24,8 @@ import { Thermal } from './thermal';
 import { Fires } from './fire';
 import { Interaction } from './interact';
 import { ViewModel } from './viewmodel';
+import { journal } from './journal/journal';
+import './journal/journal.css';
 import { Effects } from './effects';
 import { HUD } from '../ui/hud';
 import { Horror } from './horror';
@@ -110,6 +112,7 @@ export async function startGame(settings: Settings) {
   G.house = new House();
   G.house.build(rng);
   G.forest = new Forest();
+  await G.forest.loadC1();
   G.forest.build(rng);
   G.thermal = new Thermal();
   G.body = new Body();
@@ -265,6 +268,7 @@ function handleGlobalKeys() {
     if (hud.mapOpen) hud.toggleMap(false);
     if (hud.helpOpen) hud.toggleHelp(false);
   }
+  if (journal.active) { P.handsWarming = false; return; }
   if (!inp.enabled || G.sleeping || G.dead) return;
   P.handsWarming = inp.down('KeyH') && !P.carried && !G.interact.swinging;
   if (inp.hit('KeyX') && G.body.snow > 0.02) {
@@ -523,6 +527,7 @@ function loop(now: number) {
   last = now;
   if (dt > 0.1) dt = 0.1;
   const inp = G.input;
+  journal.update(dt);
   if (!G.recorder?.reviewing) handleGlobalKeys();
   const paused = G.recorder?.reviewing || G.paused || (!inp.locked && !G.hud.modal && !(window as any).__test);
 
