@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nimble — над ущельем и внутри горы</title>
+<style>
+:root{color-scheme:dark;font:15px/1.5 system-ui,sans-serif;color:#e6eef0;background:#142631}*{box-sizing:border-box}body{margin:0;overflow:hidden}canvas{display:block;touch-action:none}button,a,input{font:inherit}button,a{color:inherit}button{background:#263d48;border:1px solid #607a86;border-radius:6px;padding:8px 12px;cursor:pointer}button:hover,button:focus-visible{background:#41616e}button:disabled{opacity:.45}a{text-underline-offset:3px}header{position:absolute;top:22px;left:22px;width:340px;max-width:calc(100% - 44px);background:#122733ed;border:1px solid #385261;padding:20px;border-radius:12px;max-height:calc(100dvh - 100px);overflow:auto}small{font-size:11px;letter-spacing:.12em;color:#acc8d1}h1{font-size:24px;line-height:1.2;margin:9px 0 12px}p{margin:12px 0;color:#bdd0d7}.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}label{display:flex;gap:8px;align-items:center}input{width:90px;padding:6px;background:#10252e;color:inherit;border:1px solid #607a86;border-radius:4px}#status{position:absolute;bottom:18px;left:22px;max-width:calc(100% - 44px);background:#122733ed;border-radius:8px;padding:10px 14px;pointer-events:none}#veil{position:absolute;inset:0;display:grid;place-items:center;background:#142631;padding:30px}#panel.collapsed .details{display:none}#panel.collapsed h1{font-size:19px;margin-bottom:5px}#panel.collapsed{width:280px}.note{font-size:12px}.touch{display:none;position:absolute;right:18px;bottom:20px;gap:6px;grid-template-columns:repeat(3,48px)}.touch button{padding:12px 8px}.touch .forward{grid-column:2}.touch .left{grid-column:1}@media(pointer:coarse){.touch{display:grid}#status{max-width:calc(100% - 200px)}}@media(max-width:600px){header{top:12px;left:12px;padding:14px;width:300px;max-width:calc(100% - 24px)}h1{font-size:21px}#status{left:12px;font-size:12px}}
+</style></head>
+<body>
+<div id="world"></div>
+<header id="panel"><small>NIMBLE · ПРОСТРАНСТВО ГОРЫ</small><h1>Над ущельем и внутри горы</h1>
+<div class="details"><p>Войти в пещеру со склона, подняться на плечо и увидеть нижний путь с моста. Всё — в одной сцене.</p>
+<div class="row"><label>Seed <input id="seed" type="number" min="0" max="4294967295" value="42"></label><button id="generate">Создать</button></div>
+<div class="row"><button data-view="overview">Общий вид</button><button data-view="approach">Подход к ущелью</button><button data-view="below">Под мостом</button><button data-view="above">На мосту</button></div>
+<div class="row"><button data-view="lookback">Вниз с моста</button><button data-view="interior">За входным выступом</button></div>
+<div class="row"><button data-view="entrance">Вход в пещеру</button><button data-view="cave">Внутри пещеры</button><button data-view="exit">Вид наружу</button><button data-view="roof">Над пещерой</button></div>
+<div class="row"><button id="walk">Идти от подножия</button><button id="routes">Показать пути</button></div>
+<p class="note">WASD — шагать · тянуть мышью по сцене — смотреть · Shift — быстрее. На телефоне — кнопки движения.</p>
+<p class="note">Опыт с пересечением высот и тупиковой пещерой без загрузки при входе. Упрощённая геометрия, без скальной оболочки и художественной отделки.</p>
+<p class="note"><a href="./index.html">Контрольный горный район</a> · <a href="./plan-preview.html">План районов</a></p></div>
+<div class="row"><button id="collapse" aria-expanded="true">Свернуть</button></div></header>
+<aside id="status" aria-live="polite">Подготовка…</aside>
+<div class="touch" aria-label="Движение"><button class="forward" data-move="w" aria-label="Вперёд">↑</button><button class="left" data-move="a" aria-label="Влево">←</button><button data-move="s" aria-label="Назад">↓</button><button data-move="d" aria-label="Вправо">→</button></div>
+<div id="veil">Создаём горный фрагмент…</div>
+<script type="module">import('./crossing-view.ts').catch(error=>{console.error(error);document.getElementById('veil').textContent='Не удалось открыть 3D-сцену: '+(error?.message||error);});</script>
+</body></html>

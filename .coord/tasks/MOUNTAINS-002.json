@@ -1,6 +1,6 @@
 {
   "id": "MOUNTAINS-002",
-  "status": "in_progress",
+  "status": "qa",
   "owner": "codex-mountains",
   "branch": "task/MOUNTAINS-002-connected-uplands",
   "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
@@ -19,6 +19,6 @@
     "Control and held-out seeds, final-geometry physics walks",
     "Preserve main game, batched rendering and local rock colliders"
   ],
-  "qa_sha": "6ecf6a9867714e4ef6256ff754be604ad14347b0",
-  "qa_result": "PASS: 90 checks/48 Rapier walks across 3 seeds; all 8 connections both ways with full browser scene, keyboard/mobile and no browser errors; builds, planner and negative connectivity tests. Artistic target not accepted: repeated curved walls; new planner not baked. Next isolated crossing prototype in progress."
+  "qa_sha": null,
+  "qa_result": "Hybrid crossing and true dead-end cave source freeze pending exact-SHA QA. Existing control scene technical QA recorded at6ecf6a9. Artistic target remains unmet; these are isolated architecture experiments, not a general mountain generator."
 }
