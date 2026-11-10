@@ -4,6 +4,8 @@ import { Landforms, SIZE, CELL, VERSION, type Point } from "./landforms";
 import { Rng, clamp, smoothstep } from "../../src/core/rng";
 import { RockSkin } from "../../src/gen/rock-skin";
 import { blockTriangles, type CliffBlock } from "../../src/gen/cliffs";
+import { placeExpedition, expeditionViews, type PlacedLandmark } from "./expedition";
+import { reservedForExpedition } from "./expedition-sites";
 import "./style.css";
 const $ = (id: string) => document.getElementById(id)!;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -73,6 +75,7 @@ let fly = false,
   position = new THREE.Vector3(),
   generationMs = 0;
 let rockBlocks: CliffBlock[] = [];
+let landmarks: PlacedLandmark[] = [];
 const rockCols = new Map<number, RAPIER.Collider>();
 let rockCenter = { x: Infinity, z: Infinity };
 let movement = { x: 0, z: 0 };
@@ -222,6 +225,7 @@ function addForest() {
         upper = land.forestAt(wx, wz);
       if (
         !Number.isNaN(land.waterAt(wx, wz)) ||
+        reservedForExpedition(p.x, p.z, 6) ||
         land.routeDistance(wx, wz) < 4.5 ||
         slope > 0.72 ||
         y > (upper ? 225 : 180) + noise * 30 ||
@@ -296,6 +300,7 @@ function addForest() {
       y = land.heightAt(x, z);
     if (
       y < 30 ||
+      reservedForExpedition(land.local(x, z).x, land.local(x, z).z, 3) ||
       land.slopeAt(x, z) > 0.85 ||
       land.routeDistance(x, z) < 9 ||
       !Number.isNaN(land.waterAt(x, z))
@@ -636,6 +641,12 @@ async function generate(seed: number) {
   addDrainage();
   const strata = addRockSkin();
   stats = { ...addForest(), strata };
+  landmarks = placeExpedition(land);
+  for (const asset of landmarks) {
+    group.add(asset.group);
+    world.createCollider(RAPIER.ColliderDesc.trimesh(asset.collider.positions, asset.collider.indices).setFriction(.9));
+  }
+  land.views.push(...expeditionViews(land, landmarks));
   addRoutes();
   body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());
   collider = world.createCollider(RAPIER.ColliderDesc.capsule(0.6, 0.3), body);
@@ -794,6 +805,9 @@ Object.assign(window, {
     },
     get world() {
       return world;
+    },
+    get landmarks() {
+      return landmarks.map(({ id, anchors }) => ({ id, anchors }));
     },
     get stats() {
       return {

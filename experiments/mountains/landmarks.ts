@@ -87,6 +87,12 @@ export function buildPlaneWreck(): MountainLandmark {
             const a = (k - 1) * sides + i, b = (k - 1) * sides + (i + 1) % sides, c = k * sides + i, d = k * sides + (i + 1) % sides;
             I.push(a, c, b, b, c, d);
         }
+        for (const k of [0, rings.length - 1]) {
+            const [z, cy, rx] = rings[k];
+            if (rx >= 1 || (k === 0 ? brokenStart : brokenEnd)) continue;
+            const centre = vertices.length; vertices.push([0, cy, z]);
+            for (let i = 0; i < sides; i++) I.push(centre, k * sides + i, k * sides + (i + 1) % sides);
+        }
         mesh(parent, faces(vertices, I), skin);
         // Narrow frames reveal the hollow structure at the broken ends.
         for (const k of [0, rings.length - 1]) {
@@ -110,6 +116,14 @@ export function buildPlaneWreck(): MountainLandmark {
         mesh(parent, faces(S, SI), snow, false);
     }
     hull(group, [[-18, 2.6, .28, .35], [-16, 3.0, 1.55, 1.5], [-13, 3.05, 2.5, 2.2], [-9, 3.05, 2.7, 2.55], [-3, 3.05, 2.8, 2.6], [2.8, 3.05, 2.75, 2.55]], false, true);
+    // Faded survey-aircraft band gives the distant wreck a readable warm accent.
+    const band: V[] = [], bandIndices: number[] = [];
+    for (const z of [-8.8, -7.2]) for (let i = 0; i <= 14; i++) {
+        const a = i / 14 * Math.PI * 2, t = (z + 9) / 6;
+        band.push([Math.cos(a) * (2.72 + .1 * t), 3.05 + Math.sin(a) * (2.57 + .05 * t), z]);
+    }
+    for (let i = 0; i < 14; i++) bandIndices.push(i, i + 15, i + 1, i + 1, i + 15, i + 16);
+    mesh(group, faces(band, bandIndices), material(P.stripe, THREE.DoubleSide), false);
     // Cockpit glazing follows sloping panels and remains distinct at viewing distance.
     for (const side of [-1, 1]) {
         mesh(group, faces([[side * .13, 4.1, -15.0], [side * 1.35, 4.0, -14.8], [side * 1.9, 4.8, -12.8], [side * .2, 5.0, -13.0]], [0, 1, 2, 0, 2, 3]), material(P.glass, THREE.DoubleSide), false);
@@ -119,10 +133,15 @@ export function buildPlaneWreck(): MountainLandmark {
     }
     // The hold can be approached directly through a low snow-covered broken ramp.
     box(group, 0, 1.04, -4.4, 4.65, .22, 14.4, P.inside);
-    mesh(group, faces([[-2.2, 1.15, 2.8], [2.2, 1.15, 2.8], [2.5, .1, 6.2], [-1.9, .1, 6.6]], [0, 2, 1, 0, 3, 2]), material(P.metal, THREE.DoubleSide));
+    mesh(group, faces([[-2.2, 1.15, 2.8], [2.2, 1.15, 2.8], [2.5, .02, 8.4], [-2.5, .02, 8.4]], [0, 2, 1, 0, 3, 2]), material(P.metal, THREE.DoubleSide));
     box(group, -1.45, 1.65, -6, 1.1, 1.0, 1.9, P.wood);
     box(group, 1.35, 1.44, -3.8, 1.0, .65, 1.25, P.rust);
-    const tail = new THREE.Group(); tail.position.set(2.1, -.18, 1.0); tail.rotation.y = -.16; tail.rotation.z = .045; group.add(tail);
+    // Exposed ribs and tie-down battens give the hold human scale at eye level.
+    for (const z of [-9.5, -6.5, -3.5, -.5]) {
+        for (const side of [-1, 1]) beam(group, [side * 2.25, 1.25, z], [side * 2.52, 3.45, z], .04, P.pale);
+        box(group, 0, 1.165, z, 3.5, .025, .12, P.metal, false);
+    }
+    const tail = new THREE.Group(); tail.position.set(6.7, -.18, 6.0); tail.rotation.y = -.16; tail.rotation.z = .045; group.add(tail);
     hull(tail, [[6.1, 3.05, 2.65, 2.55], [11.3, 3.1, 2.2, 2.15], [16.5, 3.4, 1.15, 1.15], [20, 3.65, .32, .38]], true, false);
     // Tall swept fin and tapered tailplane make the wreck recognizable over a ridge.
     mesh(tail, faces([[-.12, 3.8, 14.2], [.12, 3.8, 14.2], [-.1, 10.0, 18.1], [.1, 10.0, 18.1], [-.1, 10.0, 19.9], [.1, 10.0, 19.9], [-.12, 3.8, 20.4], [.12, 3.8, 20.4]], [0, 2, 4, 0, 4, 6, 1, 7, 5, 1, 5, 3, 2, 3, 5, 2, 5, 4, 4, 5, 7, 4, 7, 6]), material(P.dark, THREE.DoubleSide));
@@ -151,7 +170,7 @@ export function buildPlaneWreck(): MountainLandmark {
         beam(group, [x, .2, -1], [x * .7, 1.7, -2], .14, P.metal, true);
         const wheel = mesh(group, new THREE.CylinderGeometry(.55, .55, .35, 10), material('#313a3a')); wheel.rotation.z = Math.PI / 2; wheel.position.set(x, .57, -1);
     }
-    return finish(group, { approach: { x: 1, y: 0, z: 8 }, hold: { x: 0, y: 1.15, z: -1 }, silhouette: { x: -1, y: 9.4, z: 19 }, nose: { x: 0, y: 2.6, z: -18 } });
+    return finish(group, { approach: { x: 0, y: 0, z: 12 }, ramp: { x: 0, y: .02, z: 8.4 }, threshold: { x: 0, y: 1.15, z: 2.8 }, hold: { x: 0, y: 1.15, z: -1 }, silhouette: { x: 3.7, y: 9.4, z: 25 }, nose: { x: 0, y: 2.6, z: -18 } });
 }
 
 /** A small serviced mountain station: open hangar, annex and a restrained lattice mast. */
@@ -165,6 +184,11 @@ export function buildMountainStation(): MountainLandmark {
     box(group, -6.6, 3.5, -11.5, 6.8, 6.8, .3, P.skin);
     box(group, 6.6, 3.5, -11.5, 6.8, 6.8, .3, P.skin);
     box(group, 0, 6.05, -11.5, 6.4, 1.7, .3, P.skin);
+    // Raised seams and worn panels keep the shed legible without texture assets.
+    for (const side of [-1, 1]) for (let z = -10; z <= 10; z += 2.5) {
+        box(group, side * 10.18, 3.5, z, .055, 6.5, .065, P.dark, false);
+    }
+    box(group, 0, 6.15, -11.69, 4.2, .55, .06, P.stripe, false);
     const roof = [[-10.4, 6.9, -12], [0, 9.0, -12], [10.4, 6.9, -12], [-10.4, 6.9, 12], [0, 9.0, 12], [10.4, 6.9, 12]] as const;
     mesh(group, faces(roof, [0, 3, 1, 1, 3, 4, 1, 4, 2, 2, 4, 5]), material(P.roof, THREE.DoubleSide));
     mesh(group, faces([[-10, 6.9, -11.5], [10, 6.9, -11.5], [0, 9, -11.5], [-10, 6.9, 11.5], [10, 6.9, 11.5], [0, 9, 11.5]], [0, 2, 1, 3, 4, 5]), material(P.skin, THREE.DoubleSide));
@@ -189,6 +213,18 @@ export function buildMountainStation(): MountainLandmark {
     for (const z of [.0, 4.5]) box(group, -16.96, 2.5, z, .04, 1.2, 1.7, P.glass, false);
     box(group, -6.6, 1.0, 7.5, 4.5, 1.4, 1.5, P.wood);
     box(group, 7.0, .9, 7.6, 2.5, 1.5, 3.0, P.dark);
+    // A weather workshop: occupied edges, clear central circulation and a view out.
+    box(group, -13.7, .95, 7.5, 4.5, .18, 1.1, P.wood);
+    for (const x of [-15.5, -12]) box(group, x, .6, 7.5, .14, .9, .7, P.dark);
+    box(group, -13.6, 1.3, 7.5, 1.4, .55, .55, P.metal);
+    box(group, -15.8, .62, 3.8, 1.1, .7, 2.7, P.wood);
+    box(group, -15.8, 1.02, 3.8, 1.0, .18, 2.6, P.dark, false);
+    for (const x of [5.3, 6.5, 7.7]) {
+        const drum = mesh(group, new THREE.CylinderGeometry(.43, .43, 1.1, 10), material(x === 6.5 ? P.rust : P.metal));
+        drum.position.set(x, .79, 4.8);
+    }
+    box(group, -7.3, 3.0, 11.3, 3.2, 1.8, .05, P.pale, false);
+    for (let i = 0; i < 5; i++) box(group, -8.5 + i * .57, 3 + Math.sin(i) * .35, 11.26, .08, .9, .04, P.dark, false);
     // A narrow truss mast and service cabinet, visible over the nearby rock shoulder.
     const tx = 16.2, tz = 6.5, half = 1.0;
     box(group, tx, .2, tz, 3.2, .4, 3.2, P.concrete);
@@ -203,5 +239,5 @@ export function buildMountainStation(): MountainLandmark {
     beam(group, [tx, 17, tz], [tx, 20.5, tz], .075, P.dark);
     box(group, tx, 18.8, tz, 3.4, .12, .18, P.pale, false);
     box(group, tx + 1.8, 1.2, tz - 4.0, 1.4, 2.1, 1.1, P.skin);
-    return finish(group, { approach: { x: 0, y: 0, z: -17 }, hall: { x: 0, y: .25, z: -1 }, office: { x: -12.8, y: .3, z: -4.0 }, silhouette: { x: tx, y: 20.5, z: tz } });
+    return finish(group, { approach: { x: 0, y: 0, z: -17 }, hall: { x: 0, y: .24, z: -1 }, officeApproach: { x: -12.8, y: 0, z: -7 }, office: { x: -12.8, y: .28, z: 2.0 }, silhouette: { x: tx, y: 20.5, z: tz } });
 }

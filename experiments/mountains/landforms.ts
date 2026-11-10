@@ -2,6 +2,7 @@
 // asymmetric passes. The graph describes actual geographic connections, not
 // floating paths or stacked horizontal platforms. RockSkin is a separate layer.
 import { Rng, Simplex2, clamp, lerp, smoothstep, hashString } from '../../src/core/rng';
+import { EXPEDITION_SITES, siteDistance } from './expedition-sites';
 export interface Point {
     x: number;
     y: number;
@@ -60,9 +61,10 @@ interface Mass {
     spine?: number[][];
     referenceHeight?: number;
 }
-export const VERSION = 'expedition-uplands-2';
+export const VERSION = 'expedition-uplands-3';
 export const SIZE = 1600, CELL = 4;
-const stream = (seed: number, id: string) => new Rng(seed ^ hashString(VERSION + '/' + id));
+// Preserve the WIP random fields when changing destination/relief geometry.
+const stream = (seed: number, id: string) => new Rng(seed ^ hashString('expedition-uplands-2/' + id));
 function polygonDistance(poly: number[][], x: number, z: number) {
     let inside = false, d = Infinity;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -365,6 +367,8 @@ export class Landforms {
             if (r.id === 'cirque') {
                 const spur = crestProfile([[-170, -515, 15, 26], [-123, -486, 16, 30], [-80, -464, 9, 24]], x, z);
                 relief = spur.height * smoothstep(1, 0, spur.distance / spur.width);
+                const moraine = crestProfile([[-205, -386, 6, 32], [-147, -400, 12, 31], [-91, -420, 9, 28], [-66, -443, 5, 23]], x, z);
+                relief += moraine.height * smoothstep(1, 0, moraine.distance / moraine.width);
                 // The wreck occupies a broad gently tilted bay; the side spur
                 // separates it from the climbing path without dividing access.
                 relief -= 3 * Math.exp(-Math.pow((x + 35) / 58, 2) - ((z + 473) / 46) ** 2);
@@ -377,15 +381,10 @@ export class Landforms {
                 relief -= 3 * Math.exp(-Math.pow((x - 365) / 55, 2) - ((z + 170) / 45) ** 2);
             }
             const routeReserve = Math.min(...projections.map(p => p.d));
-            relief *= smoothstep(10, 32, routeReserve);
+            relief *= .25 + .75 * smoothstep(10, 32, routeReserve);
             let floor = r.y + (x - r.x) * r.tiltX + (z - r.z) * r.tiltZ - nose * nose * (r.rolloff?.curvature ?? 0) + relief + N.noise(x / 72 + 1, z / 90) * 2.8 + N.noise(x / 28, z / 30) * .35;
-            if (r.id === 'shoulder') {
-                // A small engineered court belongs to this district's plan.
-                // Only its 64 x 44 m working floor is level; the whole valley
-                // and its pedestrian approaches retain their own profiles.
-                const outsideCourt = Math.hypot(Math.max(Math.abs(x - 365) - 32, 0), Math.max(Math.abs(z + 170) - 22, 0));
-                floor = lerp(floor, 179, 1 - smoothstep(0, 24, outsideCourt));
-            }
+            const site = EXPEDITION_SITES.find(s => s.id === (r.id === 'shoulder' ? 'station' : r.id === 'cirque' ? 'wreck' : ''));
+            if (site) floor = lerp(floor, site.y, 1 - smoothstep(0, site.feather, siteDistance(x, z, site)));
             const w = smoothstep(-feather, 0, d);
             h = lerp(h, floor, w);
             basinFloors.push({ floor, weight: w });

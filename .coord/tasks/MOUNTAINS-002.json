@@ -2,7 +2,7 @@
   "id": "MOUNTAINS-002",
   "status": "developing",
   "owner": "codex-mountains",
-  "branch": "task/MOUNTAINS-002-connected-uplands",
+  "branch": "task/MOUNTAINS-002-landmarks-deferred",
   "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
   "allowed_paths": [
     ".coord/tasks/MOUNTAINS-002.json",
@@ -20,5 +20,5 @@
     "Preserve main game, batched rendering and local rock colliders"
   ],
   "qa_sha": "932bd30649b41733f5638d649c3d34e399e87ed1",
-  "qa_result": "Continuing after user expedition design input: whole mountain composition, upper wreck and sheltered service site, optional return shortcut. Previous hybrid QA retained at932bd30; no new artistic acceptance yet."
+  "qa_result": "Deferred at user request. Preserve landmark WIP only; not artistically accepted; do not integrate into active mountain generator."
 }
