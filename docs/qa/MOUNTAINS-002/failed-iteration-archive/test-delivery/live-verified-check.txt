@@ -1,0 +1,13 @@
+CHECK {"entry":{"seed":42,"version":"branching-uplands-1","regions":7,"verified":"terrain-verified","stats":{"trees":1513,"rocks":418,"strata":2496,"generationMs":4377.5,"version":"branching-uplands-1","rockColliders":4,"triangles":320000}}}
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert.ok(move.distance>2&&move.distance<8&&move.grounded&&!move.fly)
+
+    at /workspace/work/mountains-test-release/check-preview.cjs:25:9 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

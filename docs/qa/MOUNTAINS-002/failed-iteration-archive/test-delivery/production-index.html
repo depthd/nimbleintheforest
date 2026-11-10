@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nimble in the Forest</title>
+    <script type="module" crossorigin src="./assets/index-Ch5md5vQ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CPnYFkRC.css">
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="hud">
+      <div id="crosshair"></div>
+      <div id="target"><div id="target-info"></div><div id="prompt"></div></div>
+      <div id="progress"><div></div></div>
+      <div id="status"></div>
+      <div id="env"></div>
+      <div id="hands"></div>
+      <div id="hotbar"></div>
+      <div id="msgs"></div>
+      <div id="legend"></div>
+      <div id="frost"></div>
+      <div id="vignette"></div>
+      <div id="flash"></div>
+    </div>
+
+    <div id="inventory" class="modal"></div>
+    <div id="debug"></div>
+
+    <div id="sleep" class="modal box">
+      <h2 id="sleep-title">Сон</h2>
+      <label>Сколько часов: <b id="sleep-h">8 ч</b><input id="sleep-hours" type="range" min="1" max="12" value="8" /></label>
+      <p id="sleep-info"></p>
+      <div class="row"><button id="sleep-go">Спать</button><button id="sleep-cancel">Отмена</button></div>
+    </div>
+    <div id="sleep-overlay"><div id="sleep-overlay-text">Вы спите…</div></div>
+
+    <div id="mapview" class="modal"><canvas id="map-canvas" width="900" height="900"></canvas><div class="maplegend">Карта · открывается там, где вы побывали · <b>M</b> — закрыть</div></div>
+
+    <div id="reader" class="modal box">
+      <h2 id="reader-title"></h2>
+      <div id="reader-body"></div>
+      <p id="reader-foot" class="hint"></p>
+      <div class="row"><button id="reader-close">Закрыть [E]</button></div>
+    </div>
+
+    <div id="help" class="modal box">
+      <h2>Управление</h2>
+      <div class="cols">
+        <div>
+          <p><b>WASD</b> — идти, <b>Shift</b> — бег, <b>C</b> — присесть, <b>Пробел</b> — прыжок</p>
+          <p><b>E / F / G</b> — действия с тем, на что смотрите (подсказки у прицела)</p>
+          <p><b>ЛКМ</b> — использовать предмет в руке (рубить, чиркнуть спичкой, набрать снег…)</p>
+          <p><b>ПКМ</b> — бросить то, что несёте; пить из котелка</p>
+          <p>Пустые руки и взгляд на землю: <b>зажать ЛКМ</b> — разгребать снег, <b>ПКМ</b> — высыпать набранный снег. Следы остаются от движения ног.</p>
+          <p><b>Q</b> — положить предмет, <b>R</b> — повернуть, <b>колесо</b> — ближе/дальше</p>
+          <p>Строить: несите кусок дерева, <b>B</b> — стоймя/наискось. Призрак покажет, куда он ляжет и удержится ли. <b>G</b> — положить (с молотком и гвоздями — прибить), <b>F</b> — вкопать столб (нужна лопата). Рубите там, куда целитесь: подсказка у дерева скажет, куда оно упадёт.</p>
+          <p><b>1–9</b> — инструменты, <b>Tab</b> — рюкзак и одежда</p>
+        </div>
+        <div>
+          <p><b>H</b> (держать) — греть руки подмышками</p>
+          <p><b>X</b> — отряхнуть снег с одежды (перед входом в тепло!)</p>
+          <p><b>Z</b> — спать здесь, <b>T</b> — ждать, <b>M</b> — карта, <b>N</b> — музыка вкл/выкл</p>
+          <p class="hint">Цель (необязательная): найти аккумулятор 12 В, запитать рацию на метеостанции «Кряж» на хребте, передать сигнал и дождаться вертолёта у станции. Записки и газеты подскажут, где искать. Заимки, сундуки, нары, машины — обыскивайте [E]. Мокрую одежду снимите и положите у огня.</p>
+          <p><b>F3</b> — параметры мира и симуляции, <b>V</b> — тепловизор (температура / влажность / сквозняк), <b>F1</b> — эта справка</p>
+          <p><b>F4</b> — FPS и график времени кадра. Зелёный: до 16,7 мс (60 FPS), жёлтый: до 33,3 мс (30 FPS), красный: медленнее. Настройка сохраняется.</p>
+          <p><b>F6</b> — осмотр походки: от первого лица → сбоку → спереди. Управление остаётся относительно взгляда.</p>
+          <p><b>F7</b> — записывать движение, <b>F8</b> — остановить и разобрать по кадрам. Отметьте сбой, скачайте запись и прикрепите файл в чат.</p>
+          <p class="hint">Почти всё можно поднять, перетащить, бросить, сжечь или разрубить. Одеяла — на кровать, на окна, в дверной проём или на плечи. Мебель и перила — на дрова. Пила даёт доски, топор — поленья.</p>
+        </div>
+      </div>
+      <button id="help-close">Закрыть</button>
+    </div>
+
+    <div id="pause" class="overlay">
+      <p class="hint build-info" title="e17417d059d4bf6e096ec6e059de769f71a71914" style="text-align:center;max-width:90vw">Версия <b>e17417d</b><br>Сборка: <time datetime="2026-11-09T22:14:16.421Z">10.11.2026, 02:14:16</time> · Самара (UTC+4)</p>
+      <h1>Пауза</h1>
+      <p>Кликните, чтобы продолжить</p>
+      <div class="row"><button id="pause-continue">Продолжить</button><button id="pause-help">Управление</button><button id="pause-new">Новый мир</button></div>
+    </div>
+
+    <div id="death" class="overlay">
+      <h1>Вы погибли</h1>
+      <p id="death-cause"></p>
+      <p id="death-stats"></p>
+      <div class="row"><button id="death-restart">Заново (тот же мир)</button><button id="death-new">Новый мир</button></div>
+    </div>
+
+    <div id="start" class="overlay">
+      <p class="hint build-info" title="e17417d059d4bf6e096ec6e059de769f71a71914" style="text-align:center;max-width:90vw">Версия <b>e17417d</b><br>Сборка: <time datetime="2026-11-09T22:14:16.421Z">10.11.2026, 02:14:16</time> · Самара (UTC+4)</p>
+      <h1>Nimble in the Forest</h1>
+      <p class="sub">Северная глушь. Холод. Дом у замёрзшего озера. Выживайте как хотите.</p>
+      <div class="settings">
+        <label>Мир (seed) <input id="st-seed" type="number" /></label>
+        <label>Климат
+          <select id="st-temp">
+            <option value="-6">Мягкий (около −6°C)</option>
+            <option value="-14" selected>Обычный (около −14°C)</option>
+            <option value="-24">Суровый (около −24°C)</option>
+            <option value="-34">Лютый (около −34°C)</option>
+          </select>
+        </label>
+        <label>Время
+          <select id="st-hour">
+            <option value="8.5">Утро</option>
+            <option value="13">День</option>
+            <option value="15.75" selected>Ближе к вечеру</option>
+            <option value="22">Ночь</option>
+          </select>
+        </label>
+        <label class="chk"><input id="st-horror" type="checkbox" checked /> Жуть по ночам</label>
+      </div>
+      <button id="st-go">Начать</button>
+      <a class="snow-start" href="?snow=1">Испытать изменяемый снег</a>
+      <a class="snow-start" href="?cliffs=1">Испытать скалы</a>
+      <a class="snow-start" href="?cave=1">Испытать пещеру</a>
+      <a class="snow-start" href="?deer=1">Олень: модель и анимации</a>
+      <p class="hint">Лучше в наушниках. Мышь — осмотреться, клик — захватить курсор.</p>
+    </div>
+    <div id="loading" class="overlay"><h2>Генерация мира…</h2></div>
+
+  </body>
+</html>

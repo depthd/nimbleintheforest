@@ -1,0 +1,58 @@
+{
+  "source": "49f2b3bec82d9903062f4c67200742f0289a9cd7",
+  "base": "https://depthd.github.io/nimbleintheforest/test/",
+  "transport": "Published HTTPS assets fetched through inherited proxy with TLS verification, then rendered in Chromium",
+  "errors": [],
+  "responses": [],
+  "checks": [
+    {
+      "entry": {
+        "seed": 42,
+        "version": "branching-uplands-1",
+        "regions": 7,
+        "verified": "terrain-verified",
+        "stats": {
+          "trees": 1513,
+          "rocks": 418,
+          "strata": 2496,
+          "generationMs": 3644.699999999255,
+          "version": "branching-uplands-1",
+          "rockColliders": 4,
+          "triangles": 320000
+        }
+      }
+    },
+    {
+      "walking": {
+        "distance": 4.8333878694498225,
+        "grounded": true,
+        "fly": false
+      }
+    },
+    {
+      "regenerated": 7
+    },
+    {
+      "linkedPage": "https://depthd.github.io/nimbleintheforest/test/experiments/mountains/plan-preview.html",
+      "status": 200
+    },
+    {
+      "linkedPage": "https://depthd.github.io/nimbleintheforest/test/experiments/mountains/crossing.html",
+      "status": 200
+    },
+    {
+      "returnToGame": true
+    },
+    {
+      "player": true,
+      "trees": 58483,
+      "normalGame": true
+    },
+    {
+      "c1Asset": "daf6d05bf185b3273768095aef94572381285176079455ac578661c07d9e2df8",
+      "transport": "curl with inherited proxy and CA verification"
+    }
+  ],
+  "result": "PASS",
+  "runnerNote": "All browser checks completed. The final independent C1 asset probe initially bypassed the proxy; it was resumed via verified curl without repeating the completed browser checks."
+}

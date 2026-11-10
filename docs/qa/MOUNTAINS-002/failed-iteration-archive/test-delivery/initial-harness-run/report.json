@@ -1,0 +1,35 @@
+{
+  "source": "9b9da8615b1e6b1c572dd5b42f16e4535aebe932",
+  "base": "http://127.0.0.1:5261/test/",
+  "errors": [],
+  "responses": [],
+  "checks": [
+    {
+      "entry": {
+        "seed": 42,
+        "version": "branching-uplands-1",
+        "regions": 7,
+        "verified": "terrain-verified",
+        "stats": {
+          "trees": 1513,
+          "rocks": 418,
+          "strata": 2496,
+          "generationMs": 4280.299999999814,
+          "version": "branching-uplands-1",
+          "rockColliders": 4,
+          "triangles": 320000
+        }
+      }
+    },
+    {
+      "walking": {
+        "distance": 4.833182554576357,
+        "grounded": true,
+        "fly": false
+      }
+    },
+    {
+      "regenerated": 7
+    }
+  ]
+}

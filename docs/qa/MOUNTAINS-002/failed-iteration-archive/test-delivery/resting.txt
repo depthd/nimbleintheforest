@@ -1,0 +1,14 @@
+
+> nimble-in-the-forest@0.1.0 test:resting
+> node tests/resting.cjs
+
+PASS  contact-connected wood sleeps together only after held, falling and moving members settle
+PASS  quiet sleeping wood draws merged with retained geometry and cave/distance culling
+PASS  wake and pickup immediately remove only their own triangles without waiting for a rebuild
+PASS  changing and cutting merged wood leave no ghost, preserve other members, and release only owned buffers
+4 resting wood integration checks passed
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

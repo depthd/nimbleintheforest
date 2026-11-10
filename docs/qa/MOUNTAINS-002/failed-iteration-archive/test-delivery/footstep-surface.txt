@@ -1,0 +1,23 @@
+
+> nimble-in-the-forest@0.1.0 test:footstep-surface
+> node tests/footstep-surface.cjs
+
+PASS  a real wooden support over a lake stays wood even when snowy ground is below
+PASS  only the accepted ice collider selects ice, never a map coordinate or snow state
+PASS  validated loose snow and exposed packed base both have bounded physical compaction
+PASS  bare ground, missing support and snow-free test fixtures use a hard fallback
+PASS  shoe profiles follow all current feet-slot items and removal
+PASS  accepted wooden furniture tops sound wood without treating mattresses or unknown containers as wood
+PASS  accepted contacts retain each foot support and pre-deformation snow snapshot
+PASS  zero-dt updates clear spent contacts without generating or advancing a step
+PASS  landing keeps accepted surface once, and reset/suspension remain silent
+
+9 footstep surface checks passed
+(node:12127) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

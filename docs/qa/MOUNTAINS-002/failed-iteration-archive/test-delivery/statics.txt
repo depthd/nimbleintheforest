@@ -1,0 +1,32 @@
+
+> nimble-in-the-forest@0.1.0 test:statics
+> node tests/statics.cjs
+
+PASS  a log of real size weighs what its wood weighs
+PASS  cutting at a point gives two pieces of exactly those lengths, minus the chips
+PASS  thick trunks take much longer than thin ones; two sides are quicker
+PASS  splitting a chock keeps its wood
+PASS  a tree notched from one side falls toward the notch when it does not lean
+PASS  a strong lean wins over a small notch on the other side
+PASS  a beam on two dug-in posts holds itself
+PASS  a heavy load in the middle breaks the beam there
+PASS  snow on a roof adds up until the ridge gives way
+PASS  a deeply notched post under load fails at the notch
+PASS  a notched part checked alone holds or fails just as in the whole structure
+PASS  take a post away: the beam resting on the other one tips over
+PASS  a board on one post tips unless nailed; nails hold a short overhang
+PASS  nothing below: a piece with no support path falls
+PASS  a thin tall pole buckles before it crushes
+PASS  a leaning pole shares its weight between the ground and the ridge it rests on
+PASS  a log in the valley of two logs stays; on top of one log it rolls off
+PASS  a log balanced along another log rolls off; in a groove it stays
+
+18 checks passed
+(node:10550) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

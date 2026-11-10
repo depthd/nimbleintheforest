@@ -1,0 +1,60 @@
+{
+  "source": "49f2b3bec82d9903062f4c67200742f0289a9cd7",
+  "previousTest": "c8083c5e02a6770974f3a8023aa84ce3974bd25f",
+  "latestAudioTest": "cff563f399ee8c22366e6f2a208d11af7a3436de",
+  "preservedFromPrevious": [
+    "src/game/c1-lab.ts",
+    "src/game/game.ts",
+    "src/game/journal/journal.ts",
+    "src/game/journal/model.ts",
+    "src/game/journal/textures.ts",
+    "src/game/journal/journal.css",
+    "public/models/conifer_c1.glb",
+    "public/models/conifer_c1.json",
+    "public/fonts/neucha.ttf"
+  ],
+  "unchangedTerrainFrom138542d": [
+    "experiments/mountains/main.ts",
+    "experiments/mountains/generated-landforms.ts",
+    "experiments/mountains/mountain-plan.ts",
+    "experiments/mountains/surface-contract.ts"
+  ],
+  "exactAudioImports": [
+    ".coord/tasks/AUDIO-001.json",
+    "package.json",
+    "src/core/audio.ts",
+    "src/core/sfx.ts",
+    "src/game/avatar.ts",
+    "src/game/footstep-surface.ts",
+    "src/game/locomotion.ts",
+    "src/world/house.ts",
+    "tests/audio.cjs",
+    "tests/footstep-surface.cjs"
+  ],
+  "workflowRun": 42883347839,
+  "sourceHashes": {
+    "src/game/c1-lab.ts": "247d01f0518f30e535aaaa28a124d1e08f2e20c77512dc35f17beb753eb36e40",
+    "src/game/game.ts": "5d989b462b960f978b7065bedcf55768347af800ba4263bf94b560285c608777",
+    "src/game/journal/journal.ts": "1d5c1493935535a8bbb0711f457d432390dc214286aeddfa55a3d59f91f52e64",
+    "src/game/journal/model.ts": "e1f802d845f782a9d00203c2e92afbddeea42f47ea6bc0220a8d91876ac14456",
+    "src/game/journal/textures.ts": "ac96132e47f77c622e2c919a5569f368b97529eca56696d14547746c6a8e2c5e",
+    "src/game/journal/journal.css": "c8730e9e1cbb141500872014df734f1e360b98778bf1c29f092911b15587ea6e",
+    "public/models/conifer_c1.glb": "daf6d05bf185b3273768095aef94572381285176079455ac578661c07d9e2df8",
+    "public/models/conifer_c1.json": "b075e03297e0271c3a736b37107c7db7604e145d4782d029573d1cf36a6f92db",
+    "public/fonts/neucha.ttf": "5c7243c15025e1b1726ac3fd776328da85888e34c16a54ec829a13976a8606ce",
+    "experiments/mountains/main.ts": "85275569f3c8d6c3554d7832f0c113c05d8d0149750cffac23d6db86b53362ca",
+    "experiments/mountains/generated-landforms.ts": "89ffff3e6fac51bca1be97be3915998e50adefec24bafad84ebeaa45ea3fe14e",
+    "experiments/mountains/mountain-plan.ts": "20885ee1eafb6e91f4622fc2fcf1b0d239bd666d1a4701cae6220a11fcfeb784",
+    "experiments/mountains/surface-contract.ts": "0241b1a7ba67d2c3d4f52f01bf78941b5d5d4b1749b9fc1802c925430b8e2a73",
+    ".coord/tasks/AUDIO-001.json": "9df8ad8a58f3b4416dd7ab3b5aee8992788dfb501b89e8e7fd6723d10fbe7bc2",
+    "package.json": "ce6d14fd9bc8d1d4b0ec3aa331d1547fba5ce2bf6f03853f09e72249510b7bc7",
+    "src/core/audio.ts": "5180c89cf04e6d14f60d599cedfc693af34074122113907d9cf2197a71a44c81",
+    "src/core/sfx.ts": "23efaf9ab6ded86f361b17ee3402321e9eefb540cc40fd41cbbd7c899dbd6782",
+    "src/game/avatar.ts": "17eb4afe001a3d8820e3e8b80c669fdd7dcdc23440721e00b89a8d1a942a11b2",
+    "src/game/footstep-surface.ts": "b0387886a3b4f29e4ffc5cfea5284dc67cc52e7f25482ae59ad5e8aa0da0ba30",
+    "src/game/locomotion.ts": "ea7dfeedd0fbba55f179418b20bc227c5e6f18628d31dcf78663f0fc41813e21",
+    "src/world/house.ts": "79e5c1e43af7e83700b875bc938fb07a28f7a8d4c04c07216d9de765d5b29f6a",
+    "tests/audio.cjs": "1a6aa91b5ba1f3bb98d0cf93a3755dad7595a53d96075394a37d95a4c289bc27",
+    "tests/footstep-surface.cjs": "ee330a81b13646fb361875d846c319087ba2b999f3bff6ddb49f1c5c60f8fda6"
+  }
+}

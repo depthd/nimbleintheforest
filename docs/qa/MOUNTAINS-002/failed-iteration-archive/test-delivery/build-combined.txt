@@ -1,0 +1,36 @@
+
+> nimble-in-the-forest@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 121 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/experiments/mountains/index.html               3.30 kB │ gzip:     1.55 kB
+dist/experiments/mountains/plan-preview.html        4.28 kB │ gzip:     2.10 kB
+dist/experiments/mountains/crossing.html            4.85 kB │ gzip:     2.20 kB
+dist/index.html                                     9.44 kB │ gzip:     3.46 kB
+dist/assets/terrain-worker-CnNmfg5S.js             69.98 kB
+dist/assets/main-vfwSP27C.css                       1.62 kB │ gzip:     0.76 kB
+dist/assets/main-BqxwiJtu.css                      16.89 kB │ gzip:     4.42 kB
+dist/assets/mountainCrossing-BSuONP52.js            0.45 kB │ gzip:     0.36 kB
+dist/assets/mountains-WHD9Xr9d.js                   0.49 kB │ gzip:     0.39 kB
+dist/assets/modulepreload-polyfill-B5Qt9EMX.js      0.71 kB │ gzip:     0.40 kB
+dist/assets/preload-helper-PPVm8Dsz.js              1.23 kB │ gzip:     0.71 kB
+dist/assets/preview_animals-Dp8Jp_kq.js             1.72 kB │ gzip:     1.01 kB
+dist/assets/preview-AxCTVKAE.js                     1.75 kB │ gzip:     1.00 kB
+dist/assets/preview_wood-omcth6JE.js                2.12 kB │ gzip:     1.12 kB
+dist/assets/c1-lab-D1sIGRur.js                      3.19 kB │ gzip:     1.92 kB
+dist/assets/mountainPlan-DPRiCapS.js               14.17 kB │ gzip:     6.06 kB
+dist/assets/rock-skin-BdrYgDX7.js                  28.77 kB │ gzip:    12.63 kB
+dist/assets/crossing-view-BS1WTpD4.js              30.43 kB │ gzip:    13.00 kB
+dist/assets/main-DIPBVh3q.js                       43.17 kB │ gzip:    17.78 kB
+dist/assets/main-B5bRKdOP.js                      715.07 kB │ gzip:   257.28 kB
+dist/assets/rapier-CAOb6nQa.js                  5,082.51 kB │ gzip: 1,838.01 kB
+✓ built in 6.59s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

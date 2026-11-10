@@ -1,0 +1,25 @@
+
+> nimble-in-the-forest@0.1.0 test:audio
+> node tests/audio.cjs
+
+PASS all 29 effects and their variants are deterministic, finite, non-silent and click-free at boundaries {"variants":107,"generationMs":777}
+PASS prepared mono banks fit a 10 MiB PCM budget {"bytes":7556716}
+PASS snow friction and wood resonance have materially different spectral texture {"snow":1.1146791920518926,"wood":0.30502771037735965}
+PASS user gesture starts one real AudioContext with every bank and preserves pre-start gameplay notification {"state":"running","same":true,"banks":29,"beforeStartEvent":{"name":"chop"},"prepareMs":511,"startMs":161.59999999962747}
+PASS muted/distant sounds notify once, allocate no source; ambient fire sends no gameplay notification {"inaudibleAllocated":0,"maximum":28,"active":24,"retiring":4,"important":true,"notifications":272,"expected":272}
+PASS burst saturation has a hard physical voice bound and reserves danger cues {"inaudibleAllocated":0,"maximum":28,"active":24,"retiring":4,"important":true,"notifications":272,"expected":272}
+PASS finished and stolen one-shots release sources and graph connections {"live":0,"active":0,"retiring":0}
+PASS real offline WebAudio render is finite, audible and below clipping {"peak":0.22457127273082733}
+PASS a sustained positioned effect follows listener rotation instead of staying in the old speaker {"before":[3.669870936496285e-32,9.787884320043265],"after":[118.42322546613084,0.00008816161208231072]}
+PASS snow, wood, ice and stone all reach the real game audio graph [12.303696825724822,34.23172349957993,15.146574406333231,11.041113258801145]
+PASS browser reports no audio/runtime errors []
+PASS real game probes distinguish forest snow, cabin wood and registered lake ice {"snow":{"material":"snow","support":1.7e-321},"wood":{"material":"wood","support":2.85e-321},"ice":{"material":"ice","support":1.2731975745e-313,"registered":true},"plankOverIce":{"material":"wood","exactSupport":true},"shoes":"sneakers"}
+PASS a real plank collider overrides lake coordinates and the character starts in sneakers {"material":"wood","exactSupport":true}
+PASS game integration reports no runtime errors []
+
+14 audio checks passed (no listening claimed)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

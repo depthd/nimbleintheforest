@@ -1,0 +1,10 @@
+page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://depthd.github.io/nimbleintheforest/test/
+Call log:
+[2m  - navigating to "https://depthd.github.io/nimbleintheforest/test/", waiting until "load"[22m
+
+    at /workspace/work/mountains-test-release/check-preview.cjs:12:13 {
+  log: [
+    '  - navigating to "https://depthd.github.io/nimbleintheforest/test/", waiting until "load"'
+  ],
+  name: 'Error'
+}

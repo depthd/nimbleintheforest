@@ -1,0 +1,25 @@
+
+> nimble-in-the-forest@0.1.0 test:audio
+> node tests/audio.cjs
+
+PASS all 29 effects and their variants are deterministic, finite, non-silent and click-free at boundaries {"variants":107,"generationMs":1143}
+PASS prepared mono banks fit a 10 MiB PCM budget {"bytes":7556716}
+PASS snow friction and wood resonance have materially different spectral texture {"snow":1.1146791920518926,"wood":0.30502771037735965}
+browserType.launch: Executable doesn't exist at /home/agent/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    at /workspace/work/mountains-test-preview/tests/audio.cjs:84:30 {
+  log: [],
+  name: 'Error'
+}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

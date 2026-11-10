@@ -1,0 +1,137 @@
+{
+  "checks": 14,
+  "results": [
+    {
+      "name": "all 29 effects and their variants are deterministic, finite, non-silent and click-free at boundaries",
+      "detail": {
+        "variants": 107,
+        "generationMs": 777
+      }
+    },
+    {
+      "name": "prepared mono banks fit a 10 MiB PCM budget",
+      "detail": {
+        "bytes": 7556716
+      }
+    },
+    {
+      "name": "snow friction and wood resonance have materially different spectral texture",
+      "detail": {
+        "snow": 1.1146791920518926,
+        "wood": 0.30502771037735965
+      }
+    },
+    {
+      "name": "user gesture starts one real AudioContext with every bank and preserves pre-start gameplay notification",
+      "detail": {
+        "state": "running",
+        "same": true,
+        "banks": 29,
+        "beforeStartEvent": {
+          "name": "chop"
+        },
+        "prepareMs": 511,
+        "startMs": 161.59999999962747
+      }
+    },
+    {
+      "name": "muted/distant sounds notify once, allocate no source; ambient fire sends no gameplay notification",
+      "detail": {
+        "inaudibleAllocated": 0,
+        "maximum": 28,
+        "active": 24,
+        "retiring": 4,
+        "important": true,
+        "notifications": 272,
+        "expected": 272
+      }
+    },
+    {
+      "name": "burst saturation has a hard physical voice bound and reserves danger cues",
+      "detail": {
+        "inaudibleAllocated": 0,
+        "maximum": 28,
+        "active": 24,
+        "retiring": 4,
+        "important": true,
+        "notifications": 272,
+        "expected": 272
+      }
+    },
+    {
+      "name": "finished and stolen one-shots release sources and graph connections",
+      "detail": {
+        "live": 0,
+        "active": 0,
+        "retiring": 0
+      }
+    },
+    {
+      "name": "real offline WebAudio render is finite, audible and below clipping",
+      "detail": {
+        "peak": 0.22457127273082733
+      }
+    },
+    {
+      "name": "a sustained positioned effect follows listener rotation instead of staying in the old speaker",
+      "detail": {
+        "before": [
+          3.669870936496285e-32,
+          9.787884320043265
+        ],
+        "after": [
+          118.42322546613084,
+          0.00008816161208231072
+        ]
+      }
+    },
+    {
+      "name": "snow, wood, ice and stone all reach the real game audio graph",
+      "detail": [
+        12.303696825724822,
+        34.23172349957993,
+        15.146574406333231,
+        11.041113258801145
+      ]
+    },
+    {
+      "name": "browser reports no audio/runtime errors",
+      "detail": []
+    },
+    {
+      "name": "real game probes distinguish forest snow, cabin wood and registered lake ice",
+      "detail": {
+        "snow": {
+          "material": "snow",
+          "support": 1.7e-321
+        },
+        "wood": {
+          "material": "wood",
+          "support": 2.85e-321
+        },
+        "ice": {
+          "material": "ice",
+          "support": 1.2731975745e-313,
+          "registered": true
+        },
+        "plankOverIce": {
+          "material": "wood",
+          "exactSupport": true
+        },
+        "shoes": "sneakers"
+      }
+    },
+    {
+      "name": "a real plank collider overrides lake coordinates and the character starts in sneakers",
+      "detail": {
+        "material": "wood",
+        "exactSupport": true
+      }
+    },
+    {
+      "name": "game integration reports no runtime errors",
+      "detail": []
+    }
+  ],
+  "listening": false
+}
