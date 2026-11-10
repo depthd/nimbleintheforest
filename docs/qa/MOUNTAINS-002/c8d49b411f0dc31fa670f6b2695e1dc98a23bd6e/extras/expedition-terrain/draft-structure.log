@@ -1,0 +1,64 @@
+CONNECTIVITY 42 {
+  regions: 6,
+  connections: 8,
+  independentLoops: 3,
+  crestSightlines: 4,
+  regionAccess: [
+    {
+      id: 'lowland',
+      minConnectedArea: 25600,
+      connectedUsefulArea: 103056,
+      connectedWalkArea: 103216,
+      ports: [Array],
+      failures: [],
+      core: [Object]
+    },
+    {
+      id: 'pocket',
+      minConnectedArea: 3840,
+      connectedUsefulArea: 16016,
+      connectedWalkArea: 16016,
+      ports: [Array],
+      failures: [],
+      core: [Object]
+    },
+    {
+      id: 'lake',
+      minConnectedArea: 24000,
+      connectedUsefulArea: 78240,
+      connectedWalkArea: 80144,
+      ports: [Array],
+      failures: [],
+      core: [Object]
+    },
+    {
+      id: 'shoulder',
+      minConnectedArea: 12000,
+      connectedUsefulArea: 35280,
+      connectedWalkArea: 36656,
+      ports: [Array],
+      failures: [],
+      core: [Object]
+    },
+    {
+      id: 'cirque',
+      minConnectedArea: 12000,
+      connectedUsefulArea: 37728,
+      connectedWalkArea: 38752,
+      ports: [Array],
+      failures: [],
+      core: [Object]
+    },
+    {
+      id: 'summit',
+      minConnectedArea: 800,
+      connectedUsefulArea: 3216,
+      connectedWalkArea: 4112,
+      ports: [Array],
+      failures: [],
+      core: [Object]
+    }
+  ]
+}
+UPPER 42 {"area":72512,"range":33.19309997558594}
+PASS 6 checks; 0 Rapier walks in both directions; 1 seeds

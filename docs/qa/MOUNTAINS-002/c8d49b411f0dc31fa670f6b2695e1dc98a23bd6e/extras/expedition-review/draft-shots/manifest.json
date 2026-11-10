@@ -1,0 +1,305 @@
+{
+  "root": "/workspace/work/expedition-review/draft",
+  "renderer": "Chromium ANGLE SwiftShader",
+  "viewport": [
+    1280,
+    800
+  ],
+  "files": {
+    "index.html": "45d7d787dd682e12018716458fcfaa6bf89f5b4c4065cb7f932693131274b8e0",
+    "landforms.ts": "d1042437f4610fc634670d2438b39405e2f2447ef55d8eabed6f3c6030d7394f",
+    "main.ts": "464bfb4cc8ab74fbedbcd40b63e26ba07fe599fef9a552cc3cd47507eab0aa5e",
+    "style.css": "837ac91b76857ce7b5bc3eae294da4bbad3bc131331d10c42143f8a109afef5b"
+  },
+  "shots": [
+    {
+      "name": "42-lower-clay",
+      "view": "lower",
+      "layer": "clay",
+      "foot": {
+        "x": -210,
+        "y": 21.116608715057374,
+        "z": 505
+      }
+    },
+    {
+      "name": "42-lower-full",
+      "view": "lower",
+      "layer": "full",
+      "foot": {
+        "x": -210,
+        "y": 21.116608715057374,
+        "z": 505
+      }
+    },
+    {
+      "name": "42-reveal-clay",
+      "view": "reveal",
+      "layer": "clay",
+      "foot": {
+        "x": -195,
+        "y": 117.83091888427734,
+        "z": -30
+      }
+    },
+    {
+      "name": "42-reveal-full",
+      "view": "reveal",
+      "layer": "full",
+      "foot": {
+        "x": -195,
+        "y": 117.83091888427734,
+        "z": -30
+      }
+    },
+    {
+      "name": "42-upper-clay",
+      "view": "upper",
+      "layer": "clay",
+      "foot": {
+        "x": -30,
+        "y": 120.42744216918945,
+        "z": 15
+      }
+    },
+    {
+      "name": "42-upper-full",
+      "view": "upper",
+      "layer": "full",
+      "foot": {
+        "x": -30,
+        "y": 120.42744216918945,
+        "z": 15
+      }
+    },
+    {
+      "name": "42-cirque-clay",
+      "view": "cirque",
+      "layer": "clay",
+      "foot": {
+        "x": -150,
+        "y": 221.96444091796877,
+        "z": -310
+      }
+    },
+    {
+      "name": "42-cirque-full",
+      "view": "cirque",
+      "layer": "full",
+      "foot": {
+        "x": -150,
+        "y": 221.96444091796877,
+        "z": -310
+      }
+    },
+    {
+      "name": "42-shoulder-clay",
+      "view": "shoulder",
+      "layer": "clay",
+      "foot": {
+        "x": 340,
+        "y": 176.7039733886719,
+        "z": 20
+      }
+    },
+    {
+      "name": "42-shoulder-full",
+      "view": "shoulder",
+      "layer": "full",
+      "foot": {
+        "x": 340,
+        "y": 176.7039733886719,
+        "z": 20
+      }
+    },
+    {
+      "name": "42-saddle-clay",
+      "view": "saddle",
+      "layer": "clay",
+      "foot": {
+        "x": 125,
+        "y": 240.78282699584963,
+        "z": -410
+      }
+    },
+    {
+      "name": "42-saddle-full",
+      "view": "saddle",
+      "layer": "full",
+      "foot": {
+        "x": 125,
+        "y": 240.78282699584963,
+        "z": -410
+      }
+    },
+    {
+      "name": "42-summit-clay",
+      "view": "summit",
+      "layer": "clay",
+      "foot": {
+        "x": -203,
+        "y": 312.04104766845705,
+        "z": -396
+      }
+    },
+    {
+      "name": "42-summit-full",
+      "view": "summit",
+      "layer": "full",
+      "foot": {
+        "x": -203,
+        "y": 312.04104766845705,
+        "z": -396
+      }
+    },
+    {
+      "name": "42-overview-clay",
+      "view": "overview",
+      "layer": "clay",
+      "foot": {
+        "x": -630,
+        "y": 545.2148215193176,
+        "z": 830
+      }
+    },
+    {
+      "name": "42-overview-full",
+      "view": "overview",
+      "layer": "full",
+      "foot": {
+        "x": -630,
+        "y": 545.2148215193176,
+        "z": 830
+      }
+    },
+    {
+      "name": "42-high-10-clay",
+      "route": "high",
+      "fraction": 0.1,
+      "layer": "clay",
+      "eye": {
+        "x": -238.25072886297377,
+        "y": 120.55863220392789,
+        "z": -40.69970845481049
+      },
+      "target": {
+        "x": -245.91244533527697,
+        "y": 120.96293426227291,
+        "z": -53.1254555393586
+      }
+    },
+    {
+      "name": "42-high-10-full",
+      "route": "high",
+      "fraction": 0.1,
+      "layer": "full",
+      "eye": {
+        "x": -238.25072886297377,
+        "y": 120.55863220392789,
+        "z": -40.69970845481049
+      },
+      "target": {
+        "x": -245.91244533527697,
+        "y": 120.96293426227291,
+        "z": -53.1254555393586
+      }
+    },
+    {
+      "name": "42-high-35-clay",
+      "route": "high",
+      "fraction": 0.35,
+      "layer": "clay",
+      "eye": {
+        "x": -295.7454427083333,
+        "y": 136.15839184373615,
+        "z": -159.32942708333331
+      },
+      "target": {
+        "x": -299.549560546875,
+        "y": 141.467931904085,
+        "z": -172.91748046875
+      }
+    },
+    {
+      "name": "42-high-35-full",
+      "route": "high",
+      "fraction": 0.35,
+      "layer": "full",
+      "eye": {
+        "x": -295.7454427083333,
+        "y": 136.15839184373615,
+        "z": -159.32942708333331
+      },
+      "target": {
+        "x": -299.549560546875,
+        "y": 141.467931904085,
+        "z": -172.91748046875
+      }
+    },
+    {
+      "name": "42-high-60-clay",
+      "route": "high",
+      "fraction": 0.6,
+      "layer": "clay",
+      "eye": {
+        "x": -267.96296296296293,
+        "y": 208.15352509110062,
+        "z": -281.11111111111114
+      },
+      "target": {
+        "x": -260.95088252314815,
+        "y": 214.54430593517094,
+        "z": -291.50933159722223
+      }
+    },
+    {
+      "name": "42-high-60-full",
+      "route": "high",
+      "fraction": 0.6,
+      "layer": "full",
+      "eye": {
+        "x": -267.96296296296293,
+        "y": 208.15352509110062,
+        "z": -281.11111111111114
+      },
+      "target": {
+        "x": -260.95088252314815,
+        "y": 214.54430593517094,
+        "z": -291.50933159722223
+      }
+    },
+    {
+      "name": "42-high-85-clay",
+      "route": "high",
+      "fraction": 0.85,
+      "layer": "clay",
+      "eye": {
+        "x": -162.29252400548697,
+        "y": 224.73798066101284,
+        "z": -334.8473936899863
+      },
+      "target": {
+        "x": -149.6337890625,
+        "y": 224.8922632701695,
+        "z": -334.9365234375
+      }
+    },
+    {
+      "name": "42-high-85-full",
+      "route": "high",
+      "fraction": 0.85,
+      "layer": "full",
+      "eye": {
+        "x": -162.29252400548697,
+        "y": 224.73798066101284,
+        "z": -334.8473936899863
+      },
+      "target": {
+        "x": -149.6337890625,
+        "y": 224.8922632701695,
+        "z": -334.9365234375
+      }
+    }
+  ],
+  "errors": []
+}

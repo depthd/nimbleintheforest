@@ -1,0 +1,275 @@
+{
+  "source_checkpoint": "c8d49b411f0dc31fa670f6b2695e1dc98a23bd6e",
+  "files": [
+    {
+      "path": "expedition-terrain/before.ts",
+      "bytes": 23594,
+      "sha256": "66be297225316a8c75bec4a34092a6271fc79215c9ff47b6e8b76d0c76e7747e"
+    },
+    {
+      "path": "expedition-terrain/draft-structure.log",
+      "bytes": 1382,
+      "sha256": "f865de79c631cee9f11d688cff6c288d048aa057537def4e3d7787517e58721f"
+    },
+    {
+      "path": "expedition-landmarks/check.cjs",
+      "bytes": 2302,
+      "sha256": "f8149effaa4b73b3c28ca975affb225b937c84ba9a422db79cc065ba3dd2f014"
+    },
+    {
+      "path": "expedition-landmarks/index.html",
+      "bytes": 177,
+      "sha256": "59465aa89cdaa11066ae41fd9cc9956f00613faeea2e3be76a3a084916558b32"
+    },
+    {
+      "path": "expedition-landmarks/plane-back.png",
+      "bytes": 61622,
+      "sha256": "4975c5952fcc0540685599fa6c7d69a6a49dd812d2988e83151ff59cb6c93185"
+    },
+    {
+      "path": "expedition-landmarks/plane-cargo.png",
+      "bytes": 123696,
+      "sha256": "0351f85d069d5610c4ae19e4291f59ea592f018b5df25617f23a4d201406e2a5"
+    },
+    {
+      "path": "expedition-landmarks/plane-side.png",
+      "bytes": 82634,
+      "sha256": "90db981bbb2ab8225880d0649f543fce5357f27739e2048e96d31fa6f81d2e5c"
+    },
+    {
+      "path": "expedition-landmarks/plane-wide.png",
+      "bytes": 38145,
+      "sha256": "f70c27a223e9c198e30f34a29f66d25baa449278adc7d36fac9e6a044ce7c4f4"
+    },
+    {
+      "path": "expedition-landmarks/preview.js",
+      "bytes": 1170223,
+      "sha256": "ef20e2349f6885767c717749455c4f5898f371ce681b8b5a3fdc4aed1beb0736"
+    },
+    {
+      "path": "expedition-landmarks/preview.ts",
+      "bytes": 1759,
+      "sha256": "18a9f0058d20266e416d303231e2afa12dc0fc589d235f5443e3d810e1fee834"
+    },
+    {
+      "path": "expedition-landmarks/station-back.png",
+      "bytes": 54141,
+      "sha256": "8c8af9c86e8421af4edac95065a75f777588e8b2c9651a292bd582ff01e1d058"
+    },
+    {
+      "path": "expedition-landmarks/station-cargo.png",
+      "bytes": 66383,
+      "sha256": "c601b31baac0bb156e2a3c70b6727853fcc5cb1b4fff3e988661e6b5bd8281b6"
+    },
+    {
+      "path": "expedition-landmarks/station-side.png",
+      "bytes": 70379,
+      "sha256": "8f7dbd4985086b4bff02d25ad519e1fa6bdd818604ec8fe7fb61e2fffee057c0"
+    },
+    {
+      "path": "expedition-landmarks/station-wide.png",
+      "bytes": 49989,
+      "sha256": "6478fd20a1192c6f7e482e7f5f6bfd1269498bc9f662091b223f00c60006000e"
+    },
+    {
+      "path": "expedition-review/before/experiments/mountains/index.html",
+      "bytes": 2911,
+      "sha256": "45d7d787dd682e12018716458fcfaa6bf89f5b4c4065cb7f932693131274b8e0"
+    },
+    {
+      "path": "expedition-review/before/experiments/mountains/landforms.ts",
+      "bytes": 23594,
+      "sha256": "66be297225316a8c75bec4a34092a6271fc79215c9ff47b6e8b76d0c76e7747e"
+    },
+    {
+      "path": "expedition-review/before/experiments/mountains/main.ts",
+      "bytes": 26433,
+      "sha256": "464bfb4cc8ab74fbedbcd40b63e26ba07fe599fef9a552cc3cd47507eab0aa5e"
+    },
+    {
+      "path": "expedition-review/before/experiments/mountains/style.css",
+      "bytes": 2109,
+      "sha256": "837ac91b76857ce7b5bc3eae294da4bbad3bc131331d10c42143f8a109afef5b"
+    },
+    {
+      "path": "expedition-review/capture.cjs",
+      "bytes": 3103,
+      "sha256": "78349a7beb152995d230d4094ce1162461a9067efa5e8ee45a41204440316ff4"
+    },
+    {
+      "path": "expedition-review/draft/.vite/deps/@dimforge_rapier3d-compat.js",
+      "bytes": 4406145,
+      "sha256": "6d48e4d1ffc6f29177157333bd70fcda6c4151e69e9c3489dc15d2d1c0beac99"
+    },
+    {
+      "path": "expedition-review/draft/.vite/deps/@dimforge_rapier3d-compat.js.map",
+      "bytes": 1241379,
+      "sha256": "bd0c2537fe7b990965969b141f76877625b3082c0096fa30058ebbd73d8fe7f6"
+    },
+    {
+      "path": "expedition-review/draft/.vite/deps/_metadata.json",
+      "bytes": 594,
+      "sha256": "2b677de163389e1d959676797d799d3a4e59b9f8dc77ddfb59b6aa3e6d711e71"
+    },
+    {
+      "path": "expedition-review/draft/.vite/deps/package.json",
+      "bytes": 23,
+      "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a"
+    },
+    {
+      "path": "expedition-review/draft/.vite/deps/three.js",
+      "bytes": 1694663,
+      "sha256": "b812f56b32ee6e69603f9da1015def28196b3252dbcdb7d1285035c399eb09e2"
+    },
+    {
+      "path": "expedition-review/draft/.vite/deps/three.js.map",
+      "bytes": 3163834,
+      "sha256": "d5d5a37bca6d58e8497a268fb44655ecbb3c0bb0b8dacb7ed994874992475064"
+    },
+    {
+      "path": "expedition-review/draft/experiments/mountains/index.html",
+      "bytes": 2911,
+      "sha256": "45d7d787dd682e12018716458fcfaa6bf89f5b4c4065cb7f932693131274b8e0"
+    },
+    {
+      "path": "expedition-review/draft/experiments/mountains/landforms.ts",
+      "bytes": 28463,
+      "sha256": "d1042437f4610fc634670d2438b39405e2f2447ef55d8eabed6f3c6030d7394f"
+    },
+    {
+      "path": "expedition-review/draft/experiments/mountains/main.ts",
+      "bytes": 26433,
+      "sha256": "464bfb4cc8ab74fbedbcd40b63e26ba07fe599fef9a552cc3cd47507eab0aa5e"
+    },
+    {
+      "path": "expedition-review/draft/experiments/mountains/style.css",
+      "bytes": 2109,
+      "sha256": "837ac91b76857ce7b5bc3eae294da4bbad3bc131331d10c42143f8a109afef5b"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-cirque-clay.png",
+      "bytes": 118949,
+      "sha256": "31fde8404f0bd75078e2cb444c3668d55071799713b0eaf5ef79b20404be5d26"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-cirque-full.png",
+      "bytes": 280912,
+      "sha256": "f7016224e05131dd7c1828d66b80b03770b04e0844295ad19bf263b32b9ff98a"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-high-10-clay.png",
+      "bytes": 153257,
+      "sha256": "71c362758c76248324a2a5062abe2ecd9f163e5b435ad8f8b185f3f18092e541"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-high-10-full.png",
+      "bytes": 431389,
+      "sha256": "140649ea97cc4a3329e347b716a0ebed12ecd646e15c52c9021df629141748f5"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-high-35-clay.png",
+      "bytes": 145772,
+      "sha256": "3f8fe61e6731318454f878d47898de64fe0947b60107a2bbce1718cf1616f432"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-high-35-full.png",
+      "bytes": 351391,
+      "sha256": "87a3af59dfd0a5c359e296f24a35edfd6f14f9d02afcd6b10f9f8e0e8628dae2"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-high-60-clay.png",
+      "bytes": 100368,
+      "sha256": "b396397c908ab267ad84057e2dd1809f4f2630feef9514e409319786c5924a1a"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-high-60-full.png",
+      "bytes": 237947,
+      "sha256": "43e77f5015ea64f8f4ebd3098892533870a978bdadcfaa1f23111d66b8f88833"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-high-85-clay.png",
+      "bytes": 118410,
+      "sha256": "4a796afea4708dfcbe996e85c19c7a0cc988d737f6d64acff37ad12d123fb843"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-high-85-full.png",
+      "bytes": 270325,
+      "sha256": "660ce058e9e483b3fefcbdcb21986019f1d691ae9e7f3075574653736e9db0c0"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-lower-clay.png",
+      "bytes": 141230,
+      "sha256": "8c9f7af669d9de9892309366fb4c066911eca232f1d776ada0acde52b70cb6df"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-lower-full.png",
+      "bytes": 320407,
+      "sha256": "e94137a77f2398b40775e2c4cce90355283715c9d6d8f06d91999cde732c07d7"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-overview-clay.png",
+      "bytes": 223822,
+      "sha256": "e163a5067a3fc65502dfbdff6bef4794d1b3bb8be7b58b196410ed03f6f0e36f"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-overview-full.png",
+      "bytes": 575558,
+      "sha256": "a5b398371b7903afa71d29b22daa6443ec9d36235b71d7a9b6126e205d891248"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-reveal-clay.png",
+      "bytes": 124626,
+      "sha256": "a7da58a2257cfda6b5aad8cfbce3d6baa19d8e6b049f68bbac10122112894dd8"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-reveal-full.png",
+      "bytes": 316467,
+      "sha256": "ebf2254de1dcee69662cd55828a3f97807d09d2a7b9616c9a68531ac19b4dc80"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-saddle-clay.png",
+      "bytes": 93460,
+      "sha256": "876abbc3c8f7eb3f9cda82d1a2be5887dd1f3beb8b90a67667e353a83e731a08"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-saddle-full.png",
+      "bytes": 207747,
+      "sha256": "fc72ed1fb93a2c58a21d720a0748ff5199de9308d0d770d2b807480b0c9fb765"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-shoulder-clay.png",
+      "bytes": 169413,
+      "sha256": "adbd0b2d03e41c9e0d617fc74329ba6c2700bc933d32e743357e5b5dacdb2a5d"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-shoulder-full.png",
+      "bytes": 419171,
+      "sha256": "c5a788b9112977e90090e2809a5438df3fa665f840f31703db85e28f336ccf13"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-summit-clay.png",
+      "bytes": 210169,
+      "sha256": "459ed4cc5b3106ed3853fe6f453bd74c0a5e6b568f362fcce0dc737265a9e291"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-summit-full.png",
+      "bytes": 540447,
+      "sha256": "fc24512a740189b88b6c15df92d07bb635ea4b2620e21a8e1a68fc08c854f945"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-upper-clay.png",
+      "bytes": 155247,
+      "sha256": "db86b2b3c29e3b80e0c5fc8d8ddeb1ded10c85fc24fb0fe29d321ff5449294e7"
+    },
+    {
+      "path": "expedition-review/draft-shots/42-upper-full.png",
+      "bytes": 392969,
+      "sha256": "e677db62adc016f3ff5bba8855f64c37f9587cc28bac30d5172778201194f380"
+    },
+    {
+      "path": "expedition-review/draft-shots/manifest.json",
+      "bytes": 6372,
+      "sha256": "5a4983e97eeae5ab0b7bf9c616981bdddd771a7646e269760c69e54a3d2147b6"
+    }
+  ]
+}

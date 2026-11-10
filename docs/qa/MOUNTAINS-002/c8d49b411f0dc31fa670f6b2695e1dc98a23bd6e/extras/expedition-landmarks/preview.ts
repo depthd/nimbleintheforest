@@ -1,0 +1,8 @@
+import * as T from '/workspace/work/mountains-connected/node_modules/three/build/three.module.js';
+import {buildPlaneWreck,buildMountainStation} from '/workspace/work/mountains-connected/experiments/mountains/landmarks.ts';
+const r=new T.WebGLRenderer({antialias:true});r.setSize(innerWidth,innerHeight);r.setPixelRatio(1);r.shadowMap.enabled=true;r.shadowMap.type=T.PCFSoftShadowMap;r.outputColorSpace=T.SRGBColorSpace;r.toneMapping=T.ACESFilmicToneMapping;r.toneMappingExposure=1.1;document.body.append(r.domElement);
+const s=new T.Scene();s.background=new T.Color('#afc4d1');s.fog=new T.Fog('#afc4d1',120,350);const h=new T.HemisphereLight('#cce3f2','#717d7b',1.5);s.add(h);const l=new T.DirectionalLight('#fff0d7',3);l.position.set(-40,70,-25);l.castShadow=true;l.shadow.mapSize.set(2048,2048);Object.assign(l.shadow.camera,{left:-50,right:50,top:50,bottom:-50,near:1,far:200});l.shadow.normalBias=.08;s.add(l);
+const ground=new T.Mesh(new T.PlaneGeometry(500,500),new T.MeshStandardMaterial({color:'#dce3e7',roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;s.add(ground);
+const type=new URLSearchParams(location.search).get('type')||'plane',a=type==='plane'?buildPlaneWreck():buildMountainStation();s.add(a.group);const c=new T.PerspectiveCamera(45,innerWidth/innerHeight,.1,500);
+const frames=type==='plane'?{wide:[[46,29,-43],[0,3,0]],back:[[21,13,34],[0,3,0]],cargo:[[0,1.7,9],[0,2.5,-4]],side:[[-34,8,-13],[0,3,0]]}:{wide:[[40,26,-44],[0,5,0]],back:[[-36,16,30],[0,5,0]],cargo:[[0,1.7,-19],[0,2,5]],side:[[-29,6,-16],[-10,3,0]]};
+window.__asset={view(id){const f=frames[id];c.position.set(...f[0]);c.lookAt(...f[1]);r.render(s,c)},stats:{footprint:a.footprint,triangles:a.collider.indices.length/3}};window.__asset.view('wide');

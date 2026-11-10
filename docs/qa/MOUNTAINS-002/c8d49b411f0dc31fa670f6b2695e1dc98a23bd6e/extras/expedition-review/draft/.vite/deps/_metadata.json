@@ -1,0 +1,21 @@
+{
+  "hash": "cff0e2fd",
+  "configHash": "cae03c3e",
+  "lockfileHash": "c9fa8235",
+  "browserHash": "319dadea",
+  "optimized": {
+    "@dimforge/rapier3d-compat": {
+      "src": "../../../../../nimbleintheforest/node_modules/@dimforge/rapier3d-compat/dist/rapier.mjs",
+      "file": "@dimforge_rapier3d-compat.js",
+      "fileHash": "4fad35a0",
+      "needsInterop": false
+    },
+    "three": {
+      "src": "../../../../../nimbleintheforest/node_modules/three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "8b662e10",
+      "needsInterop": false
+    }
+  },
+  "chunks": {}
+}
