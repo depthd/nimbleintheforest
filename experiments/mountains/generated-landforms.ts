@@ -137,8 +137,8 @@ export class GeneratedLandforms {
         const view = (id: string, name: string, p: Point, t: Point) => this.views.push({ id, name, position: p, target: t });
         const eye = (x: number, z: number, dy = 1.8): Point => { const p = this.world(x, z); return { ...p, y: this.heightAt(p.x, p.z) + dy }; };
         const low = this.regions[0], next = this.regions.find(r => r.id === this.plan.trunk[1])!, top = this.regions.find(r => r.id === this.plan.trunk.at(-1))!;
-        view('lower', 'Подножие · начало долины', eye(low.x, low.z + 55), eye(next.x, next.z, 25));
-        view('upper', 'Верхняя долина', eye(top.x - 45, top.z + 25), eye(top.x + 75, top.z - 50, 15));
+        view('lower', 'Подножие · начало долины', eye(low.x, low.z), eye(next.x, next.z, 25));
+        view('upper', 'Верхняя долина', eye(top.x, top.z), eye(top.x + 75, top.z - 50, 15));
         view('overview', 'Общий массив', eye(-610, 620, 500), eye(0, -100, 65));
         for (const r of this.regions.slice(1)) {
             const incoming = this.routes.find(p => p.to === r.id), p = incoming?.points[Math.max(0, Math.floor(incoming.points.length * .78))] ?? { x: r.x, z: r.z + 20, y: r.y };
