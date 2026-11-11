@@ -150,7 +150,18 @@ export function buildWedgeAscent(source: SourceGrid, upper: SourceGrid, ending =
     { x: end.x, y: end.y, z: end.z - end.w }, { x: end.x, y: end.y, z: end.z + end.w },
     { x: end.x, y: 180, z: end.z + end.w }, { x: end.x, y: 180, z: end.z - end.w },
   ];
-  const interiors = Object.values(uncut).map(mesh => boundaryInMountain(mesh, [...boundary, endFace], { minX: ascent.start, maxX: ascent.end, minZ, maxZ }));
+  const bounds = { minX: ascent.start, maxX: ascent.end, minZ, maxZ };
+  const interiors = Object.values(uncut).map(mesh => boundaryInMountain(mesh, boundary, bounds));
+  for (const mesh of Object.values(uncut)) {
+    // x=end may coincide with a grid edge. Only the excavated side owns this
+    // cap, otherwise both neighbouring prisms produce a duplicate face.
+    const left: number[] = [];
+    for (let k = 0; k < mesh.indices.length; k += 3) {
+      const ids = mesh.indices.subarray(k, k + 3);
+      if (Math.min(...Array.from(ids, id => mesh.positions[id * 3])) < end.x - 1e-5) left.push(...ids);
+    }
+    interiors.push(boundaryInMountain({ positions: mesh.positions, indices: new Uint32Array(left) }, [endFace], bounds));
+  }
   const positions: number[] = [], indices: number[] = [];
   for (const mesh of interiors) {
     const offset = positions.length / 3;
