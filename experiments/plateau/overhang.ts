@@ -7,7 +7,12 @@ export function portalAngle(a:number){return Math.abs(Math.atan2(Math.sin(a),Mat
 export function maskPoint(a:number,y:number,depth=0){
   const t=y/100;
   const shape=1+.095*Math.sin(3*a+.7)+.055*Math.cos(5*a-.4);
-  const scale=1.078+t*(.065+.05*Math.sin(3*a+1))+.025*Math.sin(Math.PI*t)*Math.sin(7*a+2);
+  const target=1.078+t*(.065+.05*Math.sin(3*a+1))+.025*Math.sin(Math.PI*t)*Math.sin(7*a+2);
+  const q=Math.abs(Math.atan2(Math.sin(a),Math.cos(a)));
+  const distance=Math.min(Math.max(0,q-.12),Math.max(0,Math.PI-q-.28));
+  const u=Math.min(1,distance/.16),blend=u*u*(3-2*u);
+  // Bury the mask ends into the original flank beside each opening.
+  const scale=(1.04-.10*t)*(1-blend)+target*blend;
   return [Math.cos(a)*(260*shape*scale-depth),y,Math.sin(a)*(180*shape*scale-depth)];
 }
 export function buildOverhang(){

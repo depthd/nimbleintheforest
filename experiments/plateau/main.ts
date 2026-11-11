@@ -163,7 +163,7 @@ function start() {
     maskTop: { eye:[0,102,210],target:[0,98,120] },
     ascent: { eye: [-270, 190, -180], target: [-125, 40, -50] },
     ascentFoot: { eye: [-310, heightAt(-310,-50)+1.8, -50], target: [-160, 38, -5] },
-    ascentTop: { eye: [10, 103, -50], target: [-200, 18, -10] },
+    ascentTop: { eye: [16, 102, ascentCenter(16)], target: [-100, 40, ascentCenter(-100)] },
     overview: { eye: [450, 250, 490], target: [0, 48, 0] },
     foot: { eye: [40, 1.8, 300], target: [5, 55, 145] },
     top: { eye: [30, heightAt(30, 30) + 1.8, 30], target: [20, 96, -220] },
