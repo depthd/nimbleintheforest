@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "qa",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
@@ -20,6 +20,6 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "536824d81c690cea59b330cf87d24fa783bddbb0",
-  "qa_result": "Curved variable-width ascent and perimeter mask: build/typecheck/scope, final-floor/sky rays, cave preservation and capsule round-trip PASS. Flat core and repetitive rock rim remain visual limitations."
+  "qa_sha": "a0413759cb833d7ce3c8ba0e5adf4af626147356",
+  "qa_result": "Wide ascent with two masked rock walls and blended upper rim: typecheck/build/scope, browser and capsule round-trip PASS. Full terrain/mask synchronization deferred as requested."
 }
