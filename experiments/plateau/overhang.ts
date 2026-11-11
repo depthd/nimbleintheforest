@@ -1,32 +1,36 @@
 import { RockSkin } from '../../src/gen/rock-skin';
 import { blockTriangles } from '../../src/gen/cliffs';
-import type { MeshData } from './cavity';
-
-// Two principal faces: a reverse-sloped facade and an upper plane buried in the mesa.
-// Closed ends are included in the collision geometry as well.
-export function buildOverhang() {
-  const positions:number[]=[],indices:number[]=[];
-  const quad=(a:number[],b:number[],c:number[],d:number[])=>{const k=positions.length/3;positions.push(...a,...b,...c,...d);indices.push(k,k+1,k+2,k,k+2,k+3);};
-  quad([-55,0,190],[55,0,190],[55,100,220],[-55,100,220]);
-  quad([-55,100,220],[55,100,220],[55,98,130],[-55,98,130]);
-  quad([-55,0,130],[-55,0,190],[-55,100,220],[-55,98,130]);
-  quad([55,0,190],[55,0,130],[55,98,130],[55,100,220]);
-  const mask:MeshData={positions:new Float32Array(positions),indices:new Uint32Array(indices)};
-
-  // Existing RockSkin operates in a local near-vertical chart (about 88 degrees).
-  // Transform its vertices into the facade frame; it never samples the plateau.
-  const n=80,cell=2,size=n*cell,h=new Float32Array((n+1)**2);
-  for(let j=0;j<=n;j++)for(let i=0;i<=n;i++)h[j*(n+1)+i]=Math.min(100,Math.max(0,(j*cell-size/2)*30));
-  const skin=new RockSkin({seed:42,size,n,cell,h,water:new Float32Array(h.length).fill(NaN),ox:size/2,oz:size/2,edgeDist:()=>500},
-    {border:4,minDeg:51,exclude:(x,z)=>Math.abs(x)>51||Math.abs(z)>10});
-  const transform=(P:Float32Array)=>{const out=P.slice();for(let i=0;i<out.length;i+=3)out[i+2]=190+out[i+1]/3-out[i+2];return out;};
-  const raw:number[]=[];
-  for(const b of skin.blocks)blockTriangles(b,raw);
-  const rockPositions=transform(new Float32Array(raw));
-  // The chart transformation is a reflection: reverse triangle winding.
-  for(let i=0;i<rockPositions.length;i+=9)for(let j=0;j<3;j++)[rockPositions[i+3+j],rockPositions[i+6+j]]=[rockPositions[i+6+j],rockPositions[i+3+j]];
-  const capIndices=skin.caps.indices.slice();
-  for(let i=0;i<capIndices.length;i+=3)[capIndices[i+1],capIndices[i+2]]=[capIndices[i+2],capIndices[i+1]];
-  return {mask,rocks:{positions:rockPositions,indices:Uint32Array.from({length:rockPositions.length/3},(_,i)=>i)},
-    caps:{positions:transform(skin.caps.positions),indices:capIndices},blocks:skin.blocks.length};
+import { cutAscent } from './ascent';
+import { subtract, type MeshData } from './cavity';
+const TAU=Math.PI*2;
+export function portalAngle(a:number){return Math.abs(Math.atan2(Math.sin(a),Math.cos(a)))<.12 || Math.abs(Math.PI-Math.abs(Math.atan2(Math.sin(a),Math.cos(a))))<.28;}
+export function maskPoint(a:number,y:number,depth=0){
+  const t=y/100;
+  const shape=1+.095*Math.sin(3*a+.7)+.055*Math.cos(5*a-.4);
+  const scale=1.078+t*(.065+.05*Math.sin(3*a+1))+.025*Math.sin(Math.PI*t)*Math.sin(7*a+2);
+  return [Math.cos(a)*(260*shape*scale-depth),y,Math.sin(a)*(180*shape*scale-depth)];
+}
+export function buildOverhang(){
+ const positions:number[]=[],indices:number[]=[];
+ const quad=(a:number[],b:number[],c:number[],d:number[])=>{const k=positions.length/3;positions.push(...a,...b,...c,...d);indices.push(k,k+1,k+2,k,k+2,k+3);};
+ const segments=192,levels=12;
+ for(let i=0;i<segments;i++){
+  const a=i/segments*TAU,b=(i+1)/segments*TAU;
+  if(portalAngle((a+b)/2))continue;
+  for(let j=0;j<levels;j++)quad(maskPoint(a,j/levels*100),maskPoint(a,(j+1)/levels*100),maskPoint(b,(j+1)/levels*100),maskPoint(b,j/levels*100));
+  const inner=(q:number)=>[Math.cos(q)*260*.86,98,Math.sin(q)*180*.86];
+  quad(maskPoint(a,100),inner(a),inner(b),maskPoint(b,100));
+ }
+ const rawMask:MeshData={positions:new Float32Array(positions),indices:new Uint32Array(indices)};
+ const mask=cutAscent(subtract(rawMask));
+ // A continuous local surface chart follows the entire irregular perimeter.
+ const size=1600,cell=4,n=size/cell,perimeter=1450,h=new Float32Array((n+1)**2);
+ for(let j=0;j<=n;j++)for(let i=0;i<=n;i++)h[j*(n+1)+i]=Math.min(100,Math.max(0,(j*cell-size/2)*30));
+ const skin=new RockSkin({seed:42,size,n,cell,h,water:new Float32Array(h.length).fill(NaN),ox:size/2,oz:size/2,edgeDist:()=>500},
+ {border:4,minDeg:51,exclude:(u,v)=>Math.abs(u)>perimeter/2-3||Math.abs(v)>12||portalAngle(u/perimeter*TAU)});
+ const transform=(P:Float32Array)=>{const out=P.slice();for(let k=0;k<out.length;k+=3){const p=maskPoint(out[k]/perimeter*TAU,out[k+1],out[k+2]-out[k+1]/30);out.set(p,k);}return out;};
+ const raw:number[]=[];for(const b of skin.blocks)blockTriangles(b,raw);
+ const rocks=cutAscent(subtract({positions:transform(new Float32Array(raw)),indices:Uint32Array.from({length:raw.length/3},(_,i)=>i)}));
+ const caps=cutAscent(subtract({positions:transform(skin.caps.positions),indices:skin.caps.indices}));
+ return {mask,rocks,caps,blocks:skin.blocks.length};
 }

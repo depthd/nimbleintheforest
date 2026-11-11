@@ -7,8 +7,8 @@ import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
 import { noiseTexture } from '../../src/core/noisetex';
 import { subtract, interior, den } from './cavity';
-import { buildOverhang } from './overhang';
-import { cutAscent, ascentSurface, ascent, ascentHeight } from './ascent';
+import { buildOverhang, portalAngle } from './overhang';
+import { cutAscent, ascentSurface, ascent, ascentHeight, ascentCenter, ascentWidth } from './ascent';
 
 const $ = (id: string) => document.getElementById(id)!;
 const SIZE = 1400, CELL = 4, N = SIZE / CELL, HEIGHT = 100;
@@ -96,7 +96,7 @@ function start() {
   const skin = new RockSkin({ seed: SEED, size: SIZE, n: N, cell: CELL,
     h: heights, water: new Float32Array(heights.length).fill(NaN), ox: SIZE / 2, oz: SIZE / 2,
     edgeDist: (x, z) => SIZE / 2 - Math.max(Math.abs(x), Math.abs(z)),
-  }, { border: 60, minDeg: 51, exclude: (x,z)=>Math.abs(x)<60 && z>135 });
+  }, { border: 60, minDeg: 51, exclude: (x,z)=>!portalAngle(Math.atan2(z/180,x/260)) });
   const rockPositions: number[] = [], rockColors: number[] = [];
   const colorRng = new Rng(SEED ^ 0x837);
   const soft = new THREE.Color().setRGB(.26, .27, .32, THREE.SRGBColorSpace);
@@ -158,12 +158,12 @@ function start() {
   scene.updateMatrixWorld(true);
 
   const views = {
-    maskSide: { eye:[125,50,260],target:[0,55,200] },
-    maskUnder: { eye:[0,heightAt(0,207)+1.8,207],target:[0,65,210] },
+    maskSide: { eye:[450,250,480],target:[0,45,0] },
+    maskUnder: { eye:[0,heightAt(0,199)+1.8,199],target:[0,65,220] },
     maskTop: { eye:[0,102,210],target:[0,98,120] },
     ascent: { eye: [-270, 190, -180], target: [-125, 40, -50] },
-    ascentFoot: { eye: [-310, heightAt(-310,-50)+1.8, -50], target: [-160, 38, -50] },
-    ascentTop: { eye: [10, 103, -50], target: [-250, 18, -50] },
+    ascentFoot: { eye: [-310, heightAt(-310,-50)+1.8, -50], target: [-160, 38, -5] },
+    ascentTop: { eye: [10, 103, -50], target: [-200, 18, -10] },
     overview: { eye: [450, 250, 490], target: [0, 48, 0] },
     foot: { eye: [40, 1.8, 300], target: [5, 55, 145] },
     top: { eye: [30, heightAt(30, 30) + 1.8, 30], target: [20, 96, -220] },
@@ -207,7 +207,7 @@ function start() {
     triangles: indices.length / 3 + rockPositions.length / 9 + skin.caps.indices.length / 3,
     rockGroup, heightAt, solidMeshes, cave, den, maskMesh,maskRockGroup, maskBlocks:overhang.blocks,
     cutTriangles: {terrain:caveGround.cutTriangles,rock:caveRocks.cutTriangles,snow:caveCaps.cutTriangles},
-    ascent, ascentHeight, ascentCuts: {terrain:cutGround.cutTriangles,rock:cutRocks.cutTriangles,snow:cutCaps.cutTriangles},
+    ascent, ascentHeight, ascentCenter, ascentWidth, ascentCuts: {terrain:cutGround.cutTriangles,rock:cutRocks.cutTriangles,snow:cutCaps.cutTriangles},
     ray(origin: number[],direction: number[]) {
       const ray = new THREE.Raycaster(new THREE.Vector3().fromArray(origin),new THREE.Vector3().fromArray(direction).normalize(),0,1000);
       return ray.intersectObjects(solidMeshes,false).map(h=>({distance:h.distance,point:h.point.toArray()}));
