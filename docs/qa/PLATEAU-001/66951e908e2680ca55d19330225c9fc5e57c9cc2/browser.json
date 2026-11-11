@@ -1,0 +1,14 @@
+{
+  "result": "PASS",
+  "errors": [],
+  "backend": "Chromium SwiftShader",
+  "reliefAttenuation": false,
+  "views": [
+    "top",
+    "side",
+    "ground",
+    "walk"
+  ],
+  "motion": "along-E.webm",
+  "physicsPlayerTested": false
+}
