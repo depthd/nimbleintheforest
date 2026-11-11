@@ -2,10 +2,10 @@ import { type MeshData, type Point, type Plane, plane, clip, flip, value, append
 
 // Open-top excavation: the rise is removed from the existing mountain.
 // Neither the floor nor the side walls extend outside its original solid.
-export const ascent = { start: -300, end: 20, z: -50, halfWidth: 9, rise: 103 };
+export const ascent = { start: -300, end: 20, z: -50, halfWidth: 32, rise: 103 };
 export const profile = Array.from({length: 25},(_,i)=>{
   const t=i/24;
-  return {x:ascent.start+(ascent.end-ascent.start)*t,y:ascent.rise*t*t,z:ascent.z+45*Math.sin(Math.PI*t)-12*Math.sin(2*Math.PI*t),w:9+3*Math.sin(5.1*t+1)+1.5*Math.sin(13*t)};
+  return {x:ascent.start+(ascent.end-ascent.start)*t,y:ascent.rise*t*t,z:ascent.z+45*Math.sin(Math.PI*t)-12*Math.sin(2*Math.PI*t),w:32+6*Math.sin(5.1*t+1)+3*Math.sin(13*t)};
 });
 const minZ=Math.min(...profile.map(p=>p.z-p.w)),maxZ=Math.max(...profile.map(p=>p.z+p.w));
 const volumes:Plane[][]=[];
@@ -45,4 +45,4 @@ export function ascentSurface(source:MeshData){return boundaryInMountain(source,
 export function ascentHeight(x:number){const i=Math.min(profile.length-2,Math.max(0,Math.floor((x-ascent.start)/(ascent.end-ascent.start)*24))),a=profile[i],b=profile[i+1];return a.y+(b.y-a.y)*(x-a.x)/(b.x-a.x);}
 
 export function ascentCenter(x:number){const t=Math.max(0,Math.min(1,(x-ascent.start)/(ascent.end-ascent.start)));return ascent.z+45*Math.sin(Math.PI*t)-12*Math.sin(2*Math.PI*t);}
-export function ascentWidth(x:number){const t=Math.max(0,Math.min(1,(x-ascent.start)/(ascent.end-ascent.start)));return 9+3*Math.sin(5.1*t+1)+1.5*Math.sin(13*t);}
+export function ascentWidth(x:number){const t=Math.max(0,Math.min(1,(x-ascent.start)/(ascent.end-ascent.start)));return 32+6*Math.sin(5.1*t+1)+3*Math.sin(13*t);}
