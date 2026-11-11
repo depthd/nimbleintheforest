@@ -11,6 +11,7 @@ const {plateauRadius, contourPoint, SLOPE_START} = require('./plateau-profile.ts
 const {ascentCutVolumes} = require('./ascent.ts');
 const {caveCutPlanes} = require('./cavity.ts');
 const {Rng, Simplex2, smoothstep} = require('../../src/core/rng.ts');
+const {reliefGrid, reliefFixture, reliefTop} = require('./seam-relief-fixture.ts');
 
 const rng = new Rng(42), noise = new Simplex2(() => rng.next());
 function originalHeight(x, z) {
@@ -53,13 +54,14 @@ function check(name, grid, radius = SLOPE_START) {
   const seam=buildBoundary(grid,radius), points=seam.points, count=points.length;
   assert.ok(count > 100);
   assert.equal(new Set(points.map(p=>`${p.x},${p.z}`)).size,count,'duplicate joint');
-  let maxHeightError=0,maxContourError=0,maxPlanDeviation=0,minLength=Infinity;
+  let maxHeightError=0,maxContourError=0,maxPlanDeviation=0,minLength=Infinity,maxGridJointDistance=0;
   for(let i=0;i<count;i++) {
     const a=points[i],b=points[(i+1)%count];
     minLength=Math.min(minLength,Math.hypot(b.x-a.x,b.z-a.z));
     assert.ok(Math.hypot(b.x-a.x,b.z-a.z)>1e-6,'zero-length seam edge');
     const gridDistance=Math.min(...[a.x-grid.x0,a.z-grid.z0,a.x+a.z-grid.x0-grid.z0].map(v=>Math.abs(v/grid.cell-Math.round(v/grid.cell))*grid.cell));
     assert.ok(gridDistance<4e-5,'joint is not on any grid edge');
+    maxGridJointDistance=Math.max(maxGridJointDistance,gridDistance);
     maxContourError=Math.max(maxContourError,Math.abs(plateauRadius(a.x,a.z)-radius));
     for(let j=0;j<=16;j++) {
       const t=j/16,p=interpolate(a,b,t);
@@ -77,7 +79,8 @@ function check(name, grid, radius = SLOPE_START) {
   assert.ok(maxContourError<2e-7,`contour joint error ${maxContourError}`);
   assert.ok(maxPlanDeviation<.1,`contour approximation ${maxPlanDeviation}`);
   assert.equal(Buffer.from(grid.heights.buffer).toString('base64'),before,'source grid mutated');
-  return {name,cell:grid.cell,radius,vertices:count,edges:count,maxHeightError,maxContourError,maxPlanDeviation,minLength,seam};
+  return {name,cell:grid.cell,radius,vertices:count,edges:count,closed:true,selfIntersections:0,maxHeightError,maxContourError,maxPlanDeviation,maxGridJointDistance,minLength,
+    minHeight:Math.min(...points.map(p=>p.y)),maxHeight:Math.max(...points.map(p=>p.y)),seam};
 }
 
 const results=[
@@ -86,10 +89,46 @@ const results=[
   check('rising top',makeGrid((x,z)=>100+.09*x+.04*z)),
   check('falling top',makeGrid((x,z)=>100-.12*x-.03*z)),
   check('bumps and depressions',makeGrid((x,z)=>100+7*Math.sin(x/17)*Math.cos(z/23)+3*Math.sin((x+z)/7))),
+  {...check('mountain with relief to edge, no top attenuation',reliefGrid()),topAttenuation:reliefFixture.topAttenuation},
   check('contour through lattice vertices',makeGrid((x,z)=>100+4*Math.sin(x/13)), 260/(260*(1+.095*Math.sin(.7)+.055*Math.cos(-.4)))),
 ];
 const volumes=[...ascentCutVolumes().map(planes=>({kind:'ascent',planes})),{kind:'cave',planes:caveCutPlanes()}];
 const parts=splitBoundary(results[0].seam,volumes);
+const caveProjectionPlanes=caveCutPlanes().filter(p=>Math.abs(p.y)<1e-12);
+const inside=(p,planes)=>planes.every(pl=>pl.x*p.x+pl.y*p.y+pl.z*p.z+pl.d<=2e-6);
+const originalPointCounts={ordinary:0,ascentCut:0,aboveCave:0,caveActualCut:0};
+for(const p of results[0].seam.points){
+  if(inside(p,caveCutPlanes()))originalPointCounts.caveActualCut++;
+  if(ascentCutVolumes().some(planes=>inside(p,planes)))originalPointCounts.ascentCut++;
+  else if(inside(p,caveProjectionPlanes))originalPointCounts.aboveCave++;
+  else originalPointCounts.ordinary++;
+}
+assert.equal(originalPointCounts.ordinary+originalPointCounts.ascentCut+originalPointCounts.aboveCave,results[0].vertices);
+const ascentEndpoints=[];
+for(let i=0;i<parts.length;i++){
+  const part=parts[i],previous=parts[(i+parts.length-1)%parts.length];
+  if((part.kind==='ascent')!==(previous.kind==='ascent'))ascentEndpoints.push(part.a);
+}
+assert.equal(ascentEndpoints.length,2,'one current ascent opening should have exactly two seam endpoints');
+const endpointChecks=ascentEndpoints.map(p=>{
+  const faces=ascentCutVolumes().filter(planes=>inside(p,planes)).flatMap(planes=>planes.filter(pl=>Math.abs(pl.y)<1e-12));
+  const distanceToCutWall=Math.min(...faces.map(pl=>Math.abs(pl.x*p.x+pl.z*p.z+pl.d)));
+  assert.ok(distanceToCutWall<1e-8,'seam endpoint not on an actual excavation side boundary');
+  return {...p,distanceToCutWall};
+});
+const fixture=results.find(r=>r.name==='mountain with relief to edge, no top attenuation');
+results[0].maxDifferenceFromAnalyticTop=Math.max(...results[0].seam.points.map(p=>Math.abs(p.y-100)));
+fixture.maxDifferenceFromAnalyticTop=Math.max(...fixture.seam.points.map(p=>Math.abs(p.y-reliefTop(p.x,p.z))));
+const insetDiagnostics=[.96,.95,.94,.93,.92].map(radius=>{
+  const boundary=buildBoundary(makeGrid(originalHeight),radius);
+  return {radius,vertices:boundary.points.length,minHeight:Math.min(...boundary.points.map(p=>p.y)),maxDifferenceFromAnalyticTop:Math.max(...boundary.points.map(p=>Math.abs(p.y-100)))};
+});
+assert.ok(fixture.maxHeight-fixture.minHeight>10,'fixture edge must have substantial relief');
+const testGrid=reliefGrid();
+for(let j=0;j<=testGrid.n;j++)for(let i=0;i<=testGrid.n;i++){
+  const x=testGrid.x0+i*testGrid.cell,z=testGrid.z0+j*testGrid.cell;
+  if(plateauRadius(x,z)<=SLOPE_START)assert.equal(testGrid.heights[j*(testGrid.n+1)+i],Math.fround(reliefTop(x,z)),'top relief attenuated inside seam');
+}
 const cutCounts={surface:0,ascent:0,cave:0};
 for(const part of parts) {
   cutCounts[part.kind]++;
@@ -104,6 +143,8 @@ for(let i=0;i<parts.length;i++) {
   assert.ok(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)<1e-9,'gap after cut classification');
 }
 const report={result:'PASS',stage:'boundary diagnostic only; no mask strip or rendering removal',cases:results.map(({seam,...r})=>r),cutCounts,
+ originalPointCounts,ascentEndpoints:endpointChecks,visibleSurfaceBoundaryClosed:false,visibleSurfaceBoundaryEndpoints:2,
+ insetDiagnostics,visualAcceptance:'NOT ACCEPTED: current exact slope-start contour follows up to 4.104m dips in the existing triangulated surface; no silent contour shift or smoothing',
  checks:['shared source equations unchanged on full grid','closed chain without duplicate joints or self-intersections','all grid directions including diagonals','each segment lies on a source triangle','current/flat/rising/falling/bumpy relief','contour through grid vertices','actual ascent/cave volume classification','source grid not mutated'],
  notChecked:['future strip shape and lighting','final seamless transition','future render removal coverage']};
 if(process.argv[2])fs.writeFileSync(path.resolve(process.argv[2]),JSON.stringify(report,null,2));
