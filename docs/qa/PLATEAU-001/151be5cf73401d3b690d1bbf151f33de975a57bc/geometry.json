@@ -1,0 +1,1340 @@
+{
+  "result": "PASS",
+  "scope": "candidate diagnostic only; original game E not replaced; no strip",
+  "radius": 0.9287,
+  "search": {
+    "step": 0.0001,
+    "trials": 314,
+    "outermostTestedSafe": true,
+    "globalOptimumClaim": false,
+    "maxPlanStepMeters": 0.029446647739424743,
+    "attempts": [
+      {
+        "radius": 0.96,
+        "invalidTriangles": 758
+      },
+      {
+        "radius": 0.9599,
+        "invalidTriangles": 752
+      },
+      {
+        "radius": 0.9598,
+        "invalidTriangles": 750
+      },
+      {
+        "radius": 0.9597,
+        "invalidTriangles": 746
+      },
+      {
+        "radius": 0.9596,
+        "invalidTriangles": 746
+      },
+      {
+        "radius": 0.9595,
+        "invalidTriangles": 744
+      },
+      {
+        "radius": 0.9593999999999999,
+        "invalidTriangles": 742
+      },
+      {
+        "radius": 0.9592999999999999,
+        "invalidTriangles": 738
+      },
+      {
+        "radius": 0.9591999999999999,
+        "invalidTriangles": 732
+      },
+      {
+        "radius": 0.9591,
+        "invalidTriangles": 726
+      },
+      {
+        "radius": 0.959,
+        "invalidTriangles": 718
+      },
+      {
+        "radius": 0.9589,
+        "invalidTriangles": 714
+      },
+      {
+        "radius": 0.9588,
+        "invalidTriangles": 712
+      },
+      {
+        "radius": 0.9587,
+        "invalidTriangles": 710
+      },
+      {
+        "radius": 0.9586,
+        "invalidTriangles": 706
+      },
+      {
+        "radius": 0.9585,
+        "invalidTriangles": 702
+      },
+      {
+        "radius": 0.9583999999999999,
+        "invalidTriangles": 698
+      },
+      {
+        "radius": 0.9582999999999999,
+        "invalidTriangles": 692
+      },
+      {
+        "radius": 0.9581999999999999,
+        "invalidTriangles": 686
+      },
+      {
+        "radius": 0.9581,
+        "invalidTriangles": 684
+      },
+      {
+        "radius": 0.958,
+        "invalidTriangles": 682
+      },
+      {
+        "radius": 0.9579,
+        "invalidTriangles": 680
+      },
+      {
+        "radius": 0.9578,
+        "invalidTriangles": 676
+      },
+      {
+        "radius": 0.9577,
+        "invalidTriangles": 666
+      },
+      {
+        "radius": 0.9576,
+        "invalidTriangles": 664
+      },
+      {
+        "radius": 0.9575,
+        "invalidTriangles": 660
+      },
+      {
+        "radius": 0.9573999999999999,
+        "invalidTriangles": 654
+      },
+      {
+        "radius": 0.9572999999999999,
+        "invalidTriangles": 654
+      },
+      {
+        "radius": 0.9571999999999999,
+        "invalidTriangles": 648
+      },
+      {
+        "radius": 0.9571,
+        "invalidTriangles": 648
+      },
+      {
+        "radius": 0.957,
+        "invalidTriangles": 640
+      },
+      {
+        "radius": 0.9569,
+        "invalidTriangles": 638
+      },
+      {
+        "radius": 0.9568,
+        "invalidTriangles": 638
+      },
+      {
+        "radius": 0.9567,
+        "invalidTriangles": 634
+      },
+      {
+        "radius": 0.9566,
+        "invalidTriangles": 628
+      },
+      {
+        "radius": 0.9565,
+        "invalidTriangles": 628
+      },
+      {
+        "radius": 0.9563999999999999,
+        "invalidTriangles": 626
+      },
+      {
+        "radius": 0.9562999999999999,
+        "invalidTriangles": 626
+      },
+      {
+        "radius": 0.9561999999999999,
+        "invalidTriangles": 616
+      },
+      {
+        "radius": 0.9561,
+        "invalidTriangles": 612
+      },
+      {
+        "radius": 0.956,
+        "invalidTriangles": 606
+      },
+      {
+        "radius": 0.9559,
+        "invalidTriangles": 600
+      },
+      {
+        "radius": 0.9558,
+        "invalidTriangles": 600
+      },
+      {
+        "radius": 0.9557,
+        "invalidTriangles": 598
+      },
+      {
+        "radius": 0.9556,
+        "invalidTriangles": 590
+      },
+      {
+        "radius": 0.9555,
+        "invalidTriangles": 588
+      },
+      {
+        "radius": 0.9553999999999999,
+        "invalidTriangles": 586
+      },
+      {
+        "radius": 0.9552999999999999,
+        "invalidTriangles": 582
+      },
+      {
+        "radius": 0.9551999999999999,
+        "invalidTriangles": 574
+      },
+      {
+        "radius": 0.9551,
+        "invalidTriangles": 572
+      },
+      {
+        "radius": 0.955,
+        "invalidTriangles": 566
+      },
+      {
+        "radius": 0.9549,
+        "invalidTriangles": 562
+      },
+      {
+        "radius": 0.9548,
+        "invalidTriangles": 558
+      },
+      {
+        "radius": 0.9547,
+        "invalidTriangles": 550
+      },
+      {
+        "radius": 0.9546,
+        "invalidTriangles": 544
+      },
+      {
+        "radius": 0.9545,
+        "invalidTriangles": 540
+      },
+      {
+        "radius": 0.9543999999999999,
+        "invalidTriangles": 534
+      },
+      {
+        "radius": 0.9542999999999999,
+        "invalidTriangles": 530
+      },
+      {
+        "radius": 0.9541999999999999,
+        "invalidTriangles": 524
+      },
+      {
+        "radius": 0.9541,
+        "invalidTriangles": 520
+      },
+      {
+        "radius": 0.954,
+        "invalidTriangles": 520
+      },
+      {
+        "radius": 0.9539,
+        "invalidTriangles": 516
+      },
+      {
+        "radius": 0.9538,
+        "invalidTriangles": 509
+      },
+      {
+        "radius": 0.9537,
+        "invalidTriangles": 509
+      },
+      {
+        "radius": 0.9536,
+        "invalidTriangles": 503
+      },
+      {
+        "radius": 0.9535,
+        "invalidTriangles": 501
+      },
+      {
+        "radius": 0.9533999999999999,
+        "invalidTriangles": 498
+      },
+      {
+        "radius": 0.9532999999999999,
+        "invalidTriangles": 498
+      },
+      {
+        "radius": 0.9531999999999999,
+        "invalidTriangles": 494
+      },
+      {
+        "radius": 0.9531,
+        "invalidTriangles": 490
+      },
+      {
+        "radius": 0.953,
+        "invalidTriangles": 482
+      },
+      {
+        "radius": 0.9529,
+        "invalidTriangles": 482
+      },
+      {
+        "radius": 0.9528,
+        "invalidTriangles": 480
+      },
+      {
+        "radius": 0.9527,
+        "invalidTriangles": 472
+      },
+      {
+        "radius": 0.9526,
+        "invalidTriangles": 466
+      },
+      {
+        "radius": 0.9525,
+        "invalidTriangles": 462
+      },
+      {
+        "radius": 0.9523999999999999,
+        "invalidTriangles": 456
+      },
+      {
+        "radius": 0.9522999999999999,
+        "invalidTriangles": 450
+      },
+      {
+        "radius": 0.9521999999999999,
+        "invalidTriangles": 442
+      },
+      {
+        "radius": 0.9521,
+        "invalidTriangles": 442
+      },
+      {
+        "radius": 0.952,
+        "invalidTriangles": 438
+      },
+      {
+        "radius": 0.9519,
+        "invalidTriangles": 438
+      },
+      {
+        "radius": 0.9518,
+        "invalidTriangles": 434
+      },
+      {
+        "radius": 0.9517,
+        "invalidTriangles": 432
+      },
+      {
+        "radius": 0.9516,
+        "invalidTriangles": 432
+      },
+      {
+        "radius": 0.9515,
+        "invalidTriangles": 432
+      },
+      {
+        "radius": 0.9513999999999999,
+        "invalidTriangles": 426
+      },
+      {
+        "radius": 0.9512999999999999,
+        "invalidTriangles": 424
+      },
+      {
+        "radius": 0.9511999999999999,
+        "invalidTriangles": 418
+      },
+      {
+        "radius": 0.9511,
+        "invalidTriangles": 418
+      },
+      {
+        "radius": 0.951,
+        "invalidTriangles": 418
+      },
+      {
+        "radius": 0.9509,
+        "invalidTriangles": 416
+      },
+      {
+        "radius": 0.9508,
+        "invalidTriangles": 414
+      },
+      {
+        "radius": 0.9507,
+        "invalidTriangles": 412
+      },
+      {
+        "radius": 0.9506,
+        "invalidTriangles": 406
+      },
+      {
+        "radius": 0.9505,
+        "invalidTriangles": 398
+      },
+      {
+        "radius": 0.9503999999999999,
+        "invalidTriangles": 396
+      },
+      {
+        "radius": 0.9502999999999999,
+        "invalidTriangles": 394
+      },
+      {
+        "radius": 0.9501999999999999,
+        "invalidTriangles": 388
+      },
+      {
+        "radius": 0.9501,
+        "invalidTriangles": 386
+      },
+      {
+        "radius": 0.95,
+        "invalidTriangles": 384
+      },
+      {
+        "radius": 0.9499,
+        "invalidTriangles": 382
+      },
+      {
+        "radius": 0.9498,
+        "invalidTriangles": 376
+      },
+      {
+        "radius": 0.9497,
+        "invalidTriangles": 376
+      },
+      {
+        "radius": 0.9496,
+        "invalidTriangles": 374
+      },
+      {
+        "radius": 0.9495,
+        "invalidTriangles": 367
+      },
+      {
+        "radius": 0.9493999999999999,
+        "invalidTriangles": 359
+      },
+      {
+        "radius": 0.9492999999999999,
+        "invalidTriangles": 351
+      },
+      {
+        "radius": 0.9491999999999999,
+        "invalidTriangles": 346
+      },
+      {
+        "radius": 0.9490999999999999,
+        "invalidTriangles": 340
+      },
+      {
+        "radius": 0.949,
+        "invalidTriangles": 340
+      },
+      {
+        "radius": 0.9489,
+        "invalidTriangles": 336
+      },
+      {
+        "radius": 0.9488,
+        "invalidTriangles": 332
+      },
+      {
+        "radius": 0.9487,
+        "invalidTriangles": 330
+      },
+      {
+        "radius": 0.9486,
+        "invalidTriangles": 330
+      },
+      {
+        "radius": 0.9485,
+        "invalidTriangles": 326
+      },
+      {
+        "radius": 0.9483999999999999,
+        "invalidTriangles": 320
+      },
+      {
+        "radius": 0.9482999999999999,
+        "invalidTriangles": 318
+      },
+      {
+        "radius": 0.9481999999999999,
+        "invalidTriangles": 314
+      },
+      {
+        "radius": 0.9480999999999999,
+        "invalidTriangles": 310
+      },
+      {
+        "radius": 0.948,
+        "invalidTriangles": 304
+      },
+      {
+        "radius": 0.9479,
+        "invalidTriangles": 302
+      },
+      {
+        "radius": 0.9478,
+        "invalidTriangles": 300
+      },
+      {
+        "radius": 0.9477,
+        "invalidTriangles": 296
+      },
+      {
+        "radius": 0.9476,
+        "invalidTriangles": 294
+      },
+      {
+        "radius": 0.9475,
+        "invalidTriangles": 286
+      },
+      {
+        "radius": 0.9474,
+        "invalidTriangles": 282
+      },
+      {
+        "radius": 0.9472999999999999,
+        "invalidTriangles": 276
+      },
+      {
+        "radius": 0.9471999999999999,
+        "invalidTriangles": 276
+      },
+      {
+        "radius": 0.9470999999999999,
+        "invalidTriangles": 272
+      },
+      {
+        "radius": 0.947,
+        "invalidTriangles": 270
+      },
+      {
+        "radius": 0.9469,
+        "invalidTriangles": 264
+      },
+      {
+        "radius": 0.9468,
+        "invalidTriangles": 264
+      },
+      {
+        "radius": 0.9467,
+        "invalidTriangles": 262
+      },
+      {
+        "radius": 0.9466,
+        "invalidTriangles": 262
+      },
+      {
+        "radius": 0.9465,
+        "invalidTriangles": 258
+      },
+      {
+        "radius": 0.9463999999999999,
+        "invalidTriangles": 256
+      },
+      {
+        "radius": 0.9462999999999999,
+        "invalidTriangles": 254
+      },
+      {
+        "radius": 0.9461999999999999,
+        "invalidTriangles": 250
+      },
+      {
+        "radius": 0.9460999999999999,
+        "invalidTriangles": 248
+      },
+      {
+        "radius": 0.946,
+        "invalidTriangles": 246
+      },
+      {
+        "radius": 0.9459,
+        "invalidTriangles": 240
+      },
+      {
+        "radius": 0.9458,
+        "invalidTriangles": 238
+      },
+      {
+        "radius": 0.9457,
+        "invalidTriangles": 236
+      },
+      {
+        "radius": 0.9456,
+        "invalidTriangles": 230
+      },
+      {
+        "radius": 0.9455,
+        "invalidTriangles": 230
+      },
+      {
+        "radius": 0.9454,
+        "invalidTriangles": 222
+      },
+      {
+        "radius": 0.9452999999999999,
+        "invalidTriangles": 214
+      },
+      {
+        "radius": 0.9451999999999999,
+        "invalidTriangles": 212
+      },
+      {
+        "radius": 0.9450999999999999,
+        "invalidTriangles": 212
+      },
+      {
+        "radius": 0.945,
+        "invalidTriangles": 210
+      },
+      {
+        "radius": 0.9449,
+        "invalidTriangles": 208
+      },
+      {
+        "radius": 0.9448,
+        "invalidTriangles": 204
+      },
+      {
+        "radius": 0.9447,
+        "invalidTriangles": 202
+      },
+      {
+        "radius": 0.9446,
+        "invalidTriangles": 202
+      },
+      {
+        "radius": 0.9445,
+        "invalidTriangles": 202
+      },
+      {
+        "radius": 0.9444,
+        "invalidTriangles": 200
+      },
+      {
+        "radius": 0.9442999999999999,
+        "invalidTriangles": 200
+      },
+      {
+        "radius": 0.9441999999999999,
+        "invalidTriangles": 194
+      },
+      {
+        "radius": 0.9440999999999999,
+        "invalidTriangles": 194
+      },
+      {
+        "radius": 0.944,
+        "invalidTriangles": 194
+      },
+      {
+        "radius": 0.9439,
+        "invalidTriangles": 190
+      },
+      {
+        "radius": 0.9438,
+        "invalidTriangles": 186
+      },
+      {
+        "radius": 0.9437,
+        "invalidTriangles": 186
+      },
+      {
+        "radius": 0.9436,
+        "invalidTriangles": 186
+      },
+      {
+        "radius": 0.9435,
+        "invalidTriangles": 186
+      },
+      {
+        "radius": 0.9434,
+        "invalidTriangles": 182
+      },
+      {
+        "radius": 0.9432999999999999,
+        "invalidTriangles": 176
+      },
+      {
+        "radius": 0.9431999999999999,
+        "invalidTriangles": 172
+      },
+      {
+        "radius": 0.9430999999999999,
+        "invalidTriangles": 164
+      },
+      {
+        "radius": 0.943,
+        "invalidTriangles": 164
+      },
+      {
+        "radius": 0.9429,
+        "invalidTriangles": 160
+      },
+      {
+        "radius": 0.9428,
+        "invalidTriangles": 154
+      },
+      {
+        "radius": 0.9427,
+        "invalidTriangles": 150
+      },
+      {
+        "radius": 0.9426,
+        "invalidTriangles": 150
+      },
+      {
+        "radius": 0.9425,
+        "invalidTriangles": 150
+      },
+      {
+        "radius": 0.9424,
+        "invalidTriangles": 148
+      },
+      {
+        "radius": 0.9422999999999999,
+        "invalidTriangles": 146
+      },
+      {
+        "radius": 0.9421999999999999,
+        "invalidTriangles": 144
+      },
+      {
+        "radius": 0.9420999999999999,
+        "invalidTriangles": 138
+      },
+      {
+        "radius": 0.942,
+        "invalidTriangles": 138
+      },
+      {
+        "radius": 0.9419,
+        "invalidTriangles": 138
+      },
+      {
+        "radius": 0.9418,
+        "invalidTriangles": 134
+      },
+      {
+        "radius": 0.9417,
+        "invalidTriangles": 134
+      },
+      {
+        "radius": 0.9416,
+        "invalidTriangles": 134
+      },
+      {
+        "radius": 0.9415,
+        "invalidTriangles": 132
+      },
+      {
+        "radius": 0.9414,
+        "invalidTriangles": 130
+      },
+      {
+        "radius": 0.9412999999999999,
+        "invalidTriangles": 128
+      },
+      {
+        "radius": 0.9411999999999999,
+        "invalidTriangles": 124
+      },
+      {
+        "radius": 0.9410999999999999,
+        "invalidTriangles": 122
+      },
+      {
+        "radius": 0.941,
+        "invalidTriangles": 120
+      },
+      {
+        "radius": 0.9409,
+        "invalidTriangles": 116
+      },
+      {
+        "radius": 0.9408,
+        "invalidTriangles": 116
+      },
+      {
+        "radius": 0.9407,
+        "invalidTriangles": 112
+      },
+      {
+        "radius": 0.9406,
+        "invalidTriangles": 110
+      },
+      {
+        "radius": 0.9405,
+        "invalidTriangles": 108
+      },
+      {
+        "radius": 0.9404,
+        "invalidTriangles": 108
+      },
+      {
+        "radius": 0.9402999999999999,
+        "invalidTriangles": 108
+      },
+      {
+        "radius": 0.9401999999999999,
+        "invalidTriangles": 106
+      },
+      {
+        "radius": 0.9400999999999999,
+        "invalidTriangles": 106
+      },
+      {
+        "radius": 0.94,
+        "invalidTriangles": 104
+      },
+      {
+        "radius": 0.9399,
+        "invalidTriangles": 102
+      },
+      {
+        "radius": 0.9398,
+        "invalidTriangles": 100
+      },
+      {
+        "radius": 0.9397,
+        "invalidTriangles": 96
+      },
+      {
+        "radius": 0.9396,
+        "invalidTriangles": 94
+      },
+      {
+        "radius": 0.9395,
+        "invalidTriangles": 92
+      },
+      {
+        "radius": 0.9394,
+        "invalidTriangles": 92
+      },
+      {
+        "radius": 0.9392999999999999,
+        "invalidTriangles": 88
+      },
+      {
+        "radius": 0.9391999999999999,
+        "invalidTriangles": 84
+      },
+      {
+        "radius": 0.9390999999999999,
+        "invalidTriangles": 84
+      },
+      {
+        "radius": 0.939,
+        "invalidTriangles": 84
+      },
+      {
+        "radius": 0.9389,
+        "invalidTriangles": 82
+      },
+      {
+        "radius": 0.9388,
+        "invalidTriangles": 80
+      },
+      {
+        "radius": 0.9387,
+        "invalidTriangles": 76
+      },
+      {
+        "radius": 0.9386,
+        "invalidTriangles": 70
+      },
+      {
+        "radius": 0.9385,
+        "invalidTriangles": 70
+      },
+      {
+        "radius": 0.9384,
+        "invalidTriangles": 68
+      },
+      {
+        "radius": 0.9382999999999999,
+        "invalidTriangles": 66
+      },
+      {
+        "radius": 0.9381999999999999,
+        "invalidTriangles": 64
+      },
+      {
+        "radius": 0.9380999999999999,
+        "invalidTriangles": 60
+      },
+      {
+        "radius": 0.938,
+        "invalidTriangles": 58
+      },
+      {
+        "radius": 0.9379,
+        "invalidTriangles": 58
+      },
+      {
+        "radius": 0.9378,
+        "invalidTriangles": 56
+      },
+      {
+        "radius": 0.9377,
+        "invalidTriangles": 56
+      },
+      {
+        "radius": 0.9376,
+        "invalidTriangles": 52
+      },
+      {
+        "radius": 0.9375,
+        "invalidTriangles": 50
+      },
+      {
+        "radius": 0.9374,
+        "invalidTriangles": 48
+      },
+      {
+        "radius": 0.9372999999999999,
+        "invalidTriangles": 46
+      },
+      {
+        "radius": 0.9371999999999999,
+        "invalidTriangles": 46
+      },
+      {
+        "radius": 0.9370999999999999,
+        "invalidTriangles": 44
+      },
+      {
+        "radius": 0.9369999999999999,
+        "invalidTriangles": 42
+      },
+      {
+        "radius": 0.9369,
+        "invalidTriangles": 42
+      },
+      {
+        "radius": 0.9368,
+        "invalidTriangles": 40
+      },
+      {
+        "radius": 0.9367,
+        "invalidTriangles": 40
+      },
+      {
+        "radius": 0.9366,
+        "invalidTriangles": 40
+      },
+      {
+        "radius": 0.9365,
+        "invalidTriangles": 40
+      },
+      {
+        "radius": 0.9364,
+        "invalidTriangles": 38
+      },
+      {
+        "radius": 0.9362999999999999,
+        "invalidTriangles": 36
+      },
+      {
+        "radius": 0.9361999999999999,
+        "invalidTriangles": 34
+      },
+      {
+        "radius": 0.9360999999999999,
+        "invalidTriangles": 32
+      },
+      {
+        "radius": 0.9359999999999999,
+        "invalidTriangles": 32
+      },
+      {
+        "radius": 0.9359,
+        "invalidTriangles": 32
+      },
+      {
+        "radius": 0.9358,
+        "invalidTriangles": 28
+      },
+      {
+        "radius": 0.9357,
+        "invalidTriangles": 28
+      },
+      {
+        "radius": 0.9356,
+        "invalidTriangles": 28
+      },
+      {
+        "radius": 0.9355,
+        "invalidTriangles": 28
+      },
+      {
+        "radius": 0.9354,
+        "invalidTriangles": 28
+      },
+      {
+        "radius": 0.9353,
+        "invalidTriangles": 26
+      },
+      {
+        "radius": 0.9351999999999999,
+        "invalidTriangles": 26
+      },
+      {
+        "radius": 0.9350999999999999,
+        "invalidTriangles": 24
+      },
+      {
+        "radius": 0.9349999999999999,
+        "invalidTriangles": 24
+      },
+      {
+        "radius": 0.9349,
+        "invalidTriangles": 24
+      },
+      {
+        "radius": 0.9348,
+        "invalidTriangles": 22
+      },
+      {
+        "radius": 0.9347,
+        "invalidTriangles": 22
+      },
+      {
+        "radius": 0.9346,
+        "invalidTriangles": 20
+      },
+      {
+        "radius": 0.9345,
+        "invalidTriangles": 18
+      },
+      {
+        "radius": 0.9344,
+        "invalidTriangles": 16
+      },
+      {
+        "radius": 0.9342999999999999,
+        "invalidTriangles": 16
+      },
+      {
+        "radius": 0.9341999999999999,
+        "invalidTriangles": 16
+      },
+      {
+        "radius": 0.9340999999999999,
+        "invalidTriangles": 16
+      },
+      {
+        "radius": 0.9339999999999999,
+        "invalidTriangles": 14
+      },
+      {
+        "radius": 0.9339,
+        "invalidTriangles": 14
+      },
+      {
+        "radius": 0.9338,
+        "invalidTriangles": 12
+      },
+      {
+        "radius": 0.9337,
+        "invalidTriangles": 12
+      },
+      {
+        "radius": 0.9336,
+        "invalidTriangles": 12
+      },
+      {
+        "radius": 0.9335,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9334,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9333,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9331999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9330999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9329999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9329,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9328,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9327,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9326,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9325,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9324,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9322999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9321999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9320999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9319999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9319,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9318,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9317,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9316,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9315,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9314,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9313,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9311999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9310999999999999,
+        "invalidTriangles": 10
+      },
+      {
+        "radius": 0.9309999999999999,
+        "invalidTriangles": 8
+      },
+      {
+        "radius": 0.9309,
+        "invalidTriangles": 8
+      },
+      {
+        "radius": 0.9308,
+        "invalidTriangles": 8
+      },
+      {
+        "radius": 0.9307,
+        "invalidTriangles": 8
+      },
+      {
+        "radius": 0.9306,
+        "invalidTriangles": 6
+      },
+      {
+        "radius": 0.9305,
+        "invalidTriangles": 6
+      },
+      {
+        "radius": 0.9304,
+        "invalidTriangles": 6
+      },
+      {
+        "radius": 0.9303,
+        "invalidTriangles": 6
+      },
+      {
+        "radius": 0.9301999999999999,
+        "invalidTriangles": 6
+      },
+      {
+        "radius": 0.9300999999999999,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9299999999999999,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9299,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9298,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9297,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9296,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9295,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9294,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9293,
+        "invalidTriangles": 4
+      },
+      {
+        "radius": 0.9291999999999999,
+        "invalidTriangles": 2
+      },
+      {
+        "radius": 0.9290999999999999,
+        "invalidTriangles": 2
+      },
+      {
+        "radius": 0.9289999999999999,
+        "invalidTriangles": 2
+      },
+      {
+        "radius": 0.9289,
+        "invalidTriangles": 2
+      },
+      {
+        "radius": 0.9288,
+        "invalidTriangles": 2
+      },
+      {
+        "radius": 0.9287,
+        "invalidTriangles": 0
+      }
+    ]
+  },
+  "displacement": {
+    "meaning": "plan distance along matching radial rays, 32768 angular samples; not shortest normal distance",
+    "min": 5.3341960608656835,
+    "max": 9.216800742439943
+  },
+  "cases": [
+    {
+      "name": "flat",
+      "vertices": 734,
+      "closed": true,
+      "selfIntersections": 0,
+      "supportTriangles": 734,
+      "invalidTriangles": 0,
+      "maxVertexRadius": 0.9583247756232406,
+      "maxSurfaceError": 0,
+      "maxControlDifference": 0,
+      "maxOldControlDifference": 4.08441347371263,
+      "maxWeightViolation": 0.000003814697265625,
+      "minHeight": 100,
+      "maxHeight": 100,
+      "counts": {
+        "ordinary": 701,
+        "ascentCut": 33,
+        "aboveCave": 0,
+        "caveActualCut": 0
+      }
+    },
+    {
+      "name": "relief without attenuation",
+      "vertices": 734,
+      "closed": true,
+      "selfIntersections": 0,
+      "supportTriangles": 734,
+      "invalidTriangles": 0,
+      "maxVertexRadius": 0.9583247756232406,
+      "maxSurfaceError": 0.00000575234298594296,
+      "maxControlDifference": 0,
+      "maxOldControlDifference": 4.2576978901197435,
+      "maxWeightViolation": 0.000003814697265625,
+      "minHeight": 90.58802795410156,
+      "maxHeight": 110.73804473876953,
+      "counts": {
+        "ordinary": 701,
+        "ascentCut": 33,
+        "aboveCave": 0,
+        "caveActualCut": 0
+      }
+    },
+    {
+      "name": "current game terrain",
+      "vertices": 734,
+      "closed": true,
+      "selfIntersections": 0,
+      "supportTriangles": 734,
+      "invalidTriangles": 0,
+      "maxVertexRadius": 0.9583247756232406,
+      "maxSurfaceError": 0.000003118140739388764,
+      "maxControlDifference": 0,
+      "maxOldControlDifference": 4.104445834076614,
+      "maxWeightViolation": 0.000003814697265625,
+      "minHeight": 100,
+      "maxHeight": 100.00000762939453,
+      "counts": {
+        "ordinary": 701,
+        "ascentCut": 33,
+        "aboveCave": 0,
+        "caveActualCut": 0
+      }
+    }
+  ]
+}
