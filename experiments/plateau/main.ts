@@ -159,7 +159,7 @@ function start() {
 
   const views = {
     maskSide: { eye:[450,250,480],target:[0,45,0] },
-    maskUnder: { eye:[0,heightAt(0,199)+1.8,199],target:[0,65,220] },
+    maskUnder: { eye:[0,heightAt(0,187)+1.8,187],target:[0,65,193] },
     maskTop: { eye:[0,102,210],target:[0,98,120] },
     ascent: { eye: [-270, 190, -180], target: [-125, 40, -50] },
     ascentFoot: { eye: [-310, heightAt(-310,-50)+1.8, -50], target: [-160, 38, -5] },
