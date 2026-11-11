@@ -1,0 +1,40 @@
+{
+  "result": "PASS",
+  "transport": "Live HTTPS assets retrieved using curl with inherited proxy and TLS verification, rendered in Chromium via request routing. Direct Chromium failed CA trust; no TLS verification disabled.",
+  "stats": {
+    "blocks": 2284,
+    "height": 100,
+    "camera": [
+      449.99999999999994,
+      250.00000000000009,
+      490
+    ]
+  },
+  "assets": [
+    {
+      "url": "https://depthd.github.io/nimbleintheforest/test/experiments/plateau/",
+      "bytes": 2830
+    },
+    {
+      "url": "https://depthd.github.io/nimbleintheforest/test/assets/plateau-DtaWp3PY.js",
+      "bytes": 5029
+    },
+    {
+      "url": "https://depthd.github.io/nimbleintheforest/test/assets/modulepreload-polyfill-B5Qt9EMX.js",
+      "bytes": 711
+    },
+    {
+      "url": "https://depthd.github.io/nimbleintheforest/test/assets/three.module-Cb9EnQdN.js",
+      "bytes": 746504
+    },
+    {
+      "url": "https://depthd.github.io/nimbleintheforest/test/assets/rock-skin-BdrYgDX7.js",
+      "bytes": 28767
+    },
+    {
+      "url": "https://depthd.github.io/nimbleintheforest/test/assets/cliffs-DjFQxNB_.js",
+      "bytes": 64218
+    }
+  ],
+  "errors": []
+}
