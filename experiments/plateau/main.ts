@@ -7,6 +7,7 @@ import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
 import { noiseTexture } from '../../src/core/noisetex';
 import { subtract, interior, den } from './cavity';
+import { buildOverhang } from './overhang';
 import { cutAscent, ascentSurface, ascent, ascentHeight } from './ascent';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -95,7 +96,7 @@ function start() {
   const skin = new RockSkin({ seed: SEED, size: SIZE, n: N, cell: CELL,
     h: heights, water: new Float32Array(heights.length).fill(NaN), ox: SIZE / 2, oz: SIZE / 2,
     edgeDist: (x, z) => SIZE / 2 - Math.max(Math.abs(x), Math.abs(z)),
-  }, { border: 60, minDeg: 51 });
+  }, { border: 60, minDeg: 51, exclude: (x,z)=>Math.abs(x)<60 && z>135 });
   const rockPositions: number[] = [], rockColors: number[] = [];
   const colorRng = new Rng(SEED ^ 0x837);
   const soft = new THREE.Color().setRGB(.26, .27, .32, THREE.SRGBColorSpace);
@@ -141,10 +142,25 @@ function start() {
   const ramp = new THREE.Mesh(geometry(rampData.positions,rampData.indices,rampColors),material);
   ramp.castShadow = ramp.receiveShadow = true;
   scene.add(ramp);
-  const solidMeshes = [ground, rocks, caps, cave, ramp];
+  const overhang = buildOverhang();
+  const tint=(data:{positions:Float32Array;indices:Uint32Array})=>{
+    const colors:number[]=[];for(let i=0;i<data.positions.length;i+=3)colors.push(baseColor.r,baseColor.g,baseColor.b);
+    const mesh=new THREE.Mesh(geometry(data.positions,data.indices,colors),material);
+    mesh.castShadow=mesh.receiveShadow=true;return mesh;
+  };
+  const maskMesh=tint(overhang.mask),maskRocks=tint(overhang.rocks);
+  const maskSnow=new THREE.Mesh(geometry(overhang.caps.positions,overhang.caps.indices),caps.material);
+  maskSnow.castShadow=maskSnow.receiveShadow=true;
+  const maskRockGroup=new THREE.Group();maskRockGroup.add(maskRocks,maskSnow);
+  scene.add(maskMesh,maskRockGroup);
+  $('maskRocks').onchange=()=>{maskRockGroup.visible=($('maskRocks') as HTMLInputElement).checked;renderer.shadowMap.needsUpdate=true;};
+  const solidMeshes = [ground, rocks, caps, cave, ramp,maskMesh,maskRocks,maskSnow];
   scene.updateMatrixWorld(true);
 
   const views = {
+    maskSide: { eye:[125,50,260],target:[0,55,200] },
+    maskUnder: { eye:[0,heightAt(0,207)+1.8,207],target:[0,65,210] },
+    maskTop: { eye:[0,102,210],target:[0,98,120] },
     ascent: { eye: [-270, 190, -180], target: [-125, 40, -50] },
     ascentFoot: { eye: [-310, heightAt(-310,-50)+1.8, -50], target: [-160, 38, -50] },
     ascentTop: { eye: [10, 103, -50], target: [-250, 18, -50] },
@@ -183,13 +199,13 @@ function start() {
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
   });
-  view('ascent');
+  view('maskSide');
   renderer.shadowMap.needsUpdate = true;
   const forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   const clock = new THREE.Clock();
   const state = { ready: true, camera, controls, view, height: HEIGHT, blocks: skin.blocks.length,
     triangles: indices.length / 3 + rockPositions.length / 9 + skin.caps.indices.length / 3,
-    rockGroup, heightAt, solidMeshes, cave, den,
+    rockGroup, heightAt, solidMeshes, cave, den, maskMesh,maskRockGroup, maskBlocks:overhang.blocks,
     cutTriangles: {terrain:caveGround.cutTriangles,rock:caveRocks.cutTriangles,snow:caveCaps.cutTriangles},
     ascent, ascentHeight, ascentCuts: {terrain:cutGround.cutTriangles,rock:cutRocks.cutTriangles,snow:cutCaps.cutTriangles},
     ray(origin: number[],direction: number[]) {

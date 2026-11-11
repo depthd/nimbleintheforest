@@ -19,6 +19,9 @@
     <h1>Плато · 100 метров</h1>
     <p>Один массив. Скалы и материалы из игры.</p>
     <div class="buttons">
+      <button data-view="maskSide">Маска · сбоку</button>
+      <button data-view="maskUnder">Под навесом</button>
+      <button data-view="maskTop">Верх маски</button>
       <button data-view="ascent">Подъём · сбоку</button>
       <button data-view="ascentFoot">Подъём · снизу</button>
       <button data-view="ascentTop">Подъём · сверху</button>
@@ -33,6 +36,7 @@
     <div class="detail">
       <p>Мышь: вращение · колесо: приближение · правая кнопка: сдвиг. На телефоне — одним или двумя пальцами.</p>
       <p>WASD — полёт · Q / E — вниз / вверх · Shift — быстрее. Камера свободная, проходит сквозь поверхности.</p>
+      <label><input id="maskRocks" type="checkbox" checked /> Скалы на маске</label>
       <label><input id="rocks" type="checkbox" checked /> Показывать скалы</label>
     </div>
     <p id="error" role="alert"></p>
