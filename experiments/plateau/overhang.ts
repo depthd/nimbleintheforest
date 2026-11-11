@@ -2,7 +2,7 @@ import { Color, SRGBColorSpace } from 'three';
 import { RockSkin } from '../../src/gen/rock-skin';
 import { blockTriangles } from '../../src/gen/cliffs';
 import { cutAscent, boundary } from './ascent';
-import { subtract, type MeshData, type Point, plane, value, flip, clip, append } from './cavity';
+import { subtract, type MeshData, type Point, type Plane, plane, value, flip, clip, append } from './cavity';
 const TAU=Math.PI*2;
 export function portalAngle(a:number){return Math.abs(Math.atan2(Math.sin(a),Math.cos(a)))<.12 || Math.abs(Math.PI-Math.abs(Math.atan2(Math.sin(a),Math.cos(a))))<.28;}
 export function maskPoint(a:number,y:number,depth=0){
@@ -33,7 +33,7 @@ export function buildOverhang(){
     if(Math.min(...V.map(p=>p.x))>20||Math.max(...V.map(p=>p.x))< -300)continue;
     for(const ids of [[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6],[0,5,1,6]]){
       const T=ids.map(i=>V[i]);
-      const planes=[];
+      const planes:Plane[]=[];
       for(let k=0;k<4;k++){
         const face=T.filter((_,i)=>i!==k),[u,v,w]=face,ax=v.x-u.x,ay=v.y-u.y,az=v.z-u.z,bx=w.x-u.x,by=w.y-u.y,bz=w.z-u.z;
         const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
