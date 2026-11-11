@@ -59,7 +59,7 @@ function view(name: string) {
   const views: Record<string, number[][]> = {
     front: [[-385, 118, -40], [-230, 61, -35]],
     side: [[-300, 128, -195], [-232, 68, -37]],
-    top: [[-280, 230, -75], [-205, 65, -30]],
+    top: [[-250, 360, -35.1], [-250, 50, -35]],
     inside: [[-180, ascentHeight(-180) + 4, ascentCenter(-180)], [-245, ascentHeight(-245) + 2, ascentCenter(-245)]],
   };
   const [eye, target] = views[name]; setCamera(eye, target);
@@ -72,7 +72,7 @@ renderer.shadowMap.needsUpdate = true; view('front');
 renderer.setAnimationLoop(() => renderer.render(scene, camera));
 const highlightMaterial = new THREE.MeshStandardMaterial({ color: '#168bd4', roughness: 1, flatShading: true });
 function highlight(show: boolean) {
-  for (const name of ['strip', 'underside']) surfaces[name].material = show ? highlightMaterial : material;
+  for (const name of ['strip', 'underside', 'ending']) surfaces[name].material = show ? highlightMaterial : material;
   renderer.shadowMap.needsUpdate = true;
 }
 document.getElementById('highlight')!.onchange = e => highlight((e.target as HTMLInputElement).checked);

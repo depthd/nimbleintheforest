@@ -5,11 +5,12 @@ require.extensions['.ts'] = (m, f) => m._compile(ts.transpileModule(fs.readFileS
 const { buildWedgeAscent } = require('./wedge-ascent.ts');
 const { reliefGrid, reliefTop } = require('./seam-relief-fixture.ts');
 const { plateauRadius } = require('./plateau-profile.ts');
+const { sampleGrid } = require('./seam-boundary.ts');
+const { triangleVertexIndices } = require('./seam-safe-boundary.ts');
 const { smoothstep } = require('../../src/core/rng.ts');
 const { ascentHeight, ascentCenter, ascentWidth } = require('./ascent.ts');
 const point = (m, k) => Array.from(m.positions.subarray(k * 3, k * 3 + 3));
 const key = p => p.join(',');
-const edgeKey = (a, b) => [key(a), key(b)].sort().join('|');
 const triangleKey = p => p.map(key).sort().join('|');
 function triangles(m) {
   const out = [];
@@ -19,16 +20,6 @@ function triangles(m) {
 
 (async () => {
   const THREE = await import('three'), reports = [];
-  function faces(m) {
-    const edges = new Map();
-    for (const p of triangles(m)) {
-      const [a, b, c] = p.map(v => new THREE.Vector3(...v));
-      const n = b.sub(a).cross(c.sub(a));
-      assert.ok(n.length() > 1e-8, 'No degenerate faces'); n.normalize();
-      for (let j = 0; j < 3; j++) edges.set(edgeKey(p[j], p[(j + 1) % 3]), n);
-    }
-    return edges;
-  }
   for (const kind of ['flat', 'relief']) {
     const source = reliefGrid(), top = kind === 'flat' ? () => 100 : reliefTop;
     const upper = { ...source, heights: source.heights.map((_, k) => top(source.x0 + k % (source.n + 1) * source.cell, source.z0 + Math.floor(k / (source.n + 1)) * source.cell)) };
@@ -39,24 +30,57 @@ function triangles(m) {
     });
     const before = Buffer.from(source.heights.buffer).toString('base64'), j = buildWedgeAscent(source, upper);
     assert.equal(Buffer.from(source.heights.buffer).toString('base64'), before, 'Source heights preserved');
-    const a = faces(j.uncut.plateau), b = faces(j.uncut.strip);
-    let maxAngle = 0;
-    for (let k = 0; k < j.accepted.seam.points.length; k++) {
-      const p = j.accepted.seam.points[k], q = j.accepted.seam.points[(k + 1) % j.accepted.seam.points.length];
-      const edge = edgeKey([p.x, p.y, p.z], [q.x, q.y, q.z]);
-      assert.ok(a.has(edge) && b.has(edge), 'Same canonical edge on both sides of E');
-      maxAngle = Math.max(maxAngle, Math.acos(Math.max(-1, Math.min(1, a.get(edge).dot(b.get(edge))))) * 180 / Math.PI);
+    let maxTopHeightError = 0, maxTopAngle = 0;
+    for (let k = 0; k < j.uncut.strip.positions.length; k += 3) {
+      const p = j.uncut.strip.positions;
+      maxTopHeightError = Math.max(maxTopHeightError, Math.abs(p[k + 1] - sampleGrid(upper, p[k], p[k + 2]).y));
     }
-    assert.ok(maxAngle < .1, 'No regression of the accepted open upper seam');
+    assert.ok(maxTopHeightError < .0001, 'Circular cut preserves the upper face, including its height');
+    for (const p of triangles(j.uncut.strip)) {
+      const center = p.reduce((c, v) => c.map((x, i) => x + v[i] / 3), [0, 0, 0]);
+      const id = sampleGrid(upper, center[0], center[2]).triangle;
+      const q = triangleVertexIndices(upper, id).map(k => new THREE.Vector3(upper.x0 + k % (upper.n + 1) * upper.cell, upper.heights[k], upper.z0 + Math.floor(k / (upper.n + 1)) * upper.cell));
+      const n = new THREE.Vector3(...p[1]).sub(new THREE.Vector3(...p[0])).cross(new THREE.Vector3(...p[2]).sub(new THREE.Vector3(...p[0])));
+      if (n.length() < .04) continue; // sub-centimetre slivers do not define a visible face
+      const original = q[1].sub(q[0]).cross(q[2].sub(q[0])).normalize();
+      maxTopAngle = Math.max(maxTopAngle, Math.acos(Math.max(-1, Math.min(1, n.normalize().dot(original)))) * 180 / Math.PI);
+    }
+    assert.ok(maxTopAngle < .1, 'No bending of retained upper triangles');
+    const cells = new Map(), oldBottom = triangles(j.accepted.underside);
+    for (const p of oldBottom) {
+      const xs = p.map(v => v[0]), zs = p.map(v => v[2]);
+      for (let x = Math.floor(Math.min(...xs) / 4); x <= Math.floor(Math.max(...xs) / 4); x++) for (let z = Math.floor(Math.min(...zs) / 4); z <= Math.floor(Math.max(...zs) / 4); z++) {
+        const k = x + ',' + z; if (!cells.has(k)) cells.set(k, []); cells.get(k).push(p);
+      }
+    }
+    let maxUndersideHeightError = 0;
+    const checked = new Set();
+    for (const p of triangles(j.uncut.underside).flat()) {
+      if (checked.has(key(p))) continue; checked.add(key(p));
+      let error = Infinity;
+      for (let ix = -1; ix <= 1; ix++) for (let iz = -1; iz <= 1; iz++) for (const [a, b, c] of cells.get((Math.floor(p[0] / 4) + ix) + ',' + (Math.floor(p[2] / 4) + iz)) ?? []) {
+        const dx = p[0] - a[0], dz = p[2] - a[2], bx = b[0] - a[0], bz = b[2] - a[2], cx = c[0] - a[0], cz = c[2] - a[2], det = bx * cz - bz * cx;
+        if (Math.abs(det) < 1e-12) continue;
+        const u = (dx * cz - dz * cx) / det, v = (bx * dz - bz * dx) / det;
+        if (u < -.002 || v < -.002 || u + v > 1.002) continue;
+        error = Math.min(error, Math.abs(p[1] - a[1] - u * (b[1] - a[1]) - v * (c[1] - a[1])));
+      }
+      maxUndersideHeightError = Math.max(maxUndersideHeightError, error);
+    }
+    assert.ok(maxUndersideHeightError < .0005, 'Concave underside is clipped, never reshaped');
     let unchangedFaces = 0;
     for (const name of ['strip', 'underside']) {
-      const current = new Set(triangles(j.uncut[name]).map(triangleKey));
+      const current = new Set(triangles(j.uncut[name]).map(triangleKey)), circle = j.ending.circle;
       for (const p of triangles(j.accepted[name])) {
-        if (p.every(v => j.endingWeight(Math.atan2(v[2] / 180, v[0] / 260)) === 1)) {
-          assert.ok(current.has(triangleKey(p)), 'Accepted faces outside taper preserved exactly'); unchangedFaces++;
+        const xs = p.map(v => v[0]), zs = p.map(v => v[2]);
+        const dx = Math.max(Math.min(...xs) - circle.x, 0, circle.x - Math.max(...xs));
+        const dz = Math.max(Math.min(...zs) - circle.z, 0, circle.z - Math.max(...zs));
+        if (Math.hypot(dx, dz) > circle.radius + .01) {
+          assert.ok(current.has(triangleKey(p)), 'Accepted faces outside the circular cut preserved exactly'); unchangedFaces++;
         }
       }
     }
+    for (const name of ['strip', 'underside', 'ending']) assert.equal(j.cut[name].cutTriangles, 0, 'Mask ends before the passage walls');
     const meshes = Object.entries(j.cut).map(([name, data]) => {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
       g.setIndex(new THREE.BufferAttribute(data.indices, 1));
@@ -81,7 +105,7 @@ function triangles(m) {
       const hit = new THREE.Raycaster(new THREE.Vector3(x, 160, ascentCenter(x)), new THREE.Vector3(0, -1, 0)).intersectObjects(meshes)[0];
       assert.ok(hit && Math.abs(hit.point.y - ascentHeight(x)) < .001, 'Passage open to its existing floor');
     }
-    reports.push({ kind, seamEdges: j.accepted.seam.points.length, maxSeamAngleDeg: maxAngle, unchangedFaces, wallProbes, maxWidthErrorM: maxWidthError, sourceUnchanged: true });
+    reports.push({ kind, maxTopHeightErrorM: maxTopHeightError, maxTopAngleDeg: maxTopAngle, maxUndersideHeightErrorM: maxUndersideHeightError, unchangedFaces, wallProbes, maxWidthErrorM: maxWidthError, sourceUnchanged: true });
   }
   console.log(JSON.stringify({ result: 'PASS', reports, physicsPlayerTested: false }, null, 2));
 })().catch(e => { console.error(e); process.exitCode = 1; });

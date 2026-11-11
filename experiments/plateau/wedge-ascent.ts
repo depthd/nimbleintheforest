@@ -1,173 +1,66 @@
-// Local passage experiment. The accepted uncut wedge remains the source of
-// the geometry; only its two shoulders beside the existing ascent are tapered.
-import { buildWedge, wedgeProfile } from './wedge-prototype';
-import { contourPoint, plateauRadius, SLOPE_START } from './plateau-profile';
-import { sampleGrid, type SourceGrid } from './seam-boundary';
-import { type Point, type MeshData, boundaryInMountain, append } from './cavity';
-import { ascent, profile, cutAscent, boundary } from './ascent';
+// Mode 1 cuts the accepted wedge sideways in plan. No height blending and no
+// re-formed underside: the retained faces are portions of the accepted faces.
+import { buildWedge } from './wedge-prototype';
+import { plateauRadius } from './plateau-profile';
+import { type SourceGrid, type Boundary } from './seam-boundary';
+import { type Point, type MeshData, boundaryInMountain, append, clip, plane, flip } from './cavity';
+import { ascent, profile, cutAscent, boundary, ascentCenter } from './ascent';
+import { triangleVertexIndices } from './seam-safe-boundary';
+import { circleCutter, closePlanCut, join, pack, type PlanCircle } from './wedge-plan-cut';
 
-// Mode 2 will be added only after the user's review of mode 1.
-export interface PassageEnding { type: 1; taperLength: number; clearance: number }
-export const ascentEnding: PassageEnding = { type: 1, taperLength: 60, clearance: 12 };
-type XZ = { x: number; z: number };
-const smooth = (t: number) => { const s = Math.max(0, Math.min(1, t)); return s * s * (3 - 2 * s); };
-const pointKey = (p: Point) => [p.x, p.y, p.z].map(Math.fround).join(',');
+export interface PassageEnding { type: 1; circle: PlanCircle }
+export const ascentEnding: PassageEnding = { type: 1, circle: { x: -300, z: ascentCenter(-235), radius: 100, segments: 256 } };
 
-function segmentDistance(p: XZ, a: XZ, b: XZ) {
-  const dx = b.x - a.x, dz = b.z - a.z;
-  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz)));
-  return Math.hypot(p.x - a.x - t * dx, p.z - a.z - t * dz);
-}
-function cross(a: XZ, b: XZ, p: XZ) { return (b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x); }
-const footprints = profile.slice(1).map((b, i) => {
-  const a = profile[i];
-  return [{ x: a.x, z: a.z - a.w }, { x: b.x, z: b.z - b.w }, { x: b.x, z: b.z + b.w }, { x: a.x, z: a.z + a.w }];
-});
-function distanceToFootprint(p: XZ) {
-  let distance = Infinity;
-  for (const polygon of footprints) {
-    if (polygon.every((a, i) => cross(a, polygon[(i + 1) % 4], p) >= -1e-8)) return 0;
-    for (let i = 0; i < 4; i++) distance = Math.min(distance, segmentDistance(p, polygon[i], polygon[(i + 1) % 4]));
+function sourceSurfaces(source: SourceGrid, seam: Boundary, attachment: Boundary) {
+  const bandP: number[] = [], bandI: number[] = [], allP: number[] = [], allI: number[] = [];
+  const E = new Map(seam.sourceTriangles.map((id, i) => [id, i]));
+  const A = new Map(attachment.sourceTriangles.map((id, i) => [id, i]));
+  function half(poly: Point[], boundary: Boundary, segment: number, inside: boolean) {
+    const a = boundary.points[segment], b = boundary.points[(segment + 1) % boundary.points.length];
+    const pl = plane(b.z - a.z, 0, a.x - b.x, -(b.z - a.z) * a.x - (a.x - b.x) * a.z);
+    return clip(poly, inside ? pl : flip(pl)).map(p => {
+      for (const joint of [a, b]) if (Math.hypot(p.x - joint.x, p.z - joint.z) < 5e-4) return joint;
+      return p;
+    });
   }
-  return distance;
-}
-
-// An entire radial section fades together, so its upper and lower surfaces
-// cannot choose different endings. Sample the whole old-to-new rim interval,
-// including the inside of the top, rather than only the outer nose.
-export function endingWeight(angle: number, ending = ascentEnding) {
-  let distance = Infinity;
-  for (let i = 0; i <= 12; i++) {
-    const r = wedgeProfile.seam + (wedgeProfile.nose - wedgeProfile.seam) * i / 12;
-    distance = Math.min(distance, distanceToFootprint(contourPoint(angle, r)));
+  for (let id = 0; id < source.n * source.n * 2; id++) {
+    const tri = triangleVertexIndices(source, id).map(k => ({ x: source.x0 + k % (source.n + 1) * source.cell, y: source.heights[k], z: source.z0 + Math.floor(k / (source.n + 1)) * source.cell }));
+    append(tri, allP, allI);
+    const r = plateauRadius((tri[0].x + tri[1].x + tri[2].x) / 3, (tri[0].z + tri[1].z + tri[2].z) / 3), e = E.get(id), a = A.get(id);
+    if (e === undefined && r < seam.radius || a === undefined && r > attachment.radius) continue;
+    let poly = tri;
+    if (e !== undefined) poly = half(poly, seam, e, false);
+    if (a !== undefined) poly = half(poly, attachment, a, true);
+    append(poly, bandP, bandI);
   }
-  return smooth((distance - ending.clearance) / ending.taperLength);
+  return { band: pack(bandP, bandI), full: pack(allP, allI) };
 }
 
 export function buildWedgeAscent(source: SourceGrid, upper: SourceGrid, ending = ascentEnding) {
-  const accepted = buildWedge(source, upper);
-  const weight = (a: number) => endingWeight(a, ending);
-  const angle = (p: XZ) => (Math.atan2(p.z / 180, p.x / 260) + Math.PI * 2) % (Math.PI * 2);
-  const noseRadius = (a: number) => SLOPE_START + (wedgeProfile.nose - SLOPE_START) * weight(a);
-  const field = (p: Point) => {
-    const f = plateauRadius(p.x, p.z) - noseRadius(angle(p));
-    return Math.abs(f) < 2e-7 ? 0 : f;
-  };
-  const packed = (positions: number[], indices: number[]): MeshData => ({ positions: new Float32Array(positions), indices: new Uint32Array(indices) });
-  const intersections = new Map<string, Point>();
-  const edgeKey = (a: Point, b: Point) => [pointKey(a), pointKey(b)].sort().join('|');
-  function intersection(a: Point, b: Point): Point {
-    const key = edgeKey(a, b), cached = intersections.get(key);
-    if (cached) return cached;
-    if (pointKey(a) > pointKey(b)) [a, b] = [b, a];
-    const fa = field(a), fb = field(b);
-    if (fa === 0) return a;
-    if (fb === 0) return b;
-    let lo = 0, hi = 1;
-    for (let i = 0; i < 40; i++) {
-      const t = (lo + hi) / 2, p = { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y), z: a.z + t * (b.z - a.z) };
-      const f = plateauRadius(p.x, p.z) - noseRadius(angle(p));
-      if ((f > 0) === (fa > 0)) lo = t; else hi = t;
-    }
-    const t = (lo + hi) / 2, result = { x: Math.fround(a.x + t * (b.x - a.x)), y: Math.fround(a.y + t * (b.y - a.y)), z: Math.fround(a.z + t * (b.z - a.z)) };
-    intersections.set(key, result); return result;
-  }
-  // Clip the accepted grid without moving its XZ vertices. Shared E triangles
-  // keep their planes, and neighbouring owners share each cut vertex.
-  const topP: number[] = [], topI: number[] = [];
-  const m = accepted.strip;
-  for (let k = 0; k < m.indices.length; k += 3) {
-    const tri = Array.from(m.indices.subarray(k, k + 3), id => ({ x: m.positions[id * 3], y: m.positions[id * 3 + 1], z: m.positions[id * 3 + 2] }));
-    const polygon: Point[] = [];
-    for (let i = 0; i < 3; i++) {
-      const a = tri[i], b = tri[(i + 1) % 3], insideA = field(a) <= 0, insideB = field(b) <= 0;
-      if (insideA) polygon.push(a);
-      if (insideA !== insideB) polygon.push(intersection(a, b));
-    }
-    append(polygon, topP, topI);
-  }
-  const rawStrip = packed(topP, topI);
-  const edges = new Map<string, { a: Point; b: Point; count: number }>();
-  for (let k = 0; k < rawStrip.indices.length; k += 3) {
-    const tri = Array.from(rawStrip.indices.subarray(k, k + 3), id => ({ x: rawStrip.positions[id * 3], y: rawStrip.positions[id * 3 + 1], z: rawStrip.positions[id * 3 + 2] }));
-    for (let i = 0; i < 3; i++) {
-      const a = tri[i], b = tri[(i + 1) % 3], key = edgeKey(a, b), e = edges.get(key);
-      if (e) e.count++; else edges.set(key, { a, b, count: 1 });
-    }
-  }
-  const nosePoints = new Map<string, Point>(), degree = new Map<string, number>();
-  for (const e of edges.values()) if (e.count === 1 && plateauRadius(e.a.x, e.a.z) > .95 && plateauRadius(e.b.x, e.b.z) > .95) {
-    for (const p of [e.a, e.b]) { const k = pointKey(p); nosePoints.set(k, p); degree.set(k, (degree.get(k) ?? 0) + 1); }
-  }
-  if ([...degree.values()].some(n => n !== 2)) throw Error('Tapered nose must be one closed ring');
-  const acceptedAngles = new Map(accepted.nose.points.map((p, i) => [pointKey(p), accepted.nose.angles[i]]));
-  const ordered = [...nosePoints.values()].map(p => ({ p, a: acceptedAngles.get(pointKey(p)) ?? angle(p) })).sort((a, b) => a.a - b.a);
-  function topPoint(p: Point): Point {
-    const w = weight(angle(p));
-    if (w === 1) return p;
-    const y = sampleGrid(source, p.x, p.z).y;
-    return { ...p, y: Math.fround(y + (p.y - y) * w) };
-  }
-  const stripP = rawStrip.positions.slice();
-  for (let k = 0; k < stripP.length; k += 3) stripP[k + 1] = topPoint({ x: stripP[k], y: stripP[k + 1], z: stripP[k + 2] }).y;
-  const strip = { positions: stripP, indices: rawStrip.indices };
-  const underP: number[] = [], underI: number[] = [];
-  function bridge(a: Point[], aa: number[], b: Point[], ba: number[]) {
-    let i = 0, j = 0;
-    while (i < a.length || j < b.length) {
-      const ai = i % a.length, bj = j % b.length;
-      const nextA = aa[(i + 1) % a.length] + (i + 1 >= a.length ? Math.PI * 2 : 0);
-      const nextB = ba[(j + 1) % b.length] + (j + 1 >= b.length ? Math.PI * 2 : 0);
-      if (j === b.length || (i < a.length && nextA <= nextB)) {
-        append([a[ai], a[(i + 1) % a.length], b[bj]], underP, underI); i++;
-      } else { append([a[ai], b[(j + 1) % b.length], b[bj]], underP, underI); j++; }
-    }
-  }
-  const angles = ordered.map(p => p.a), nose = ordered.map(({ p }) => topPoint(p));
-  let ring = nose;
-  for (let row = 1; row < wedgeProfile.undersideRows; row++) {
-    const t = row / wedgeProfile.undersideRows;
-    const next = angles.map(a => {
-      const w = weight(a), wall = contourPoint(a, wedgeProfile.attachment);
-      const depth = sampleGrid(upper, wall.x, wall.z).y - sampleGrid(source, wall.x, wall.z).y;
-      const n = noseRadius(a), radius = n + (wedgeProfile.attachment - n) * Math.sqrt(t), xz = contourPoint(a, radius);
-      const target = sampleGrid(upper, xz.x, xz.z).y - depth * t;
-      const old = sampleGrid(source, xz.x, xz.z).y;
-      return { ...xz, y: w === 1 ? target : old + (target - old) * w };
-    });
-    bridge(ring, angles, next, angles); ring = next;
-  }
-  bridge(ring, angles, accepted.attachment.points, accepted.attachment.angles);
-  const uncut = { plateau: accepted.plateau, strip, underside: packed(underP, underI), flank: accepted.flank };
-  const minZ = Math.min(...profile.map(p => p.z - p.w)), maxZ = Math.max(...profile.map(p => p.z + p.w));
-  // In the zero-weight band there is no overhang. Bound the existing ascent
-  // by the exact displayed triangles, including the reconstructed old flank.
-  // The independent relief fixture can stand above the ascent's final 103 m
-  // floor. Close that finite cut at its existing end instead of leaving a
-  // slit into the mountain. This does not extend or relocate the passage.
+  const accepted = buildWedge(source, upper), old = sourceSurfaces(source, accepted.seam, accepted.attachment);
+  const cutter = circleCutter(ending.circle);
+  const strip = cutter.split(accepted.strip).outside;
+  const underside = cutter.split(accepted.underside).outside;
+  // Reveal the old surface only where the added mask was cut away. It is
+  // not a target for interpolating or lowering the retained upper face.
+  const restored = cutter.split(old.band).inside;
+  const side = closePlanCut(cutter, strip, [underside, restored]);
+  const uncut = { plateau: accepted.plateau, strip, underside, flank: accepted.flank, restored, ending: side };
+  const bounds = { minX: ascent.start, maxX: ascent.end, minZ: Math.min(...profile.map(p => p.z - p.w)), maxZ: Math.max(...profile.map(p => p.z + p.w)) };
+  // The circular cut removes the mask beside the ascent. Its floor and walls
+  // therefore retain the exact existing terrain and excavation profile.
+  const interiors = [boundaryInMountain(old.full, boundary, bounds)];
   const end = profile[profile.length - 1];
   const endFace = [
     { x: end.x, y: end.y, z: end.z - end.w }, { x: end.x, y: end.y, z: end.z + end.w },
     { x: end.x, y: 180, z: end.z + end.w }, { x: end.x, y: 180, z: end.z - end.w },
   ];
-  const bounds = { minX: ascent.start, maxX: ascent.end, minZ, maxZ };
-  const interiors = Object.values(uncut).map(mesh => boundaryInMountain(mesh, boundary, bounds));
-  for (const mesh of Object.values(uncut)) {
-    // x=end may coincide with a grid edge. Only the excavated side owns this
-    // cap, otherwise both neighbouring prisms produce a duplicate face.
-    const left: number[] = [];
-    for (let k = 0; k < mesh.indices.length; k += 3) {
-      const ids = mesh.indices.subarray(k, k + 3);
-      if (Math.min(...Array.from(ids, id => mesh.positions[id * 3])) < end.x - 1e-5) left.push(...ids);
-    }
-    interiors.push(boundaryInMountain({ positions: mesh.positions, indices: new Uint32Array(left) }, [endFace], bounds));
+  const left: number[] = [];
+  for (let k = 0; k < old.full.indices.length; k += 3) {
+    const ids = old.full.indices.subarray(k, k + 3);
+    if (Math.min(...Array.from(ids, id => old.full.positions[id * 3])) < end.x - 1e-5) left.push(...ids);
   }
-  const positions: number[] = [], indices: number[] = [];
-  for (const mesh of interiors) {
-    const offset = positions.length / 3;
-    for (const p of mesh.positions) positions.push(p);
-    for (const i of mesh.indices) indices.push(i + offset);
-  }
-  const cut = { plateau: cutAscent(uncut.plateau), strip: cutAscent(uncut.strip), underside: cutAscent(uncut.underside), flank: cutAscent(uncut.flank), interior: packed(positions, indices) };
-  return { accepted, uncut, cut, nose, ending, endingWeight: weight };
+  interiors.push(boundaryInMountain({ positions: old.full.positions, indices: new Uint32Array(left) }, [endFace], bounds));
+  const cut = { plateau: cutAscent(uncut.plateau), strip: cutAscent(strip), underside: cutAscent(underside), flank: cutAscent(uncut.flank), restored: cutAscent(restored), ending: cutAscent(side), interior: join(interiors) };
+  return { accepted, uncut, cut, cutter: { points: cutter.points, circle: ending.circle }, ending };
 }
