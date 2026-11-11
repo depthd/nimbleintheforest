@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "qa",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
@@ -20,6 +20,6 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "8f4f0bf2900234d477c3edef4bfed39d1df503b3",
-  "qa_result": "Cave implementation under validation"
+  "qa_sha": "2b2dab68ccc8ab208cf84b95b54bfcfff0f274d8",
+  "qa_result": "Cave: build/typecheck/scope, final-mesh rays, browser and capsule round-trip PASS. Straight faceted dead-end prototype; free inspection camera retained."
 }

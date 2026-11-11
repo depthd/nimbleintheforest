@@ -1,0 +1,29 @@
+{
+  "result": "PASS",
+  "triangles": 820,
+  "capsule": {
+    "halfHeight": 0.5,
+    "radius": 0.3
+  },
+  "walks": [
+    {
+      "target": 273,
+      "position": {
+        "x": 273.2076416015625,
+        "y": 5.8201003074646,
+        "z": -0.5957247614860535
+      },
+      "steps": 556
+    },
+    {
+      "target": 318,
+      "position": {
+        "x": 317.8109436035156,
+        "y": 4.3174943923950195,
+        "z": -1.0220026969909668
+      },
+      "steps": 518
+    }
+  ],
+  "description": "Outside to dead end and back at walking speed on final ground, rock, snow and cave triangles; no teleport between legs."
+}
