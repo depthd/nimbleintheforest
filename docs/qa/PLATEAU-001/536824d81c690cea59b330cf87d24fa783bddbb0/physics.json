@@ -1,0 +1,29 @@
+{
+  "result": "PASS",
+  "triangles": 17799,
+  "capsule": {
+    "halfHeight": 0.5,
+    "radius": 0.3
+  },
+  "walks": [
+    {
+      "target": 16,
+      "position": {
+        "x": 15.788694381713867,
+        "y": 101.07316589355469,
+        "z": -47.09318923950195
+      },
+      "steps": 6733
+    },
+    {
+      "target": -310,
+      "position": {
+        "x": -309.8329162597656,
+        "y": 0.3151988983154297,
+        "z": -49.99984359741211
+      },
+      "steps": 3371
+    }
+  ],
+  "description": "Outside to plateau top and back at walking speed on final ground, rock, snow and cave triangles; no teleport between legs."
+}

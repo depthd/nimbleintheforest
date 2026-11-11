@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "qa",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
@@ -20,6 +20,6 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "b5e59bd47e2e1ebfd604824873d4a6cc8f1f599e",
-  "qa_result": "Reverse-slope mask, local RockSkin, browser geometry and capsule under-overhang round-trip PASS. Straight end faces visible; experimental art."
+  "qa_sha": "536824d81c690cea59b330cf87d24fa783bddbb0",
+  "qa_result": "Curved variable-width ascent and perimeter mask: build/typecheck/scope, final-floor/sky rays, cave preservation and capsule round-trip PASS. Flat core and repetitive rock rim remain visual limitations."
 }
