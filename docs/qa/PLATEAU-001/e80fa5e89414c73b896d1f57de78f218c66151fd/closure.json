@@ -1,0 +1,8 @@
+{
+  "result": "PASS",
+  "sourceSHA": "e80fa5e89414c73b896d1f57de78f218c66151fd",
+  "scope": "rendered cut surface, excluding outer world border",
+  "toleranceM": 0.0005,
+  "maxUncoveredM": 8.881784197001252e-16,
+  "note": "Geometric edge coverage including collinear subdivisions; not a physics test."
+}

@@ -1,0 +1,19 @@
+{
+  "result": "PASS",
+  "sourceSHA": "e80fa5e89414c73b896d1f57de78f218c66151fd",
+  "delivery": "local Vite preview of the built source SHA",
+  "backend": "Chromium / SwiftShader",
+  "errors": [],
+  "shots": [
+    "relief-front.png",
+    "relief-side.png",
+    "relief-top.png",
+    "relief-inside.png",
+    "explained-front.png",
+    "explained-side.png",
+    "flat-front.png",
+    "flat-side.png"
+  ],
+  "physicsPlayerTested": false,
+  "deployed": false
+}
