@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Плато · Nimble in the Forest</title>
+  <link rel="icon" href="data:," />
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#c1d5e4;color:#edf3f6;font:14px system-ui,sans-serif}canvas{display:block;touch-action:none}
+    aside{position:fixed;top:16px;left:16px;max-width:350px;padding:16px;background:#172b36ed;border:1px solid #ffffff24;border-radius:12px;z-index:1}
+    h1{font-size:20px;margin:0 0 5px}p{line-height:1.5;margin:6px 0;color:#c2cfd6}.buttons{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+    button{font:inherit;border:1px solid #ffffff35;border-radius:6px;padding:8px 10px;color:inherit;background:#ffffff0b;cursor:pointer}button:hover,button[aria-pressed=true]{background:#ffffff25}
+    label{display:flex;gap:8px;align-items:center;margin-top:10px}#status{position:fixed;bottom:14px;right:14px;padding:8px 12px;background:#172b36dc;border-radius:6px;font-size:12px}#error{white-space:pre-wrap;color:#ffd4bc}
+    @media(max-width:600px){aside{top:8px;left:8px;right:8px;max-width:none;padding:12px}h1{font-size:17px}p{font-size:12px}.buttons{margin:8px 0}button{padding:7px 9px}aside.collapsed .detail{display:none}}
+  </style>
+</head>
+<body>
+  <aside id="panel">
+    <h1>Плато · 100 метров</h1>
+    <p>Один массив. Скалы и материалы из игры.</p>
+    <div class="buttons">
+      <button data-view="overview">Общий вид</button>
+      <button data-view="foot">У подножия</button>
+      <button data-view="top">Наверху</button>
+      <button id="collapse" aria-expanded="true">Свернуть</button>
+    </div>
+    <div class="detail">
+      <p>Мышь: вращение · колесо: приближение · правая кнопка: сдвиг. На телефоне — одним или двумя пальцами.</p>
+      <p>WASD — полёт · Q / E — вниз / вверх · Shift — быстрее. Камера свободная, проходит сквозь поверхности.</p>
+      <label><input id="rocks" type="checkbox" checked /> Показывать скалы</label>
+    </div>
+    <p id="error" role="alert"></p>
+  </aside>
+  <div id="status">Создание плато…</div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -22,6 +22,7 @@ export default defineConfig({
       mountains: 'experiments/mountains/index.html',
       mountainPlan: 'experiments/mountains/plan-preview.html',
       mountainCrossing: 'experiments/mountains/crossing.html',
+      plateau: 'experiments/plateau/index.html',
     } },
     chunkSizeWarningLimit: 6000,
   },
