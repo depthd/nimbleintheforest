@@ -142,7 +142,15 @@ export function buildWedgeAscent(source: SourceGrid, upper: SourceGrid, ending =
   const minZ = Math.min(...profile.map(p => p.z - p.w)), maxZ = Math.max(...profile.map(p => p.z + p.w));
   // In the zero-weight band there is no overhang. Bound the existing ascent
   // by the exact displayed triangles, including the reconstructed old flank.
-  const interiors = Object.values(uncut).map(mesh => boundaryInMountain(mesh, boundary, { minX: ascent.start, maxX: ascent.end, minZ, maxZ }));
+  // The independent relief fixture can stand above the ascent's final 103 m
+  // floor. Close that finite cut at its existing end instead of leaving a
+  // slit into the mountain. This does not extend or relocate the passage.
+  const end = profile[profile.length - 1];
+  const endFace = [
+    { x: end.x, y: end.y, z: end.z - end.w }, { x: end.x, y: end.y, z: end.z + end.w },
+    { x: end.x, y: 180, z: end.z + end.w }, { x: end.x, y: 180, z: end.z - end.w },
+  ];
+  const interiors = Object.values(uncut).map(mesh => boundaryInMountain(mesh, [...boundary, endFace], { minX: ascent.start, maxX: ascent.end, minZ, maxZ }));
   const positions: number[] = [], indices: number[] = [];
   for (const mesh of interiors) {
     const offset = positions.length / 3;
