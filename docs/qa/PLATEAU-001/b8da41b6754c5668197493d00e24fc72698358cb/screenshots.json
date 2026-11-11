@@ -1,0 +1,7 @@
+{
+  "result": "PASS",
+  "backend": "Chromium SwiftShader",
+  "fixtureTopAttenuation": false,
+  "fixtureReliefRange": 19.864532470703125,
+  "errors": []
+}

@@ -1,0 +1,196 @@
+{
+  "result": "PASS",
+  "stage": "boundary diagnostic only; no mask strip or rendering removal",
+  "cases": [
+    {
+      "name": "current plateau",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "closed": true,
+      "selfIntersections": 0,
+      "maxHeightError": 0.000025483177978458116,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "maxGridJointDistance": 0.000014543533325195312,
+      "minLength": 0.007568824661472937,
+      "minHeight": 95.89555358886719,
+      "maxHeight": 99.99983215332031,
+      "maxDifferenceFromAnalyticTop": 4.1044464111328125
+    },
+    {
+      "name": "flat top",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "closed": true,
+      "selfIntersections": 0,
+      "maxHeightError": 0,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "maxGridJointDistance": 0.000014543533325195312,
+      "minLength": 0.007568824661472937,
+      "minHeight": 100,
+      "maxHeight": 100
+    },
+    {
+      "name": "rising top",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "closed": true,
+      "selfIntersections": 0,
+      "maxHeightError": 0.000003811464921454899,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "maxGridJointDistance": 0.000014543533325195312,
+      "minLength": 0.007568824661472937,
+      "minHeight": 77.75286102294922,
+      "maxHeight": 126.59520721435547
+    },
+    {
+      "name": "falling top",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "closed": true,
+      "selfIntersections": 0,
+      "maxHeightError": 0.000006490321538876742,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "maxGridJointDistance": 0.000014543533325195312,
+      "minLength": 0.007568824661472937,
+      "minHeight": 65.39410400390625,
+      "maxHeight": 128.07286071777344
+    },
+    {
+      "name": "bumps and depressions",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "closed": true,
+      "selfIntersections": 0,
+      "maxHeightError": 0.000005455368864204502,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "maxGridJointDistance": 0.000014543533325195312,
+      "minLength": 0.007568824661472937,
+      "minHeight": 92.06880950927734,
+      "maxHeight": 109.01934051513672
+    },
+    {
+      "name": "mountain with relief to edge, no top attenuation",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "closed": true,
+      "selfIntersections": 0,
+      "maxHeightError": 0.000025096305762417614,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "maxGridJointDistance": 0.000014543533325195312,
+      "minLength": 0.007568824661472937,
+      "minHeight": 89.39144897460938,
+      "maxHeight": 109.2559814453125,
+      "topAttenuation": false,
+      "maxDifferenceFromAnalyticTop": 4.3250928807703275
+    },
+    {
+      "name": "contour through lattice vertices",
+      "cell": 4,
+      "radius": 0.8993945892052844,
+      "vertices": 708,
+      "edges": 708,
+      "closed": true,
+      "selfIntersections": 0,
+      "maxHeightError": 0.000003814144292846322,
+      "maxContourError": 4.7921507873027736e-8,
+      "maxPlanDeviation": 0.04119915431929361,
+      "maxGridJointDistance": 0.0000152587890625,
+      "minLength": 0.0033233435904260447,
+      "minHeight": 96.00055694580078,
+      "maxHeight": 103.99944305419922
+    }
+  ],
+  "cutCounts": {
+    "surface": 725,
+    "ascent": 35,
+    "cave": 0
+  },
+  "originalPointCounts": {
+    "ordinary": 716,
+    "ascentCut": 34,
+    "aboveCave": 8,
+    "caveActualCut": 0
+  },
+  "ascentEndpoints": [
+    {
+      "x": -224.66863731625563,
+      "y": 99.65023991551578,
+      "z": 5.467075223290368,
+      "distanceToCutWall": 0
+    },
+    {
+      "x": -209.59980752476622,
+      "y": 98.638290178895,
+      "z": -61.19973135466678,
+      "distanceToCutWall": 7.105427357601002e-15
+    }
+  ],
+  "visibleSurfaceBoundaryClosed": false,
+  "visibleSurfaceBoundaryEndpoints": 2,
+  "insetDiagnostics": [
+    {
+      "radius": 0.96,
+      "vertices": 758,
+      "minHeight": 95.89555358886719,
+      "maxDifferenceFromAnalyticTop": 4.1044464111328125
+    },
+    {
+      "radius": 0.95,
+      "vertices": 750,
+      "minHeight": 98.56731414794922,
+      "maxDifferenceFromAnalyticTop": 1.4326858520507812
+    },
+    {
+      "radius": 0.94,
+      "vertices": 742,
+      "minHeight": 99.76448059082031,
+      "maxDifferenceFromAnalyticTop": 0.2355194091796875
+    },
+    {
+      "radius": 0.93,
+      "vertices": 734,
+      "minHeight": 99.99871826171875,
+      "maxDifferenceFromAnalyticTop": 0.00128173828125
+    },
+    {
+      "radius": 0.92,
+      "vertices": 724,
+      "minHeight": 99.99974822998047,
+      "maxDifferenceFromAnalyticTop": 0.00109100341796875
+    }
+  ],
+  "visualAcceptance": "NOT ACCEPTED: current exact slope-start contour follows up to 4.104m dips in the existing triangulated surface; no silent contour shift or smoothing",
+  "checks": [
+    "shared source equations unchanged on full grid",
+    "closed chain without duplicate joints or self-intersections",
+    "all grid directions including diagonals",
+    "each segment lies on a source triangle",
+    "current/flat/rising/falling/bumpy relief",
+    "contour through grid vertices",
+    "actual ascent/cave volume classification",
+    "source grid not mutated"
+  ],
+  "notChecked": [
+    "future strip shape and lighting",
+    "final seamless transition",
+    "future render removal coverage"
+  ]
+}

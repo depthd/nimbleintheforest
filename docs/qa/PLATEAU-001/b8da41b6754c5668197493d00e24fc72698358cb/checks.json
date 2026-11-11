@@ -1,0 +1,10 @@
+{
+  "source": "b8da41b6754c5668197493d00e24fc72698358cb",
+  "geometryTests": "PASS (7 fixtures)",
+  "plateauTypecheck": "PASS",
+  "rootBuild": "PASS",
+  "browserScreenshots": "PASS (SwiftShader)",
+  "visualAcceptance": "NOT ACCEPTED: mesh-induced rim dips up to 4.104446411m",
+  "stripImplemented": false,
+  "deployed": false
+}

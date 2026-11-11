@@ -20,8 +20,8 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "6ed671531bc601ad5a40a4d5a0a1e24531e29805",
-  "qa_result": "Stage 1 boundary diagnostic PASS: 6 geometric fixtures, all 12 existing solid meshes unchanged, browser screenshots and built-scene toggle/mobile checks. Boundary visual review pending; strip and hidden-slope removal not implemented; no deployment.",
+  "qa_sha": "b8da41b6754c5668197493d00e24fc72698358cb",
+  "qa_result": "Boundary geometric construction PASS, visual acceptance NOT ACCEPTED: E follows existing mesh dips up to 4.104446411m at the nominal 100m rim. 758 points: 716 ordinary, 34 ascent, 8 above cave, 0 inside cave. Untapered relief screenshot fixture added. No strip implementation or deployment.",
   "previous_base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
   "published_source_sha": "8b2652a476649fbb80cbfe8fdfcc2b3febfe361d"
 }
