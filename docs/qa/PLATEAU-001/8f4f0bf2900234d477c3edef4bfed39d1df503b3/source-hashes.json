@@ -1,0 +1,9 @@
+{
+  "experiments/plateau/main.ts": "a05306b69bc07fdea3f4c73cfb515eccf5a9371e690c2cb55df38003075f1f9c",
+  "experiments/plateau/index.html": "34c1c12d4550d20044d22eaa882f6619b511609a580710f6a8238efcff27392c",
+  "src/gen/rock-skin.ts": "cec62f74d1a910f93014eba6d05a75ceb6541339a5bab3b2d1dc5de86bef5e80",
+  "src/gen/cliffs.ts": "6c90b497e58bd7396ae0be098519cb43cb9f13d0472d64e22354fbf2a5e2ff34",
+  "src/world/cliffs.ts": "8f0631590eef8e187f5ec9d635dca637b47b0546a4c8f3e3b31000f2d46d5818",
+  "src/core/textures.ts": "8adb1fb342649ef91609eb4568f8bbef2379a13b114b64eb384018d210424420",
+  "src/core/noisetex.ts": "87db834ae974baae4d140ad01ee2875dfdf304eb65c1bcd2cce65d890873f399"
+}

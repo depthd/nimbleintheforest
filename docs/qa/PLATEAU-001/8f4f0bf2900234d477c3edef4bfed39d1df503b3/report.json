@@ -1,0 +1,39 @@
+{
+  "source": "8f4f0bf2900234d477c3edef4bfed39d1df503b3",
+  "base": "http://127.0.0.1:5236/experiments/plateau/",
+  "backend": "Chromium SwiftShader; not hardware FPS",
+  "stats": {
+    "blocks": 2284,
+    "height": 100,
+    "triangles": 347129
+  },
+  "cameras": {
+    "overview": [
+      449.99999999999994,
+      250.00000000000009,
+      490
+    ],
+    "foot": [
+      40,
+      1.799999999999983,
+      300
+    ],
+    "top": [
+      30,
+      102.00383807921989,
+      30.00000000000003
+    ]
+  },
+  "moved": 1.7500000000000058,
+  "checks": [
+    "three camera presets",
+    "eye-height foot view",
+    "keyboard after view button",
+    "mouse orbit",
+    "rock toggle",
+    "mobile collapse and viewport"
+  ],
+  "errors": [],
+  "failures": [],
+  "result": "PASS"
+}

@@ -1,13 +1,25 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "qa",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
   "integration_base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
-  "allowed_paths": [".coord/tasks/PLATEAU-001.json", "experiments/plateau/", "docs/PLATEAU-001.md", "docs/qa/PLATEAU-001/", "vite.config.ts"],
+  "allowed_paths": [
+    ".coord/tasks/PLATEAU-001.json",
+    "experiments/plateau/",
+    "docs/PLATEAU-001.md",
+    "docs/qa/PLATEAU-001/",
+    "vite.config.ts"
+  ],
   "coordination": "User requested a separate branch and GitHub Pages scene containing only a plateau and camera, then explicitly requested existing rocks and textures for immediate visual evaluation. Preserve the currently published preview c7ef68f and production using the existing test-pages workflow. Work starts from fresh integration and retains the live preview as ancestor. Scope follows this narrow user request; no changes to shared src or workflow.",
-  "acceptance": ["One irregular plateau, 100 m high", "Reuse existing RockSkin, rock material and textures", "Orbit and free camera, ground and upper views", "Separate direct preview URL", "Preserve existing game and test content"],
-  "qa_sha": null,
-  "qa_result": "NOT_TESTED"
+  "acceptance": [
+    "One irregular plateau, 100 m high",
+    "Reuse existing RockSkin, rock material and textures",
+    "Orbit and free camera, ground and upper views",
+    "Separate direct preview URL",
+    "Preserve existing game and test content"
+  ],
+  "qa_sha": "8f4f0bf2900234d477c3edef4bfed39d1df503b3",
+  "qa_result": "Build/typecheck/repo scope and browser PASS. Visually reviewed baseline: plateau reads clearly; flat upper floor and regular block walls remain. Publication requested by user."
 }
