@@ -1,0 +1,35 @@
+
+> nimble-in-the-forest@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 126 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/experiments/plateau/index.html                 3.25 kB │ gzip:     1.55 kB
+dist/experiments/mountains/index.html               3.28 kB │ gzip:     1.54 kB
+dist/experiments/mountains/plan-preview.html        4.28 kB │ gzip:     2.10 kB
+dist/experiments/mountains/crossing.html            4.85 kB │ gzip:     2.20 kB
+dist/index.html                                     9.57 kB │ gzip:     3.49 kB
+dist/assets/terrain-worker-CnNmfg5S.js             69.98 kB
+dist/assets/main-vfwSP27C.css                       1.62 kB │ gzip:     0.76 kB
+dist/assets/main-BqxwiJtu.css                      16.89 kB │ gzip:     4.42 kB
+dist/assets/mountainCrossing-C3icivwt.js            0.48 kB │ gzip:     0.38 kB
+dist/assets/mountains-D1H43QIn.js                   0.52 kB │ gzip:     0.41 kB
+dist/assets/modulepreload-polyfill-B5Qt9EMX.js      0.71 kB │ gzip:     0.40 kB
+dist/assets/preload-helper-PPVm8Dsz.js              1.23 kB │ gzip:     0.71 kB
+dist/assets/preview_animals-CXyWG3TH.js             1.77 kB │ gzip:     1.04 kB
+dist/assets/preview-DTePCDb4.js                     1.82 kB │ gzip:     1.03 kB
+dist/assets/preview_wood-D21UHS57.js                2.17 kB │ gzip:     1.15 kB
+dist/assets/c1-lab-BpPjj3WG.js                      3.26 kB │ gzip:     1.95 kB
+dist/assets/plateau-CZRh-cJ8.js                    11.10 kB │ gzip:     5.01 kB
+dist/assets/mountainPlan-DPRiCapS.js               14.17 kB │ gzip:     6.06 kB
+dist/assets/rock-skin-BdrYgDX7.js                  28.77 kB │ gzip:    12.63 kB
+dist/assets/crossing-view-DaFYfq5H.js              30.46 kB │ gzip:    13.02 kB
+dist/assets/main-BxI3EHkM.js                       43.20 kB │ gzip:    17.80 kB
+dist/assets/cliffs-ep2FrBPM.js                     64.22 kB │ gzip:    20.95 kB
+dist/assets/main-VJNvSdPU.js                      652.37 kB │ gzip:   237.24 kB
+dist/assets/three.module-ROE4QUYA.js              746.51 kB │ gzip:   192.10 kB
+dist/assets/rapier-OnF19VgH.js                  4,334.40 kB │ gzip: 1,644.49 kB
+✓ built in 3.98s
