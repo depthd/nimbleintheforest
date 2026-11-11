@@ -29,9 +29,9 @@ fs.mkdirSync(out, { recursive: true });
       await page.screenshot({ path: path.join(out, `${id}.png`) });
     }
     const before = await page.evaluate(() => window.__plateau.camera.position.toArray());
-    await page.keyboard.down('KeyW');
-    await page.waitForTimeout(700);
-    await page.keyboard.up('KeyW');
+    await page.keyboard.down('w');
+    await page.waitForFunction(before => Math.hypot(...window.__plateau.camera.position.toArray().map((v, i) => v - before[i])) > 1, before, { timeout: 30000 });
+    await page.keyboard.up('w');
     const after = await page.evaluate(() => window.__plateau.camera.position.toArray());
     const moved = Math.hypot(...before.map((v, i) => after[i] - v));
     assert.ok(moved > 1, `WASD did not move after selecting a view: ${moved}`);
