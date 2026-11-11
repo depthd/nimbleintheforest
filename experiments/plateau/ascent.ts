@@ -9,6 +9,8 @@ export const profile = Array.from({length: 25},(_,i)=>{
 });
 const minZ=Math.min(...profile.map(p=>p.z-p.w)),maxZ=Math.max(...profile.map(p=>p.z+p.w));
 const volumes:Plane[][]=[];
+// Read-only diagnostic access to the actual excavation, not a second outline.
+export function ascentCutVolumes(): readonly (readonly Plane[])[] { return volumes; }
 export const boundary:Point[][]=[];
 for(let i=1;i<profile.length;i++) {
   const a=profile[i-1],b=profile[i],grade=(b.y-a.y)/(b.x-a.x);

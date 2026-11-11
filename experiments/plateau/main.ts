@@ -1,15 +1,20 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { Rng, Simplex2, smoothstep } from '../../src/core/rng';
 import { RockSkin } from '../../src/gen/rock-skin';
 import { blockTriangles } from '../../src/gen/cliffs';
 import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
 import { noiseTexture } from '../../src/core/noisetex';
-import { subtract, interior, den } from './cavity';
+import { subtract, interior, den, caveCutPlanes } from './cavity';
+import { plateauRadius, SLOPE_START } from './plateau-profile';
+import { buildBoundary, splitBoundary, type BoundaryPart } from './seam-boundary';
 import { buildAscentWalls } from './ascent-walls';
 import { buildOverhang, portalAngle } from './overhang';
-import { cutAscent, ascentSurface, ascent, ascentHeight, ascentCenter, ascentWidth } from './ascent';
+import { cutAscent, ascentSurface, ascent, ascentHeight, ascentCenter, ascentWidth, ascentCutVolumes } from './ascent';
 
 const $ = (id: string) => document.getElementById(id)!;
 const SIZE = 1400, CELL = 4, N = SIZE / CELL, HEIGHT = 100;
@@ -18,12 +23,10 @@ const rng = new Rng(SEED), noise = new Simplex2(() => rng.next());
 
 // The source surface stays unchanged; the cavity is subtracted from final meshes.
 function heightAt(x: number, z: number) {
-  const angle = Math.atan2(z / 180, x / 260);
-  const outline = 1 + .095 * Math.sin(angle * 3 + .7) + .055 * Math.cos(angle * 5 - .4);
-  const radius = Math.hypot(x / 260, z / 180) / outline;
+  const radius = plateauRadius(x, z);
   const top = HEIGHT + (1 - smoothstep(.72,.90,radius)) * (1.8 * noise.noise(x / 100, z / 100) + .45 * noise.noise(x / 35, z / 35));
   const foot = .6 * noise.noise(x / 160, z / 160);
-  const wall = 1 - smoothstep(.96, 1.055, radius);
+  const wall = 1 - smoothstep(SLOPE_START, 1.055, radius);
   const apron = 1 - smoothstep(1.04, 1.23, radius);
   return THREE.MathUtils.lerp(foot + 5 * apron, top, wall);
 }
@@ -173,12 +176,44 @@ function start() {
   wallSnow.castShadow=wallSnow.receiveShadow=true;
   scene.add(wallMask,wallRocks,wallSnow);
   const solidMeshes = [ground, rocks, caps, cave, ramp,maskMesh,maskRocks,maskSnow,wallMask,wallRocks,wallSnow,maskCutInterior];
+  // Diagnostic only: the uncut source seam and its intersections with actual
+  // excavation volumes. It is never included in the collision surfaces.
+  const seam = buildBoundary({ heights, n: N, cell: CELL, x0: -SIZE / 2, z0: -SIZE / 2 });
+  const seamParts = splitBoundary(seam, [
+    ...ascentCutVolumes().map(planes => ({ kind: 'ascent' as const, planes })),
+    { kind: 'cave', planes: caveCutPlanes() },
+  ]);
+  const seamGroup = new THREE.Group();
+  const seamLineMaterials: LineMaterial[] = [];
+  const line = (parts: BoundaryPart[], color: number, dashed = false) => {
+    const p = parts.flatMap(({ a, b }) => [a.x, a.y, a.z, b.x, b.y, b.z]);
+    if (!p.length) return;
+    const material = new LineMaterial({ color, linewidth: 3, depthTest: false, depthWrite: false, dashed, dashSize: 2, gapSize: 1 });
+    material.resolution.set(innerWidth, innerHeight); seamLineMaterials.push(material);
+    const mesh = new LineSegments2(new LineSegmentsGeometry().setPositions(p), material);
+    mesh.computeLineDistances(); mesh.renderOrder = 100; seamGroup.add(mesh);
+  };
+  line(seamParts.filter(p => p.kind === 'surface'), 0x007a50);
+  line(seamParts.filter(p => p.kind !== 'surface'), 0xda1739, true);
+  const caveProjection = splitBoundary(seam, [{ kind: 'cave', planes: caveCutPlanes().filter(p => Math.abs(p.y) < 1e-12) }])
+    .filter(p => p.kind === 'cave');
+  line(caveProjection, 0xc57b00);
+  scene.add(seamGroup);
+  const seamInput = $('seam') as HTMLInputElement;
+  seamInput.checked = new URLSearchParams(location.search).get('seam') === '1';
+  const setSeamVisible = () => {
+    seamGroup.visible = seamInput.checked;
+    $('seamLegend').hidden = !seamInput.checked;
+  };
+  seamInput.onchange = setSeamVisible; setSeamVisible();
   scene.updateMatrixWorld(true);
 
   const views = {
     maskSide: { eye:[450,250,480],target:[0,45,0] },
     maskUnder: { eye:[0,heightAt(0,187)+1.8,187],target:[0,65,193] },
     maskTop: { eye:[0,102,210],target:[0,98,120] },
+    seamPlan: { eye:[0,680,0],target:[0,70,0] },
+    seamSide: { eye:[-100,125,270],target:[-70,100,165] },
     ascent: { eye: [-270, 190, -180], target: [-125, 40, -50] },
     ascentFoot: { eye: [-310, heightAt(-310,-50)+1.8, -50], target: [-160, 38, -5] },
     ascentTop: { eye: [16, 102, ascentCenter(16)], target: [-100, 40, ascentCenter(-100)] },
@@ -216,6 +251,7 @@ function start() {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+    seamLineMaterials.forEach(material => material.resolution.set(innerWidth, innerHeight));
   });
   view('ascent');
   renderer.shadowMap.needsUpdate = true;
@@ -224,6 +260,7 @@ function start() {
   const state = { ready: true, camera, controls, view, height: HEIGHT, blocks: skin.blocks.length,
     triangles: indices.length / 3 + rockPositions.length / 9 + skin.caps.indices.length / 3,
     rockGroup, heightAt, solidMeshes, cave, den, maskMesh,maskRockGroup, maskBlocks:overhang.blocks, wallMask,wallRocks,wallBlocks:walls.blocks, maskCutInterior,
+    seam, seamParts, caveProjection, seamGroup,
     cutTriangles: {terrain:caveGround.cutTriangles,rock:caveRocks.cutTriangles,snow:caveCaps.cutTriangles},
     ascent, ascentHeight, ascentCenter, ascentWidth, ascentCuts: {terrain:cutGround.cutTriangles,rock:cutRocks.cutTriangles,snow:cutCaps.cutTriangles},
     ray(origin: number[],direction: number[]) {

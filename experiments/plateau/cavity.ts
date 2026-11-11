@@ -32,6 +32,7 @@ export function append(polygon: Point[], positions: number[], indices: number[])
 }
 
 const planes: Plane[] = [plane(-1,0,0,den.back),plane(1,0,0,-den.mouth)];
+export function caveCutPlanes(): readonly Plane[] { return planes; }
 for(let i=0;i<section.length;i++) {
  const a=section[i], b=section[(i+1)%section.length], dz=b.z-a.z, dy=b.y-a.y;
  planes.push(plane(0,-dz,dy,-dy*a.z+dz*a.y));

@@ -31,6 +31,8 @@
       <button data-view="entrance">Вход в пещеру</button>
       <button data-view="inside">Внутри пещеры</button>
       <button data-view="roof">Над пещерой</button>
+      <button data-view="seamPlan">Стык · сверху</button>
+      <button data-view="seamSide">Стык · вблизи</button>
       <button id="collapse" aria-expanded="true">Свернуть</button>
     </div>
     <div class="detail">
@@ -38,6 +40,8 @@
       <p>WASD — полёт · Q / E — вниз / вверх · Shift — быстрее. Камера свободная, проходит сквозь поверхности.</p>
       <label><input id="maskRocks" type="checkbox" checked /> Скалы на маске</label>
       <label><input id="rocks" type="checkbox" checked /> Показывать скалы</label>
+      <label><input id="seam" type="checkbox" /> Показать будущую границу стыка</label>
+      <p id="seamLegend" hidden>Зелёная — граница на исходном плато. Красный пунктир — участок, удалённый подъёмом. Жёлтая — граница над пещерой; пещера ниже неё. Линии показаны сквозь маску для проверки. Геометрия стыка ещё не изменена.</p>
     </div>
     <p id="error" role="alert"></p>
   </aside>
