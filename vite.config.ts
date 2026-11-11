@@ -24,6 +24,7 @@ export default defineConfig({
       mountainCrossing: 'experiments/mountains/crossing.html',
       plateau: 'experiments/plateau/index.html',
       plateauWedge: 'experiments/plateau/wedge.html',
+      plateauWedgeAscent: 'experiments/plateau/wedge-ascent.html',
     } },
     chunkSizeWarningLimit: 6000,
   },
