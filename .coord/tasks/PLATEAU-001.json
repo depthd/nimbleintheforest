@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "qa",
+  "status": "developing",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
@@ -12,7 +12,7 @@
     "docs/qa/PLATEAU-001/",
     "vite.config.ts"
   ],
-  "coordination": "User requested a separate branch and GitHub Pages scene containing only a plateau and camera, then explicitly requested existing rocks and textures for immediate visual evaluation. Preserve the currently published preview c7ef68f and production using the existing test-pages workflow. Work starts from fresh integration and retains the live preview as ancestor. Scope follows this narrow user request; no changes to shared src or workflow. User additionally requested cutting a real dead-end cave into this plateau and updating the same preview. User requested an open-top ascent excavated inside the existing plateau, preserving the cave and updating the same preview. User requested a reverse-sloped two-face mask with existing rocks generated against the mask instead of plateau. User requested replacing the straight ascent with a winding variable-width arc and extending the irregular overhang mask around the mountain, retaining cave and access openings. User requested a much wider curved cut, the same mask and rock treatment on both ascent walls, and visually hiding protruding original plateau at the upper rim; full mask/terrain synchronization deferred. User requested fixing missing side walls and current seam defects, plus a plain-language explanation of shared edges and synchronization.",
+  "coordination": "User requested a separate branch and GitHub Pages scene containing only a plateau and camera, then explicitly requested existing rocks and textures for immediate visual evaluation. Preserve the currently published preview c7ef68f and production using the existing test-pages workflow. Work starts from fresh integration and retains the live preview as ancestor. Scope follows this narrow user request; no changes to shared src or workflow. User additionally requested cutting a real dead-end cave into this plateau and updating the same preview. User requested an open-top ascent excavated inside the existing plateau, preserving the cave and updating the same preview. User requested a reverse-sloped two-face mask with existing rocks generated against the mask instead of plateau. User requested replacing the straight ascent with a winding variable-width arc and extending the irregular overhang mask around the mountain, retaining cave and access openings. User requested a much wider curved cut, the same mask and rock treatment on both ascent walls, and visually hiding protruding original plateau at the upper rim; full mask/terrain synchronization deferred. User requested fixing missing side walls and current seam defects, plus a plain-language explanation of shared edges and synchronization. User reported no visible change after prior junction fix. Fix actual missing cut faces inside the protruding mask volume, with same-camera before/after evidence.",
   "acceptance": [
     "One irregular plateau, 100 m high",
     "Reuse existing RockSkin, rock material and textures",

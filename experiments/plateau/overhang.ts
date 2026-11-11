@@ -1,8 +1,8 @@
 import { Color, SRGBColorSpace } from 'three';
 import { RockSkin } from '../../src/gen/rock-skin';
 import { blockTriangles } from '../../src/gen/cliffs';
-import { cutAscent } from './ascent';
-import { subtract, type MeshData } from './cavity';
+import { cutAscent, boundary } from './ascent';
+import { subtract, type MeshData, type Point, plane, value, flip, clip, append } from './cavity';
 const TAU=Math.PI*2;
 export function portalAngle(a:number){return Math.abs(Math.atan2(Math.sin(a),Math.cos(a)))<.12 || Math.abs(Math.PI-Math.abs(Math.atan2(Math.sin(a),Math.cos(a))))<.28;}
 export function maskPoint(a:number,y:number,depth=0){
@@ -17,13 +17,36 @@ export function maskPoint(a:number,y:number,depth=0){
   return [Math.cos(a)*(260*shape*scale-depth),y+Math.pow(Math.max(0,y/100),6)*.06,Math.sin(a)*(180*shape*scale-depth)];
 }
 export function buildOverhang(){
- const positions:number[]=[],indices:number[]=[];
+ const positions:number[]=[],indices:number[]=[],cutP:number[]=[],cutI:number[]=[];
  const quad=(a:number[],b:number[],c:number[],d:number[])=>{const k=positions.length/3;positions.push(...a,...b,...c,...d);indices.push(k,k+1,k+2,k,k+2,k+3);};
  const segments=192,levels=12;
  for(let i=0;i<segments;i++){
   const a=i/segments*TAU,b=(i+1)/segments*TAU;
   if(portalAngle((a+b)/2))continue;
   for(let j=0;j<levels;j++)quad(maskPoint(a,j/levels*100),maskPoint(a,(j+1)/levels*100),maskPoint(b,(j+1)/levels*100),maskPoint(b,j/levels*100));
+  // The ascent cuts the mask's own volume too. Build the newly exposed
+  // floor/side faces inside that volume, not merely inside the old terrain.
+  for(let j=0;j<levels;j++){
+    const y0=j/levels*100,y1=(j+1)/levels*100;
+    const back=(q:number,y:number)=>[Math.cos(q)*260*.80,y+Math.pow(y/100,6)*.06,Math.sin(q)*180*.80];
+    const V=[maskPoint(a,y0),maskPoint(b,y0),back(b,y0),back(a,y0),maskPoint(a,y1),maskPoint(b,y1),back(b,y1),back(a,y1)].map(p=>({x:p[0],y:p[1],z:p[2]}));
+    if(Math.min(...V.map(p=>p.x))>20||Math.max(...V.map(p=>p.x))< -300)continue;
+    for(const ids of [[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6],[0,5,1,6]]){
+      const T=ids.map(i=>V[i]);
+      const planes=[];
+      for(let k=0;k<4;k++){
+        const face=T.filter((_,i)=>i!==k),[u,v,w]=face,ax=v.x-u.x,ay=v.y-u.y,az=v.z-u.z,bx=w.x-u.x,by=w.y-u.y,bz=w.z-u.z;
+        const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
+        if(Math.hypot(nx,ny,nz)<1e-8)continue;
+        let pl=plane(nx,ny,nz,-nx*u.x-ny*u.y-nz*u.z);if(value(pl,T[k])>0)pl=flip(pl);planes.push(pl);
+      }
+      if(planes.length!==4)continue;
+      for(const face of boundary){
+        if(['x','y','z'].some(axis=>Math.max(...face.map(p=>p[axis as keyof Point]))<Math.min(...T.map(p=>p[axis as keyof Point]))||Math.min(...face.map(p=>p[axis as keyof Point]))>Math.max(...T.map(p=>p[axis as keyof Point]))))continue;
+        let part=face;for(const pl of planes){part=clip(part,pl);if(!part.length)break;}append(part,cutP,cutI);
+      }
+    }
+  }
   const inner=(q:number)=>[Math.cos(q)*260*.86,100.06,Math.sin(q)*180*.86];
   quad(maskPoint(a,100),inner(a),inner(b),maskPoint(b,100));
   // Close the mask's exposed end faces at each opening. These vertices are
@@ -52,5 +75,5 @@ export function buildOverhang(){
  const caveRocks=subtract({positions:transform(new Float32Array(raw)),indices:Uint32Array.from({length:raw.length/3},(_,i)=>i)},colors);
  const rocks=cutAscent(caveRocks,caveRocks.colors);
  const caps=cutAscent(subtract({positions:transform(skin.caps.positions),indices:skin.caps.indices}));
- return {mask,rocks,caps,blocks:skin.blocks.length};
+ return {mask,rocks,caps,cutInterior:{positions:new Float32Array(cutP),indices:new Uint32Array(cutI)},blocks:skin.blocks.length};
 }

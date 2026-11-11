@@ -9,7 +9,7 @@ export const profile = Array.from({length: 25},(_,i)=>{
 });
 const minZ=Math.min(...profile.map(p=>p.z-p.w)),maxZ=Math.max(...profile.map(p=>p.z+p.w));
 const volumes:Plane[][]=[];
-const boundary:Point[][]=[];
+export const boundary:Point[][]=[];
 for(let i=1;i<profile.length;i++) {
   const a=profile[i-1],b=profile[i],grade=(b.y-a.y)/(b.x-a.x);
   const leftA=a.z-a.w,leftB=b.z-b.w,rightA=a.z+a.w,rightB=b.z+b.w;

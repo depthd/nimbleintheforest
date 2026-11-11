@@ -152,6 +152,11 @@ function start() {
     mesh.castShadow=mesh.receiveShadow=true;return mesh;
   };
   const maskMesh=tint(overhang.mask),maskRocks=tint(overhang.rocks);
+  const maskCutInterior=tint(overhang.cutInterior);
+  maskCutInterior.material=material.clone();
+  maskCutInterior.material.onBeforeCompile=material.onBeforeCompile;maskCutInterior.material.customProgramCacheKey=material.customProgramCacheKey;
+  maskCutInterior.material.polygonOffset=true;maskCutInterior.material.polygonOffsetFactor=1;maskCutInterior.material.polygonOffsetUnits=1;
+  scene.add(maskCutInterior);
   const maskSnow=new THREE.Mesh(geometry(overhang.caps.positions,overhang.caps.indices),caps.material);
   maskSnow.castShadow=maskSnow.receiveShadow=true;
   const maskRockGroup=new THREE.Group();maskRockGroup.add(maskRocks,maskSnow);
@@ -167,7 +172,7 @@ function start() {
   const wallSnow=new THREE.Mesh(geometry(walls.caps.positions,walls.caps.indices),caps.material);
   wallSnow.castShadow=wallSnow.receiveShadow=true;
   scene.add(wallMask,wallRocks,wallSnow);
-  const solidMeshes = [ground, rocks, caps, cave, ramp,maskMesh,maskRocks,maskSnow,wallMask,wallRocks,wallSnow];
+  const solidMeshes = [ground, rocks, caps, cave, ramp,maskMesh,maskRocks,maskSnow,wallMask,wallRocks,wallSnow,maskCutInterior];
   scene.updateMatrixWorld(true);
 
   const views = {
@@ -218,7 +223,7 @@ function start() {
   const clock = new THREE.Clock();
   const state = { ready: true, camera, controls, view, height: HEIGHT, blocks: skin.blocks.length,
     triangles: indices.length / 3 + rockPositions.length / 9 + skin.caps.indices.length / 3,
-    rockGroup, heightAt, solidMeshes, cave, den, maskMesh,maskRockGroup, maskBlocks:overhang.blocks, wallMask,wallRocks,wallBlocks:walls.blocks,
+    rockGroup, heightAt, solidMeshes, cave, den, maskMesh,maskRockGroup, maskBlocks:overhang.blocks, wallMask,wallRocks,wallBlocks:walls.blocks, maskCutInterior,
     cutTriangles: {terrain:caveGround.cutTriangles,rock:caveRocks.cutTriangles,snow:caveCaps.cutTriangles},
     ascent, ascentHeight, ascentCenter, ascentWidth, ascentCuts: {terrain:cutGround.cutTriangles,rock:cutRocks.cutTriangles,snow:cutCaps.cutTriangles},
     ray(origin: number[],direction: number[]) {
