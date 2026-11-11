@@ -1,0 +1,28 @@
+{
+  "result": "PASS",
+  "geometry": {
+    "cut": {
+      "terrain": 665,
+      "rock": 1554,
+      "snow": 364
+    },
+    "ramp": [
+      -100,
+      40.332908630371094,
+      -50
+    ],
+    "planned": 40.33290816326531,
+    "back": [
+      270,
+      6.8,
+      0
+    ],
+    "above": [
+      280,
+      98.74136771934182,
+      0
+    ]
+  },
+  "errors": [],
+  "transport": "Live HTTPS fetched through inherited curl proxy with TLS verification; Chromium request routing for managed CA compatibility"
+}
