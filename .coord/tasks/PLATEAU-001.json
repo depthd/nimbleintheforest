@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "qa",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
@@ -20,6 +20,6 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "7b39aa514e9d76db1efeaae996c47d867d642952",
-  "qa_result": "Closed opening end faces and shared exact ascent edges: browser/profile/cave and capsule round-trip PASS. Full perimeter synchronization still deferred."
+  "qa_sha": "8b2652a476649fbb80cbfe8fdfcc2b3febfe361d",
+  "qa_result": "Actual mask cut-face gap: 171 paired before/after ray witnesses, same-camera screenshots, capsule round-trip, final typecheck/build/scope PASS."
 }
