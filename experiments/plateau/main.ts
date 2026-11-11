@@ -7,6 +7,7 @@ import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
 import { noiseTexture } from '../../src/core/noisetex';
 import { subtract, interior, den } from './cavity';
+import { cutAscent, ascentSurface, ascent, ascentHeight } from './ascent';
 
 const $ = (id: string) => document.getElementById(id)!;
 const SIZE = 1400, CELL = 4, N = SIZE / CELL, HEIGHT = 100;
@@ -85,7 +86,8 @@ function start() {
   // Reuse the game's actual textured, triplanar rock/snow material unchanged.
   const material = makeRockMaterial();
   const original = { positions: new Float32Array(positions), indices: new Uint32Array(indices) };
-  const cutGround = subtract(original, colors);
+  const caveGround = subtract(original, colors);
+  const cutGround = cutAscent(caveGround, caveGround.colors);
   const ground = new THREE.Mesh(geometry(cutGround.positions, cutGround.indices, cutGround.colors), material);
   ground.receiveShadow = true;
   scene.add(ground);
@@ -104,10 +106,12 @@ function start() {
     const color = soft.clone().lerp(hard, block.tone).multiplyScalar(colorRng.float(.95, 1.05));
     for (let q = before; q < rockPositions.length; q += 3) rockColors.push(color.r, color.g, color.b);
   }
-  const cutRocks = subtract({positions:new Float32Array(rockPositions),indices:Uint32Array.from({length:rockPositions.length/3},(_,i)=>i)},rockColors);
+  const caveRocks = subtract({positions:new Float32Array(rockPositions),indices:Uint32Array.from({length:rockPositions.length/3},(_,i)=>i)},rockColors);
+  const cutRocks = cutAscent(caveRocks,caveRocks.colors);
   const rocks = new THREE.Mesh(geometry(cutRocks.positions, cutRocks.indices, cutRocks.colors), material);
   rocks.castShadow = rocks.receiveShadow = true;
-  const cutCaps = subtract(skin.caps);
+  const caveCaps = subtract(skin.caps);
+  const cutCaps = cutAscent(caveCaps);
   const caps = new THREE.Mesh(geometry(cutCaps.positions, cutCaps.indices),
     new THREE.MeshStandardMaterial({ color: new THREE.Color(.9, .925, .955), roughness: .88 }));
   caps.castShadow = caps.receiveShadow = true;
@@ -131,10 +135,19 @@ function start() {
   const cave = new THREE.Mesh(geometry(inner.positions,inner.indices,innerColors),caveMaterial);
   cave.castShadow = cave.receiveShadow = true;
   scene.add(cave);
-  const solidMeshes = [ground, rocks, caps, cave];
+  const rampData = ascentSurface(original);
+  const rampColors:number[]=[];
+  for(let i=0;i<rampData.positions.length;i+=3)rampColors.push(baseColor.r,baseColor.g,baseColor.b);
+  const ramp = new THREE.Mesh(geometry(rampData.positions,rampData.indices,rampColors),material);
+  ramp.castShadow = ramp.receiveShadow = true;
+  scene.add(ramp);
+  const solidMeshes = [ground, rocks, caps, cave, ramp];
   scene.updateMatrixWorld(true);
 
   const views = {
+    ascent: { eye: [-270, 190, -180], target: [-125, 40, -50] },
+    ascentFoot: { eye: [-310, heightAt(-310,-50)+1.8, -50], target: [-160, 38, -50] },
+    ascentTop: { eye: [10, 103, -50], target: [-250, 18, -50] },
     overview: { eye: [450, 250, 490], target: [0, 48, 0] },
     foot: { eye: [40, 1.8, 300], target: [5, 55, 145] },
     top: { eye: [30, heightAt(30, 30) + 1.8, 30], target: [20, 96, -220] },
@@ -170,14 +183,15 @@ function start() {
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
   });
-  view('entrance');
+  view('ascent');
   renderer.shadowMap.needsUpdate = true;
   const forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   const clock = new THREE.Clock();
   const state = { ready: true, camera, controls, view, height: HEIGHT, blocks: skin.blocks.length,
     triangles: indices.length / 3 + rockPositions.length / 9 + skin.caps.indices.length / 3,
     rockGroup, heightAt, solidMeshes, cave, den,
-    cutTriangles: {terrain:cutGround.cutTriangles,rock:cutRocks.cutTriangles,snow:cutCaps.cutTriangles},
+    cutTriangles: {terrain:caveGround.cutTriangles,rock:caveRocks.cutTriangles,snow:caveCaps.cutTriangles},
+    ascent, ascentHeight, ascentCuts: {terrain:cutGround.cutTriangles,rock:cutRocks.cutTriangles,snow:cutCaps.cutTriangles},
     ray(origin: number[],direction: number[]) {
       const ray = new THREE.Raycaster(new THREE.Vector3().fromArray(origin),new THREE.Vector3().fromArray(direction).normalize(),0,1000);
       return ray.intersectObjects(solidMeshes,false).map(h=>({distance:h.distance,point:h.point.toArray()}));
