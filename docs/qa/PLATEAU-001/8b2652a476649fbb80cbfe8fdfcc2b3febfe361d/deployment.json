@@ -1,0 +1,9 @@
+{
+  "source": "8b2652a476649fbb80cbfe8fdfcc2b3febfe361d",
+  "workflowRun": 43060283764,
+  "result": "PASS",
+  "productionIndexUnchanged": true,
+  "productionVersionUnchanged": true,
+  "livePatchWitnessHit": 0.5,
+  "url": "https://depthd.github.io/nimbleintheforest/test/experiments/plateau/?v=cut-wall"
+}
