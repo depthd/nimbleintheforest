@@ -1,0 +1,36 @@
+{
+  "result": "PASS",
+  "geometry": {
+    "wallBlocks": 179,
+    "width": 59.396437629406144,
+    "maskBlocks": 2186,
+    "low": [
+      0,
+      10,
+      186.08553264232813
+    ],
+    "high": [
+      0,
+      90,
+      190.4803408186088
+    ],
+    "ramp": [
+      -100,
+      40.234375,
+      0.05986033724647122
+    ],
+    "planned": 40.234375,
+    "back": [
+      270,
+      6.8,
+      0
+    ],
+    "above": [
+      280,
+      98.85453290711887,
+      0
+    ]
+  },
+  "errors": [],
+  "transport": "Live HTTPS fetched through inherited curl proxy with TLS verification; Chromium request routing for managed CA compatibility"
+}
