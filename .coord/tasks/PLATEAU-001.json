@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "qa",
+  "status": "developing",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
@@ -12,7 +12,7 @@
     "docs/qa/PLATEAU-001/",
     "vite.config.ts"
   ],
-  "coordination": "User requested a separate branch and GitHub Pages scene containing only a plateau and camera, then explicitly requested existing rocks and textures for immediate visual evaluation. Preserve the currently published preview c7ef68f and production using the existing test-pages workflow. Work starts from fresh integration and retains the live preview as ancestor. Scope follows this narrow user request; no changes to shared src or workflow.",
+  "coordination": "User requested a separate branch and GitHub Pages scene containing only a plateau and camera, then explicitly requested existing rocks and textures for immediate visual evaluation. Preserve the currently published preview c7ef68f and production using the existing test-pages workflow. Work starts from fresh integration and retains the live preview as ancestor. Scope follows this narrow user request; no changes to shared src or workflow. User additionally requested cutting a real dead-end cave into this plateau and updating the same preview.",
   "acceptance": [
     "One irregular plateau, 100 m high",
     "Reuse existing RockSkin, rock material and textures",
@@ -21,5 +21,5 @@
     "Preserve existing game and test content"
   ],
   "qa_sha": "8f4f0bf2900234d477c3edef4bfed39d1df503b3",
-  "qa_result": "Build/typecheck/repo scope and browser PASS. Visually reviewed baseline: plateau reads clearly; flat upper floor and regular block walls remain. Publication requested by user."
+  "qa_result": "Cave implementation under validation"
 }

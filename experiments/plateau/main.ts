@@ -6,14 +6,14 @@ import { blockTriangles } from '../../src/gen/cliffs';
 import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
 import { noiseTexture } from '../../src/core/noisetex';
+import { subtract, interior, den } from './cavity';
 
 const $ = (id: string) => document.getElementById(id)!;
 const SIZE = 1400, CELL = 4, N = SIZE / CELL, HEIGHT = 100;
 const SEED = 42;
 const rng = new Rng(SEED), noise = new Simplex2(() => rng.next());
 
-// A single irregular plateau. No upper tiers, routes, caves or landmarks.
-// This initial sheet intentionally keeps the existing RockSkin input contract.
+// The source surface stays unchanged; the cavity is subtracted from final meshes.
 function heightAt(x: number, z: number) {
   const angle = Math.atan2(z / 180, x / 260);
   const outline = 1 + .095 * Math.sin(angle * 3 + .7) + .055 * Math.cos(angle * 5 - .4);
@@ -84,7 +84,9 @@ function start() {
   }
   // Reuse the game's actual textured, triplanar rock/snow material unchanged.
   const material = makeRockMaterial();
-  const ground = new THREE.Mesh(geometry(positions, indices, colors), material);
+  const original = { positions: new Float32Array(positions), indices: new Uint32Array(indices) };
+  const cutGround = subtract(original, colors);
+  const ground = new THREE.Mesh(geometry(cutGround.positions, cutGround.indices, cutGround.colors), material);
   ground.receiveShadow = true;
   scene.add(ground);
 
@@ -102,19 +104,43 @@ function start() {
     const color = soft.clone().lerp(hard, block.tone).multiplyScalar(colorRng.float(.95, 1.05));
     for (let q = before; q < rockPositions.length; q += 3) rockColors.push(color.r, color.g, color.b);
   }
-  const rocks = new THREE.Mesh(geometry(rockPositions, undefined, rockColors), material);
+  const cutRocks = subtract({positions:new Float32Array(rockPositions),indices:Uint32Array.from({length:rockPositions.length/3},(_,i)=>i)},rockColors);
+  const rocks = new THREE.Mesh(geometry(cutRocks.positions, cutRocks.indices, cutRocks.colors), material);
   rocks.castShadow = rocks.receiveShadow = true;
-  const caps = new THREE.Mesh(geometry(skin.caps.positions, skin.caps.indices),
+  const cutCaps = subtract(skin.caps);
+  const caps = new THREE.Mesh(geometry(cutCaps.positions, cutCaps.indices),
     new THREE.MeshStandardMaterial({ color: new THREE.Color(.9, .925, .955), roughness: .88 }));
   caps.castShadow = caps.receiveShadow = true;
   const rockGroup = new THREE.Group();
   rockGroup.add(rocks, caps);
   scene.add(rockGroup);
 
+  const inner = interior(original);
+  const innerColors: number[] = [];
+  for(let i=0;i<inner.positions.length;i+=3) {
+    const light = THREE.MathUtils.lerp(.18,.65,smoothstep(273,307,inner.positions[i]));
+    innerColors.push(baseColor.r*light,baseColor.g*light,baseColor.b*light);
+  }
+  const caveMaterial = makeRockMaterial();
+  const compile = caveMaterial.onBeforeCompile;
+  caveMaterial.onBeforeCompile = (shader, renderer) => {
+    compile.call(caveMaterial, shader, renderer);
+    shader.fragmentShader = shader.fragmentShader.replace('frost * 0.92','0.0');
+  };
+  caveMaterial.customProgramCacheKey = () => 'plateau-den-dry-rock';
+  const cave = new THREE.Mesh(geometry(inner.positions,inner.indices,innerColors),caveMaterial);
+  cave.castShadow = cave.receiveShadow = true;
+  scene.add(cave);
+  const solidMeshes = [ground, rocks, caps, cave];
+  scene.updateMatrixWorld(true);
+
   const views = {
     overview: { eye: [450, 250, 490], target: [0, 48, 0] },
     foot: { eye: [40, 1.8, 300], target: [5, 55, 145] },
     top: { eye: [30, heightAt(30, 30) + 1.8, 30], target: [20, 96, -220] },
+    entrance: { eye: [322, heightAt(322,0)+1.8, 0], target: [275, 7, 0] },
+    inside: { eye: [279, 6.8, 0], target: [320, 6.8, 0] },
+    roof: { eye: [280, heightAt(280,0)+1.8, 0], target: [330, 75, 0] },
   };
   function view(id: keyof typeof views) {
     const v = views[id];
@@ -144,13 +170,18 @@ function start() {
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
   });
-  view('overview');
+  view('entrance');
   renderer.shadowMap.needsUpdate = true;
   const forward = new THREE.Vector3(), right = new THREE.Vector3(), move = new THREE.Vector3();
   const clock = new THREE.Clock();
   const state = { ready: true, camera, controls, view, height: HEIGHT, blocks: skin.blocks.length,
     triangles: indices.length / 3 + rockPositions.length / 9 + skin.caps.indices.length / 3,
-    rockGroup, heightAt };
+    rockGroup, heightAt, solidMeshes, cave, den,
+    cutTriangles: {terrain:cutGround.cutTriangles,rock:cutRocks.cutTriangles,snow:cutCaps.cutTriangles},
+    ray(origin: number[],direction: number[]) {
+      const ray = new THREE.Raycaster(new THREE.Vector3().fromArray(origin),new THREE.Vector3().fromArray(direction).normalize(),0,1000);
+      return ray.intersectObjects(solidMeshes,false).map(h=>({distance:h.distance,point:h.point.toArray()}));
+    } };
   (window as any).__plateau = state;
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), .05);
