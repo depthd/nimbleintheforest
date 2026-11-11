@@ -1,0 +1,29 @@
+{
+  "result": "PASS",
+  "triangles": 9648,
+  "capsule": {
+    "halfHeight": 0.5,
+    "radius": 0.3
+  },
+  "walks": [
+    {
+      "target": 207,
+      "position": {
+        "x": 0.47669097781181335,
+        "y": 0.756841242313385,
+        "z": 207.1920928955078
+      },
+      "steps": 446
+    },
+    {
+      "target": 245,
+      "position": {
+        "x": 0.9301336407661438,
+        "y": 0.6710920333862305,
+        "z": 244.81768798828125
+      },
+      "steps": 442
+    }
+  ],
+  "description": "Outside to underneath the overhang and back at walking speed on final ground, rock, snow and cave triangles; no teleport between legs."
+}

@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "qa",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
@@ -20,6 +20,6 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "ecc2668fe524609dc0dcba59f3c0d4a04c9f7a0c",
-  "qa_result": "Open ascent: source build/typecheck/scope, 66 surface/sky samples, retained cave, camera views/mobile and final-mesh capsule ascent/descent PASS. Plain cut walls, not final art."
+  "qa_sha": "b5e59bd47e2e1ebfd604824873d4a6cc8f1f599e",
+  "qa_result": "Reverse-slope mask, local RockSkin, browser geometry and capsule under-overhang round-trip PASS. Straight end faces visible; experimental art."
 }
