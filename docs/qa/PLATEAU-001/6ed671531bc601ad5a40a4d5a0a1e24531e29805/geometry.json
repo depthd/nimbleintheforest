@@ -1,0 +1,92 @@
+{
+  "result": "PASS",
+  "stage": "boundary diagnostic only; no mask strip or rendering removal",
+  "cases": [
+    {
+      "name": "current plateau",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "maxHeightError": 0.000025483177978458116,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "minLength": 0.007568824661472937
+    },
+    {
+      "name": "flat top",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "maxHeightError": 0,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "minLength": 0.007568824661472937
+    },
+    {
+      "name": "rising top",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "maxHeightError": 0.000003811464921454899,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "minLength": 0.007568824661472937
+    },
+    {
+      "name": "falling top",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "maxHeightError": 0.000006490321538876742,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "minLength": 0.007568824661472937
+    },
+    {
+      "name": "bumps and depressions",
+      "cell": 4,
+      "radius": 0.96,
+      "vertices": 758,
+      "edges": 758,
+      "maxHeightError": 0.000005455368864204502,
+      "maxContourError": 5.1805935541437975e-8,
+      "maxPlanDeviation": 0.0391742906329278,
+      "minLength": 0.007568824661472937
+    },
+    {
+      "name": "contour through lattice vertices",
+      "cell": 4,
+      "radius": 0.8993945892052844,
+      "vertices": 708,
+      "edges": 708,
+      "maxHeightError": 0.000003814144292846322,
+      "maxContourError": 4.7921507873027736e-8,
+      "maxPlanDeviation": 0.04119915431929361,
+      "minLength": 0.0033233435904260447
+    }
+  ],
+  "cutCounts": {
+    "surface": 725,
+    "ascent": 35,
+    "cave": 0
+  },
+  "checks": [
+    "shared source equations unchanged on full grid",
+    "closed chain without duplicate joints or self-intersections",
+    "all grid directions including diagonals",
+    "each segment lies on a source triangle",
+    "current/flat/rising/falling/bumpy relief",
+    "contour through grid vertices",
+    "actual ascent/cave volume classification",
+    "source grid not mutated"
+  ],
+  "notChecked": [
+    "future strip shape and lighting",
+    "final seamless transition",
+    "future render removal coverage"
+  ]
+}

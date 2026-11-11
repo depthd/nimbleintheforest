@@ -1,0 +1,41 @@
+{
+  "result": "PASS",
+  "backend": "Chromium SwiftShader; not hardware FPS",
+  "unchangedSolidMeshes": 12,
+  "unchangedAttributes": [
+    "position",
+    "index",
+    "normal"
+  ],
+  "overlayDefault": false,
+  "ascentRemovedLength": 70.78694329898312,
+  "caveActualIntersection": false,
+  "caveProjectionParts": 9,
+  "caveRays": {
+    "insideFloor": {
+      "distance": 1.7999999999999998,
+      "point": [
+        279,
+        5,
+        0
+      ]
+    },
+    "insideRoof": {
+      "distance": 3.7,
+      "point": [
+        279,
+        10.5,
+        0
+      ]
+    },
+    "exit": {
+      "distance": 70,
+      "point": [
+        270,
+        6.8,
+        0
+      ]
+    }
+  },
+  "errors": []
+}

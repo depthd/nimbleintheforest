@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "stats": {
+    "points": 758,
+    "overlay": true,
+    "solids": 12
+  },
+  "mobileOverflow": false,
+  "errors": []
+}

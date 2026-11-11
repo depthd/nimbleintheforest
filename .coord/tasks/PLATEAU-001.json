@@ -20,8 +20,8 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": null,
-  "qa_result": "Boundary diagnostic stage 1; source and evidence commits pending. No surface joining or render removal yet.",
+  "qa_sha": "6ed671531bc601ad5a40a4d5a0a1e24531e29805",
+  "qa_result": "Stage 1 boundary diagnostic PASS: 6 geometric fixtures, all 12 existing solid meshes unchanged, browser screenshots and built-scene toggle/mobile checks. Boundary visual review pending; strip and hidden-slope removal not implemented; no deployment.",
   "previous_base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
   "published_source_sha": "8b2652a476649fbb80cbfe8fdfcc2b3febfe361d"
 }
