@@ -26,6 +26,18 @@ export function buildOverhang(){
   for(let j=0;j<levels;j++)quad(maskPoint(a,j/levels*100),maskPoint(a,(j+1)/levels*100),maskPoint(b,(j+1)/levels*100),maskPoint(b,j/levels*100));
   const inner=(q:number)=>[Math.cos(q)*260*.86,100.06,Math.sin(q)*180*.86];
   quad(maskPoint(a,100),inner(a),inner(b),maskPoint(b,100));
+  // Close the mask's exposed end faces at each opening. These vertices are
+  // exactly the facade vertices; the back edge is buried inside the plateau.
+  const closeEnd=(q:number,reverse:boolean)=>{
+   for(let j=0;j<levels;j++){
+    const y0=j/levels*100,y1=(j+1)/levels*100;
+    const back=(y:number)=>y===100?inner(q):[Math.cos(q)*260*.80,y+Math.pow(y/100,6)*.06,Math.sin(q)*180*.80];
+    const face=[maskPoint(q,y0),back(y0),back(y1),maskPoint(q,y1)];
+    if(reverse)face.reverse();quad(face[0],face[1],face[2],face[3]);
+   }
+  };
+  if(portalAngle(a-TAU/segments/2))closeEnd(a,false);
+  if(portalAngle(b+TAU/segments/2))closeEnd(b,true);
  }
  const rawMask:MeshData={positions:new Float32Array(positions),indices:new Uint32Array(indices)};
  const mask=cutAscent(subtract(rawMask));

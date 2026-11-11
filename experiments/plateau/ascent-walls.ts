@@ -1,7 +1,7 @@
 import { Color, SRGBColorSpace } from 'three';
 import { RockSkin } from '../../src/gen/rock-skin';
 import { blockTriangles } from '../../src/gen/cliffs';
-import { ascentHeight,ascentCenter,ascentWidth } from './ascent';
+import { ascentHeight,ascentCenter,ascentWidth, profile } from './ascent';
 import type { MeshData } from './cavity';
 export function buildAscentWalls(heightAt:(x:number,z:number)=>number){
  const maskP:number[]=[],maskI:number[]=[],rockP:number[]=[],capP:number[]=[],capI:number[]=[];let blocks=0;const rockColors:number[]=[];const soft=new Color().setRGB(.26,.27,.32,SRGBColorSpace),hard=new Color().setRGB(.41,.43,.49,SRGBColorSpace);
@@ -15,7 +15,8 @@ export function buildAscentWalls(heightAt:(x:number,z:number)=>number){
  for(const side of [-1,1]){
   const point=(x:number,y:number,depth=0)=>[x,y,ascentCenter(x)+side*(ascentWidth(x)+offset(x,y)+depth)];
   const quad=(a:number[],b:number[],c:number[],d:number[])=>{const k=maskP.length/3;maskP.push(...a,...b,...c,...d);const I=side<0?[k,k+1,k+2,k,k+2,k+3]:[k,k+2,k+1,k,k+3,k+2];maskI.push(...I);};
-  for(let x=-296;x<16;x+=4){const x2=x+4;const f1=ascentHeight(x),f2=ascentHeight(x2),z1=ascentCenter(x)+side*ascentWidth(x),z2=ascentCenter(x2)+side*ascentWidth(x2);const top1=Math.min(100,heightAt(x,z1)),top2=Math.min(100,heightAt(x2,z2));if(top1<f1+.2||top2<f2+.2)continue;
+  const samples=[...new Set(profile.flatMap((p,i)=>i===profile.length-1?[p.x]:Array.from({length:8},(_,j)=>p.x+(profile[i+1].x-p.x)*j/8)))].sort((a,b)=>a-b);
+  for(let i=1;i<samples.length;i++){const x=samples[i-1],x2=samples[i];const f1=ascentHeight(x),f2=ascentHeight(x2),z1=ascentCenter(x)+side*ascentWidth(x),z2=ascentCenter(x2)+side*ascentWidth(x2);const top1=Math.min(100,heightAt(x,z1)),top2=Math.min(100,heightAt(x2,z2));if(top1<f1+.2||top2<f2+.2)continue;
    for(let j=0;j<12;j++){const a=j/12,b=(j+1)/12;quad(point(x,f1+(top1-f1)*a),point(x2,f2+(top2-f2)*a),point(x2,f2+(top2-f2)*b),point(x,f1+(top1-f1)*b));}
   }
   const transform=(raw:ArrayLike<number>)=>{const out:number[]=[];for(let i=0;i<raw.length;i+=3)out.push(...point(raw[i]-140,raw[i+1],raw[i+2]-raw[i+1]/30));return out;};

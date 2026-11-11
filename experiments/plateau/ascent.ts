@@ -42,7 +42,12 @@ export function cutAscent(mesh:MeshData,colors?:number[]) {
   return {positions:new Float32Array(positions),indices:new Uint32Array(indices),colors:outColors,cutTriangles};
 }
 export function ascentSurface(source:MeshData){return boundaryInMountain(source,boundary,{minX:ascent.start,maxX:ascent.end,minZ,maxZ});}
-export function ascentHeight(x:number){const i=Math.min(profile.length-2,Math.max(0,Math.floor((x-ascent.start)/(ascent.end-ascent.start)*24))),a=profile[i],b=profile[i+1];return a.y+(b.y-a.y)*(x-a.x)/(b.x-a.x);}
-
-export function ascentCenter(x:number){const t=Math.max(0,Math.min(1,(x-ascent.start)/(ascent.end-ascent.start)));return ascent.z+45*Math.sin(Math.PI*t)-12*Math.sin(2*Math.PI*t);}
-export function ascentWidth(x:number){const t=Math.max(0,Math.min(1,(x-ascent.start)/(ascent.end-ascent.start)));return 32+6*Math.sin(5.1*t+1)+3*Math.sin(13*t);}
+// The cut, wall masks, decoration and cameras share the same polygonal edge.
+export function ascentSample(x:number){
+ const q=Math.max(0,Math.min(profile.length-1,(x-ascent.start)/(ascent.end-ascent.start)*(profile.length-1)));
+ const i=Math.min(profile.length-2,Math.floor(q)),a=profile[i],b=profile[i+1],t=q-i;
+ return {x,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,w:a.w+(b.w-a.w)*t};
+}
+export function ascentHeight(x:number){return ascentSample(x).y;}
+export function ascentCenter(x:number){return ascentSample(x).z;}
+export function ascentWidth(x:number){return ascentSample(x).w;}

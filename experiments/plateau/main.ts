@@ -157,7 +157,12 @@ function start() {
   const maskRockGroup=new THREE.Group();maskRockGroup.add(maskRocks,maskSnow);
   scene.add(maskMesh,maskRockGroup);
   $('maskRocks').onchange=()=>{maskRockGroup.visible=($('maskRocks') as HTMLInputElement).checked;wallRocks.visible=wallSnow.visible=maskRockGroup.visible;renderer.shadowMap.needsUpdate=true;};
-  const walls=buildAscentWalls(heightAt);
+  const triangleHeightAt=(x:number,z:number)=>{
+    const u=Math.max(0,Math.min(N-1e-6,(x+SIZE/2)/CELL)),v=Math.max(0,Math.min(N-1e-6,(z+SIZE/2)/CELL));
+    const i=Math.floor(u),j=Math.floor(v),a=u-i,b=v-j,k=j*(N+1)+i,n=N+1;
+    return a+b<=1?heights[k]+(heights[k+1]-heights[k])*a+(heights[k+n]-heights[k])*b:heights[k+n+1]+(heights[k+n]-heights[k+n+1])*(1-a)+(heights[k+1]-heights[k+n+1])*(1-b);
+  };
+  const walls=buildAscentWalls(triangleHeightAt);
   const wallMask=tint(walls.mask),wallRocks=tint(walls.rocks);
   const wallSnow=new THREE.Mesh(geometry(walls.caps.positions,walls.caps.indices),caps.material);
   wallSnow.castShadow=wallSnow.receiveShadow=true;
