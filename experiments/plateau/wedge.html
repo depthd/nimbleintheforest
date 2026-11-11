@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Плато — прототип козырька</title>
+<style>body{margin:0;overflow:hidden;font:14px system-ui;background:#c1d5e4}aside{position:fixed;top:12px;left:12px;max-width:460px;padding:12px;background:#14232de8;color:white;border-radius:8px}button{margin:5px 3px 3px 0;padding:6px 10px;cursor:pointer}label{display:block;margin-top:8px}small{display:block;margin-top:8px;color:#d0dee6}</style></head>
+<body><aside><b>Козырёк · отдельный прототип без проходов</b><div>Верх продолжает рельеф; открытый стык, без камней.</div>
+<button data-view="top">Сверху</button><button data-view="side">Сбоку</button><button data-view="ground">С земли</button><button data-view="walk">У края</button>
+<label><input id="seam" type="checkbox"> Показать линию E</label>
+<label><input id="original" type="checkbox"> Исходная гора для сравнения</label>
+<small><a style="color:#a5d7ff" href="?kind=relief">Рельеф до края</a> · <a style="color:#a5d7ff" href="?kind=flat">Плоский тест</a><br>Мышь: поворот и приближение. Проходы проверяются отдельно.</small><!-- build-info --></aside>
+<script type="module" src="./wedge-view.ts"></script></body></html>
