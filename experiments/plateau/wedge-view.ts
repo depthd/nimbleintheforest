@@ -57,7 +57,7 @@ function view(name: string) {
     top: [[x + 50, y + 80, z + 70], [x, y - 8, z + 10]],
     side: [[x + 100, y + 7, z + 110], [x, y - 10, z + 12]],
     ground: [[x + 90, 2, z + 155], [x, y - 18, z + 16]],
-    walk: [[x + 2, y + 1.75, z - 9], [x, y, z + 22]],
+    walk: [[x + 2, sampleGrid(upper, x + 2, z - 9).y + 1.75, z - 9], [x, y, z + 22]],
   };
   const [eye, target] = views[name]; setCamera(eye, target);
 }
