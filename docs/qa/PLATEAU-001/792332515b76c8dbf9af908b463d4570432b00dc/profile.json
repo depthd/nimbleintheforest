@@ -1,0 +1,18 @@
+{
+  "result": "PASS",
+  "trial": "flat bare rounded tip, nominal corner 4m / 0.5m",
+  "maxThicknessError": 0,
+  "maxBacksetError": 5.684341886080802e-14,
+  "maxTurnDeg": 14.686564158678497,
+  "protectedHashes": {
+    "source": "5787f20063129d70e0e49625aad039f74701903b8b8fac1ea6b1c230ad436628",
+    "plateau": "c857ea90df305e407548cdc5f21a6e345c3d65e8fd57139b1af364c08068e984",
+    "strip": "49341f1b05e06a883755f8bd3de3c5abbdf91ee382edfc0159e3fe070c5cfc29",
+    "flank": "5dd49345f737ff81115431911b621597063bc5e9ce5ce8e534d9e5ac36122940",
+    "interior": "9c812bb7758177ab839ef0726ad880c777575ed677f10ed88781c54798975d48",
+    "E": "5829b0b04d2422355f464997c51053253f6837a44f1e152c1d948ec90f4cfa12",
+    "upperNose": "b86b7300a0f4e51cab0f032f64b0fd9c14cf1b942ac8b4c0ac846686671e96ce",
+    "attachment": "78dc22f168859425fb4be77d8a739a5edf5eb4ff1c4690851dc7c4cf7fbbd5cc"
+  },
+  "note": "Geometry checks; no dressing, physics or visual acceptance claim."
+}

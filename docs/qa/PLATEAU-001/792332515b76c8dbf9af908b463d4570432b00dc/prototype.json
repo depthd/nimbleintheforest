@@ -1,0 +1,23 @@
+{
+  "result": "PASS",
+  "reports": [
+    {
+      "kind": "flat",
+      "seamEdges": 734,
+      "maxAngleDeg": 0,
+      "topAreaErrorM2": 0,
+      "oldCollisionAboveTopWholeGridM": 0,
+      "sourceUnchanged": true,
+      "undersideAboveTopM": 0
+    },
+    {
+      "kind": "relief",
+      "seamEdges": 734,
+      "maxAngleDeg": 0.03470716784280831,
+      "topAreaErrorM2": 0,
+      "oldCollisionAboveTopWholeGridM": 0,
+      "sourceUnchanged": true,
+      "undersideAboveTopM": 0.000003809574991464615
+    }
+  ]
+}

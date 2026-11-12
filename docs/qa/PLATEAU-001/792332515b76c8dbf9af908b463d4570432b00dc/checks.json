@@ -1,0 +1,12 @@
+{
+  "source_sha": "792332515b76c8dbf9af908b463d4570432b00dc",
+  "result": "PASS",
+  "experiment_typecheck": "PASS",
+  "build": "PASS",
+  "tip_profile": "profile.json",
+  "rendered_closure": "closure.json",
+  "legacy_prototype": "prototype.json",
+  "legacy_ascent": "ascent.json",
+  "visual_approval": "pending",
+  "note": "4m/.5m are nominal corner guides. The former lower corner is rounded, not kept as a sharp surface vertex. Flat fixture, no noise or dressing."
+}
