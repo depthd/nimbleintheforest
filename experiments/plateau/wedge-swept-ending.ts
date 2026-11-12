@@ -178,7 +178,10 @@ export function buildSweptEnding(source: SourceGrid, upper: SourceGrid, accepted
       seen = true;
       const pl = facePlane(old);
       if (section.some(p => value(pl, p) < -2e-5)) allVisible = false;
-      const above = clip(section, flip(pl));
+      // The protected plateau owns everything inside E. On rough relief a
+      // buried triangle's chord can poke through that top between samples;
+      // it is not an exposed part of the mask and must not be rendered.
+      const above = outsideSeam(clip(section, flip(pl)), id);
       if (above.some(p => value(pl, p) > 1e-4)) pieces.push(above);
       const ground = section.map(p => ({ x: p.x, y: -(pl.x * p.x + pl.z * p.z + pl.d) / pl.y, z: p.z }));
       if (!stableCell(id)) append(outsideSeam(clip(ground, bottomPlane), id).reverse(), restoredP, restoredI);

@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
 import { noiseTexture } from '../../src/core/noisetex';
-import { reliefGrid, reliefTop } from './seam-relief-fixture';
+import { reliefGrid, reliefTop, chaoticTop } from './seam-relief-fixture';
 import { plateauRadius } from './plateau-profile';
 import { smoothstep } from '../../src/core/rng';
 import { sampleGrid } from './seam-boundary';
@@ -13,9 +13,10 @@ import { ascentCenter, ascentWidth, ascentHeight } from './ascent';
 import { type MeshData } from './cavity';
 import { buildWedgeRocks } from './wedge-rocks';
 
-const flat = new URLSearchParams(location.search).get('kind') === 'flat';
-const source = reliefGrid();
-const topAt = flat ? () => 100 : reliefTop;
+const kind = new URLSearchParams(location.search).get('kind') || 'chaotic';
+const flat = kind === 'flat';
+const topAt = flat ? () => 100 : kind === 'chaotic' ? chaoticTop : reliefTop;
+const source = reliefGrid(topAt);
 const upper = { ...source, heights: source.heights.map((_, k) => topAt(source.x0 + k % (source.n + 1) * source.cell, source.z0 + Math.floor(k / (source.n + 1)) * source.cell)) };
 if (flat) source.heights = source.heights.map((_, k) => {
   const x = source.x0 + k % (source.n + 1) * source.cell, z = source.z0 + Math.floor(k / (source.n + 1)) * source.cell;
@@ -90,7 +91,7 @@ function highlight(show: boolean) {
   renderer.shadowMap.needsUpdate = true;
 }
 document.getElementById('highlight')!.onchange = e => highlight((e.target as HTMLInputElement).checked);
-(window as any).__wedgeAscent = { ready: true, junction, source, upper, focus, flat, profile: wedgeProfile, view, setCamera, camera, controls, renderer, surfaces,
+(window as any).__wedgeAscent = { ready: true, junction, source, upper, focus, flat, kind, profile: wedgeProfile, view, setCamera, camera, controls, renderer, surfaces,
   mark: (show: boolean) => { line.visible = show; }, highlight, setRocks, rockGroup, dressing,
   ascentCenter, ascentWidth, ascentHeight,
 };
