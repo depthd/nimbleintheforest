@@ -1,0 +1,366 @@
+{
+  "result": "PASS",
+  "sourceSha": "9462b0b498b89ec0932f536140378b6c821cc6aa",
+  "url": "http://localhost:5237/experiments/plateau/wedge-snow.html",
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "states": [
+    {
+      "variant": "A",
+      "view": "one",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "B",
+      "view": "one",
+      "snowVolume": true,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "C",
+      "view": "one",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": true,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "D",
+      "view": "one",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "E",
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "F",
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "A",
+      "view": "two",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "B",
+      "view": "two",
+      "snowVolume": true,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "C",
+      "view": "two",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": true,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "D",
+      "view": "two",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "E",
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "F",
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "A",
+      "view": "three",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "B",
+      "view": "three",
+      "snowVolume": true,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "C",
+      "view": "three",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": true,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "D",
+      "view": "three",
+      "snowVolume": false,
+      "rounded": false,
+      "smoothUpper": false,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "E",
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": false,
+      "fillIntensity": 1.15,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": true,
+      "pillowsVisible": true
+    },
+    {
+      "variant": "F",
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    }
+  ],
+  "cameras": {
+    "one": {
+      "position": [
+        244.64436973987432,
+        127.31045870807777,
+        194.19342741677312
+      ],
+      "target": [
+        210.05573950985809,
+        105.31045870807777,
+        119.84541696046566
+      ],
+      "fov": 25
+    },
+    "two": {
+      "position": [
+        189.6085280556579,
+        124.31045870807776,
+        194.43034535586753
+      ],
+      "target": [
+        210.05573950985809,
+        105.31045870807777,
+        119.84541696046566
+      ],
+      "fov": 20
+    },
+    "three": {
+      "position": [
+        273.3190657656305,
+        119.31045870807777,
+        161.00062988733185
+      ],
+      "target": [
+        210.05573950985809,
+        105.31045870807777,
+        119.84541696046566
+      ],
+      "fov": 23
+    }
+  },
+  "shader": {
+    "smoothPrograms": 1,
+    "smoothColorReplacement": true,
+    "flatRockRetained": true
+  },
+  "pillowToggle": "PASS",
+  "errors": [],
+  "responses": []
+}

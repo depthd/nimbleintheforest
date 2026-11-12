@@ -1,0 +1,245 @@
+{
+  "method": "Rec.709 mean Y after sRGB decoding of the ACES-rendered PNG. Relative displayed luminance, not illuminance. Fixed exposure 1.05. Each view uses the exact same pixel sets for all six variants, the intersection of world-space owner-ID ROIs. Sky/UI/cornice/old pillows excluded.",
+  "roi": {
+    "centerAngleRad": 0.7,
+    "maxAbsAngleDeltaRad": 0.13,
+    "roof": "owners plateau/strip or new snow inner/outer; normalized plateau radius 0.90–0.98",
+    "wall": "wall/rock owners; radius 1.005–1.115 and world y from stone edge height minus30 to minus8m"
+  },
+  "views": {
+    "one": {
+      "regions": {
+        "wall": {
+          "pixels": 533367,
+          "bboxXYXY": [
+            0,
+            625,
+            1599,
+            999
+          ]
+        },
+        "roof": {
+          "pixels": 32104,
+          "bboxXYXY": [
+            0,
+            250,
+            573,
+            348
+          ]
+        }
+      },
+      "maskIsolation": {
+        "A=C=D": true,
+        "E=F": true
+      },
+      "variants": {
+        "A": {
+          "meanY": {
+            "wall": 0.004036367919250262,
+            "roof": 0.6211499853858681
+          },
+          "wallToRoof": 0.00649821784466888,
+          "roofToWall": 153.88834660573858
+        },
+        "B": {
+          "meanY": {
+            "wall": 0.0033394206203772965,
+            "roof": 0.6577729611298391
+          },
+          "wallToRoof": 0.005076859064929125,
+          "roofToWall": 196.97218047827775
+        },
+        "C": {
+          "meanY": {
+            "wall": 0.004036367919250262,
+            "roof": 0.6413913704069557
+          },
+          "wallToRoof": 0.006293143477576306,
+          "roofToWall": 158.90309883497721
+        },
+        "D": {
+          "meanY": {
+            "wall": 0.010081636795383207,
+            "roof": 0.7070397092946991
+          },
+          "wallToRoof": 0.014258940004147787,
+          "roofToWall": 70.13144032509497
+        },
+        "E": {
+          "meanY": {
+            "wall": 0.0033589263702762146,
+            "roof": 0.6577729611298391
+          },
+          "wallToRoof": 0.005106513293746031,
+          "roofToWall": 195.8283357892565
+        },
+        "F": {
+          "meanY": {
+            "wall": 0.009281138927890885,
+            "roof": 0.7355839668546307
+          },
+          "wallToRoof": 0.01261737523668058,
+          "roofToWall": 79.255786662574
+        }
+      },
+      "DwallRelativeToA": 2.497700159418527,
+      "DroofRelativeToA": 1.1382753375667793
+    },
+    "two": {
+      "regions": {
+        "wall": {
+          "pixels": 417425,
+          "bboxXYXY": [
+            0,
+            485,
+            1599,
+            999
+          ]
+        },
+        "roof": {
+          "pixels": 2435,
+          "bboxXYXY": [
+            0,
+            331,
+            88,
+            384
+          ]
+        }
+      },
+      "maskIsolation": {
+        "A=C=D": true,
+        "E=F": true
+      },
+      "variants": {
+        "A": {
+          "meanY": {
+            "wall": 0.00525541601996817,
+            "roof": 0.5426789866286075
+          },
+          "wallToRoof": 0.009684207698214806,
+          "roofToWall": 103.26089972072168
+        },
+        "B": {
+          "meanY": {
+            "wall": 0.0032086091953526783,
+            "roof": 0.6386177960416585
+          },
+          "wallToRoof": 0.005024302822816064,
+          "roofToWall": 199.03258924976808
+        },
+        "C": {
+          "meanY": {
+            "wall": 0.00525541601996817,
+            "roof": 0.5573206343060443
+          },
+          "wallToRoof": 0.009429789059420034,
+          "roofToWall": 106.0469108798393
+        },
+        "D": {
+          "meanY": {
+            "wall": 0.011498326926602749,
+            "roof": 0.6536211897536645
+          },
+          "wallToRoof": 0.017591729134326592,
+          "roofToWall": 56.84489525527701
+        },
+        "E": {
+          "meanY": {
+            "wall": 0.0032811117957907707,
+            "roof": 0.6386177960416585
+          },
+          "wallToRoof": 0.00513783332711376,
+          "roofToWall": 194.63457382370208
+        },
+        "F": {
+          "meanY": {
+            "wall": 0.009131432130606713,
+            "roof": 0.7224548560132641
+          },
+          "wallToRoof": 0.012639450139482573,
+          "roofToWall": 79.11736578446896
+        }
+      },
+      "DwallRelativeToA": 2.1879004217581217,
+      "DroofRelativeToA": 1.2044343080506679
+    },
+    "three": {
+      "regions": {
+        "wall": {
+          "pixels": 458079,
+          "bboxXYXY": [
+            0,
+            541,
+            1599,
+            999
+          ]
+        },
+        "roof": {
+          "pixels": 19882,
+          "bboxXYXY": [
+            327,
+            240,
+            889,
+            321
+          ]
+        }
+      },
+      "maskIsolation": {
+        "A=C=D": true,
+        "E=F": true
+      },
+      "variants": {
+        "A": {
+          "meanY": {
+            "wall": 0.007117974957192957,
+            "roof": 0.6244914358183357
+          },
+          "wallToRoof": 0.011398034542884546,
+          "roofToWall": 87.73442440778268
+        },
+        "B": {
+          "meanY": {
+            "wall": 0.005746771508133412,
+            "roof": 0.6506284456605181
+          },
+          "wallToRoof": 0.008832647183599987,
+          "roofToWall": 113.21634151274031
+        },
+        "C": {
+          "meanY": {
+            "wall": 0.007117974957192957,
+            "roof": 0.6490756435462866
+          },
+          "wallToRoof": 0.0109663257710661,
+          "roofToWall": 91.18824489405844
+        },
+        "D": {
+          "meanY": {
+            "wall": 0.015118421383433459,
+            "roof": 0.7101462803276285
+          },
+          "wallToRoof": 0.02128916506675008,
+          "roofToWall": 46.972250760638026
+        },
+        "E": {
+          "meanY": {
+            "wall": 0.005753101498808775,
+            "roof": 0.6506284456605181
+          },
+          "wallToRoof": 0.008842376224372154,
+          "roofToWall": 113.09177246312026
+        },
+        "F": {
+          "meanY": {
+            "wall": 0.01411707100701304,
+            "roof": 0.7306265759486643
+          },
+          "wallToRoof": 0.019321869025477306,
+          "roofToWall": 51.754827583264664
+        }
+      },
+      "DwallRelativeToA": 2.1239778833663605,
+      "DroofRelativeToA": 1.1371593581536477
+    }
+  }
+}

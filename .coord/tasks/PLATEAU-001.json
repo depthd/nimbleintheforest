@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "review",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "8496e035fc6cdbcd7422cf2a86c050a7bae8c8d7",
@@ -20,8 +20,8 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "c1921993c3f470d086a0921ffe3b2d9e41df4350",
-  "qa_result": "Chaotic relief and existing rocks enabled for angular/stepped/arcs. Actual shown top guards roof clearance, complete face overlap prevents bridges across valleys; original grid guard retains walls outside the shown roof footprint. All rough closure, attachment/roof/clearance/base immutability/passage checks, typecheck/build PASS. Same-camera dressed/bare evidence. No geometry formula changes, game/cave/physics/mode2/deployment. Awaiting visual review.",
+  "qa_sha": "9462b0b498b89ec0932f536140378b6c821cc6aa",
+  "qa_result": "Snow A-F diagnostic PASS: identical stone/pillows; B/E flat, C/F smooth upper mesh and shader, walls flat. Volume .8/2.5m, overhang2m, R2m in E/F. Three cameras x6, real sections; E gap0, normal angle<.000002deg; max snow mesh step<.444m; pillow clearance1.3495m; fill-only wall luminance x2.50/2.19/2.12. Geometry/typecheck/build/browser PASS. Isolated 64m patch, awaiting user review. Rim task paused. No deployment.",
   "previous_base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
   "published_source_sha": "8b2652a476649fbb80cbfe8fdfcc2b3febfe361d",
   "prototype_base_sha": "fa37c47daf5c34b8ea07a72224694c29e3b5bf36",

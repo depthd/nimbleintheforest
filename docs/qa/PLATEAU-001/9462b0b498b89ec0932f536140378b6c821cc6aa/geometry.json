@@ -1,0 +1,90 @@
+{
+  "result": "PASS",
+  "settings": {
+    "centerAngle": 0.7,
+    "normalRadius": 2,
+    "length": 64,
+    "inside": 5,
+    "plateau": 0.8,
+    "edge": 2.5,
+    "overhang": 2,
+    "radius": 2,
+    "minThickness": 0.15,
+    "slopeStart": 50,
+    "slopeEnd": 60,
+    "alongStep": 0.3,
+    "capStep": 0.2,
+    "maxStep": 0.5,
+    "embed": 0.02
+  },
+  "baseDigest": "45a7f8940789c4a16d7a4d8eb43396dc8999c3dab14c73822a5d3e5692e4179f",
+  "baseUnchanged": true,
+  "pillowsDigest": "0f48bcea557449582b42562dddc021cfdb7dec8f7b53c24c4eff8b4838e88d52",
+  "BandEUpperAndBottomIdentical": true,
+  "reports": [
+    {
+      "rounded": false,
+      "stats": {
+        "maxAlongM": 0.44130887823777337,
+        "maxAcrossM": 0.44352169402855895,
+        "maxCapM": 0.20002808273584627,
+        "alongSamples": 265,
+        "crossSamples": 185,
+        "minThicknessM": 0.8,
+        "bareVertices": 0,
+        "maxSupportLiftM": 0
+      },
+      "overhangErrorM": 0.00000958217391833216,
+      "edgeThicknessErrorM": 0.0000038097494581279534,
+      "seam": {
+        "vertices": 265,
+        "maxHeightOrPositionGapM": 0,
+        "maxFormulaNormalAngleDeg": 0.0000017075472925031877,
+        "note": "Canonical vertex normals. Flat-shaded B/E still use per-face shader normals; their ordinary facet changes are not called a smooth seam."
+      },
+      "closure": {
+        "unpairedEdgesBeforeCollinearCoverage": 16,
+        "maxUncoveredM": 1.1102230246251565e-16,
+        "toleranceM": 0.0005
+      },
+      "pillows": {
+        "testedOverlaps": 202,
+        "minFiniteClearanceM": 1.3495177812366705,
+        "intersectingTriangles": 0,
+        "unchanged": true
+      }
+    },
+    {
+      "rounded": true,
+      "stats": {
+        "maxAlongM": 0.44130887823777337,
+        "maxAcrossM": 0.44352169402855895,
+        "maxCapM": 0.20002808273584627,
+        "alongSamples": 265,
+        "crossSamples": 185,
+        "minThicknessM": 0.8,
+        "bareVertices": 0,
+        "maxSupportLiftM": 0
+      },
+      "overhangErrorM": 0.00000958217391833216,
+      "edgeThicknessErrorM": 0.0000038097494581279534,
+      "seam": {
+        "vertices": 265,
+        "maxHeightOrPositionGapM": 0,
+        "maxFormulaNormalAngleDeg": 0.0000017075472925031877,
+        "note": "Canonical vertex normals. Flat-shaded B/E still use per-face shader normals; their ordinary facet changes are not called a smooth seam."
+      },
+      "closure": {
+        "unpairedEdgesBeforeCollinearCoverage": 16,
+        "maxUncoveredM": 1.1102230246251565e-16,
+        "toleranceM": 0.0005
+      },
+      "pillows": {
+        "testedOverlaps": 202,
+        "minFiniteClearanceM": 1.3495177812366705,
+        "intersectingTriangles": 0,
+        "unchanged": true
+      }
+    }
+  ]
+}
