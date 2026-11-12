@@ -1,0 +1,12 @@
+{
+  "source_sha": "4d3594fd6b8b326c235e1b1a36c226ea5f0246de",
+  "result": "PASS",
+  "experiment_typecheck": "PASS",
+  "build": "PASS",
+  "profile_report": "profile.json",
+  "rendered_closure": "closure.json",
+  "legacy_prototype": "prototype.json",
+  "legacy_ascent": "ascent.json",
+  "visual_approval": "pending",
+  "scope": "Flat bare steep profile, no noise, cladding, physics or deployment. Protected source/upper/E/passage hashes match previous trial."
+}

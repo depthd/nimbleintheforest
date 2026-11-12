@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "review",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "70cead573c7cf02fd234ab076e3ea6807943b1c4",
@@ -20,8 +20,8 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "792332515b76c8dbf9af908b463d4570432b00dc",
-  "qa_result": "Rounded the lower blunt corner into the existing first underside row, removing the shelf. Same flat bare section/front/side cameras. 4m/.5m are nominal guides; actual corner rounded away. Upper/E/source/attachment/passage hashes unchanged. Profile/closure, legacy prototype/ascent, typecheck and build PASS. No noise/dressing/physics/deployment. Awaiting visual review.",
+  "qa_sha": "4d3594fd6b8b326c235e1b1a36c226ea5f0246de",
+  "qa_result": "Replaced the shelf/fillet with a steep depth-parameterized underside. Smooth direction from actual 4m/.5m front into the main descent and back to old lower sixth. Same flat bare section/front/side/general cameras. Protected hashes unchanged; steepness/monotonicity/tangents/discrete turns, rendered closure, legacy tests, typecheck and build PASS. No noise/cladding/physics/deployment. Awaiting visual review.",
   "previous_base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
   "published_source_sha": "8b2652a476649fbb80cbfe8fdfcc2b3febfe361d",
   "prototype_base_sha": "fa37c47daf5c34b8ea07a72224694c29e3b5bf36",
