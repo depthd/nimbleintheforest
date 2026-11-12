@@ -11,6 +11,7 @@ import { wedgeProfile } from './wedge-prototype';
 import { buildWedgeAscent } from './wedge-ascent';
 import { ascentCenter, ascentWidth, ascentHeight } from './ascent';
 import { type MeshData } from './cavity';
+import { buildWedgeRocks } from './wedge-rocks';
 
 const flat = new URLSearchParams(location.search).get('kind') === 'flat';
 const source = reliefGrid();
@@ -34,16 +35,26 @@ const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, .1, 300
 const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = false;
 groundUniforms.uNoise.value = noiseTexture();
 const material = makeRockMaterial(), baseColor = new THREE.Color('#505a65');
-function mesh(data: MeshData) {
+function mesh(data: MeshData & { colors?: number[] }) {
   const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3)); geometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
-  const colors = new Float32Array(data.positions.length);
-  for (let k = 0; k < colors.length; k += 3) colors.set(baseColor.toArray(), k);
+  const colors = data.colors ? new Float32Array(data.colors) : new Float32Array(data.positions.length);
+  if (!data.colors) for (let k = 0; k < colors.length; k += 3) colors.set(baseColor.toArray(), k);
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3)); geometry.computeVertexNormals();
   const m = new THREE.Mesh(geometry, material); m.castShadow = m.receiveShadow = true; return m;
 }
 const changed = new THREE.Group();
 const surfaces = Object.fromEntries(Object.entries(junction.cut).map(([name, data]) => [name, mesh(data)]));
 changed.add(...Object.values(surfaces)); scene.add(changed);
+const dressing = buildWedgeRocks(junction.cut, source, upper);
+const rockGroup = new THREE.Group();
+const rockMesh = mesh(dressing.rocks), snowMesh = mesh(dressing.snow);
+snowMesh.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(.9, .925, .955), roughness: .88 });
+rockGroup.add(rockMesh, snowMesh); changed.add(rockGroup);
+const rocksControl = document.getElementById('rocks') as HTMLInputElement;
+rocksControl.checked = new URLSearchParams(location.search).get('rocks') !== '0';
+rockGroup.visible = rocksControl.checked;
+function setRocks(show: boolean) { rocksControl.checked = show; rockGroup.visible = show; renderer.shadowMap.needsUpdate = true; }
+rocksControl.onchange = () => setRocks(rocksControl.checked);
 const positions: number[] = [], indices: number[] = [];
 for (let j = 0; j <= source.n; j++) for (let i = 0; i <= source.n; i++) positions.push(source.x0 + i * source.cell, source.heights[j * (source.n + 1) + i], source.z0 + j * source.cell);
 for (let j = 0; j < source.n; j++) for (let i = 0; i < source.n; i++) {const a = j * (source.n + 1) + i; indices.push(a, a + source.n + 1, a + 1, a + 1, a + source.n + 1, a + source.n + 2);}
@@ -57,6 +68,8 @@ const focus = { x: -235, y: 65, z: ascentCenter(-235) };
 function setCamera(eye: number[], target: number[]) {camera.position.fromArray(eye); controls.target.fromArray(target); controls.update(); renderer.render(scene, camera);}
 function view(name: string) {
   const views: Record<string, number[][]> = {
+    general: [[-450, 235, -300], [-95, 50, -5]],
+    detail: [[-335, 122, -195], [-245, 79, -110]],
     front: [[-385, 118, -40], [-230, 61, -35]],
     side: [[-300, 128, -195], [-232, 68, -37]],
     top: [[-250, 360, -35.1], [-250, 50, -35]],
@@ -72,11 +85,12 @@ renderer.shadowMap.needsUpdate = true; view('front');
 renderer.setAnimationLoop(() => renderer.render(scene, camera));
 const highlightMaterial = new THREE.MeshStandardMaterial({ color: '#168bd4', roughness: 1, flatShading: true });
 function highlight(show: boolean) {
+  rockGroup.visible = !show && rocksControl.checked;
   for (const name of ['strip', 'underside', 'ending']) surfaces[name].material = show ? highlightMaterial : material;
   renderer.shadowMap.needsUpdate = true;
 }
 document.getElementById('highlight')!.onchange = e => highlight((e.target as HTMLInputElement).checked);
 (window as any).__wedgeAscent = { ready: true, junction, source, upper, focus, flat, profile: wedgeProfile, view, setCamera, camera, controls, renderer, surfaces,
-  mark: (show: boolean) => { line.visible = show; }, highlight,
+  mark: (show: boolean) => { line.visible = show; }, highlight, setRocks, rockGroup, dressing,
   ascentCenter, ascentWidth, ascentHeight,
 };
