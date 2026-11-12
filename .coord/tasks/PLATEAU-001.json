@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "qa",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "e2d9c5843339cc45e602e2a1c037cd98fda91481",
@@ -20,8 +20,8 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "c56fb97f6026215fa77719697f6fea644ea7ccb5",
-  "qa_result": "Smooth-return shape visually accepted by user for trying rock dressing («ну вроде норм»); rock trial in progress. Acceptance does not cover dressing or physics.",
+  "qa_sha": "eae3f09438b52182ae9c948398ef3b5244a3e65b",
+  "qa_result": "Smooth return c56fb97 accepted («ну вроде норм»). Added visual RockSkin/pillow dressing against actual final exterior and both passage walls; bare toggle preserves accepted core. Build, experiment typecheck, independent attachment rays, immutable base hash, upper-clearance and passage-margin checks PASS. Awaiting dressing visual review. Decorative wall protrusions up to 0.8m; no new collisions, cave changes, mode 2 or deployment.",
   "previous_base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
   "published_source_sha": "8b2652a476649fbb80cbfe8fdfcc2b3febfe361d",
   "prototype_base_sha": "fa37c47daf5c34b8ea07a72224694c29e3b5bf36",

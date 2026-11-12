@@ -1,0 +1,30 @@
+{
+  "result": "PASS",
+  "sourceSHA": "eae3f09438b52182ae9c948398ef3b5244a3e65b",
+  "acceptedBaseSHA": "c56fb97f6026215fa77719697f6fea644ea7ccb5",
+  "backend": "Chromium / SwiftShader",
+  "delivery": "local Vite preview of the built source SHA",
+  "errors": [],
+  "shots": [
+    "rocks-general.png",
+    "rocks-side.png",
+    "rocks-detail.png",
+    "rocks-front.png",
+    "rocks-inside.png",
+    "bare-general.png",
+    "bare-side.png",
+    "bare-detail.png"
+  ],
+  "stats": {
+    "exteriorBlocks": 1995,
+    "wallBlocks": 239,
+    "snowCaps": 1400,
+    "rejectedBlocks": 1872,
+    "maxWallProtrusion": 0.8,
+    "minTopClearance": 1.005364522619459
+  },
+  "bareToggleWorks": true,
+  "baseSurfaceCountsUnchanged": true,
+  "physicsPlayerTested": false,
+  "deployed": false
+}

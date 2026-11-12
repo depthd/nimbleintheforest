@@ -1,0 +1,21 @@
+{
+  "result": "PASS",
+  "sourceSHA": "eae3f09438b52182ae9c948398ef3b5244a3e65b",
+  "stats": {
+    "exteriorBlocks": 1995,
+    "wallBlocks": 239,
+    "snowCaps": 1400,
+    "rejectedBlocks": 1872,
+    "maxWallProtrusion": 0.8,
+    "minTopClearance": 1.005364522619459
+  },
+  "rockTriangles": 452910,
+  "snowTriangles": 133747,
+  "rays": 59,
+  "maxAttachmentErrorM": 2.3437142008433856e-13,
+  "maxPassageIntrusionM": 0.800005090595576,
+  "minUpperGridClearanceM": 0.8518667979224119,
+  "baseUnchanged": true,
+  "baseDigest": "e99dcfd9610ebb904f531219e6fc794d3a9b660faee2c5adc321305e505bc324",
+  "physicsPlayerTested": false
+}
