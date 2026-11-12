@@ -5,6 +5,7 @@ require.extensions['.ts'] = (m, f) => m._compile(ts.transpileModule(fs.readFileS
 const { buildWedgeAscent } = require('./wedge-ascent.ts');
 const { reliefGrid, reliefTop } = require('./seam-relief-fixture.ts');
 const { plateauRadius } = require('./plateau-profile.ts');
+const { wedgeProfile } = require('./wedge-prototype.ts');
 const { sampleGrid } = require('./seam-boundary.ts');
 const { triangleVertexIndices } = require('./seam-safe-boundary.ts');
 const { smoothstep } = require('../../src/core/rng.ts');
@@ -35,7 +36,7 @@ function triangles(m) {
       const p = j.uncut.strip.positions;
       maxTopHeightError = Math.max(maxTopHeightError, Math.abs(p[k + 1] - sampleGrid(upper, p[k], p[k + 2]).y));
     }
-    assert.ok(maxTopHeightError < .0001, 'Circular cut preserves the upper face, including its height');
+    assert.ok(maxTopHeightError < .0001, 'Swept return preserves the upper face, including its height');
     for (const p of triangles(j.uncut.strip)) {
       const center = p.reduce((c, v) => c.map((x, i) => x + v[i] / 3), [0, 0, 0]);
       const id = sampleGrid(upper, center[0], center[2]).triangle;
@@ -46,7 +47,7 @@ function triangles(m) {
       maxTopAngle = Math.max(maxTopAngle, Math.acos(Math.max(-1, Math.min(1, n.normalize().dot(original)))) * 180 / Math.PI);
     }
     assert.ok(maxTopAngle < .1, 'No bending of retained upper triangles');
-    const cells = new Map(), oldBottom = triangles(j.accepted.underside);
+    const cells = new Map(), oldBottom = triangles(j.sweptUnder);
     for (const p of oldBottom) {
       const xs = p.map(v => v[0]), zs = p.map(v => v[2]);
       for (let x = Math.floor(Math.min(...xs) / 4); x <= Math.floor(Math.max(...xs) / 4); x++) for (let z = Math.floor(Math.min(...zs) / 4); z <= Math.floor(Math.max(...zs) / 4); z++) {
@@ -67,20 +68,34 @@ function triangles(m) {
       }
       maxUndersideHeightError = Math.max(maxUndersideHeightError, error);
     }
-    assert.ok(maxUndersideHeightError < .0005, 'Concave underside is clipped, never reshaped');
+    assert.ok(maxUndersideHeightError < .0005, 'Visible underside is only trimmed at the original terrain');
+    let maxProfileDepthError = 0;
+    const raw = j.sweptUnder.positions;
+    for (let k = 0; k < raw.length; k += 3) {
+      const x = raw[k], y = raw[k + 1], z = raw[k + 2], a = Math.atan2(z / 180, x / 260);
+      const n = j.ending.buriedNose + (wedgeProfile.nose - j.ending.buriedNose) * j.weight(a);
+      const u = (n - plateauRadius(x, z)) / (wedgeProfile.nose - wedgeProfile.attachment);
+      const wall = require('./plateau-profile.ts').contourPoint(a, wedgeProfile.attachment);
+      const originalDepth = sampleGrid(upper, wall.x, wall.z).y - sampleGrid(source, wall.x, wall.z).y;
+      const actualDepth = sampleGrid(upper, x, z).y - y;
+      maxProfileDepthError = Math.max(maxProfileDepthError, Math.abs(actualDepth - originalDepth * u * u));
+      assert.ok(u > -.0001 && u < 1.0001, 'The whole profile moves at its accepted plan width');
+    }
+    assert.ok(maxProfileDepthError < .0005, 'Cross-section thickness stays fixed instead of fading to the old slope');
+    assert.equal(j.uncut.ending.indices.length, 0, 'No separate vertical cut cap');
     let unchangedFaces = 0;
     for (const name of ['strip', 'underside']) {
-      const current = new Set(triangles(j.uncut[name]).map(triangleKey)), circle = j.ending.circle;
+      const current = new Set(triangles(j.uncut[name]).map(triangleKey));
       for (const p of triangles(j.accepted[name])) {
-        const xs = p.map(v => v[0]), zs = p.map(v => v[2]);
-        const dx = Math.max(Math.min(...xs) - circle.x, 0, circle.x - Math.max(...xs));
-        const dz = Math.max(Math.min(...zs) - circle.z, 0, circle.z - Math.max(...zs));
-        if (Math.hypot(dx, dz) > circle.radius + .01) {
-          assert.ok(current.has(triangleKey(p)), 'Accepted faces outside the circular cut preserved exactly'); unchangedFaces++;
-        }
+        if (!p.every(v => j.weight(Math.atan2(v[2] / 180, v[0] / 260)) === 1)) continue;
+        if (name === 'underside' && !p.every(v => v[1] - sampleGrid(source, v[0], v[2]).y > .001)) continue;
+        const [a,b,c] = p.map(v=>new THREE.Vector3(...v));
+        const area = b.clone().sub(a).cross(c.clone().sub(a)).length();
+        if (area / Math.max(a.distanceTo(b), a.distanceTo(c), b.distanceTo(c)) < .0001) continue;
+        assert.ok(current.has(triangleKey(p)), 'Accepted faces outside the return preserved exactly'); unchangedFaces++;
       }
     }
-    for (const name of ['strip', 'underside', 'ending']) assert.equal(j.cut[name].cutTriangles, 0, 'Mask ends before the passage walls');
+    for (const name of ['strip', 'underside', 'ending']) assert.equal(j.cut[name].cutTriangles, 0, 'Visible mask ends before the passage walls');
     const meshes = Object.entries(j.cut).map(([name, data]) => {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
       g.setIndex(new THREE.BufferAttribute(data.indices, 1));
@@ -105,7 +120,7 @@ function triangles(m) {
       const hit = new THREE.Raycaster(new THREE.Vector3(x, 160, ascentCenter(x)), new THREE.Vector3(0, -1, 0)).intersectObjects(meshes)[0];
       assert.ok(hit && Math.abs(hit.point.y - ascentHeight(x)) < .001, 'Passage open to its existing floor');
     }
-    reports.push({ kind, maxTopHeightErrorM: maxTopHeightError, maxTopAngleDeg: maxTopAngle, maxUndersideHeightErrorM: maxUndersideHeightError, unchangedFaces, wallProbes, maxWidthErrorM: maxWidthError, sourceUnchanged: true });
+    reports.push({ kind, maxTopHeightErrorM: maxTopHeightError, maxTopAngleDeg: maxTopAngle, maxUndersideHeightErrorM: maxUndersideHeightError, maxProfileDepthErrorM: maxProfileDepthError, unchangedFaces, wallProbes, maxWidthErrorM: maxWidthError, sourceUnchanged: true });
   }
   console.log(JSON.stringify({ result: 'PASS', reports, physicsPlayerTested: false }, null, 2));
 })().catch(e => { console.error(e); process.exitCode = 1; });
