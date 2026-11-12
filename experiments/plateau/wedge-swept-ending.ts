@@ -3,7 +3,7 @@
 import { type MeshData, type Point, type Plane, append, plane, clip, flip, value } from './cavity';
 import { type SourceGrid, sampleGrid } from './seam-boundary';
 import { contourPoint, plateauRadius } from './plateau-profile';
-import { lowerTip, undersideDepth, type TipPosition } from './wedge-tip-profile';
+import { lowerTip, undersideDepth, roundTipCorner, type TipPosition } from './wedge-tip-profile';
 import { buildWedge, wedgeProfile } from './wedge-prototype';
 import { profile } from './ascent';
 import { triangleVertexIndices } from './seam-safe-boundary';
@@ -102,17 +102,26 @@ export function buildSweptEnding(source: SourceGrid, upper: SourceGrid, accepted
     const a = angles[i], e = contourPoint(a, wedgeProfile.seam);
     return { angle: a, alongEdge: a / (Math.PI * 2), x: p.x, z: p.z, distanceToE: Math.hypot(p.x - e.x, p.z - e.z), distanceToPassage: distanceToPassage(p) };
   });
-  const lowerNose = nose.map((p, i) => lowerTip(p, tipPositions[i], accepted.tip));
-  bridge(nose, angles, lowerNose, angles);
-  let ring = lowerNose;
-  for (let row = 1; row < wedgeProfile.undersideRows; row++) {
+  const tipCorner = nose.map((p, i) => lowerTip(p, tipPositions[i], accepted.tip));
+  function sectionRow(row: number) {
     const t = row / wedgeProfile.undersideRows;
-    const next = angles.map((a, i) => {
+    return angles.map((a, i) => {
       const wall = contourPoint(a, wedgeProfile.attachment), depth = sampleGrid(upper, wall.x, wall.z).y - sampleGrid(source, wall.x, wall.z).y;
       const n = noseRadius(a), radius = n + (wedgeProfile.attachment - wedgeProfile.nose) * Math.sqrt(t), xz = contourPoint(a, radius);
       return { ...xz, y: sampleGrid(upper, xz.x, xz.z).y - undersideDepth(t, depth, Math.hypot(contourPoint(a, wedgeProfile.nose).x - wall.x, contourPoint(a, wedgeProfile.nose).z - wall.z), tipPositions[i], accepted.tip) };
     });
-    bridge(ring, angles, next, angles); ring = next;
+  }
+  const rounded = tipCorner.some((p, i) => Math.abs(p.y - nose[i].y) > 1e-8);
+  const first = rounded ? sectionRow(1) : [], second = rounded ? sectionRow(2) : [];
+  const curves = rounded ? nose.map((p, i) => roundTipCorner(p, tipCorner[i], first[i], second[i])) : [];
+  const lowerNose = rounded ? curves.map(c => c[0]) : tipCorner;
+  bridge(nose, angles, lowerNose, angles);
+  let ring = lowerNose;
+  if (rounded) for (let step = 1; step < curves[0].length; step++) {
+    const next = curves.map(c => c[step]); bridge(ring, angles, next, angles); ring = next;
+  }
+  for (let row = rounded ? 2 : 1; row < wedgeProfile.undersideRows; row++) {
+    const next = sectionRow(row); bridge(ring, angles, next, angles); ring = next;
   }
   const bottom = accepted.attachment.points.map((p, i) => {
     const a = accepted.attachment.angles[i]; if (weight(a) === 1) return p;

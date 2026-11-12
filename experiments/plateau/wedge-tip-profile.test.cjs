@@ -1,7 +1,7 @@
 const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict'),{createHash}=require('node:crypto');
 require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,f);
 const {buildWedgeAscent}=require('./wedge-ascent.ts'),{buildWedge}=require('./wedge-prototype.ts');
-const {bluntTip,undersideDepth}=require('./wedge-tip-profile.ts'),{reliefGrid}=require('./seam-relief-fixture.ts');
+const {bluntTip,undersideDepth,roundTipCorner}=require('./wedge-tip-profile.ts'),{reliefGrid}=require('./seam-relief-fixture.ts');
 const {plateauRadius}=require('./plateau-profile.ts'),{smoothstep}=require('../../src/core/rng.ts');
 const hash=(...arrays)=>{const h=createHash('sha256');for(const a of arrays)h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));return h.digest('hex');};
 const meshHash=m=>hash(m.positions,m.indices),pointHash=p=>hash(new Float64Array(p.flatMap(p=>[p.x,p.y,p.z])));
@@ -20,7 +20,7 @@ assert.equal(pointHash(a.attachment.points),pointHash(b.attachment.points));
 protectedHashes.E=pointHash(b.seam.points);protectedHashes.upperNose=pointHash(b.nose.points);protectedHashes.attachment=pointHash(b.attachment.points);
 let maxThicknessError=0,maxBacksetError=0;
 b.nose.points.forEach((p,i)=>{
- const q=b.lowerNose[i];maxThicknessError=Math.max(maxThicknessError,Math.abs(p.y-q.y-4));
+ const q=b.tipCorner[i];maxThicknessError=Math.max(maxThicknessError,Math.abs(p.y-q.y-4));
  maxBacksetError=Math.max(maxBacksetError,Math.abs(Math.hypot(p.x,p.z)-Math.hypot(q.x,q.z)-.5));
 });
 assert.ok(maxThicknessError<1e-9&&maxBacksetError<1e-9);
@@ -38,6 +38,15 @@ for(const depth of [40,50,65]){
  const eps=1e-5,left=(undersideDepth(end*end,depth,span,pos,bluntTip)-undersideDepth((end-eps)**2,depth,span,pos,bluntTip))/eps;
  assert.ok(Math.abs(left-2*depth*end)<.01,'Curve must meet old underside tangentially');
 }
+// A flat profile's straight front and its first underside segment are the
+// incoming/outgoing directions of the rounded corner, with no level shelf.
+const top={x:25,y:100,z:0},corner={x:24.5,y:96,z:0},first={x:21,y:95.6,z:0},second={x:19,y:94.5,z:0};
+const round=roundTipCorner(top,corner,first,second);
+function turnAngle(a,b,c){const u=[b.x-a.x,b.y-a.y,b.z-a.z],v=[c.x-b.x,c.y-b.y,c.z-b.z];return Math.acos(Math.max(-1,Math.min(1,u.reduce((s,x,i)=>s+x*v[i],0)/(Math.hypot(...u)*Math.hypot(...v)))))*180/Math.PI;}
+const profile=[top,...round,second];let maxTurnDeg=0;
+for(let i=1;i<profile.length-1;i++)maxTurnDeg=Math.max(maxTurnDeg,turnAngle(profile[i-1],profile[i],profile[i+1]));
+assert.ok(maxTurnDeg<15,'Rounded section must not have the old abrupt corner');
+for(let i=1;i<round.length;i++){assert.ok(round[i].y<round[i-1].y,'No horizontal shelf or upward bump');assert.ok(round[i].x<round[i-1].x,'Round must move continuously inward');}
 // Callbacks receive position independently for each sample, including optional
 // passage proximity in the swept builder. No noise or fade is applied here.
 let calls=0,passageCalls=0;
@@ -45,4 +54,4 @@ const callbacks={thickness:p=>{assert.ok(Number.isFinite(p.distanceToE)&&Number.
 buildWedge(source,upper,callbacks);
 assert.ok(calls>100);
 buildWedgeAscent(source,upper,undefined,callbacks);assert.ok(passageCalls>100);
-console.log(JSON.stringify({result:'PASS',trial:'flat bare blunt tip 4m / 0.5m',maxThicknessError,maxBacksetError,protectedHashes,note:'Geometry checks; no dressing, physics or visual acceptance claim.'},null,2));
+console.log(JSON.stringify({result:'PASS',trial:'flat bare rounded tip, nominal corner 4m / 0.5m',nominalThicknessError:maxThicknessError,nominalBacksetError:maxBacksetError,maxTurnDeg,protectedHashes,note:'Geometry checks; no dressing, physics or visual acceptance claim.'},null,2));

@@ -21,24 +21,23 @@ export function sectionSvg(meshes: Record<string, MeshData>) {
     if (points.length === 2 && points.every(p => p.r > 0)) segments.push(points);
   }
   const all = segments.flat(), top = all.filter(p => Math.abs(p.y - 100) < .001).sort((a, b) => b.r - a.r)[0];
-  const bottom = all.filter(p => Math.abs(p.y - 96) < .001).sort((a, b) => b.r - a.r)[0];
-  if (!top || !bottom) throw Error('Flat blunt section must contain both tip corners');
+  if (!top) throw Error('Flat section must contain the upper tip');
   const e = contourPoint(sectionAngle, wedgeProfile.seam), er = e.x * dx + e.z * dz;
   const x = (r: number) => 430 + (top.r - r) * 11, y = (v: number) => 180 + (100 - v) * 11;
   const path = segments.map(([a, b]) => `M${x(a.r)},${y(a.y)} L${x(b.r)},${y(b.y)}`).join(' ');
+  const turn = segments.filter(s => s.every(p => p.r > top.r - 5 && p.y < 100.001) && Math.abs(s[0].y - s[1].y) > 1e-6)
+    .map(([a, b]) => `M${x(a.r)},${y(a.y)} L${x(b.r)},${y(b.y)}`).join(' ');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" style="width:100%;height:100%;background:#f5f6f7;font:22px system-ui;color:#24303a">
     <defs><clipPath id="profile-clip"><rect x="390" y="140" width="940" height="740"/></clipPath></defs>
     <text x="80" y="70" font-size="32" fill="#24303a">Разрез козырька · без камней и шума</text>
     <text x="80" y="110" fill="#56626c">Линии получены пересечением готовой поверхности. Масштаб по обеим осям одинаковый.</text>
     <g clip-path="url(#profile-clip)"><path d="${path}" fill="none" stroke="#273946" stroke-width="4" stroke-linecap="round"/>
     <path d="M${x(er)},145 V850" stroke="#84949e" stroke-width="2" stroke-dasharray="8 8"/></g>
-    <path d="M${x(top.r)},${y(top.y)} L${x(bottom.r)},${y(bottom.y)}" stroke="#da733c" stroke-width="6"/>
-    <circle cx="${x(top.r)}" cy="${y(top.y)}" r="5" fill="#da733c"/><circle cx="${x(bottom.r)}" cy="${y(bottom.y)}" r="5" fill="#da733c"/>
-    <path d="M410,180 H310 V224 H410" fill="none" stroke="#da733c" stroke-width="2"/>
-    <text x="240" y="211" fill="#ad5425">4 м</text>
+    <path d="${turn}" fill="none" stroke="#da733c" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="${x(top.r)}" cy="${y(top.y)}" r="5" fill="#da733c"/>
     <text x="80" y="285" fill="#24303a">Верхняя точка на месте</text>
-    <text x="80" y="320" fill="#24303a">Нижняя — на 0,5 м внутрь</text>
+    <text x="80" y="320" fill="#ad5425">Плавный поворот без полочки</text>
     <text x="${x(er) + 12}" y="150" fill="#56626c">E · без изменений</text>
-    <text x="80" y="935" fill="#56626c">Изменён только конец низа. Дальше дуга и нижний стык прежние.</text>
+    <text x="80" y="935" fill="#56626c">Скруглён переход от торца к дуге. Дальняя часть и нижний стык прежние.</text>
   </svg>`;
 }

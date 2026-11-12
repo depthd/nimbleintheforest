@@ -36,7 +36,7 @@ const sectionButton = document.querySelector<HTMLButtonElement>('[data-view="sec
 sectionButton.hidden = !blunt || !flat;
 if (blunt) {
   document.querySelector('aside b')!.textContent = 'Козырёк · тупой торец';
-  document.querySelector('aside b + div')!.textContent = 'Верх на месте. Нижняя точка: 4 м вниз и 0,5 м внутрь. Без камней и шума.';
+  document.querySelector('aside b + div')!.textContent = 'Верх на месте. Торец плавно переходит в нижнюю дугу. Без камней и шума.';
 }
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(1); renderer.setSize(innerWidth, innerHeight);
