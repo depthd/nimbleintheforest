@@ -1,0 +1,29 @@
+{
+  "result": "PASS",
+  "sourceSHA": "c56fb97f6026215fa77719697f6fea644ea7ccb5",
+  "reports": [
+    {
+      "kind": "flat",
+      "maxTopHeightErrorM": 0,
+      "maxTopAngleDeg": 8.537736462515939e-07,
+      "maxUndersideHeightErrorM": 5.810632212939372e-05,
+      "maxProfileDepthErrorM": 0.00013054947778101678,
+      "unchangedFaces": 38809,
+      "wallProbes": 60,
+      "maxWidthErrorM": 2.2310446290418895e-06,
+      "sourceUnchanged": true
+    },
+    {
+      "kind": "relief",
+      "maxTopHeightErrorM": 1.1113414075225592e-05,
+      "maxTopAngleDeg": 0.015188040933262315,
+      "maxUndersideHeightErrorM": 5.2690778083871556e-05,
+      "maxProfileDepthErrorM": 0.00013632125608609158,
+      "unchangedFaces": 38809,
+      "wallProbes": 60,
+      "maxWidthErrorM": 2.2310446290418895e-06,
+      "sourceUnchanged": true
+    }
+  ],
+  "physicsPlayerTested": false
+}
