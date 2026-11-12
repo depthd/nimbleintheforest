@@ -1,0 +1,51 @@
+
+> nimble-in-the-forest@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 154 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/experiments/plateau/wedge.html                 2.28 kB │ gzip:     1.20 kB
+dist/experiments/plateau/wedge-snow.html            2.83 kB │ gzip:     1.38 kB
+dist/experiments/plateau/wedge-ascent.html          3.26 kB │ gzip:     1.52 kB
+dist/experiments/mountains/index.html               3.28 kB │ gzip:     1.55 kB
+dist/experiments/mountains/plan-preview.html        4.28 kB │ gzip:     2.10 kB
+dist/experiments/plateau/index.html                 4.45 kB │ gzip:     1.90 kB
+dist/experiments/mountains/crossing.html            4.85 kB │ gzip:     2.20 kB
+dist/index.html                                     9.64 kB │ gzip:     3.50 kB
+dist/assets/terrain-worker-CnNmfg5S.js             69.98 kB
+dist/assets/main-vfwSP27C.css                       1.62 kB │ gzip:     0.76 kB
+dist/assets/main-BqxwiJtu.css                      16.89 kB │ gzip:     4.42 kB
+dist/assets/mountainCrossing-C0PoY2Yq.js            0.48 kB │ gzip:     0.38 kB
+dist/assets/mountains-UyCjsLn4.js                   0.54 kB │ gzip:     0.42 kB
+dist/assets/modulepreload-polyfill-B5Qt9EMX.js      0.71 kB │ gzip:     0.40 kB
+dist/assets/preload-helper-PPVm8Dsz.js              1.23 kB │ gzip:     0.71 kB
+dist/assets/rng-CfIYparh.js                         1.65 kB │ gzip:     0.89 kB
+dist/assets/preview_animals-CCw-ti8U.js             1.80 kB │ gzip:     1.05 kB
+dist/assets/preview-BtyRcIH7.js                     1.84 kB │ gzip:     1.04 kB
+dist/assets/preview_wood-2tcAjSpF.js                2.20 kB │ gzip:     1.16 kB
+dist/assets/ascent-Dx1xGnmY.js                      2.21 kB │ gzip:     1.06 kB
+dist/assets/c1-lab-BECxn1xf.js                      3.29 kB │ gzip:     1.96 kB
+dist/assets/plateauWedge-vvdIzrTW.js                3.52 kB │ gzip:     1.85 kB
+dist/assets/wedge-prototype-DwAvI8wr.js             4.51 kB │ gzip:     2.21 kB
+dist/assets/seam-boundary-DnShew1B.js               5.69 kB │ gzip:     2.60 kB
+dist/assets/plateauWedgeAscent-CvxPuoJt.js         13.17 kB │ gzip:     6.38 kB
+dist/assets/mountainPlan-DPRiCapS.js               14.17 kB │ gzip:     6.06 kB
+dist/assets/wedge-rocks-DYGTfbGS.js                16.08 kB │ gzip:     7.05 kB
+dist/assets/plateauSnow-CE0uSKdi.js                18.45 kB │ gzip:     8.57 kB
+dist/assets/rock-skin-BkJej36q.js                  27.20 kB │ gzip:    11.92 kB
+dist/assets/crossing-view-mPSc4dfn.js              30.46 kB │ gzip:    13.01 kB
+dist/assets/plateau-Cl-jS1P4.js                    32.11 kB │ gzip:    11.88 kB
+dist/assets/main-DmIgPbZn.js                       43.23 kB │ gzip:    17.81 kB
+dist/assets/cliffs-D2b7INzg.js                     64.21 kB │ gzip:    20.95 kB
+dist/assets/main-CLQo1Hnd.js                      652.44 kB │ gzip:   237.27 kB
+dist/assets/three.module-cuH02CQp.js              746.58 kB │ gzip:   192.13 kB
+dist/assets/rapier-OnF19VgH.js                  4,334.40 kB │ gzip: 1,644.49 kB
+✓ built in 4.34s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice
