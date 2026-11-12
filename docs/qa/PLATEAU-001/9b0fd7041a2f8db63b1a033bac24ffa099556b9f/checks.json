@@ -1,0 +1,14 @@
+{
+  "source_sha": "9b0fd7041a2f8db63b1a033bac24ffa099556b9f",
+  "result": "PASS",
+  "fixture": "chaotic",
+  "tip": "blunt steep profile from 4d3594f",
+  "build": "PASS",
+  "experiment_typecheck": "PASS",
+  "dressing_report": "dressing.json",
+  "rendered_closure": "closure.json",
+  "visual_approval": "pending",
+  "profile_generator_unchanged": true,
+  "rock_generator_unchanged": true,
+  "no_deployment": true
+}

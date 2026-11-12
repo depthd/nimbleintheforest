@@ -1,0 +1,23 @@
+{
+  "blunt": true,
+  "kind": "chaotic",
+  "build": "9b0fd7041a2f8db63b1a033bac24ffa099556b9f",
+  "stats": {
+    "exteriorBlocks": 1984,
+    "wallBlocks": 242,
+    "snowCaps": 1393,
+    "rejectedBlocks": 1880,
+    "maxWallProtrusion": 0.8,
+    "minTopClearance": 1.0046312813700524
+  },
+  "rockControlEnabled": true,
+  "links": [
+    "blunt",
+    "blunt",
+    "blunt"
+  ],
+  "result": "PASS",
+  "checkbox_toggle": "PASS",
+  "terrain_links_preserve_blunt": "PASS",
+  "page_errors": []
+}
