@@ -14,9 +14,13 @@ import { ascentCenter, ascentWidth, ascentHeight } from './ascent';
 import { type MeshData } from './cavity';
 import { buildWedgeRocks } from './wedge-rocks';
 import { sectionAngle, sectionSvg } from './wedge-section';
+import { buildRimVariant, rimSettings, type RimKind } from './wedge-rim';
 
-const blunt = new URLSearchParams(location.search).get('nose') === 'blunt';
-const kind = new URLSearchParams(location.search).get('kind') || 'chaotic';
+const query = new URLSearchParams(location.search);
+const rimParam = query.get('rim');
+const rimKind = ['angular', 'stepped', 'arcs'].includes(rimParam || '') ? rimParam as RimKind : null;
+const blunt = !!rimKind || query.get('nose') === 'blunt';
+const kind = query.get('kind') || (rimKind ? 'flat' : 'chaotic');
 const flat = kind === 'flat';
 const topAt = flat ? () => 100 : kind === 'chaotic' ? chaoticTop : reliefTop;
 const source = reliefGrid(topAt);
@@ -28,12 +32,14 @@ if (flat) source.heights = source.heights.map((_, k) => {
 });
 const junction = buildWedgeAscent(source, upper, undefined, blunt ? bluntTip : sharpTip);
 const wedge = junction.accepted;
+const rim = rimKind ? buildRimVariant(junction, rimKind, { ...rimSettings, seed: Number(query.get('rimSeed') || rimSettings.seed) }) : undefined;
+const shownCut = rim?.cut || junction.cut;
 const section = document.createElement('div');
 section.style.cssText = 'display:none;position:fixed;inset:0;z-index:2';
-if (blunt && flat) section.innerHTML = sectionSvg(junction.cut, source);
+if (blunt && flat && !rim) section.innerHTML = sectionSvg(junction.cut, source);
 document.body.append(section);
 const sectionButton = document.querySelector<HTMLButtonElement>('[data-view="section"]')!;
-sectionButton.hidden = !blunt || !flat;
+sectionButton.hidden = !blunt || !flat || !!rim;
 if (blunt) {
   document.querySelector('aside b')!.textContent = 'Козырёк · тупой торец';
   document.querySelector('aside b + div')!.textContent = flat ? 'Крутой профиль · плоский контроль. Скалы можно скрыть переключателем.' : 'Крутой профиль · неровный рельеф. Скалы можно скрыть переключателем.';
@@ -60,15 +66,16 @@ function mesh(data: MeshData & { colors?: number[] }) {
   const m = new THREE.Mesh(geometry, material); m.castShadow = m.receiveShadow = true; return m;
 }
 const changed = new THREE.Group();
-const surfaces = Object.fromEntries(Object.entries(junction.cut).map(([name, data]) => [name, mesh(data)]));
+const surfaces = Object.fromEntries(Object.entries(shownCut).map(([name, data]) => [name, mesh(data)]));
 changed.add(...Object.values(surfaces)); scene.add(changed);
-const dressing = buildWedgeRocks(junction.cut, source, upper);
+const dressing = rim ? { rocks: { positions: new Float32Array(), indices: new Uint32Array(), colors: [] }, snow: { positions: new Float32Array(), indices: new Uint32Array() }, stats: { rimComparison: true } } : buildWedgeRocks(junction.cut, source, upper);
 const rockGroup = new THREE.Group();
 const rockMesh = mesh(dressing.rocks), snowMesh = mesh(dressing.snow);
 snowMesh.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(.9, .925, .955), roughness: .88 });
 rockGroup.add(rockMesh, snowMesh); changed.add(rockGroup);
 const rocksControl = document.getElementById('rocks') as HTMLInputElement;
-rocksControl.checked = new URLSearchParams(location.search).get('rocks') !== '0';
+rocksControl.checked = !rim && query.get('rocks') !== '0';
+rocksControl.disabled = !!rim;
 rockGroup.visible = rocksControl.checked;
 function setRocks(show: boolean) { rocksControl.checked = show; rockGroup.visible = show; renderer.shadowMap.needsUpdate = true; }
 rocksControl.onchange = () => setRocks(rocksControl.checked);
@@ -84,6 +91,16 @@ scene.add(sun, sun.target, new THREE.HemisphereLight('#b8d5f4', '#727a83', 1.15)
 const focus = { x: -235, y: 65, z: ascentCenter(-235) };
 function setCamera(eye: number[], target: number[]) {camera.position.fromArray(eye); controls.target.fromArray(target); controls.update(); renderer.render(scene, camera);}
 function view(name: string) {
+  if (rim) {
+    const isolated = name === 'front';
+    for (const key of ['plateau', 'strip', 'flank', 'restored', 'interior']) surfaces[key].visible = !isolated;
+    camera.fov = isolated ? 18 : 60; camera.updateProjectionMatrix();
+    if (isolated) {
+      const p = contourPoint(4.35, 1.09), length = Math.hypot(p.x, p.z), dx = p.x / length, dz = p.z / length;
+      setCamera([p.x + 280 * dx, 78, p.z + 280 * dz], [p.x, 78, p.z]);
+      section.style.display = 'none'; return;
+    }
+  }
   section.style.display = name === 'section' ? 'block' : 'none';
   if (name === 'section') return;
   const views: Record<string, number[][]> = {
@@ -114,7 +131,15 @@ function highlight(show: boolean) {
   renderer.shadowMap.needsUpdate = true;
 }
 document.getElementById('highlight')!.onchange = e => highlight((e.target as HTMLInputElement).checked);
-(window as any).__wedgeAscent = { ready: true, junction, source, upper, focus, flat, kind, blunt, profile: wedgeProfile, view, setCamera, camera, controls, renderer, surfaces,
+(window as any).__wedgeAscent = { ready: true, junction, rim, shownCut, source, upper, focus, flat, kind, blunt, profile: wedgeProfile, view, setCamera, camera, controls, renderer, surfaces,
   mark: (show: boolean) => { line.visible = show; }, highlight, setRocks, rockGroup, dressing,
   ascentCenter, ascentWidth, ascentHeight,
 };
+
+if (rim) {
+  document.getElementById('rim-controls')!.hidden = false;
+  document.querySelector('aside b')!.textContent = 'Кромка · три варианта';
+  document.querySelector('aside b + div')!.textContent = 'Спереди — только внешняя маска, верх скрыт. Общий вид — вся гора. Без скал и снега.';
+  for (const a of document.querySelectorAll<HTMLAnchorElement>('[data-rim]')) { const url = new URL(location.href); url.searchParams.set('rim', a.dataset.rim!); a.href = url.href; a.style.fontWeight = a.dataset.rim === rimKind ? 'bold' : 'normal'; }
+  document.querySelectorAll<HTMLAnchorElement>('small a[href^="http"]').forEach(a => { const url = new URL(a.href); url.searchParams.set('rim', rimKind!); a.href = url.href; });
+}
