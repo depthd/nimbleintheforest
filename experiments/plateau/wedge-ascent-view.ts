@@ -30,7 +30,7 @@ const junction = buildWedgeAscent(source, upper, undefined, blunt ? bluntTip : s
 const wedge = junction.accepted;
 const section = document.createElement('div');
 section.style.cssText = 'display:none;position:fixed;inset:0;z-index:2';
-if (blunt && flat) section.innerHTML = sectionSvg(junction.cut);
+if (blunt && flat) section.innerHTML = sectionSvg(junction.cut, source);
 document.body.append(section);
 const sectionButton = document.querySelector<HTMLButtonElement>('[data-view="section"]')!;
 sectionButton.hidden = !blunt || !flat;
