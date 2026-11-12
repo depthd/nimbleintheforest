@@ -16,7 +16,7 @@ import { buildWedgeRocks } from './wedge-rocks';
 import { sectionAngle, sectionSvg } from './wedge-section';
 
 const blunt = new URLSearchParams(location.search).get('nose') === 'blunt';
-const kind = new URLSearchParams(location.search).get('kind') || (blunt ? 'flat' : 'chaotic');
+const kind = new URLSearchParams(location.search).get('kind') || 'chaotic';
 const flat = kind === 'flat';
 const topAt = flat ? () => 100 : kind === 'chaotic' ? chaoticTop : reliefTop;
 const source = reliefGrid(topAt);
@@ -36,7 +36,10 @@ const sectionButton = document.querySelector<HTMLButtonElement>('[data-view="sec
 sectionButton.hidden = !blunt || !flat;
 if (blunt) {
   document.querySelector('aside b')!.textContent = 'Козырёк · тупой торец';
-  document.querySelector('aside b + div')!.textContent = 'Верх на месте. Торец плавно переходит в нижнюю дугу. Без камней и шума.';
+  document.querySelector('aside b + div')!.textContent = flat ? 'Крутой профиль · плоский контроль. Скалы можно скрыть переключателем.' : 'Крутой профиль · неровный рельеф. Скалы можно скрыть переключателем.';
+  document.querySelectorAll<HTMLAnchorElement>('small a[href^="?kind="]').forEach(a => {
+    const url = new URL(a.href); url.searchParams.set('nose', 'blunt'); a.href = url.href;
+  });
 }
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(1); renderer.setSize(innerWidth, innerHeight);
@@ -59,14 +62,13 @@ function mesh(data: MeshData & { colors?: number[] }) {
 const changed = new THREE.Group();
 const surfaces = Object.fromEntries(Object.entries(junction.cut).map(([name, data]) => [name, mesh(data)]));
 changed.add(...Object.values(surfaces)); scene.add(changed);
-const dressing = blunt ? { rocks: { positions: new Float32Array(), indices: new Uint32Array(), colors: [] }, snow: { positions: new Float32Array(), indices: new Uint32Array() }, stats: { disabledForTipTrial: true } } : buildWedgeRocks(junction.cut, source, upper);
+const dressing = buildWedgeRocks(junction.cut, source, upper);
 const rockGroup = new THREE.Group();
 const rockMesh = mesh(dressing.rocks), snowMesh = mesh(dressing.snow);
 snowMesh.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(.9, .925, .955), roughness: .88 });
 rockGroup.add(rockMesh, snowMesh); changed.add(rockGroup);
 const rocksControl = document.getElementById('rocks') as HTMLInputElement;
-rocksControl.checked = !blunt && new URLSearchParams(location.search).get('rocks') !== '0';
-rocksControl.disabled = blunt;
+rocksControl.checked = new URLSearchParams(location.search).get('rocks') !== '0';
 rockGroup.visible = rocksControl.checked;
 function setRocks(show: boolean) { rocksControl.checked = show; rockGroup.visible = show; renderer.shadowMap.needsUpdate = true; }
 rocksControl.onchange = () => setRocks(rocksControl.checked);

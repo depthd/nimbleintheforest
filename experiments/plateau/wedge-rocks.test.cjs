@@ -2,11 +2,12 @@ const fs = require('node:fs'), assert = require('node:assert/strict'), crypto = 
 require.extensions['.ts'] = (m, f) => m._compile(ts.transpileModule(fs.readFileSync(f, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, f);
 const {buildWedgeAscent} = require('./wedge-ascent.ts'), {buildWedgeRocks} = require('./wedge-rocks.ts');
 const {reliefGrid, reliefTop, chaoticTop} = require('./seam-relief-fixture.ts'), {contourPoint, plateauRadius} = require('./plateau-profile.ts');
+const {bluntTip,sharpTip}=require('./wedge-tip-profile.ts');
 const {sampleGrid} = require('./seam-boundary.ts'), {ascentCenter, ascentWidth, ascentHeight} = require('./ascent.ts');
 function digest(j, source, upper) { const h=crypto.createHash('sha256'); for(const m of Object.values(j.cut)) {h.update(m.positions);h.update(m.indices);}h.update(source.heights);h.update(upper.heights);return h.digest('hex'); }
 (async()=>{
  const THREE = await import('three'), source=reliefGrid(process.env.RELIEF_KIND==='chaotic'?chaoticTop:reliefTop), upper={...source,heights:source.heights.map((_,k)=>(process.env.RELIEF_KIND==='chaotic'?chaoticTop:reliefTop)(source.x0+k%(source.n+1)*source.cell,source.z0+Math.floor(k/(source.n+1))*source.cell))};
- const j=buildWedgeAscent(source,upper), before=digest(j,source,upper), dressing=buildWedgeRocks(j.cut,source,upper);
+ const j=buildWedgeAscent(source,upper,undefined,process.env.TIP_KIND==='blunt'?bluntTip:sharpTip), before=digest(j,source,upper), dressing=buildWedgeRocks(j.cut,source,upper);
  assert.equal(digest(j,source,upper),before,'Dressing must not mutate the accepted base or source heights');
  assert.ok(dressing.stats.exteriorBlocks>500 && dressing.stats.wallBlocks>100,'Both exterior and passage walls are dressed');
  const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
@@ -32,5 +33,5 @@ function digest(j, source, upper) { const h=crypto.createHash('sha256'); for(con
  }
  assert.ok(minTopClearance>.25,'No dressing or snow crosses the upper face');
  assert.ok(maxPassageIntrusion<=.801,'Wall dressing stays in the narrow margin beside the original walls');
- console.log(JSON.stringify({result:'PASS',stats:dressing.stats,rockTriangles:dressing.rocks.indices.length/3,snowTriangles:dressing.snow.indices.length/3,rays,maxAttachmentErrorM:maxAttachmentError,maxPassageIntrusionM:maxPassageIntrusion,minUpperGridClearanceM:minTopClearance,baseUnchanged:true,baseDigest:before,physicsPlayerTested:false},null,2));
+ console.log(JSON.stringify({result:'PASS',relief:process.env.RELIEF_KIND||'relief',tip:process.env.TIP_KIND||'sharp',stats:dressing.stats,rockTriangles:dressing.rocks.indices.length/3,snowTriangles:dressing.snow.indices.length/3,rays,maxAttachmentErrorM:maxAttachmentError,maxPassageIntrusionM:maxPassageIntrusion,minUpperGridClearanceM:minTopClearance,baseUnchanged:true,baseDigest:before,physicsPlayerTested:false},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1});
