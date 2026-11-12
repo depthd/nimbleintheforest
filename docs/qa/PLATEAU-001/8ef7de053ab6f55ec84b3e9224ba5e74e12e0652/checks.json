@@ -1,0 +1,27 @@
+{
+  "sourceSHA": "8ef7de053ab6f55ec84b3e9224ba5e74e12e0652",
+  "build": "PASS",
+  "experimentTypecheck": "PASS",
+  "chaoticClosure": {
+    "result": "PASS",
+    "toleranceM": 0.0005,
+    "maxUncoveredM": 9.114858313807872e-05
+  },
+  "previousReliefClosure": {
+    "result": "PASS",
+    "maxUncoveredM": 9.484971796869246e-05
+  },
+  "chaoticDressing": {
+    "result": "PASS",
+    "exteriorBlocks": 1995,
+    "wallBlocks": 242,
+    "snowCaps": 1401,
+    "rays": 60,
+    "maxAttachmentErrorM": 2.481819080425819e-13,
+    "maxPassageIntrusionM": 0.8000055431804185,
+    "minUpperGridClearanceM": 0.9560331396310175,
+    "baseUnchangedDuringDressing": true,
+    "baseDigest": "348527b04aeb4def8d1b0139a985f19232bd28272f03e689499dd19637ec7be4"
+  },
+  "physicsPlayerTested": false
+}

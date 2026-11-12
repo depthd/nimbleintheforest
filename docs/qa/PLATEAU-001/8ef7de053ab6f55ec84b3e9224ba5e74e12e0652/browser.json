@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "sourceSHA": "8ef7de053ab6f55ec84b3e9224ba5e74e12e0652",
+  "backend": "Chromium / SwiftShader",
+  "delivery": "local Vite preview",
+  "errors": [],
+  "shots": [
+    "chaotic-general.png",
+    "chaotic-detail.png",
+    "chaotic-top.png",
+    "relief-general.png",
+    "relief-detail.png"
+  ],
+  "sameCamerasAndLight": true,
+  "physicsPlayerTested": false,
+  "deployed": false
+}
