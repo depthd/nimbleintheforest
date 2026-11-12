@@ -1,0 +1,77 @@
+{
+  "result": "PASS",
+  "modes": [
+    {
+      "mode": "angular",
+      "kind": "chaotic",
+      "seed": 128719,
+      "build": "c1921993c3f470d086a0921ffe3b2d9e41df4350",
+      "rocksEnabled": true,
+      "rocksVisible": true,
+      "stats": {
+        "exteriorBlocks": 1890,
+        "wallBlocks": 242,
+        "snowCaps": 1326,
+        "rejectedBlocks": 1974,
+        "maxWallProtrusion": 0.8,
+        "minTopClearance": 1.007621921463354
+      },
+      "links": [
+        "angular",
+        "stepped",
+        "arcs"
+      ],
+      "result": "PASS",
+      "pageErrors": [],
+      "checkboxToggle": "PASS"
+    },
+    {
+      "mode": "stepped",
+      "kind": "chaotic",
+      "seed": 128719,
+      "build": "c1921993c3f470d086a0921ffe3b2d9e41df4350",
+      "rocksEnabled": true,
+      "rocksVisible": true,
+      "stats": {
+        "exteriorBlocks": 1874,
+        "wallBlocks": 242,
+        "snowCaps": 1318,
+        "rejectedBlocks": 1990,
+        "maxWallProtrusion": 0.8,
+        "minTopClearance": 1.0068025805123284
+      },
+      "links": [
+        "angular",
+        "stepped",
+        "arcs"
+      ],
+      "result": "PASS",
+      "pageErrors": [],
+      "checkboxToggle": "PASS"
+    },
+    {
+      "mode": "arcs",
+      "kind": "chaotic",
+      "seed": 128719,
+      "build": "c1921993c3f470d086a0921ffe3b2d9e41df4350",
+      "rocksEnabled": true,
+      "rocksVisible": true,
+      "stats": {
+        "exteriorBlocks": 1908,
+        "wallBlocks": 242,
+        "snowCaps": 1340,
+        "rejectedBlocks": 1956,
+        "maxWallProtrusion": 0.8,
+        "minTopClearance": 1.007621921463354
+      },
+      "links": [
+        "angular",
+        "stepped",
+        "arcs"
+      ],
+      "result": "PASS",
+      "pageErrors": [],
+      "checkboxToggle": "PASS"
+    }
+  ]
+}

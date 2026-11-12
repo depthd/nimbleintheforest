@@ -1,0 +1,19 @@
+{
+  "source_sha": "c1921993c3f470d086a0921ffe3b2d9e41df4350",
+  "result": "PASS",
+  "fixture": "chaotic",
+  "rim_seed": 128719,
+  "build": "PASS",
+  "experiment_typecheck": "PASS",
+  "modes": [
+    "angular",
+    "stepped",
+    "arcs"
+  ],
+  "roof_check": "actual rendered plateau/strip triangles, independent vertical Three rays",
+  "geometry_mutated_by_dressing": false,
+  "visual_approval": "pending",
+  "no_deployment": true,
+  "whole_face_guard": "Projected overlap of rock/snow triangles with actual top triangles",
+  "outside_roof_walls": "Original height guard retained"
+}

@@ -1,0 +1,25 @@
+{
+  "result": "PASS",
+  "relief": "chaotic",
+  "tip": "blunt",
+  "rim": "stepped",
+  "roofRays": 108,
+  "maxRoofErrorM": 2.842170943040401e-14,
+  "stats": {
+    "exteriorBlocks": 1874,
+    "wallBlocks": 242,
+    "snowCaps": 1318,
+    "rejectedBlocks": 1990,
+    "maxWallProtrusion": 0.8,
+    "minTopClearance": 1.0068025805123284
+  },
+  "rockTriangles": 428672,
+  "snowTriangles": 126181,
+  "rays": 58,
+  "maxAttachmentErrorM": 2.620352136458703e-13,
+  "maxPassageIntrusionM": 0.8000051330299485,
+  "minRenderedTopClearanceM": 0.908078006003052,
+  "baseUnchanged": true,
+  "baseDigest": "363163044a61e91b0fd36a00373bb1bce29e72a2b61a79aa7f7707660b382d4f",
+  "physicsPlayerTested": false
+}
