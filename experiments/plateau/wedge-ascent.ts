@@ -1,5 +1,6 @@
 // Mode 1 sweeps the accepted profile back inside the plateau in plan.
 // The upper grid stays fixed; the lower profile travels with the nose.
+import { sharpTip, type TipProfile } from './wedge-tip-profile';
 import { buildWedge } from './wedge-prototype';
 import { type SourceGrid } from './seam-boundary';
 import { type MeshData, boundaryInMountain } from './cavity';
@@ -17,8 +18,8 @@ function sourceSurface(source: SourceGrid): MeshData {
   return { positions, indices: new Uint32Array(indices) };
 }
 
-export function buildWedgeAscent(source: SourceGrid, upper: SourceGrid, ending = ascentEnding) {
-  const accepted = buildWedge(source, upper), old = sourceSurface(source);
+export function buildWedgeAscent(source: SourceGrid, upper: SourceGrid, ending = ascentEnding, tip: TipProfile = sharpTip) {
+  const accepted = buildWedge(source, upper, tip), old = sourceSurface(source);
   const swept = buildSweptEnding(source, upper, accepted, ending);
   const { strip, underside, flank, restored } = swept;
   const uncut = { plateau: accepted.plateau, strip, underside, flank, restored, ending: pack([], []) };

@@ -2,7 +2,11 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,f);
 const root=path.resolve(__dirname,'../..');
 const {buildWedgeAscent}=require(root+'/experiments/plateau/wedge-ascent.ts'),{reliefGrid,reliefTop,chaoticTop}=require(root+'/experiments/plateau/seam-relief-fixture.ts');
-const s=reliefGrid(process.env.RELIEF_KIND==='chaotic'?chaoticTop:reliefTop),u={...s,heights:s.heights.map((_,k)=>(process.env.RELIEF_KIND==='chaotic'?chaoticTop:reliefTop)(s.x0+k%(s.n+1)*s.cell,s.z0+Math.floor(k/(s.n+1))*s.cell))},j=buildWedgeAscent(s,u);
+const {bluntTip,sharpTip}=require('./wedge-tip-profile.ts'),{plateauRadius}=require('./plateau-profile.ts'),{smoothstep}=require('../../src/core/rng.ts');
+const top=process.env.RELIEF_KIND==='flat'?()=>100:process.env.RELIEF_KIND==='chaotic'?chaoticTop:reliefTop;
+const s=reliefGrid(top),u={...s,heights:s.heights.map((_,k)=>top(s.x0+k%(s.n+1)*s.cell,s.z0+Math.floor(k/(s.n+1))*s.cell))};
+if(process.env.RELIEF_KIND==='flat')s.heights=s.heights.map((_,k)=>{const x=s.x0+k%(s.n+1)*s.cell,z=s.z0+Math.floor(k/(s.n+1))*s.cell,r=plateauRadius(x,z),w=1-smoothstep(.96,1.055,r);return (1-w)*5*(1-smoothstep(1.04,1.23,r))+w*100;});
+const j=buildWedgeAscent(s,u,undefined,process.env.TIP_KIND==='blunt'?bluntTip:sharpTip);
 const edges=new Map(),key=p=>p.map(v=>Math.round(v*1e4)).join(',');
 for(const mesh of Object.values(j.cut))for(let k=0;k<mesh.indices.length;k+=3){const tri=Array.from(mesh.indices.subarray(k,k+3),id=>Array.from(mesh.positions.subarray(id*3,id*3+3)));for(let i=0;i<3;i++){const a=tri[i],b=tri[(i+1)%3],ak=key(a),bk=key(b);if(ak===bk)continue;const ek=[ak,bk].sort().join('|'),e=edges.get(ek);if(e)e.count++;else edges.set(ek,{a,b,count:1});}}
 // Ignore the deliberately open outer square. Subdivided collinear edges from

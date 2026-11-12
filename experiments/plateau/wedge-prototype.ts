@@ -3,6 +3,7 @@
 import { append, clip, plane, flip, type Point, type MeshData } from './cavity';
 import { buildBoundary, sampleGrid, type Boundary, type SourceGrid } from './seam-boundary';
 import { triangleVertexIndices } from './seam-safe-boundary';
+import { sharpTip, lowerTip, undersideDepth, type TipProfile, type TipPosition } from './wedge-tip-profile';
 import { plateauRadius, contourPoint } from './plateau-profile';
 
 export const wedgeProfile = { seam: .9287, nose: 1.09, attachment: 1.005, undersideRows: 24 };
@@ -32,11 +33,11 @@ function half(poly: Point[], boundary: Boundary, segment: number, inside: boolea
   });
 }
 
-export function buildWedge(source: SourceGrid, upper: SourceGrid) {
+export function buildWedge(source: SourceGrid, upper: SourceGrid, tip: TipProfile = sharpTip) {
   const seam = buildBoundary(source, wedgeProfile.seam), nose = buildBoundary(upper, wedgeProfile.nose);
   const attachment = buildBoundary(source, wedgeProfile.attachment);
   const E = edgeMap(seam), N = edgeMap(nose), A = edgeMap(attachment);
-  const plateau = storage(), strip = storage(), flank = storage(), underside = storage();
+  const plateau = storage(), strip = storage(), flank = storage(), underside = storage(), front = storage();
   for (let id = 0; id < source.n * source.n * 2; id++) {
     const ids = triangleVertexIndices(source, id), tri = ids.map(k => vertex(upper, k));
     const center = { x: (tri[0].x + tri[1].x + tri[2].x) / 3, z: (tri[0].z + tri[1].z + tri[2].z) / 3 };
@@ -66,9 +67,18 @@ export function buildWedge(source: SourceGrid, upper: SourceGrid) {
       } else { emit(a[ai], b[(j + 1) % b.length], b[bj]); j++; }
     }
   }
-  // Keep the nose thin, then curve down steeply towards the wall.
+  // Preserve the top nose; an optional lower corner gives the tip thickness.
   // The top reaches the nose unchanged; the underside alone turns back.
-  let ring = nose.points, angles = nose.angles;
+  const tipPositions: TipPosition[] = nose.points.map((p, i) => {
+    const a = nose.angles[i], e = contourPoint(a, wedgeProfile.seam);
+    return { angle: a, alongEdge: a / (Math.PI * 2), x: p.x, z: p.z, distanceToE: Math.hypot(p.x - e.x, p.z - e.z) };
+  });
+  const lowerNose = nose.points.map((p, i) => lowerTip(p, tipPositions[i], tip));
+  for (let i = 0; i < nose.points.length; i++) {
+    const j = (i + 1) % nose.points.length;
+    append([nose.points[i], nose.points[j], lowerNose[j], lowerNose[i]], front.positions, front.indices);
+  }
+  let ring = lowerNose, angles = nose.angles;
   for (let row = 1; row < wedgeProfile.undersideRows; row++) {
     const t = row / wedgeProfile.undersideRows;
     const next = nose.points.map((_, i) => {
@@ -77,11 +87,11 @@ export function buildWedge(source: SourceGrid, upper: SourceGrid) {
       const radius = wedgeProfile.nose + (wedgeProfile.attachment - wedgeProfile.nose) * Math.sqrt(t);
       const xz = contourPoint(a, radius);
       const depth = buildWallHeight(upper, q.x, q.z) - wall;
-      return { ...xz, y: buildWallHeight(upper, xz.x, xz.z) - depth * t };
+      return { ...xz, y: buildWallHeight(upper, xz.x, xz.z) - undersideDepth(t, depth, Math.hypot(nose.points[i].x - q.x, nose.points[i].z - q.z), tipPositions[i], tip) };
     });
     bridge(ring, angles, next, nose.angles); ring = next; angles = nose.angles;
   }
   bridge(ring, angles, attachment.points, attachment.angles);
-  return { plateau: packed(plateau), strip: packed(strip), flank: packed(flank), underside: packed(underside), seam, nose, attachment };
+  return { plateau: packed(plateau), strip: packed(strip), flank: packed(flank), underside: packed(underside), front: packed(front), tip, seam, nose, lowerNose, attachment };
 }
 function buildWallHeight(grid: SourceGrid, x: number, z: number) { return sampleGrid(grid, x, z).y; }

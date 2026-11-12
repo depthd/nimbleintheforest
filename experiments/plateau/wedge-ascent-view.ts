@@ -4,16 +4,19 @@ import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
 import { noiseTexture } from '../../src/core/noisetex';
 import { reliefGrid, reliefTop, chaoticTop } from './seam-relief-fixture';
-import { plateauRadius } from './plateau-profile';
+import { plateauRadius, contourPoint } from './plateau-profile';
 import { smoothstep } from '../../src/core/rng';
 import { sampleGrid } from './seam-boundary';
 import { wedgeProfile } from './wedge-prototype';
+import { bluntTip, sharpTip } from './wedge-tip-profile';
 import { buildWedgeAscent } from './wedge-ascent';
 import { ascentCenter, ascentWidth, ascentHeight } from './ascent';
 import { type MeshData } from './cavity';
 import { buildWedgeRocks } from './wedge-rocks';
+import { sectionAngle, sectionSvg } from './wedge-section';
 
-const kind = new URLSearchParams(location.search).get('kind') || 'chaotic';
+const blunt = new URLSearchParams(location.search).get('nose') === 'blunt';
+const kind = new URLSearchParams(location.search).get('kind') || (blunt ? 'flat' : 'chaotic');
 const flat = kind === 'flat';
 const topAt = flat ? () => 100 : kind === 'chaotic' ? chaoticTop : reliefTop;
 const source = reliefGrid(topAt);
@@ -23,8 +26,18 @@ if (flat) source.heights = source.heights.map((_, k) => {
   const r = plateauRadius(x, z), w = 1 - smoothstep(.96, 1.055, r);
   return (1 - w) * 5 * (1 - smoothstep(1.04, 1.23, r)) + w * 100;
 });
-const junction = buildWedgeAscent(source, upper);
+const junction = buildWedgeAscent(source, upper, undefined, blunt ? bluntTip : sharpTip);
 const wedge = junction.accepted;
+const section = document.createElement('div');
+section.style.cssText = 'display:none;position:fixed;inset:0;z-index:2';
+if (blunt && flat) section.innerHTML = sectionSvg(junction.cut);
+document.body.append(section);
+const sectionButton = document.querySelector<HTMLButtonElement>('[data-view="section"]')!;
+sectionButton.hidden = !blunt || !flat;
+if (blunt) {
+  document.querySelector('aside b')!.textContent = 'Козырёк · тупой торец';
+  document.querySelector('aside b + div')!.textContent = 'Верх на месте. Нижняя точка: 4 м вниз и 0,5 м внутрь. Без камней и шума.';
+}
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(1); renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -46,13 +59,14 @@ function mesh(data: MeshData & { colors?: number[] }) {
 const changed = new THREE.Group();
 const surfaces = Object.fromEntries(Object.entries(junction.cut).map(([name, data]) => [name, mesh(data)]));
 changed.add(...Object.values(surfaces)); scene.add(changed);
-const dressing = buildWedgeRocks(junction.cut, source, upper);
+const dressing = blunt ? { rocks: { positions: new Float32Array(), indices: new Uint32Array(), colors: [] }, snow: { positions: new Float32Array(), indices: new Uint32Array() }, stats: { disabledForTipTrial: true } } : buildWedgeRocks(junction.cut, source, upper);
 const rockGroup = new THREE.Group();
 const rockMesh = mesh(dressing.rocks), snowMesh = mesh(dressing.snow);
 snowMesh.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(.9, .925, .955), roughness: .88 });
 rockGroup.add(rockMesh, snowMesh); changed.add(rockGroup);
 const rocksControl = document.getElementById('rocks') as HTMLInputElement;
-rocksControl.checked = new URLSearchParams(location.search).get('rocks') !== '0';
+rocksControl.checked = !blunt && new URLSearchParams(location.search).get('rocks') !== '0';
+rocksControl.disabled = blunt;
 rockGroup.visible = rocksControl.checked;
 function setRocks(show: boolean) { rocksControl.checked = show; rockGroup.visible = show; renderer.shadowMap.needsUpdate = true; }
 rocksControl.onchange = () => setRocks(rocksControl.checked);
@@ -68,6 +82,8 @@ scene.add(sun, sun.target, new THREE.HemisphereLight('#b8d5f4', '#727a83', 1.15)
 const focus = { x: -235, y: 65, z: ascentCenter(-235) };
 function setCamera(eye: number[], target: number[]) {camera.position.fromArray(eye); controls.target.fromArray(target); controls.update(); renderer.render(scene, camera);}
 function view(name: string) {
+  section.style.display = name === 'section' ? 'block' : 'none';
+  if (name === 'section') return;
   const views: Record<string, number[][]> = {
     general: [[-450, 235, -300], [-95, 50, -5]],
     detail: [[-335, 122, -195], [-245, 79, -110]],
@@ -76,6 +92,11 @@ function view(name: string) {
     top: [[-250, 360, -35.1], [-250, 50, -35]],
     inside: [[-180, ascentHeight(-180) + 4, ascentCenter(-180)], [-245, ascentHeight(-245) + 2, ascentCenter(-245)]],
   };
+  if (blunt) {
+    const p = contourPoint(sectionAngle, 1.06), length = Math.hypot(p.x, p.z), dx = p.x / length, dz = p.z / length;
+    views.front = [[p.x + 95 * dx, 120, p.z + 95 * dz], [p.x, 83, p.z]];
+    views.side = [[p.x + 35 * dx - 95 * dz, 116, p.z + 35 * dz + 95 * dx], [p.x, 83, p.z]];
+  }
   const [eye, target] = views[name]; setCamera(eye, target);
 }
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b => b.onclick = () => view(b.dataset.view!));
@@ -91,7 +112,7 @@ function highlight(show: boolean) {
   renderer.shadowMap.needsUpdate = true;
 }
 document.getElementById('highlight')!.onchange = e => highlight((e.target as HTMLInputElement).checked);
-(window as any).__wedgeAscent = { ready: true, junction, source, upper, focus, flat, kind, profile: wedgeProfile, view, setCamera, camera, controls, renderer, surfaces,
+(window as any).__wedgeAscent = { ready: true, junction, source, upper, focus, flat, kind, blunt, profile: wedgeProfile, view, setCamera, camera, controls, renderer, surfaces,
   mark: (show: boolean) => { line.visible = show; }, highlight, setRocks, rockGroup, dressing,
   ascentCenter, ascentWidth, ascentHeight,
 };

@@ -3,6 +3,7 @@
 import { type MeshData, type Point, type Plane, append, plane, clip, flip, value } from './cavity';
 import { type SourceGrid, sampleGrid } from './seam-boundary';
 import { contourPoint, plateauRadius } from './plateau-profile';
+import { lowerTip, undersideDepth, type TipPosition } from './wedge-tip-profile';
 import { buildWedge, wedgeProfile } from './wedge-prototype';
 import { profile } from './ascent';
 import { triangleVertexIndices } from './seam-safe-boundary';
@@ -97,13 +98,19 @@ export function buildSweptEnding(source: SourceGrid, upper: SourceGrid, accepted
       else { append([a[ai], b[(j + 1) % b.length], b[bj]], underP, underI); j++; }
     }
   }
-  let ring = nose;
+  const tipPositions: TipPosition[] = nose.map((p, i) => {
+    const a = angles[i], e = contourPoint(a, wedgeProfile.seam);
+    return { angle: a, alongEdge: a / (Math.PI * 2), x: p.x, z: p.z, distanceToE: Math.hypot(p.x - e.x, p.z - e.z), distanceToPassage: distanceToPassage(p) };
+  });
+  const lowerNose = nose.map((p, i) => lowerTip(p, tipPositions[i], accepted.tip));
+  bridge(nose, angles, lowerNose, angles);
+  let ring = lowerNose;
   for (let row = 1; row < wedgeProfile.undersideRows; row++) {
     const t = row / wedgeProfile.undersideRows;
-    const next = angles.map(a => {
+    const next = angles.map((a, i) => {
       const wall = contourPoint(a, wedgeProfile.attachment), depth = sampleGrid(upper, wall.x, wall.z).y - sampleGrid(source, wall.x, wall.z).y;
       const n = noseRadius(a), radius = n + (wedgeProfile.attachment - wedgeProfile.nose) * Math.sqrt(t), xz = contourPoint(a, radius);
-      return { ...xz, y: sampleGrid(upper, xz.x, xz.z).y - depth * t };
+      return { ...xz, y: sampleGrid(upper, xz.x, xz.z).y - undersideDepth(t, depth, Math.hypot(contourPoint(a, wedgeProfile.nose).x - wall.x, contourPoint(a, wedgeProfile.nose).z - wall.z), tipPositions[i], accepted.tip) };
     });
     bridge(ring, angles, next, angles); ring = next;
   }
