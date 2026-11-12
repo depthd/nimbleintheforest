@@ -13,6 +13,30 @@ import { pack, vertices } from './wedge-plan-cut';
 const TAU = Math.PI * 2, ANGLES = 360, HEIGHT_BIN = 4;
 interface Face { a: Point; u: Point; v: Point; normal: Point; d: number; uu: number; uv: number; vv: number; denominator: number }
 export interface SurfaceHit extends Point { normalY: number; radius: number }
+// Vertical lookup on the rendered top, including the rim's connecting strip.
+// The original height grid is insufficient after its outer edge is shaped.
+export function surfaceRoof(meshes: MeshData[]) {
+  const cell = 8, bins = new Map<string, Point[][]>();
+  for (const mesh of meshes) for (let k = 0; k < mesh.indices.length; k += 3) {
+    const tri = vertices(mesh, k);
+    const minX = Math.floor(Math.min(...tri.map(p => p.x)) / cell), maxX = Math.floor(Math.max(...tri.map(p => p.x)) / cell);
+    const minZ = Math.floor(Math.min(...tri.map(p => p.z)) / cell), maxZ = Math.floor(Math.max(...tri.map(p => p.z)) / cell);
+    for (let z = minZ; z <= maxZ; z++) for (let x = minX; x <= maxX; x++) {
+      const key = x + ',' + z; if (!bins.has(key)) bins.set(key, []); bins.get(key)!.push(tri);
+    }
+  }
+  return (x: number, z: number): number | undefined => {
+    let roof: number | undefined;
+    for (const [a, b, c] of bins.get(Math.floor(x / cell) + ',' + Math.floor(z / cell)) || []) {
+      const ux = b.x - a.x, uz = b.z - a.z, vx = c.x - a.x, vz = c.z - a.z, den = ux * vz - uz * vx;
+      if (Math.abs(den) < 1e-10) continue;
+      const s = ((x - a.x) * vz - (z - a.z) * vx) / den, t = (ux * (z - a.z) - uz * (x - a.x)) / den;
+      if (s < -1e-6 || t < -1e-6 || s + t > 1 + 1e-6) continue;
+      const y = a.y + s * (b.y - a.y) + t * (c.y - a.y); if (roof === undefined || y > roof) roof = y;
+    }
+    return roof;
+  };
+}
 export function radialSurface(meshes: MeshData[]) {
   const bins = new Map<number, Face[]>();
   for (const mesh of meshes) for (let k = 0; k < mesh.indices.length; k += 3) {
@@ -69,7 +93,7 @@ function chartSkin(size: number, cell: number, seed: number, halfLength: number)
 }
 const insidePassage = (p: Point) => ascentCutVolumes().some(volume => volume.every(pl => value(pl, p) < .02));
 
-export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData; restored: MeshData }, source: SourceGrid, upper: SourceGrid) {
+export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData; restored: MeshData }, source: SourceGrid, upper: SourceGrid, roofAt: (x: number, z: number) => number | undefined = (x, z) => sampleGrid(upper, x, z).y) {
   const sample = radialSurface([surfaces.underside, surfaces.flank, surfaces.restored]);
   const rockP: number[] = [], rockI: number[] = [], colors: number[] = [], snowP: number[] = [], snowI: number[] = [];
   const soft = new Color().setRGB(.26, .27, .32, SRGBColorSpace), hard = new Color().setRGB(.41, .43, .49, SRGBColorSpace);
@@ -129,11 +153,11 @@ export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData
     const angle = x / 1450 * TAU, key = x.toFixed(5) + ',' + y.toFixed(5);
     if (!cache.has(key)) cache.set(key, sample(angle, y));
     const base = cache.get(key); if (!base || Math.abs(base.normalY) > .86) return;
-    const roof = sampleGrid(upper, base.x, base.z).y;
+    const roof = roofAt(base.x, base.z); if (roof === undefined) return;
     if (y > roof - 1.2) return;
     const depth = z - exteriorChart.baseZ(y) + .15, length = Math.hypot(base.x, base.z);
     const p = { x: base.x - depth * base.x / length, y, z: base.z - depth * base.z / length };
-    const clearance = sampleGrid(upper, p.x, p.z).y - y;
+    const clearance = (roofAt(p.x, p.z) ?? roof) - y;
     if (insidePassage(p) || clearance < 1) return;
     stats.minTopClearance = Math.min(stats.minTopClearance, clearance);
     if (attachments.length < 120 && probe++ % 71 === 0) attachments.push({ angle, y, x: base.x, z: base.z });

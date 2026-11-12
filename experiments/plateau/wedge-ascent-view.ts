@@ -12,7 +12,7 @@ import { bluntTip, sharpTip } from './wedge-tip-profile';
 import { buildWedgeAscent } from './wedge-ascent';
 import { ascentCenter, ascentWidth, ascentHeight } from './ascent';
 import { type MeshData } from './cavity';
-import { buildWedgeRocks } from './wedge-rocks';
+import { buildWedgeRocks, surfaceRoof } from './wedge-rocks';
 import { sectionAngle, sectionSvg } from './wedge-section';
 import { buildRimVariant, rimSettings, type RimKind } from './wedge-rim';
 
@@ -20,7 +20,7 @@ const query = new URLSearchParams(location.search);
 const rimParam = query.get('rim');
 const rimKind = ['angular', 'stepped', 'arcs'].includes(rimParam || '') ? rimParam as RimKind : null;
 const blunt = !!rimKind || query.get('nose') === 'blunt';
-const kind = query.get('kind') || (rimKind ? 'flat' : 'chaotic');
+const kind = query.get('kind') || 'chaotic';
 const flat = kind === 'flat';
 const topAt = flat ? () => 100 : kind === 'chaotic' ? chaoticTop : reliefTop;
 const source = reliefGrid(topAt);
@@ -68,16 +68,17 @@ function mesh(data: MeshData & { colors?: number[] }) {
 const changed = new THREE.Group();
 const surfaces = Object.fromEntries(Object.entries(shownCut).map(([name, data]) => [name, mesh(data)]));
 changed.add(...Object.values(surfaces)); scene.add(changed);
-const dressing = rim ? { rocks: { positions: new Float32Array(), indices: new Uint32Array(), colors: [] }, snow: { positions: new Float32Array(), indices: new Uint32Array() }, stats: { rimComparison: true } } : buildWedgeRocks(junction.cut, source, upper);
+const roof = rim ? surfaceRoof([shownCut.plateau, shownCut.strip]) : undefined;
+const dressing = buildWedgeRocks(shownCut, source, upper, roof);
 const rockGroup = new THREE.Group();
 const rockMesh = mesh(dressing.rocks), snowMesh = mesh(dressing.snow);
 snowMesh.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(.9, .925, .955), roughness: .88 });
 rockGroup.add(rockMesh, snowMesh); changed.add(rockGroup);
 const rocksControl = document.getElementById('rocks') as HTMLInputElement;
-rocksControl.checked = !rim && query.get('rocks') !== '0';
-rocksControl.disabled = !!rim;
+rocksControl.checked = query.get('rocks') !== '0';
+let activeView = 'general';
 rockGroup.visible = rocksControl.checked;
-function setRocks(show: boolean) { rocksControl.checked = show; rockGroup.visible = show; renderer.shadowMap.needsUpdate = true; }
+function setRocks(show: boolean) { rocksControl.checked = show; rockGroup.visible = show && !(rim && activeView === 'front'); renderer.shadowMap.needsUpdate = true; }
 rocksControl.onchange = () => setRocks(rocksControl.checked);
 const positions: number[] = [], indices: number[] = [];
 for (let j = 0; j <= source.n; j++) for (let i = 0; i <= source.n; i++) positions.push(source.x0 + i * source.cell, source.heights[j * (source.n + 1) + i], source.z0 + j * source.cell);
@@ -91,8 +92,10 @@ scene.add(sun, sun.target, new THREE.HemisphereLight('#b8d5f4', '#727a83', 1.15)
 const focus = { x: -235, y: 65, z: ascentCenter(-235) };
 function setCamera(eye: number[], target: number[]) {camera.position.fromArray(eye); controls.target.fromArray(target); controls.update(); renderer.render(scene, camera);}
 function view(name: string) {
+  activeView = name;
   if (rim) {
     const isolated = name === 'front';
+    rockGroup.visible = !isolated && rocksControl.checked;
     for (const key of ['plateau', 'strip', 'flank', 'restored', 'interior']) surfaces[key].visible = !isolated;
     camera.fov = isolated ? 18 : 60; camera.updateProjectionMatrix();
     if (isolated) {
@@ -122,11 +125,11 @@ document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b => b.oncli
 document.getElementById('seam')!.onchange = e => {line.visible = (e.target as HTMLInputElement).checked;};
 document.getElementById('original')!.onchange = e => { original.visible = (e.target as HTMLInputElement).checked; changed.visible = !original.visible; renderer.shadowMap.needsUpdate = true; };
 window.addEventListener('resize', () => {camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);});
-renderer.shadowMap.needsUpdate = true; view('front');
+renderer.shadowMap.needsUpdate = true; view(rim && !flat ? 'general' : 'front');
 renderer.setAnimationLoop(() => renderer.render(scene, camera));
 const highlightMaterial = new THREE.MeshStandardMaterial({ color: '#168bd4', roughness: 1, flatShading: true });
 function highlight(show: boolean) {
-  rockGroup.visible = !show && rocksControl.checked;
+  rockGroup.visible = !show && rocksControl.checked && !(rim && activeView === 'front');
   for (const name of ['strip', 'underside', 'ending']) surfaces[name].material = show ? highlightMaterial : material;
   renderer.shadowMap.needsUpdate = true;
 }
@@ -139,7 +142,7 @@ document.getElementById('highlight')!.onchange = e => highlight((e.target as HTM
 if (rim) {
   document.getElementById('rim-controls')!.hidden = false;
   document.querySelector('aside b')!.textContent = 'Кромка · три варианта';
-  document.querySelector('aside b + div')!.textContent = 'Спереди — только внешняя маска, верх скрыт. Общий вид — вся гора. Без скал и снега.';
+  document.querySelector('aside b + div')!.textContent = 'Спереди — кромка без скал, верх скрыт. Остальные виды — вся гора; скалы отключаются переключателем.';
   for (const a of document.querySelectorAll<HTMLAnchorElement>('[data-rim]')) { const url = new URL(location.href); url.searchParams.set('rim', a.dataset.rim!); a.href = url.href; a.style.fontWeight = a.dataset.rim === rimKind ? 'bold' : 'normal'; }
   document.querySelectorAll<HTMLAnchorElement>('small a[href^="http"]').forEach(a => { const url = new URL(a.href); url.searchParams.set('rim', rimKind!); a.href = url.href; });
 }
