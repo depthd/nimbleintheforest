@@ -1,0 +1,7 @@
+{
+  "result": "PASS",
+  "scope": "rendered cut surface, excluding outer world border",
+  "toleranceM": 0.0005,
+  "maxUncoveredM": 0.0000898709305419132,
+  "note": "Geometric edge coverage including collinear subdivisions; not a physics test."
+}

@@ -1,0 +1,72 @@
+{
+  "result": "PASS",
+  "settings": {
+    "seed": 128719,
+    "minLength": 22,
+    "maxLength": 38,
+    "minDepth": 5,
+    "maxDepth": 9,
+    "minPeakDepth": 0.2,
+    "maxPeakDepth": 1.2,
+    "minPeakFraction": 0.35,
+    "maxPeakFraction": 0.65,
+    "arcSegments": 16,
+    "stepWidth": 0.18,
+    "minStep": 2,
+    "maxStep": 4
+  },
+  "reports": [
+    {
+      "mode": "angular",
+      "knots": 107,
+      "fixedEndPoints": 96,
+      "maxCornerVectorErrorM": 0.0000220182656084476,
+      "protectedHashes": {
+        "plateau": "c857ea90df305e407548cdc5f21a6e345c3d65e8fd57139b1af364c08068e984",
+        "strip": "49341f1b05e06a883755f8bd3de3c5abbdf91ee382edfc0159e3fe070c5cfc29",
+        "underside": "80045dd871d30906ece136ba1766b239ff737ed9cc659c2c7e2333f5ea41d1e7",
+        "flank": "5dd49345f737ff81115431911b621597063bc5e9ce5ce8e534d9e5ac36122940",
+        "restored": "66a1a35f846c97e9b0b13f6b558797622b09b4fdad0d53aee115ffc63cb86f47",
+        "ending": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "interior": "9c812bb7758177ab839ef0726ad880c777575ed677f10ed88781c54798975d48"
+      },
+      "changedStrip": true,
+      "changedUnderside": true
+    },
+    {
+      "mode": "stepped",
+      "knots": 160,
+      "fixedEndPoints": 96,
+      "maxCornerVectorErrorM": 0.000045877358183263067,
+      "protectedHashes": {
+        "plateau": "c857ea90df305e407548cdc5f21a6e345c3d65e8fd57139b1af364c08068e984",
+        "strip": "49341f1b05e06a883755f8bd3de3c5abbdf91ee382edfc0159e3fe070c5cfc29",
+        "underside": "80045dd871d30906ece136ba1766b239ff737ed9cc659c2c7e2333f5ea41d1e7",
+        "flank": "5dd49345f737ff81115431911b621597063bc5e9ce5ce8e534d9e5ac36122940",
+        "restored": "66a1a35f846c97e9b0b13f6b558797622b09b4fdad0d53aee115ffc63cb86f47",
+        "ending": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "interior": "9c812bb7758177ab839ef0726ad880c777575ed677f10ed88781c54798975d48"
+      },
+      "changedStrip": true,
+      "changedUnderside": true
+    },
+    {
+      "mode": "arcs",
+      "knots": 849,
+      "fixedEndPoints": 96,
+      "maxCornerVectorErrorM": 0.000022023363563537964,
+      "protectedHashes": {
+        "plateau": "c857ea90df305e407548cdc5f21a6e345c3d65e8fd57139b1af364c08068e984",
+        "strip": "49341f1b05e06a883755f8bd3de3c5abbdf91ee382edfc0159e3fe070c5cfc29",
+        "underside": "80045dd871d30906ece136ba1766b239ff737ed9cc659c2c7e2333f5ea41d1e7",
+        "flank": "5dd49345f737ff81115431911b621597063bc5e9ce5ce8e534d9e5ac36122940",
+        "restored": "66a1a35f846c97e9b0b13f6b558797622b09b4fdad0d53aee115ffc63cb86f47",
+        "ending": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "interior": "9c812bb7758177ab839ef0726ad880c777575ed677f10ed88781c54798975d48"
+      },
+      "changedStrip": true,
+      "changedUnderside": true
+    }
+  ],
+  "note": "Flat bare rim trial. Narrow external joining band changes; core plateau/E/source heights/passage/lower boundary are fixed. No cladding or physics test."
+}

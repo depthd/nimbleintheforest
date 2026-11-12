@@ -1,0 +1,15 @@
+{
+  "source_sha": "c15845c798e53279004f753e7fca2b865208defc",
+  "result": "PASS",
+  "build": "PASS",
+  "experiment_typecheck": "PASS",
+  "rim_properties": "rim.json",
+  "closure_reports": [
+    "angular-closure.json",
+    "stepped-closure.json",
+    "arcs-closure.json"
+  ],
+  "browser_report": "browser.json",
+  "visual_approval": "pending",
+  "scope": "Flat bare three-mode rim comparison only; external joining strip/upper mask changes. No game, cave, physics, cladding or deployment."
+}

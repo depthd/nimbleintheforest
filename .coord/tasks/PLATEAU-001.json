@@ -1,6 +1,6 @@
 {
   "id": "PLATEAU-001",
-  "status": "developing",
+  "status": "review",
   "owner": "codex",
   "branch": "task/PLATEAU-001-camera",
   "base_sha": "58d2370f2f4a2952198fffc2e50433179c139552",
@@ -20,8 +20,8 @@
     "Separate direct preview URL",
     "Preserve existing game and test content"
   ],
-  "qa_sha": "9b0fd7041a2f8db63b1a033bac24ffa099556b9f",
-  "qa_result": "Enabled existing chaotic terrain and RockSkin on the steep blunt profile, preserving profile/E/passage and rock generator. Same-camera dressed/bare views; checkbox enabled and terrain links retain blunt mode. Chaotic+blunt attachment/clearance/base-immutability tests, rendered closure, experiment typecheck and build PASS. No physics/game/cave/mode2/deployment. Awaiting visual review.",
+  "qa_sha": "c15845c798e53279004f753e7fca2b865208defc",
+  "qa_result": "Three seeded rim-front modes implemented: angular/V valleys, stepped closed connectors, convex arcs/sharp joins. Actual mesh front-mask comparison plus full context, no cladding. Core/source/E/passage/flank/restored/lower boundary fixed; narrow exterior joining strip/upper mask follows changed rim. Determinism/properties/protected hashes/front vector, all three closure tests, typecheck/build/browser modes PASS. Flat bare QA only; awaiting visual review, no deployment.",
   "previous_base_sha": "c7ef68f8b53e12e76f14df54b68d36b7b4094641",
   "published_source_sha": "8b2652a476649fbb80cbfe8fdfcc2b3febfe361d",
   "prototype_base_sha": "fa37c47daf5c34b8ea07a72224694c29e3b5bf36",

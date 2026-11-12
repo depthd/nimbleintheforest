@@ -1,0 +1,16 @@
+{
+  "source_sha": "c15845c798e53279004f753e7fca2b865208defc",
+  "result": "PASS",
+  "modes": [
+    "angular",
+    "stepped",
+    "arcs"
+  ],
+  "seed": 128719,
+  "same_front_camera": true,
+  "front_view": "external mask only; plateau/strip/flank/restored/interior hidden",
+  "context_view": "all surfaces visible",
+  "rocks_disabled": true,
+  "links_preserve_mode_choices": true,
+  "page_errors": []
+}
