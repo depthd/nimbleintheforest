@@ -13,19 +13,22 @@ import { pack, vertices } from './wedge-plan-cut';
 const TAU = Math.PI * 2, ANGLES = 360, HEIGHT_BIN = 4;
 interface Face { a: Point; u: Point; v: Point; normal: Point; d: number; uu: number; uv: number; vv: number; denominator: number }
 export interface SurfaceHit extends Point { normalY: number; radius: number }
+export type RoofSampler = ((x: number, z: number) => number | undefined) & { triangleClearance?: (triangle: Point[]) => number };
 // Vertical lookup on the rendered top, including the rim's connecting strip.
 // The original height grid is insufficient after its outer edge is shaped.
 export function surfaceRoof(meshes: MeshData[]) {
   const cell = 8, bins = new Map<string, Point[][]>();
+  let minY = Infinity;
   for (const mesh of meshes) for (let k = 0; k < mesh.indices.length; k += 3) {
     const tri = vertices(mesh, k);
+    minY = Math.min(minY, ...tri.map(p => p.y));
     const minX = Math.floor(Math.min(...tri.map(p => p.x)) / cell), maxX = Math.floor(Math.max(...tri.map(p => p.x)) / cell);
     const minZ = Math.floor(Math.min(...tri.map(p => p.z)) / cell), maxZ = Math.floor(Math.max(...tri.map(p => p.z)) / cell);
     for (let z = minZ; z <= maxZ; z++) for (let x = minX; x <= maxX; x++) {
       const key = x + ',' + z; if (!bins.has(key)) bins.set(key, []); bins.get(key)!.push(tri);
     }
   }
-  return (x: number, z: number): number | undefined => {
+  const query: RoofSampler = (x: number, z: number): number | undefined => {
     let roof: number | undefined;
     for (const [a, b, c] of bins.get(Math.floor(x / cell) + ',' + Math.floor(z / cell)) || []) {
       const ux = b.x - a.x, uz = b.z - a.z, vx = c.x - a.x, vz = c.z - a.z, den = ux * vz - uz * vx;
@@ -36,6 +39,31 @@ export function surfaceRoof(meshes: MeshData[]) {
     }
     return roof;
   };
+  const prepared = new Map<Point[], { cuts: ReturnType<typeof plane>[]; height: (p: Point) => number }>();
+  query.triangleClearance = triangle => {
+    if (Math.max(...triangle.map(p => p.y)) < minY - .5) return Infinity;
+    const minX = Math.floor(Math.min(...triangle.map(p => p.x)) / cell), maxX = Math.floor(Math.max(...triangle.map(p => p.x)) / cell);
+    const minZ = Math.floor(Math.min(...triangle.map(p => p.z)) / cell), maxZ = Math.floor(Math.max(...triangle.map(p => p.z)) / cell);
+    const seen = new Set<Point[]>(); let clearance = Infinity;
+    for (let z = minZ; z <= maxZ; z++) for (let x = minX; x <= maxX; x++) for (const tri of bins.get(x + ',' + z) || []) {
+      if (seen.has(tri)) continue; seen.add(tri);
+      let face = prepared.get(tri);
+      if (!face) {
+        const [a, b, c] = tri, ux = b.x - a.x, uz = b.z - a.z, vx = c.x - a.x, vz = c.z - a.z, den = ux * vz - uz * vx;
+        if (Math.abs(den) < 1e-10) continue;
+        const cuts = tri.map((a, i) => { const b = tri[(i + 1) % 3], c = tri[(i + 2) % 3]; let p = plane(b.z - a.z, 0, a.x - b.x, -(b.z - a.z) * a.x - (a.x - b.x) * a.z); if (value(p, c) > 0) p = { ...p, x: -p.x, z: -p.z, d: -p.d }; return p; });
+        face = { cuts, height: p => a.y + ((p.x - a.x) * vz - (p.z - a.z) * vx) / den * (b.y - a.y) + (ux * (p.z - a.z) - uz * (p.x - a.x)) / den * (c.y - a.y) };
+        prepared.set(tri, face);
+      }
+      let overlap = triangle;
+      for (const p of face.cuts) { overlap = clip(overlap, p); if (!overlap.length) break; }
+      // Both faces are planar on each overlap. Their height difference is
+      // linear, so checking its vertices covers the complete rock triangle.
+      for (const p of overlap) clearance = Math.min(clearance, face.height(p) - p.y);
+    }
+    return clearance;
+  };
+  return query;
 }
 export function radialSurface(meshes: MeshData[]) {
   const bins = new Map<number, Face[]>();
@@ -93,7 +121,7 @@ function chartSkin(size: number, cell: number, seed: number, halfLength: number)
 }
 const insidePassage = (p: Point) => ascentCutVolumes().some(volume => volume.every(pl => value(pl, p) < .02));
 
-export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData; restored: MeshData }, source: SourceGrid, upper: SourceGrid, roofAt: (x: number, z: number) => number | undefined = (x, z) => sampleGrid(upper, x, z).y) {
+export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData; restored: MeshData }, source: SourceGrid, upper: SourceGrid, roofAt: RoofSampler = (x, z) => sampleGrid(upper, x, z).y) {
   const sample = radialSurface([surfaces.underside, surfaces.flank, surfaces.restored]);
   const rockP: number[] = [], rockI: number[] = [], colors: number[] = [], snowP: number[] = [], snowI: number[] = [];
   const soft = new Color().setRGB(.26, .27, .32, SRGBColorSpace), hard = new Color().setRGB(.41, .43, .49, SRGBColorSpace);
@@ -101,6 +129,11 @@ export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData
   const stats = { exteriorBlocks: 0, wallBlocks: 0, snowCaps: 0, rejectedBlocks: 0, maxWallProtrusion: .8, minTopClearance: Infinity };
   const attachments: { angle: number; y: number; x: number; z: number }[] = [];
   type Mapper = (x: number, y: number, z: number) => Point | undefined;
+  function clearOfRoof(points: Point[]) {
+    if (!roofAt.triangleClearance) return true;
+    for (let k = 0; k < points.length; k += 3) if (roofAt.triangleClearance(points.slice(k, k + 3)) < .5) return false;
+    return true;
+  }
   function subdivide(raw: number[], wall: boolean) {
     const positions: number[] = [], indices: number[] = [];
     for (let k = 0; k < raw.length; k += 9) {
@@ -128,7 +161,7 @@ export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData
         const p = map(raw[i], raw[i + 1], raw[i + 2]);
         if (!p) break; mapped.push(p);
       }
-      if (mapped.length * 3 !== raw.length) { stats.rejectedBlocks++; continue; }
+      if (mapped.length * 3 !== raw.length || !clearOfRoof(mapped)) { stats.rejectedBlocks++; continue; }
       const color = soft.clone().lerp(hard, block.tone);
       for (const p of mapped) { rockI.push(rockP.length / 3); rockP.push(p.x, p.y, p.z); colors.push(color.r, color.g, color.b); }
       if (kind === 'exterior') stats.exteriorBlocks++; else stats.wallBlocks++;
@@ -138,7 +171,7 @@ export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData
         const snowRaw: number[] = []; for (const i of localI) snowRaw.push(...localP.slice(i * 3, i * 3 + 3));
         const divided = subdivide(snowRaw, kind === 'wall'), snow: Point[] = [];
         for (let i = 0; i < divided.length; i += 3) { const p = map(divided[i], divided[i + 1], divided[i + 2]); if (!p) break; snow.push(p); }
-        if (snow.length * 3 === divided.length) {
+        if (snow.length * 3 === divided.length && clearOfRoof(snow)) {
           const start = snowP.length / 3; for (const p of snow) snowP.push(p.x, p.y, p.z);
           for (let i = 0; i < snow.length; i++) snowI.push(start + i); stats.snowCaps++;
         }
@@ -153,7 +186,9 @@ export function buildWedgeRocks(surfaces: { underside: MeshData; flank: MeshData
     const angle = x / 1450 * TAU, key = x.toFixed(5) + ',' + y.toFixed(5);
     if (!cache.has(key)) cache.set(key, sample(angle, y));
     const base = cache.get(key); if (!base || Math.abs(base.normalY) > .86) return;
-    const roof = roofAt(base.x, base.z); if (roof === undefined) return;
+    // Beside the passage the old exterior wall can extend beyond the shown
+    // top's footprint. Missing vertical coverage is not a reason to erase it.
+    const roof = roofAt(base.x, base.z) ?? sampleGrid(upper, base.x, base.z).y;
     if (y > roof - 1.2) return;
     const depth = z - exteriorChart.baseZ(y) + .15, length = Math.hypot(base.x, base.z);
     const p = { x: base.x - depth * base.x / length, y, z: base.z - depth * base.z / length };

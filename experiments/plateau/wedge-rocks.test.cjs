@@ -4,6 +4,12 @@ const {buildWedgeAscent} = require('./wedge-ascent.ts'), {buildWedgeRocks,surfac
 const {reliefGrid, reliefTop, chaoticTop} = require('./seam-relief-fixture.ts'), {contourPoint, plateauRadius} = require('./plateau-profile.ts');
 const {bluntTip,sharpTip}=require('./wedge-tip-profile.ts');
 const {sampleGrid} = require('./seam-boundary.ts'), {ascentCenter, ascentWidth, ascentHeight} = require('./ascent.ts');
+// A rock face can cross a narrow roof patch even when its vertices and
+// centroid miss that patch. Test the complete projected overlap, not samples.
+const toy=surfaceRoof([{positions:new Float32Array([.5,0,.1,1.5,0,.1,.5,0,.2]),indices:new Uint32Array([0,1,2])}]);
+const crossing=[{x:0,y:1,z:0},{x:2,y:1,z:0},{x:0,y:1,z:2}];
+assert.ok(crossing.every(p=>toy(p.x,p.z)===undefined));assert.equal(toy(2/3,2/3),undefined);
+assert.ok(Math.abs(toy.triangleClearance(crossing)+1)<1e-9,'Full roof overlap catches a bridge missed by point samples');
 function digest(j, source, upper) { const h=crypto.createHash('sha256'); for(const m of Object.values(j.cut)) {h.update(m.positions);h.update(m.indices);}h.update(source.heights);h.update(upper.heights);return h.digest('hex'); }
 (async()=>{
  const THREE = await import('three'), source=reliefGrid(process.env.RELIEF_KIND==='chaotic'?chaoticTop:reliefTop), upper={...source,heights:source.heights.map((_,k)=>(process.env.RELIEF_KIND==='chaotic'?chaoticTop:reliefTop)(source.x0+k%(source.n+1)*source.cell,source.z0+Math.floor(k/(source.n+1))*source.cell))};
@@ -13,6 +19,7 @@ function digest(j, source, upper) { const h=crypto.createHash('sha256'); for(con
  const before=digest(j,source,upper), dressing=buildWedgeRocks(j.cut,source,upper,roof);
  assert.equal(digest(j,source,upper),before,'Dressing must not mutate the accepted base or source heights');
  assert.ok(dressing.stats.exteriorBlocks>500 && dressing.stats.wallBlocks>100,'Both exterior and passage walls are dressed');
+ if(process.env.RIM_KIND==='angular')assert.ok(buildWedgeRocks(j.cut,source,upper,()=>undefined).stats.exteriorBlocks>500,'No shown top above an exterior wall must retain the original height guard, not erase its rocks');
  const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
  const meshes=['underside','flank','restored'].map(name=>{const m=j.cut[name],g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(m.positions,3));g.setIndex(new THREE.BufferAttribute(m.indices,1));return new THREE.Mesh(g,material)});
  let rays=0,maxAttachmentError=0;
@@ -40,5 +47,5 @@ function digest(j, source, upper) { const h=crypto.createHash('sha256'); for(con
  }
  assert.ok(minTopClearance>.25,'No dressing or snow crosses the upper face');
  assert.ok(maxPassageIntrusion<=.801,'Wall dressing stays in the narrow margin beside the original walls');
- console.log(JSON.stringify({result:'PASS',relief:process.env.RELIEF_KIND||'relief',tip:process.env.TIP_KIND||'sharp',rim:process.env.RIM_KIND||null,roofRays,maxRoofErrorM:maxRoofError,stats:dressing.stats,rockTriangles:dressing.rocks.indices.length/3,snowTriangles:dressing.snow.indices.length/3,rays,maxAttachmentErrorM:maxAttachmentError,maxPassageIntrusionM:maxPassageIntrusion,minUpperGridClearanceM:minTopClearance,baseUnchanged:true,baseDigest:before,physicsPlayerTested:false},null,2));
+ console.log(JSON.stringify({result:'PASS',relief:process.env.RELIEF_KIND||'relief',tip:process.env.TIP_KIND||'sharp',rim:process.env.RIM_KIND||null,roofRays,maxRoofErrorM:maxRoofError,stats:dressing.stats,rockTriangles:dressing.rocks.indices.length/3,snowTriangles:dressing.snow.indices.length/3,rays,maxAttachmentErrorM:maxAttachmentError,maxPassageIntrusionM:maxPassageIntrusion,minRenderedTopClearanceM:minTopClearance,baseUnchanged:true,baseDigest:before,physicsPlayerTested:false},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1});
