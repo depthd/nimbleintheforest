@@ -1,0 +1,259 @@
+{
+  "sourceSha": "18ac137a9cc9947afc4eecfd1e830893b495284f",
+  "result": "PASS",
+  "readyMs": 40517,
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "states": [
+    {
+      "view": "overview",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          520.0000000000001,
+          310,
+          560
+        ],
+        "target": [
+          0,
+          48,
+          0
+        ],
+        "fov": 45
+      },
+      "snowBufferBytes": 53527680
+    },
+    {
+      "view": "back",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          -560,
+          279.99999999999994,
+          -480.0000000000001
+        ],
+        "target": [
+          0,
+          48,
+          0
+        ],
+        "fov": 45
+      },
+      "snowBufferBytes": 53527680
+    },
+    {
+      "view": "ascent",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          -370,
+          189.99999999999994,
+          -229.99999999999997
+        ],
+        "target": [
+          -130,
+          50,
+          -35
+        ],
+        "fov": 45
+      },
+      "snowBufferBytes": 53527680
+    },
+    {
+      "view": "ascentFoot",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          -310,
+          19.99999999999999,
+          -60.00000000000002
+        ],
+        "target": [
+          -190,
+          45,
+          -20
+        ],
+        "fov": 55
+      },
+      "snowBufferBytes": 53527680
+    },
+    {
+      "view": "ascentTop",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          29.99999999999997,
+          132,
+          -50
+        ],
+        "target": [
+          -140,
+          62,
+          -5.000000000000002
+        ],
+        "fov": 50
+      },
+      "snowBufferBytes": 53527680
+    },
+    {
+      "view": "entrance",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          340,
+          9.000000000000004,
+          11.999999999999996
+        ],
+        "target": [
+          285,
+          7.000000000000001,
+          0
+        ],
+        "fov": 42
+      },
+      "snowBufferBytes": 53527680
+    },
+    {
+      "view": "inside",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          279,
+          6.8000000000000025,
+          2.510525938252074e-15
+        ],
+        "target": [
+          320,
+          6.8,
+          0
+        ],
+        "fov": 65
+      },
+      "snowBufferBytes": 53527680
+    },
+    {
+      "view": "top",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          0,
+          670,
+          0.10000000035104034
+        ],
+        "target": [
+          0,
+          50,
+          0
+        ],
+        "fov": 45
+      },
+      "snowBufferBytes": 53527680
+    },
+    {
+      "view": "edge",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 947652,
+        "capSegments": 5046,
+        "sampledVertices": 481820,
+        "maxLeafEdgeM": 2.0000019921562027
+      },
+      "camera": {
+        "position": [
+          244.64436973987432,
+          127.31045870807777,
+          194.19342741677312
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 25
+      },
+      "snowBufferBytes": 53527680
+    }
+  ],
+  "controls": {
+    "snowHidden": true
+  },
+  "compiledSmoothTopAndFlatWalls": true,
+  "errors": []
+}

@@ -1,0 +1,26 @@
+{
+  "result": "PASS",
+  "sourceSha": "18ac137a9cc9947afc4eecfd1e830893b495284f",
+  "sourceChangedPaths": [
+    ".coord/tasks/PLATEAU-001.json",
+    "experiments/plateau/index.html",
+    "experiments/plateau/mountain-snow.ts",
+    "experiments/plateau/mountain.html",
+    "experiments/plateau/mountain.test.cjs",
+    "experiments/plateau/mountain.ts",
+    "vite.config.ts"
+  ],
+  "mainGameSrcChanged": false,
+  "referenceFBuffersUnchanged": true,
+  "galleryReferencePngUnchanged": true,
+  "edgeCameraMatchesReferenceWithinM": 1e-09,
+  "scenePhotos": 11,
+  "reviewLinksExist": true,
+  "geometryResult": "PASS",
+  "browserResult": "PASS",
+  "fullPairwiseCollisionCheck": false,
+  "physicsChecked": false,
+  "deployed": false,
+  "merged": false,
+  "visuallyAcceptedByUser": false
+}

@@ -1,0 +1,62 @@
+{
+  "result": "PASS",
+  "stoneBefore": "45a7f8940789c4a16d7a4d8eb43396dc8999c3dab14c73822a5d3e5692e4179f",
+  "stoneUnchanged": true,
+  "snowStats": {
+    "roofTriangles": 947652,
+    "capSegments": 5046,
+    "sampledVertices": 481820,
+    "maxLeafEdgeM": 2.0000019921562027
+  },
+  "contact": {
+    "minTopClearance": -0.00001216342432996953,
+    "maxFoundationGap": 0.000009415660485956323,
+    "maxFoundationEmbed": 0.020063211739895337
+  },
+  "caveRays": {
+    "exit": null,
+    "back": 9,
+    "floor": 1.7999999999999998,
+    "roof": 3.7
+  },
+  "ascentRays": {
+    "sky": null,
+    "floor": 1
+  },
+  "snowSettings": {
+    "centerAngle": 0.7,
+    "normalRadius": 2,
+    "length": 64,
+    "inside": 5,
+    "plateau": 0.8,
+    "edge": 2.5,
+    "overhang": 2,
+    "radius": 2,
+    "minThickness": 0.15,
+    "slopeStart": 50,
+    "slopeEnd": 60,
+    "alongStep": 0.3,
+    "capStep": 0.2,
+    "maxStep": 0.5,
+    "embed": 0.02,
+    "passageBareM": 4,
+    "passageFadeM": 10,
+    "interiorStepM": 2,
+    "edgeStepM": 0.5
+  },
+  "roofReversedTriangles": 0,
+  "nonfiniteVertices": 0,
+  "trianglesInsidePassageBareZone": 0,
+  "unpairedEdges": 0,
+  "edgeExamples": [],
+  "minSnowY": 89.82856750488281,
+  "caveCuts": {
+    "plateau": 0,
+    "strip": 0,
+    "underside": 0,
+    "flank": 17,
+    "restored": 0,
+    "ending": 0,
+    "interior": 0
+  }
+}
