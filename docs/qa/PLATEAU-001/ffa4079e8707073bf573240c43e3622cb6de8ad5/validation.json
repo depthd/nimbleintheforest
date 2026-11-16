@@ -1,0 +1,15 @@
+{
+  "sourceSha": "ffa4079e8707073bf573240c43e3622cb6de8ad5",
+  "originalSource": "9462b0b498b89ec0932f536140378b6c821cc6aa",
+  "baselineFArrays": "identical",
+  "execution": "PASS",
+  "compatibility": {
+    "angular": "FAIL",
+    "stepped": "FAIL",
+    "arcs": "FAIL",
+    "passage": "FAIL"
+  },
+  "geometryRepairs": false,
+  "siteDeployment": false,
+  "integrationMerge": false
+}

@@ -1,0 +1,854 @@
+{
+  "sourceSha": "ffa4079e8707073bf573240c43e3622cb6de8ad5",
+  "result": "PASS",
+  "viewport": [
+    1600,
+    1000
+  ],
+  "rimCamerasIdenticalTo9462b0b": true,
+  "passageCameraNote": "same relative rig and FOV, translated to actual returned nose at angle2.8; fixed before bare/F comparison",
+  "compiledSmoothAndFlatShaders": "PASS",
+  "states": [
+    {
+      "mode": "angular",
+      "camera": {
+        "position": [
+          244.64436973987432,
+          127.31045870807777,
+          194.19342741677312
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 25
+      },
+      "variant": "F",
+      "rim": "angular",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "angular",
+      "camera": {
+        "position": [
+          244.64436973987432,
+          127.31045870807777,
+          194.19342741677312
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 25
+      },
+      "variant": "F",
+      "rim": "angular",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "angular",
+      "camera": {
+        "position": [
+          189.6085280556579,
+          124.31045870807776,
+          194.43034535586753
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 20
+      },
+      "variant": "F",
+      "rim": "angular",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "angular",
+      "camera": {
+        "position": [
+          189.6085280556579,
+          124.31045870807776,
+          194.43034535586753
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 20
+      },
+      "variant": "F",
+      "rim": "angular",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "angular",
+      "camera": {
+        "position": [
+          273.3190657656305,
+          119.31045870807777,
+          161.00062988733185
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 23
+      },
+      "variant": "F",
+      "rim": "angular",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "angular",
+      "camera": {
+        "position": [
+          273.3190657656305,
+          119.31045870807777,
+          161.00062988733185
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 23
+      },
+      "variant": "F",
+      "rim": "angular",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "stepped",
+      "camera": {
+        "position": [
+          244.64436973987432,
+          127.31045870807777,
+          194.19342741677312
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 25
+      },
+      "variant": "F",
+      "rim": "stepped",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "stepped",
+      "camera": {
+        "position": [
+          244.64436973987432,
+          127.31045870807777,
+          194.19342741677312
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 25
+      },
+      "variant": "F",
+      "rim": "stepped",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "stepped",
+      "camera": {
+        "position": [
+          189.6085280556579,
+          124.31045870807776,
+          194.43034535586753
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 20
+      },
+      "variant": "F",
+      "rim": "stepped",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "stepped",
+      "camera": {
+        "position": [
+          189.6085280556579,
+          124.31045870807776,
+          194.43034535586753
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 20
+      },
+      "variant": "F",
+      "rim": "stepped",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "stepped",
+      "camera": {
+        "position": [
+          273.3190657656305,
+          119.31045870807777,
+          161.00062988733185
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 23
+      },
+      "variant": "F",
+      "rim": "stepped",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "stepped",
+      "camera": {
+        "position": [
+          273.3190657656305,
+          119.31045870807777,
+          161.00062988733185
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 23
+      },
+      "variant": "F",
+      "rim": "stepped",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "arcs",
+      "camera": {
+        "position": [
+          244.64436973987432,
+          127.31045870807777,
+          194.19342741677312
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 25
+      },
+      "variant": "F",
+      "rim": "arcs",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "arcs",
+      "camera": {
+        "position": [
+          244.64436973987432,
+          127.31045870807777,
+          194.19342741677312
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 25
+      },
+      "variant": "F",
+      "rim": "arcs",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "arcs",
+      "camera": {
+        "position": [
+          189.6085280556579,
+          124.31045870807776,
+          194.43034535586753
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 20
+      },
+      "variant": "F",
+      "rim": "arcs",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "arcs",
+      "camera": {
+        "position": [
+          189.6085280556579,
+          124.31045870807776,
+          194.43034535586753
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 20
+      },
+      "variant": "F",
+      "rim": "arcs",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "arcs",
+      "camera": {
+        "position": [
+          273.3190657656305,
+          119.31045870807777,
+          161.00062988733185
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 23
+      },
+      "variant": "F",
+      "rim": "arcs",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": false,
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "arcs",
+      "camera": {
+        "position": [
+          273.3190657656305,
+          119.31045870807777,
+          161.00062988733185
+        ],
+        "target": [
+          210.05573950985809,
+          105.31045870807777,
+          119.84541696046566
+        ],
+        "fov": 23
+      },
+      "variant": "F",
+      "rim": "arcs",
+      "rimSeed": 128719,
+      "passage": false,
+      "newSnowVisible": true,
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "passage",
+      "camera": {
+        "position": [
+          -339.0458826869862,
+          110.4939140035978,
+          52.77231626666457
+        ],
+        "target": [
+          -257.97324926587345,
+          88.4939140035978,
+          65.0698001624001
+        ],
+        "fov": 25
+      },
+      "variant": "F",
+      "rim": null,
+      "rimSeed": null,
+      "passage": true,
+      "newSnowVisible": false,
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "passage",
+      "camera": {
+        "position": [
+          -339.0458826869862,
+          110.4939140035978,
+          52.77231626666457
+        ],
+        "target": [
+          -257.97324926587345,
+          88.4939140035978,
+          65.0698001624001
+        ],
+        "fov": 25
+      },
+      "variant": "F",
+      "rim": null,
+      "rimSeed": null,
+      "passage": true,
+      "newSnowVisible": true,
+      "view": "one",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "passage",
+      "camera": {
+        "position": [
+          -308.80753191293286,
+          107.4939140035978,
+          6.787077956253377
+        ],
+        "target": [
+          -257.97324926587345,
+          88.4939140035978,
+          65.0698001624001
+        ],
+        "fov": 20
+      },
+      "variant": "F",
+      "rim": null,
+      "rimSeed": null,
+      "passage": true,
+      "newSnowVisible": false,
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "passage",
+      "camera": {
+        "position": [
+          -308.80753191293286,
+          107.4939140035978,
+          6.787077956253377
+        ],
+        "target": [
+          -257.97324926587345,
+          88.4939140035978,
+          65.0698001624001
+        ],
+        "fov": 20
+      },
+      "variant": "F",
+      "rim": null,
+      "rimSeed": null,
+      "passage": true,
+      "newSnowVisible": true,
+      "view": "two",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "passage",
+      "camera": {
+        "position": [
+          -327.24822359246656,
+          102.4939140035978,
+          95.0193900101737
+        ],
+        "target": [
+          -257.97324926587345,
+          88.4939140035978,
+          65.0698001624001
+        ],
+        "fov": 23
+      },
+      "variant": "F",
+      "rim": null,
+      "rimSeed": null,
+      "passage": true,
+      "newSnowVisible": false,
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    },
+    {
+      "mode": "passage",
+      "camera": {
+        "position": [
+          -327.24822359246656,
+          102.4939140035978,
+          95.0193900101737
+        ],
+        "target": [
+          -257.97324926587345,
+          88.4939140035978,
+          65.0698001624001
+        ],
+        "fov": 23
+      },
+      "variant": "F",
+      "rim": null,
+      "rimSeed": null,
+      "passage": true,
+      "newSnowVisible": true,
+      "view": "three",
+      "snowVolume": true,
+      "rounded": true,
+      "smoothUpper": true,
+      "fillIntensity": 2.3,
+      "sunIntensity": 2.5,
+      "exposure": 1.05,
+      "upperOwners": [
+        "plateau",
+        "strip"
+      ],
+      "wallAlwaysFlat": true,
+      "snowFlat": false,
+      "pillowsVisible": true
+    }
+  ],
+  "errors": []
+}

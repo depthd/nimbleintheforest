@@ -1,0 +1,167 @@
+{
+  "mode": "stepped",
+  "compatibility": "FAIL",
+  "snowTopVerticesInsideExcavation": 0,
+  "execution": "PASS: probe built; conflicts are recorded, not repaired",
+  "settings": {
+    "centerAngle": 0.7,
+    "normalRadius": 2,
+    "length": 64,
+    "inside": 5,
+    "plateau": 0.8,
+    "edge": 2.5,
+    "overhang": 2,
+    "radius": 2,
+    "minThickness": 0.15,
+    "slopeStart": 50,
+    "slopeEnd": 60,
+    "alongStep": 0.3,
+    "capStep": 0.2,
+    "maxStep": 0.5,
+    "embed": 0.02
+  },
+  "stoneHash": "04bb245000793f3d293c4ff2370789aac8d410ff63d7951fef9a1b32bb3cb20a",
+  "dressingHash": "b7b3f01497e19304b24ca14b6d8c8171565e735334c5b4b53fe050757e84ad66",
+  "stoneAndDressingUnchanged": true,
+  "seam": {
+    "vertices": 293,
+    "maxHeightOrPositionGapM": 0,
+    "maxFormulaNormalAngleDeg": 0.000002091309789151873,
+    "note": "Canonical vertex normals. Flat-shaded B/E still use per-face shader normals; their ordinary facet changes are not called a smooth seam."
+  },
+  "stats": {
+    "samplingConverged": true,
+    "maxAlongM": 0.4985583972580863,
+    "maxAcrossM": 0.4157863749796062,
+    "maxCapM": 0.49858856201171875,
+    "alongSamples": 293,
+    "crossSamples": 185,
+    "minThicknessM": 0.8,
+    "bareVertices": 0,
+    "maxSupportLiftM": 7.977318053663481
+  },
+  "noseMaxDistanceToRenderedTopM": 4.0194366942304644e-14,
+  "reversedTopTriangles": 0,
+  "closure": {
+    "unpairedEdgesBeforeCollinearCoverage": 588,
+    "maxUncoveredM": 2.8766292454073303,
+    "toleranceM": 0.0005
+  },
+  "maxSnowBaseToStoneEdgeGapM": 10.327318053663475,
+  "maxActualEdgeThicknessDeviationM": 7.977317810058594,
+  "maxOverhangDeviationM": 0.000009187872574756284,
+  "conflictExamples": [
+    {
+      "angle": 0.5890370086983268,
+      "stoneEdge": {
+        "x": 238.79321009628484,
+        "y": 99.80015155978269,
+        "z": 110.45943028413166
+      },
+      "snowBaseY": 102.59896539529879,
+      "gapM": 2.7988138355161
+    },
+    {
+      "angle": 0.5896435699600029,
+      "stoneEdge": {
+        "x": 238.64355090576097,
+        "y": 99.92146583673426,
+        "z": 110.53521262240761
+      },
+      "snowBaseY": 102.65336722195114,
+      "gapM": 2.7319013852168865
+    },
+    {
+      "angle": 0.5902501312216791,
+      "stoneEdge": {
+        "x": 238.4939579014918,
+        "y": 100.04272646287023,
+        "z": 110.61096144620896
+      },
+      "snowBaseY": 102.70774498958558,
+      "gapM": 2.6650185267153432
+    },
+    {
+      "angle": 0.5914632537450315,
+      "stoneEdge": {
+        "x": 238.19496983635526,
+        "y": 100.28508726151027,
+        "z": 110.76235886198637
+      },
+      "snowBaseY": 102.81642857148752,
+      "gapM": 2.5313413099772504
+    },
+    {
+      "angle": 0.5926763762683839,
+      "stoneEdge": {
+        "x": 237.8962446724762,
+        "y": 100.52723495144747,
+        "z": 110.91362315348348
+      },
+      "snowBaseY": 102.92501658753363,
+      "gapM": 2.3977816360861652
+    },
+    {
+      "angle": 0.5938894987917362,
+      "stoneEdge": {
+        "x": 237.59778118516127,
+        "y": 100.76917052542265,
+        "z": 111.06475494084349
+      },
+      "snowBaseY": 103.03350948290567,
+      "gapM": 2.2643389574830195
+    },
+    {
+      "angle": 0.5951026213150886,
+      "stoneEdge": {
+        "x": 237.29957815340072,
+        "y": 101.01089497319072,
+        "z": 111.2157548423443
+      },
+      "snowBaseY": 103.14190770144648,
+      "gapM": 2.1310127282557687
+    },
+    {
+      "angle": 0.596315743838441,
+      "stoneEdge": {
+        "x": 237.00163435984692,
+        "y": 101.252409281538,
+        "z": 111.36662347440947
+      },
+      "snowBaseY": 103.25021168566776,
+      "gapM": 1.9978024041297715
+    }
+  ],
+  "collisions": {
+    "rocks": {
+      "surfaceIntersections": {
+        "crossingTrianglePairs": 0,
+        "dressingTrianglesCrossing": 0,
+        "broadphasePairs": 896,
+        "examples": [],
+        "toleranceM": 0.00001
+      },
+      "projectedOverlaps": 44,
+      "minSignedClearanceM": 0.8973547608381125,
+      "trianglesAboveUnderside": 0,
+      "note": "Signed full projected overlap against bottom/cap-bottom; negative is a conflict candidate, not a 3D Boolean volume count."
+    },
+    "pillows": {
+      "surfaceIntersections": {
+        "crossingTrianglePairs": 0,
+        "dressingTrianglesCrossing": 0,
+        "broadphasePairs": 2266,
+        "examples": [],
+        "toleranceM": 0.00001
+      },
+      "projectedOverlaps": 50,
+      "minSignedClearanceM": 0.5860547879443061,
+      "trianglesAboveUnderside": 0,
+      "note": "Signed full projected overlap against bottom/cap-bottom; negative is a conflict candidate, not a 3D Boolean volume count."
+    }
+  },
+  "passageWeightRange": [
+    1,
+    1
+  ]
+}
