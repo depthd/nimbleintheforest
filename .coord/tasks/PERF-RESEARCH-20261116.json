@@ -1,0 +1,19 @@
+{
+  "id": "PERF-RESEARCH-20261116",
+  "status": "developing",
+  "owner": "Codex (user-authorized isolated research)",
+  "branch": "task/PERF-RESEARCH-20261116",
+  "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
+  "allowed_paths": [
+    ".coord/tasks/PERF-RESEARCH-20261116.json",
+    "src/core/perf-experiment.ts",
+    "src/game/game.ts",
+    "src/game/thermal.ts",
+    "src/world/terrain.ts",
+    "src/world/forest.ts",
+    "src/world/snow-trails.ts",
+    "tests/perf-research/",
+    "docs/qa/PERF-RESEARCH-20261116/"
+  ],
+  "authorization": "User explicitly authorized an isolated branch/version in chat on 2026-11-16. Local experiments only; no push, merge, publication, or shared-source changes."
+}
