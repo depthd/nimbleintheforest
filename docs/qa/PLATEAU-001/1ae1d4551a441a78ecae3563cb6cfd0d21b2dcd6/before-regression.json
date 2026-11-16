@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "checks": [
+    {
+      "mode": "angular",
+      "arraysIdenticalToFfa4079": true,
+      "digests": {
+        "inner": "12887ea9f8fa33a8f03cdf4b7f798dc7affce7fae7dad276c5fd1e58772944c9",
+        "outer": "bcabb9aa3a032efa4ab1acc364b4203000b9a83fb93a38070b437be86ade5695",
+        "bottom": "bf7ece71997010b5d7027e331b644acda589c393ca2417f7fb4432117904856e",
+        "cap": "ebcd2d4f729470ee11bbf8426a72ca312b538b768a34db42afae71e89dae0134",
+        "closures": "fceb9eed07aa53d53d177d2a9008f885131983ba916190d93da3be7a61bdcd81"
+      }
+    },
+    {
+      "mode": "stepped",
+      "arraysIdenticalToFfa4079": true,
+      "digests": {
+        "inner": "4205d48b0c1fb53ef1d94831704dff8fc43bd2dc206bc573710849c3f114b2b4",
+        "outer": "f6283691ba291bdf3f40165f077683bc0d4b87c0d5232143a41ac92f45af89bf",
+        "bottom": "65ce3b6f3483a5dbcb699f1f47fd0976d3deefee0f41c9d34177b59794f2b515",
+        "cap": "4f76cf4dff94a75cb73944e6eab2e16a9b7b06a3cb8ad1e35c16007ddcda5d90",
+        "closures": "a9d1a86dbbf5c429e92a6034f6dd4368580128ac2cd0c552413be87aeb96f99d"
+      }
+    },
+    {
+      "mode": "arcs",
+      "arraysIdenticalToFfa4079": true,
+      "digests": {
+        "inner": "16b07dec5f1f6860fdacb7079ad7bafd9c9e492f5c46fa3afe5a01d000e2f241",
+        "outer": "1dc5873cea3c14f44d28c7da61259dd2bba89f3e5c42bbc7c69c0b482fc2a877",
+        "bottom": "967cdeaaa475bb9321b2533113641cf4fe693a988fe19475c9939998efbb9745",
+        "cap": "9f7d412902e70dffa783c79f25cc483b7c053d71a07680b8e85d074885676f89",
+        "closures": "c996d6adc8e6af7b6efdb7b72cdcb496fb50993b2edb1ff15c443d524e48a358"
+      }
+    }
+  ]
+}

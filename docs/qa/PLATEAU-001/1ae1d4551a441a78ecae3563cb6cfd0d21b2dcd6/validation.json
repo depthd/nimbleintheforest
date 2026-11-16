@@ -1,0 +1,49 @@
+{
+  "result": "PASS",
+  "sourceSha": "1ae1d4551a441a78ecae3563cb6cfd0d21b2dcd6",
+  "measured": [
+    {
+      "mode": "angular",
+      "stoneHashIdenticalToFfa4079": true,
+      "dressingHashIdenticalToFfa4079": true,
+      "compatibility": "PASS",
+      "seamGapM": 0,
+      "closurePass": true
+    },
+    {
+      "mode": "stepped",
+      "stoneHashIdenticalToFfa4079": true,
+      "dressingHashIdenticalToFfa4079": true,
+      "compatibility": "PASS",
+      "seamGapM": 0,
+      "closurePass": true
+    },
+    {
+      "mode": "arcs",
+      "stoneHashIdenticalToFfa4079": true,
+      "dressingHashIdenticalToFfa4079": true,
+      "compatibility": "PASS",
+      "seamGapM": 0,
+      "closurePass": true
+    }
+  ],
+  "sourceChanges": [
+    "experiments/plateau/wedge-snow-layer.test.cjs",
+    "experiments/plateau/wedge-snow-layer.ts",
+    "experiments/plateau/wedge-snow-section.ts",
+    "experiments/plateau/wedge-snow-view.ts"
+  ],
+  "scopePass": true,
+  "originalFAndBeforePhotoBytesIdentical": true,
+  "scenePhotos": 21,
+  "realSections": 3,
+  "reviewLocalLinksExist": true,
+  "visualAssessment": {
+    "angular": "Closer to reference F; polygonal plan silhouette preserved",
+    "stepped": "Rounded section/contact fixed; abrupt stone height jumps still visible; not fully like reference F",
+    "arcs": "Closer to reference F; sharp arc joins preserved"
+  },
+  "notDeployed": true,
+  "notMerged": true,
+  "notFinallyAccepted": true
+}
