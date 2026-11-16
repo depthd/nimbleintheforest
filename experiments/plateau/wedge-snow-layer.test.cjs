@@ -12,7 +12,7 @@ function seamMetrics(snow){const keys=new Set(snow.columns.map(c=>pointKey(c[sno
 const toy=(p)=>({positions:new Float32Array(p),indices:new Uint32Array([0,1,2])});
 assert.ok(surfaceCrossings([toy([0,0,0,2,0,0,0,0,2])],toy([.5,-1,.5,.5,1,.5,1,0,.5])).crossingTrianglePairs>0);
 assert.equal(surfaceCrossings([toy([0,0,0,2,0,0,0,0,2])],toy([.5,3,.5,.5,4,.5,1,3,.5])).crossingTrianglePairs,0);
-if(process.env.SNOW_PROBE)runProbe(process.env.SNOW_PROBE);else {
+if(process.env.SNOW_EXTEND)runExtension();else if(process.env.SNOW_PROBE)runProbe(process.env.SNOW_PROBE);else {
 const built=[],reports=[];
 for(const rounded of [false,true]){
  const snow=buildSnowLayer(upper,j.accepted.seam,j.accepted.nose,rounded);built.push(snow);
@@ -36,6 +36,26 @@ const oldText=require('node:child_process').execFileSync('git',['show','9462b0b4
 const oldF=legacy.exports.buildSnowLayer(upper,j.accepted.seam,j.accepted.nose,true);for(const key of ['inner','outer','bottom','cap','closures'])assert.equal(hash(built[1][key].positions,built[1][key].normals,built[1][key].indices),hash(oldF[key].positions,oldF[key].normals,oldF[key].indices),'Original F buffers must remain identical: '+key);
 console.log(JSON.stringify({result:'PASS',originalFArraysIdenticalTo9462b0b:true,settings:snowSettings,baseDigest:before,baseUnchanged:true,pillowsDigest:pillowsHash,BandEUpperAndBottomIdentical:true,reports},null,2));
 
+}
+
+function runExtension(){
+ const reference=buildSnowLayer(upper,j.accepted.seam,j.accepted.nose,true);
+ const snow=buildSnowLayer(upper,j.accepted.seam,j.accepted.nose,true,{...snowSettings,length:128},{samplingAnchor:reference});
+ const triangleKeys=m=>{const keys=[];for(let k=0;k<m.indices.length;k+=3){const values=[];for(const id of m.indices.subarray(k,k+3))values.push(...m.positions.subarray(id*3,id*3+3),...m.normals.subarray(id*3,id*3+3));keys.push(values.join(','));}return keys;};
+ const central={};for(const name of ['inner','outer','bottom','cap']){const expected=triangleKeys(reference[name]),actual=new Set(triangleKeys(snow[name]));assert.ok(expected.every(k=>actual.has(k)),'All reference triangles and shading preserved: '+name);central[name]={triangles:expected.length,positionsAndNormalsIdentical:true};}
+ assert.deepEqual(snow.vRows,reference.vRows);assert.ok(reference.angles.every(a=>snow.angles.includes(a)));
+ const closed=closure([snow.inner,snow.outer,snow.bottom,snow.cap,snow.closures]),seam=seamMetrics(snow);assert.equal(seam.maxHeightOrPositionGapM,0);
+ let reversed=0;const folds=[];for(const [name,m]of [['inner',snow.inner],['outer',snow.outer]])for(let k=0;k<m.indices.length;k+=3){const [a,b,c]=Array.from(m.indices.subarray(k,k+3),id=>Array.from(m.positions.subarray(id*3,id*3+3)));const area=(b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]);if(area< -1e-6){reversed++;folds.push({part:name,triangle:k/3,twiceProjectedAreaM2:area,vertices:[a,b,c]});}}
+ const collisions={};for(const [name,m]of [['rocks',dressing.rocks],['pillows',dressing.snow]])collisions[name]=surfaceCrossings([snow.inner,snow.outer,snow.bottom,snow.cap,snow.closures],m);
+ let edgeGap=0;for(const a of snow.angles)edgeGap=Math.max(edgeGap,Math.abs(snow.base(a,1).y-snow.edge(a).y));assert.ok(edgeGap<.0001);
+ const actualStone=surfaceRoof([j.cut.plateau,j.cut.strip]);
+ const contact=layer=>{let tested=0,maxGap=0,maxEmbed=0;const m=layer.bottom;for(let k=0;k<m.indices.length;k+=3){const pts=Array.from(m.indices.subarray(k,k+3),id=>({x:m.positions[id*3],y:m.positions[id*3+1],z:m.positions[id*3+2]}));pts.push(pts.reduce((p,q)=>({x:p.x+q.x/3,y:p.y+q.y/3,z:p.z+q.z/3}),{x:0,y:0,z:0}));for(const p of pts){const h=actualStone(p.x,p.z);if(h===undefined)continue;tested++;maxGap=Math.max(maxGap,p.y-h);maxEmbed=Math.max(maxEmbed,h-p.y);}}return {testedVertexAndCentroidSamples:tested,maxFoundationAboveStoneM:maxGap,maxFoundationBelowStoneM:maxEmbed};};
+ const contactReference=contact(reference),contactExtended=contact(snow);
+ assert.ok(snow.angles.every(a=>j.weight(a)===1),'Extended patch remains away from passage');
+ assert.equal(hash(source.heights,upper.heights,...Object.values(j.cut).flatMap(m=>[m.positions,m.indices])),before);assert.equal(mh(dressing.snow),pillowsHash);
+ const result=reversed||Object.values(collisions).some(c=>c.crossingTrianglePairs)?'FAIL':'PASS';
+ console.log(JSON.stringify({result,lengthM:128,centralReferenceTriangles:central,formerEndCapsRemoved:true,centralCrossRowsIdentical:true,newAreaCrossDivisions:snow.extensionCrossDivisions,stats:snow.stats,seam,closure:closed,reversedTopTriangles:reversed,folds,maxStoneEdgeBaseGapM:edgeGap,foundationContact:{reference:contactReference,extended:contactExtended},collisions,stoneAndDressingUnchanged:true,stoneDigest:before,pillowsDigest:pillowsHash,passageWeightRange:[Math.min(...snow.angles.map(j.weight)),Math.max(...snow.angles.map(j.weight))]},null,2));
+ if(result!=='PASS')process.exitCode=1;
 }
 
 function runProbe(mode){
