@@ -10,7 +10,7 @@ import { buildRimVariant, type RimKind } from './wedge-rim';
 import { buildWedgeRocks, surfaceRoof } from './wedge-rocks';
 import { plateauRadius } from './plateau-profile';
 import { type MeshData } from './cavity';
-import { buildSnowLayer, snowSettings, upperNormal, snowEdgeBoundary } from './wedge-snow-layer';
+import { buildSnowLayer, snowSettings, upperNormal, snowEdgeBoundary, snowStoneSurface } from './wedge-snow-layer';
 import { snowSectionSvg } from './wedge-snow-section';
 
 type Variant = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
@@ -22,7 +22,7 @@ const settings = passage ? { ...snowSettings, centerAngle: 2.8 } : snowSettings;
 const reference = buildSnowLayer(upper, junction.accepted.seam, junction.accepted.nose, false, settings), snowB = reference;
 const sweptBoundary = { ...junction.accepted.nose, points: junction.nose, angles: junction.nose.map(p => (Math.atan2(p.z / 180, p.x / 260) + 2 * Math.PI) % (2 * Math.PI)) };
 const nose = rim ? snowEdgeBoundary(sweptBoundary, rim.deform, rim.knots.slice(0, -1).map(k => k.p), rim.cut.strip) : passage ? snowEdgeBoundary(sweptBoundary) : junction.accepted.nose;
-const snowE = buildSnowLayer(upper, junction.accepted.seam, nose, true, settings, probeMode ? { angleLimits: passage ? undefined : [reference.angles[0], reference.angles[reference.angles.length - 1]], recordSamplingFailure: true } : {});
+const snowE = buildSnowLayer(upper, junction.accepted.seam, nose, true, settings, probeMode ? { angleLimits: passage ? undefined : [reference.angles[0], reference.angles[reference.angles.length - 1]], recordSamplingFailure: true, stone: rim && params.get('before') !== '1' ? snowStoneSurface([shownCut.plateau,shownCut.strip]) : undefined } : {});
 const roof = rim ? surfaceRoof([shownCut.plateau, shownCut.strip]) : undefined;
 const dressing = buildWedgeRocks(shownCut, source, upper, roof);
 // Rim comparison cameras are exactly the original A–F cameras, not re-centred on each changed rim.
@@ -63,7 +63,7 @@ let variant: Variant = 'A', viewName = 'one', section = document.querySelector<H
 const draw = () => { if (viewName !== 'section') renderer.render(scene, camera); };
 function setView(name: string) {
   viewName = name; section.style.display = name === 'section' ? 'block' : 'none'; renderer.domElement.style.visibility = name === 'section' ? 'hidden' : 'visible';
-  if (name === 'section') { section.innerHTML = snowSectionSvg(Object.values(shownCut), variant === 'B' ? snowB : variant === 'E' || variant === 'F' ? snowE : undefined, { point: center, outward }, probeMode ? `F · ${rimKind || 'у прохода'}` : variant, settings); return; }
+  if (name === 'section') { section.innerHTML = snowSectionSvg(Object.values(shownCut), variant === 'B' ? snowB : variant === 'E' || variant === 'F' ? snowE : undefined, { point: center, outward }, probeMode ? `F · ${rimKind || 'у прохода'}${params.get('before') === '1'?' · до':''}` : variant, settings); return; }
   const frames: Record<string, number[]> = { one: [78, 0, 18, 25], two: [55, 50, 15, 20], three: [60, -40, 10, 23] }, [out, along, high, fov] = frames[name];
   camera.position.set(center.x + outward.x * out + tangent.x * along, center.y + high, center.z + outward.z * out + tangent.z * along); controls.target.set(center.x - outward.x * 4, center.y - 4, center.z - outward.z * 4); camera.fov = fov; camera.updateProjectionMatrix(); controls.update(); draw();
 }
@@ -72,7 +72,7 @@ function setVariant(value: Variant) {
   for (const name of ['plateau', 'strip']) { stone[name].geometry = (smooth ? smoothGeometry : flatGeometry).get(name)!; stone[name].material = smooth ? smoothTopMaterial : rockMaterial; }
   B.group.visible = value === 'B'; E.group.visible = (value === 'E' || value === 'F') && newSnowVisible; for (const m of Object.values(E.surfaces)) m.material = value === 'F' && m !== E.surfaces.closures ? snowSmooth : snowFlat;
   fill.intensity = value === 'D' || value === 'F' ? 2.3 : 1.15; renderer.shadowMap.needsUpdate = true;
-  (document.querySelector('#variant') as HTMLSelectElement).value = value; document.querySelector('#description')!.textContent = probeMode ? `F · ${rimKind || 'у прохода'} · сравнение при неизменном свете и нормалях. Дефекты не исправлены.` : descriptions[value];
+  (document.querySelector('#variant') as HTMLSelectElement).value = value; document.querySelector('#description')!.textContent = probeMode ? `F · ${rimKind || 'у прохода'} · сравнение при неизменном свете и нормалях. ${params.get('before') === '1' ? 'До исправления' : 'Посадка снега на камень'}.` : descriptions[value];
   if (viewName === 'section') setView('section'); else draw();
 }
 controls.addEventListener('change', draw); document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view!)); document.querySelector<HTMLSelectElement>('#variant')!.onchange = e => setVariant((e.target as HTMLSelectElement).value as Variant); document.querySelector<HTMLInputElement>('#pillows')!.onchange = e => { pillows.visible = (e.target as HTMLInputElement).checked; renderer.shadowMap.needsUpdate = true; draw(); };
@@ -90,4 +90,4 @@ if (probeMode) {
 const initialVariant = probeMode ? 'F' : params.get('variant') || 'A', initialView = params.get('view') || 'one';
 setVariant((Object.keys(descriptions).includes(initialVariant) ? initialVariant : 'A') as Variant); setView(['one', 'two', 'three', 'section'].includes(initialView) ? initialView : 'one');
 (window as any).__snowDiagnostic = { ready: true, setVariant, setView, masks, renderer, camera, controls, junction, rim, shownCut, source, upper, snowB, snowE, dressing, setSnowVisible, frame: { center, outward, tangent }, settings, descriptions,
-  state: () => ({ variant, rim: rimKind || null, rimSeed: rim?.options.seed || null, passage, newSnowVisible, view: viewName, snowVolume: ['B', 'E', 'F'].includes(variant), rounded: ['E', 'F'].includes(variant), smoothUpper: ['C', 'F'].includes(variant), fillIntensity: fill.intensity, sunIntensity: sun.intensity, exposure: renderer.toneMappingExposure, upperOwners: ['plateau', 'strip'], wallAlwaysFlat: Object.entries(stone).filter(([name]) => !['plateau','strip'].includes(name)).every(([,m]) => (m.material as THREE.MeshStandardMaterial).flatShading) && (rocks.material as THREE.MeshStandardMaterial).flatShading, snowFlat: variant !== 'F', pillowsVisible: pillows.visible }) };
+  state: () => ({ variant, corrected: !!rim && params.get('before') !== '1', rim: rimKind || null, rimSeed: rim?.options.seed || null, passage, newSnowVisible, view: viewName, snowVolume: ['B', 'E', 'F'].includes(variant), rounded: ['E', 'F'].includes(variant), smoothUpper: ['C', 'F'].includes(variant), fillIntensity: fill.intensity, sunIntensity: sun.intensity, exposure: renderer.toneMappingExposure, upperOwners: ['plateau', 'strip'], wallAlwaysFlat: Object.entries(stone).filter(([name]) => !['plateau','strip'].includes(name)).every(([,m]) => (m.material as THREE.MeshStandardMaterial).flatShading) && (rocks.material as THREE.MeshStandardMaterial).flatShading, snowFlat: variant !== 'F', pillowsVisible: pillows.visible }) };

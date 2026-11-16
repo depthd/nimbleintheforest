@@ -39,14 +39,14 @@ console.log(JSON.stringify({result:'PASS',originalFArraysIdenticalTo9462b0b:true
 }
 
 function runProbe(mode){
- const {buildRimVariant}=require('./wedge-rim.ts'),{snowEdgeBoundary,ringPoint}=require('./wedge-snow-layer.ts');
+ const {buildRimVariant}=require('./wedge-rim.ts'),{snowEdgeBoundary,ringPoint,snowStoneSurface}=require('./wedge-snow-layer.ts');
  const reference=buildSnowLayer(upper,j.accepted.seam,j.accepted.nose,false),rim=mode==='passage'?undefined:buildRimVariant(j,mode),cut=rim?rim.cut:j.cut;
  const stoneHash=hash(...Object.values(cut).flatMap(m=>[m.positions,m.indices]));
  const roof=rim?surfaceRoof([cut.plateau,cut.strip]):undefined,d=buildWedgeRocks(cut,source,upper,roof),dressingHash=hash(d.rocks.positions,d.rocks.indices,d.snow.positions,d.snow.indices);
  const settings=mode==='passage'?{...snowSettings,centerAngle:2.8}:snowSettings;
  const swept={...j.accepted.nose,points:j.nose,angles:j.nose.map(p=>(Math.atan2(p.z/180,p.x/260)+2*Math.PI)%(2*Math.PI))};
  const nose=rim?snowEdgeBoundary(swept,rim.deform,rim.knots.slice(0,-1).map(k=>k.p),rim.cut.strip):snowEdgeBoundary(swept);
- const s=buildSnowLayer(upper,j.accepted.seam,nose,true,settings,{angleLimits:rim?[reference.angles[0],reference.angles.at(-1)]:undefined,recordSamplingFailure:true});
+ const s=buildSnowLayer(upper,j.accepted.seam,nose,true,settings,{angleLimits:rim?[reference.angles[0],reference.angles.at(-1)]:undefined,recordSamplingFailure:true,stone:rim&&!process.env.SNOW_BEFORE?snowStoneSurface([cut.plateau,cut.strip]):undefined});
  let reversed=0;for(const m of [s.inner,s.outer])for(let k=0;k<m.indices.length;k+=3){const [a,b,c]=Array.from(m.indices.subarray(k,k+3),id=>Array.from(m.positions.subarray(id*3,id*3+3)));if((b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2])< -1e-6)reversed++;}
  let edgeGap=0,edgeExcess=0,outError=0;const spots=[];
  for(const a of s.angles){const n=s.edge(a),p=s.base(a,1),t=s.top(a,1).p,gap=p.y-n.y,excess=t.y-n.y-settings.edge;
@@ -56,16 +56,32 @@ function runProbe(mode){
  }
  const noseDistance=edgeSurfaceDistance(s,cut.strip);assert.ok(noseDistance<.0005,'Adapter must read the actual rendered rim, not an approximate decorative line');
  const seam=seamMetrics(s),closed=closure([s.inner,s.outer,s.bottom,s.cap,s.closures],false);
+ let contactStats,rockTopClearance,capStoneSurfaceIntersections;
+ const corrected=!!rim&&!process.env.SNOW_BEFORE;
+ if(corrected){
+  const actual=surfaceRoof([cut.plateau,cut.strip]);let min=Infinity,max=-Infinity,count=0;
+  for(let k=0;k<s.bottom.indices.length;k+=3){const pts=Array.from(s.bottom.indices.subarray(k,k+3),id=>({x:s.bottom.positions[id*3],y:s.bottom.positions[id*3+1],z:s.bottom.positions[id*3+2]}));const center=pts.reduce((p,q)=>({x:p.x+q.x/3,y:p.y+q.y/3,z:p.z+q.z/3}),{x:0,y:0,z:0});for(const p of [...pts,center]){const h=actual(p.x,p.z);if(h===undefined)continue;count++;const d=h-p.y;min=Math.min(min,d);max=Math.max(max,d);}}
+  contactStats={testedPoints:count,minEmbedM:min,maxEmbedM:max,maxErrorM:Math.max(Math.abs(min-.02),Math.abs(max-.02))};
+  const snowRoof=surfaceRoof([s.inner,s.outer]);let clearance=Infinity,overlaps=0;
+  for(const m of [cut.plateau,cut.strip])for(let k=0;k<m.indices.length;k+=3){const pts=Array.from(m.indices.subarray(k,k+3),id=>({x:m.positions[id*3],y:m.positions[id*3+1],z:m.positions[id*3+2]})),d=snowRoof.triangleClearance(pts);if(Number.isFinite(d)){overlaps++;clearance=Math.min(clearance,d);}}
+  rockTopClearance={fullProjectedTriangleOverlaps:overlaps,minM:clearance};
+  const joined=(names)=>{const positions=[],indices=[];for(const n of names){const m=cut[n],start=positions.length/3;for(const v of m.positions)positions.push(v);for(const id of m.indices)indices.push(start+id);}return {positions:new Float32Array(positions),indices:new Uint32Array(indices)};};
+  capStoneSurfaceIntersections=surfaceCrossings([s.inner,s.outer,s.cap],joined(['plateau','strip','underside']));
+  assert.equal(capStoneSurfaceIntersections.crossingTrianglePairs,0,'Snow upper/cornice cannot cross actual stone; intentional embedded foundation excluded');
+  assert.ok(contactStats.maxErrorM<.0005,'The complete sampled foundation must be embedded .02m in actual stone');assert.ok(rockTopClearance.minM>0,'Snow roof cannot cut the actual rock top');
+  assert.ok(closed.maxUncoveredM<=.0005,'Corrected rim snow shell must close');assert.equal(reversed,0);assert.ok(edgeGap<.0001&&edgeExcess<.0001,'No inflated thickness at the actual edge');
+ }
  const collisions={};for(const [name,m]of [['rocks',d.rocks],['pillows',d.snow]]){
   const underside=surfaceRoof([s.bottom,s.capBottom]);let candidates=0,min=Infinity,negative=0;
   for(let k=0;k<m.indices.length;k+=3){const tri=Array.from(m.indices.subarray(k,k+3),id=>({x:m.positions[id*3],y:m.positions[id*3+1],z:m.positions[id*3+2]})),c=underside.triangleClearance(tri);if(Number.isFinite(c)){candidates++;min=Math.min(min,c);if(c<-.0005)negative++;}}
   collisions[name]={surfaceIntersections:surfaceCrossings([s.inner,s.outer,s.bottom,s.cap,s.closures],m),projectedOverlaps:candidates,minSignedClearanceM:Number.isFinite(min)?min:null,trianglesAboveUnderside:negative,note:'Signed full projected overlap against bottom/cap-bottom; negative is a conflict candidate, not a 3D Boolean volume count.'};
  }
+ if(corrected){for(const q of Object.values(collisions))assert.equal(q.surfaceIntersections.crossingTrianglePairs,0,'No snow intersections with dressing/pillows');}
  assert.equal(hash(...Object.values(cut).flatMap(m=>[m.positions,m.indices])),stoneHash);assert.equal(hash(d.rocks.positions,d.rocks.indices,d.snow.positions,d.snow.indices),dressingHash);
  assert.equal(hash(source.heights,upper.heights,...Object.values(j.cut).flatMap(m=>[m.positions,m.indices])),before);
  assert.equal(seam.maxHeightOrPositionGapM,0);assert.ok(s.stats.maxAlongM<=.5&&s.stats.maxAcrossM<=.5&&s.stats.maxCapM<=.5,'Required sampling resolution');
  const volumes=require('./ascent.ts').ascentCutVolumes();const insideExcavation=s.columns.flat().filter(q=>volumes.some(v=>v.every(pl=>pl.x*q.p.x+pl.y*q.p.y+pl.z*q.p.z+pl.d<-.001))).length;
- console.log(JSON.stringify({mode,compatibility:closed.maxUncoveredM>.0005||reversed>0||edgeGap>.001?'FAIL':'PASS',snowTopVerticesInsideExcavation:insideExcavation,execution:'PASS: probe built; conflicts are recorded, not repaired',settings,stoneHash,dressingHash,stoneAndDressingUnchanged:true,seam,stats:s.stats,noseMaxDistanceToRenderedTopM:noseDistance,reversedTopTriangles:reversed,closure:closed,maxSnowBaseToStoneEdgeGapM:edgeGap,maxActualEdgeThicknessDeviationM:edgeExcess,maxOverhangDeviationM:outError,conflictExamples:spots,collisions,passageWeightRange:[Math.min(...s.angles.map(a=>j.weight(a))),Math.max(...s.angles.map(a=>j.weight(a)))]},null,2));
+ console.log(JSON.stringify({mode,corrected,contactStats,rockTopClearance,capStoneSurfaceIntersections,compatibility:closed.maxUncoveredM>.0005||reversed>0||edgeGap>.001?'FAIL':'PASS',snowTopVerticesInsideExcavation:insideExcavation,execution:'PASS: probe built; conflicts are recorded, not repaired',settings,stoneHash,dressingHash,stoneAndDressingUnchanged:true,seam,stats:s.stats,noseMaxDistanceToRenderedTopM:noseDistance,reversedTopTriangles:reversed,closure:closed,maxSnowBaseToStoneEdgeGapM:edgeGap,maxActualEdgeThicknessDeviationM:edgeExcess,maxOverhangDeviationM:outError,conflictExamples:spots,collisions,passageWeightRange:[Math.min(...s.angles.map(a=>j.weight(a))),Math.max(...s.angles.map(a=>j.weight(a)))]},null,2));
 }
 // Independent 3D triangle SAT. Records surface crossings, not a volume Boolean.
 function surfaceCrossings(meshes,other){

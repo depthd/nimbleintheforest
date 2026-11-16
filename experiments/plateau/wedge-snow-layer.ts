@@ -46,8 +46,46 @@ export function snowEdgeBoundary(reference: Boundary, deform?: (p: Point) => Poi
   if (actual.length<3) throw Error('No rendered rim boundary found');
   return { points: actual.map(v=>v.p), angles:actual.map(v=>v.a), radius:reference.radius, sourceTriangles:[] };
 }
+// Exact height/contact queries on the rendered top. No stone buffers are modified.
+export function snowStoneSurface(meshes: MeshData[]) {
+  type Face = { p: Point[]; height: (x: number, z: number) => number; bary: (x: number, z: number) => number[] };
+  const bins = new Map<string, Face[]>(), cell = 4;
+  const cross2 = (a: Point, b: Point, p: Point) => (b.x-a.x)*(p.z-a.z)-(b.z-a.z)*(p.x-a.x);
+  for (const mesh of meshes) for (let k=0;k<mesh.indices.length;k+=3) {
+    const p=Array.from(mesh.indices.subarray(k,k+3),id=>({x:mesh.positions[id*3],y:mesh.positions[id*3+1],z:mesh.positions[id*3+2]}));
+    const [a,b,c]=p,den=cross2(a,b,c);if(Math.abs(den)<1e-10)continue;
+    const bary=(x:number,z:number)=>{const q={x,y:0,z},u=cross2(a,q,c)/den,v=cross2(a,b,q)/den;return [1-u-v,u,v];};
+    const face={p,bary,height:(x:number,z:number)=>bary(x,z).reduce((v,w,i)=>v+w*p[i].y,0)};
+    for(let x=Math.floor(Math.min(...p.map(q=>q.x))/cell);x<=Math.floor(Math.max(...p.map(q=>q.x))/cell);x++)for(let z=Math.floor(Math.min(...p.map(q=>q.z))/cell);z<=Math.floor(Math.max(...p.map(q=>q.z))/cell);z++){const key=x+','+z;if(!bins.has(key))bins.set(key,[]);bins.get(key)!.push(face);}
+  }
+  function candidates(p: Point[]) {const out=new Set<Face>();for(let x=Math.floor(Math.min(...p.map(q=>q.x))/cell);x<=Math.floor(Math.max(...p.map(q=>q.x))/cell);x++)for(let z=Math.floor(Math.min(...p.map(q=>q.z))/cell);z<=Math.floor(Math.max(...p.map(q=>q.z))/cell);z++)for(const f of bins.get(x+','+z)||[])out.add(f);return [...out];}
+  const vertices = new Map<string,number>();for(const mesh of meshes)for(const id of mesh.indices)vertices.set(mesh.positions[id*3]+','+mesh.positions[id*3+2],mesh.positions[id*3+1]);
+  function height(x:number,z:number) {
+    const exact=vertices.get(x+','+z);if(exact!==undefined)return exact;
+    let h:number|undefined,closest=Infinity,near:number|undefined;
+    for(const f of bins.get(Math.floor(x/cell)+','+Math.floor(z/cell))||[]){
+      if(!f.bary(x,z).some(v=>v< -2e-7)){const y=f.height(x,z);if(h===undefined||y>h)h=y;continue;}
+      for(let i=0;i<3;i++){const a=f.p[i],b=f.p[(i+1)%3],dx=b.x-a.x,dz=b.z-a.z,l=dx*dx+dz*dz;if(l<1e-18)continue;const t=Math.max(0,Math.min(1,((x-a.x)*dx+(z-a.z)*dz)/l)),d=Math.hypot(x-a.x-t*dx,z-a.z-t*dz);if(d<closest){closest=d;near=f.height(x,z);}}
+    }return h!==undefined?h:closest<.00005?near:undefined;
+  }
+  function requireHeight(x:number,z:number){const h=height(x,z);if(h===undefined)throw Error('Snow contact outside actual stone at '+x+','+z);return h;}
+  function splitLine(a:Point,b:Point,embed:number) {
+    const cuts=[0,1],dx=b.x-a.x,dz=b.z-a.z;
+    for(const f of candidates([a,b]))for(let i=0;i<3;i++){const p=f.p[i],q=f.p[(i+1)%3],ex=q.x-p.x,ez=q.z-p.z,den=dx*ez-dz*ex;if(Math.abs(den)<1e-12)continue;const t=((p.x-a.x)*ez-(p.z-a.z)*ex)/den,u=((p.x-a.x)*dz-(p.z-a.z)*dx)/den;if(t>1e-8&&t<1-1e-8&&u>=-1e-7&&u<=1+1e-7)cuts.push(t);}
+    return cuts.sort((a,b)=>a-b).filter((v,i,all)=>!i||v-all[i-1]>1e-7).map(t=>{const x=a.x+dx*t,z=a.z+dz*t;return canonical({x,y:requireHeight(x,z)-embed,z});});
+  }
+  function projectTriangle(triangle:Point[],embed:number) {
+    const polys:Point[][]=[];
+    for(const f of candidates(triangle)){let poly=triangle;
+      for(let i=0;i<3;i++){const a=f.p[i],b=f.p[(i+1)%3],sign=Math.sign(cross2(f.p[0],f.p[1],f.p[2]));const next:Point[]=[];
+        for(let j=0;j<poly.length;j++){const p=poly[j],q=poly[(j+1)%poly.length],dp=sign*cross2(a,b,p),dq=sign*cross2(a,b,q);if(dp>=-1e-9)next.push(p);if((dp>0&&dq<0)||(dp<0&&dq>0))next.push(lerp(p,q,dp/(dp-dq)));}poly=next;if(poly.length<3)break;}
+      if(poly.length>=3)polys.push(poly.map(p=>canonical({x:p.x,y:f.height(p.x,p.z)-embed,z:p.z})));
+    }return polys;
+  }
+  return {height,requireHeight,splitLine,projectTriangle};
+}
 // Probe controls only sampling/domain, never repairs support heights, gaps or passage folds.
-export interface SnowProbe { angleLimits?: [number, number]; recordSamplingFailure?: boolean }
+export interface SnowProbe { angleLimits?: [number, number]; recordSamplingFailure?: boolean; stone?: ReturnType<typeof snowStoneSurface> }
 // A shared 2 m derivative field avoids folding a normal-offset layer over 4 m rock facets.
 // It changes snow placement / optional upper normals only; the stone vertices stay fixed.
 export function upperNormal(upper: SourceGrid, x: number, z: number, radius = snowSettings.normalRadius): Point {
@@ -65,7 +103,12 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
   const edgeCache = new Map<number, Point>(), seamCache = new Map<number, Point>(), planCache = new Map<number, Point>();
   const edge = (a: number) => { let p = edgeCache.get(a); if (!p) { p = ringPoint(nose, a); edgeCache.set(a, p); } return p; };
   const atE = (a: number) => { let p = seamCache.get(a); if (!p) { p = ringPoint(seam, a); seamCache.set(a, p); } return p; };
-  const planNormal = (a: number) => { let n = planCache.get(a); if (!n) { const t = contourTangent(a, nose.radius); n = unit({ x: t.z, y: 0, z: -t.x }); planCache.set(a, n); } return n; };
+  const planStations=[0];for(let i=1;i<=nose.points.length;i++){const p=nose.points[i-1],q=nose.points[i%nose.points.length];planStations.push(planStations[i-1]+Math.hypot(q.x-p.x,q.z-p.z));}
+  const planPoint=(s:number)=>{const total=planStations[planStations.length-1];s=(s%total+total)%total;const i=locate(planStations,s);return lerp(nose.points[i],nose.points[(i+1)%nose.points.length],(s-planStations[i])/(planStations[i+1]-planStations[i]));};
+  const planNormal = (a: number) => { let n=planCache.get(a);if(!n){
+    if(probe.stone){const aa=[...nose.angles,nose.angles[0]+TAU],u=a<aa[0]?a+TAU:a,i=locate(aa,u),p=edge(a),s=planStations[i]+Math.hypot(p.x-nose.points[i].x,p.z-nose.points[i].z),lo=planPoint(s-settings.normalRadius),hi=planPoint(s+settings.normalRadius);n=unit({x:hi.z-lo.z,y:0,z:lo.x-hi.x});}
+    else {const t=contourTangent(a,nose.radius);n=unit({x:t.z,y:0,z:-t.x});}planCache.set(a,n);
+  }return n;};
   function base(a: number, v: number): Point {
     const e = atE(a), n = edge(a), radial = unit({ x: n.x - e.x, y: 0, z: n.z - e.z });
     let p: Point;
@@ -74,19 +117,19 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
       const length = Math.hypot(n.x - e.x, n.z - e.z), p1 = lerp(e, n, 1 / 3), p2 = add(n, planNormal(a), -length / 3);
       p = lerp(lerp(lerp(e, p1, v), lerp(p1, p2, v), v), lerp(lerp(p1, p2, v), lerp(p2, n, v), v), v);
     }
-    return { x: p.x, y: sampleGrid(upper, p.x, p.z).y, z: p.z };
+    return { x:p.x,y:probe.stone && v>0 ? (v===1?n.y:probe.stone.requireHeight(p.x,p.z)) : sampleGrid(upper,p.x,p.z).y,z:p.z };
   }
   function top(a: number, v: number) {
     const p = base(a, v), normal = upperNormal(upper, p.x, p.z, settings.normalRadius), thickness = snowThickness(v, normal, settings);
     if (!thickness) return { p: canonical(p), thickness, lift: 0 };
-    const blend = smoothstep(.78, 1, v), direction = unit(lerp(normal, { x: 0, y: 1, z: 0 }, blend));
+    const blend = smoothstep(.78, 1, v), vertical = probe.stone ? smoothstep(.25,.45,v) : blend, direction = unit(lerp(normal, { x: 0, y: 1, z: 0 }, vertical));
     const n = edge(a), supportY = p.y + blend * (n.y - p.y);
-    const q = add({ ...p, y: supportY }, direction, thickness), floor = sampleGrid(upper, q.x, q.z).y + settings.minThickness;
+    const q = add({ ...p, y: supportY }, direction, thickness), floor = (probe.stone && v>0 ? probe.stone.requireHeight(q.x,q.z) : sampleGrid(upper,q.x,q.z).y) + settings.minThickness;
     const lift = Math.max(0, floor - q.y); q.y += lift;
     return { p: canonical(q), thickness, lift };
   }
   function normal(a: number, v: number) {
-    const da = .0001, dv = .001, lo = Math.max(-1, v - dv), hi = Math.min(1, v + dv);
+    const speed=contourTangent(a,nose.radius),da=probe.stone?settings.normalRadius/Math.hypot(speed.x,speed.z):.0001,span=Math.hypot(edge(a).x-atE(a).x,edge(a).z-atE(a).z),dv=probe.stone?settings.normalRadius/Math.max(span,settings.inside):.001,lo=Math.max(-1,v-dv),hi=Math.min(1,v+dv);
     const n = unit(cross(sub(top(a + da, v).p, top(a - da, v).p), sub(top(a, hi).p, top(a, lo).p)));
     return canonical(n.y < 0 ? { x: -n.x, y: -n.y, z: -n.z } : n);
   }
@@ -168,7 +211,9 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
     if ([columns[i][j], columns[i + 1][j], columns[i][j + 1], columns[i + 1][j + 1]].every(p => !p.thickness)) continue;
     const p = [columns[i][j].p, columns[i + 1][j].p, columns[i][j + 1].p, columns[i + 1][j + 1].p], n = [Ns[i][j], Ns[i + 1][j], Ns[i][j + 1], Ns[i + 1][j + 1]];
     quad(j < innerRows ? inner : outer, p, n);
-    quad(bottom, [bottoms[i][j], bottoms[i + 1][j], bottoms[i][j + 1], bottoms[i + 1][j + 1]], p.map(() => ({ x: 0, y: -1, z: 0 })), true);
+    const bp=[bottoms[i][j],bottoms[i+1][j],bottoms[i][j+1],bottoms[i+1][j+1]];
+    if(probe.stone){for(const ids of [[0,2,1],[1,2,3]])for(const poly of probe.stone.projectTriangle(ids.map(k=>bp[k]),settings.embed))for(let k=1;k+1<poly.length;k++)emit(bottom,[poly[0],poly[k],poly[k+1]],Array(3).fill({x:0,y:-1,z:0}));}
+    else quad(bottom,bp,p.map(()=>({x:0,y:-1,z:0})),true);
   }
   function capNormal(i: number, j: number) {
     if (j === 0) return Ns[i][Ns[i].length - 1];
@@ -176,15 +221,21 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
     let before = j - 1, after = Math.min(row.length - 1, j + 1);
     while (before > 0 && Math.hypot(...Object.values(sub(row[j], row[before]))) < 1e-7) before--;
     while (after < row.length - 1 && Math.hypot(...Object.values(sub(row[after], row[j]))) < 1e-7) after++;
+    if(probe.stone){const t=contourTangent(angles[i],nose.radius),da=settings.normalRadius/Math.hypot(t.x,t.z);return unit(cross(sub(profile(angles[i]+da).points[j],profile(angles[i]-da).points[j]),sub(row[after],row[before])));}
     return unit(cross(sub(profiles[hi].points[j], profiles[lo].points[j]), sub(row[after], row[before])));
   }
   for (let i = 0; i < angles.length - 1; i++) for (let j = 0; j < profiles[i].points.length - 1; j++) {
     const p = [profiles[i].points[j], profiles[i + 1].points[j], profiles[i].points[j + 1], profiles[i + 1].points[j + 1]], n = [capNormal(i, j), capNormal(i + 1, j), capNormal(i, j + 1), capNormal(i + 1, j + 1)];
     quad(cap, p, n); if (profiles[i].under[j + 1]) quad(capBottom, p, n);
   }
-  for (let i = 0; i < angles.length - 1; i++) quad(closures, [bottoms[i][0], bottoms[i + 1][0], columns[i][0].p, columns[i + 1][0].p], Array(4).fill({ x: 0, y: 0, z: 1 }));
+  function closePolygon(poly:Point[],reverse=false){const center=poly.reduce((p,q)=>add(p,q,1/poly.length),{x:0,y:0,z:0});for(let k=0;k<poly.length;k++){let tri=[center,poly[k],poly[(k+1)%poly.length]];if(reverse)tri=tri.reverse();const n=unit(cross(sub(tri[1],tri[0]),sub(tri[2],tri[0])));emit(closures,tri,[n,n,n]);}}
+  for (let i=0;i<angles.length-1;i++) {
+    if(probe.stone)closePolygon([...probe.stone.splitLine(bottoms[i][0],bottoms[i+1][0],settings.embed),columns[i+1][0].p,columns[i][0].p]);
+    else quad(closures,[bottoms[i][0],bottoms[i+1][0],columns[i][0].p,columns[i+1][0].p],Array(4).fill({x:0,y:0,z:1}));
+  }
   for (const i of [0, angles.length - 1]) {
-    const poly = [...columns[i].map(v => v.p), ...profiles[i].points.slice(1), ...bottoms[i].slice(0, -1).reverse()];
+    const contact:Point[]=[]; if(probe.stone){for(let j=bottoms[i].length-1;j>0;j--)contact.push(...probe.stone.splitLine(bottoms[i][j],bottoms[i][j-1],settings.embed).slice(0,-1));contact.push(bottoms[i][0]);}
+    const poly = [...columns[i].map(v => v.p), ...profiles[i].points.slice(1), ...(probe.stone?contact.slice(1):bottoms[i].slice(0,-1).reverse())];
     const center = poly.reduce((p, q) => add(p, q, 1 / poly.length), { x: 0, y: 0, z: 0 });
     for (let k = 0; k < poly.length; k++) { let tri = [center, poly[k], poly[(k + 1) % poly.length]]; if (i === angles.length - 1) tri = tri.reverse(); const n = unit(cross(sub(tri[1], tri[0]), sub(tri[2], tri[0]))); emit(closures, tri, [n, n, n]); }
   }
