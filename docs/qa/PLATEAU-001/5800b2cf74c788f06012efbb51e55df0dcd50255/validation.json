@@ -1,0 +1,20 @@
+{
+  "sourceSha": "5800b2cf74c788f06012efbb51e55df0dcd50255",
+  "sourceChangedPaths": [
+    "experiments/plateau/wedge-snow-layer.test.cjs",
+    "experiments/plateau/wedge-snow-layer.ts",
+    "experiments/plateau/wedge-snow-view.ts"
+  ],
+  "scope": "PASS",
+  "baselineArrayRegression": "PASS",
+  "extendedGeometry": "FAIL",
+  "photoComparison": "PIXEL_DIFF",
+  "maximumPhotoChannelDifference": 1,
+  "browser": "PASS",
+  "originalCamerasPreserved": true,
+  "centralTrianglesPreserved": true,
+  "scenePhotos": 8,
+  "deployed": false,
+  "merged": false,
+  "userAcceptedExtension": false
+}

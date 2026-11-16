@@ -1,0 +1,32 @@
+{
+  "result": "PIXEL_DIFF",
+  "checks": [
+    {
+      "maxChannelDifference": 1,
+      "changedPixels": 950,
+      "meanChannelDifference": 0.00015203125,
+      "view": "one",
+      "samePngBytes": false,
+      "samePixels": false,
+      "pixelSha256": "e2ff155688fda212131e464cc9f27777dc30c2a39117de410ff2d93778856071"
+    },
+    {
+      "maxChannelDifference": 1,
+      "changedPixels": 922,
+      "meanChannelDifference": 0.0001475,
+      "view": "two",
+      "samePngBytes": false,
+      "samePixels": false,
+      "pixelSha256": "4b1b75e4d90a30547803111365c7cf089cdbbea8362bad264ae1012d69450cac"
+    },
+    {
+      "maxChannelDifference": 1,
+      "changedPixels": 893,
+      "meanChannelDifference": 0.0001421875,
+      "view": "three",
+      "samePngBytes": false,
+      "samePixels": false,
+      "pixelSha256": "8992cc30d07d5f5e0e7124c58c2288999267d0e15394140bb942544890125e42"
+    }
+  ]
+}

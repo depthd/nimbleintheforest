@@ -1,0 +1,196 @@
+{
+  "result": "FAIL",
+  "lengthM": 128,
+  "centralReferenceTriangles": {
+    "inner": {
+      "triangles": 12672,
+      "positionsAndNormalsIdentical": true
+    },
+    "outer": {
+      "triangles": 84480,
+      "positionsAndNormalsIdentical": true
+    },
+    "bottom": {
+      "triangles": 97152,
+      "positionsAndNormalsIdentical": true
+    },
+    "cap": {
+      "triangles": 16896,
+      "positionsAndNormalsIdentical": true
+    }
+  },
+  "formerEndCapsRemoved": true,
+  "centralCrossRowsIdentical": true,
+  "newAreaCrossDivisions": 2,
+  "stats": {
+    "samplingConverged": true,
+    "maxAlongM": 0.49160732442379956,
+    "maxAcrossM": 0.44352169402855895,
+    "maxCapM": 0.20002850540918787,
+    "alongSamples": 530,
+    "crossSamples": 185,
+    "minThicknessM": 0.15,
+    "bareVertices": 0,
+    "maxSupportLiftM": 0
+  },
+  "seam": {
+    "vertices": 530,
+    "maxHeightOrPositionGapM": 0,
+    "maxFormulaNormalAngleDeg": 0.0000017075472925031877,
+    "note": "Canonical vertex normals. Flat-shaded B/E still use per-face shader normals; their ordinary facet changes are not called a smooth seam."
+  },
+  "closure": {
+    "unpairedEdgesBeforeCollinearCoverage": 2244,
+    "maxUncoveredM": 1.1102230246251565e-16,
+    "toleranceM": 0.0005
+  },
+  "reversedTopTriangles": 5,
+  "folds": [
+    {
+      "part": "outer",
+      "triangle": 252671,
+      "twiceProjectedAreaM2": -0.0015553988050669432,
+      "vertices": [
+        [
+          152.93832397460938,
+          106.51786804199219,
+          143.78346252441406
+        ],
+        [
+          152.88108825683594,
+          106.77863311767578,
+          143.8330841064453
+        ],
+        [
+          153.00759887695312,
+          107.17548370361328,
+          143.69622802734375
+        ]
+      ]
+    },
+    {
+      "part": "outer",
+      "triangle": 253312,
+      "twiceProjectedAreaM2": -0.00015962752513587475,
+      "vertices": [
+        [
+          152.88108825683594,
+          106.77863311767578,
+          143.8330841064453
+        ],
+        [
+          152.77590942382812,
+          106.3780288696289,
+          143.9832000732422
+        ],
+        [
+          152.84039306640625,
+          107.03532409667969,
+          143.8896484375
+        ]
+      ]
+    },
+    {
+      "part": "outer",
+      "triangle": 253313,
+      "twiceProjectedAreaM2": -0.0027323763351887465,
+      "vertices": [
+        [
+          152.77590942382812,
+          106.3780288696289,
+          143.9832000732422
+        ],
+        [
+          152.71498107910156,
+          106.64324188232422,
+          144.0292205810547
+        ],
+        [
+          152.84039306640625,
+          107.03532409667969,
+          143.8896484375
+        ]
+      ]
+    },
+    {
+      "part": "outer",
+      "triangle": 253954,
+      "twiceProjectedAreaM2": -0.001416464103385806,
+      "vertices": [
+        [
+          152.71498107910156,
+          106.64324188232422,
+          144.0292205810547
+        ],
+        [
+          152.6163330078125,
+          106.23823547363281,
+          144.18544006347656
+        ],
+        [
+          152.67181396484375,
+          106.90205383300781,
+          144.08322143554688
+        ]
+      ]
+    },
+    {
+      "part": "outer",
+      "triangle": 253955,
+      "twiceProjectedAreaM2": -0.004221648210659623,
+      "vertices": [
+        [
+          152.6163330078125,
+          106.23823547363281,
+          144.18544006347656
+        ],
+        [
+          152.55201721191406,
+          106.50775909423828,
+          144.22784423828125
+        ],
+        [
+          152.67181396484375,
+          106.90205383300781,
+          144.08322143554688
+        ]
+      ]
+    }
+  ],
+  "maxStoneEdgeBaseGapM": 0.000007037577532287287,
+  "foundationContact": {
+    "reference": {
+      "testedVertexAndCentroidSamples": 388369,
+      "maxFoundationAboveStoneM": 0.10619601349269203,
+      "maxFoundationBelowStoneM": 0.11733220676737233
+    },
+    "extended": {
+      "testedVertexAndCentroidSamples": 1168282,
+      "maxFoundationAboveStoneM": 0.11456061456311772,
+      "maxFoundationBelowStoneM": 0.11733220676737233
+    }
+  },
+  "collisions": {
+    "rocks": {
+      "crossingTrianglePairs": 0,
+      "dressingTrianglesCrossing": 0,
+      "broadphasePairs": 1051,
+      "examples": [],
+      "toleranceM": 0.00001
+    },
+    "pillows": {
+      "crossingTrianglePairs": 0,
+      "dressingTrianglesCrossing": 0,
+      "broadphasePairs": 0,
+      "examples": [],
+      "toleranceM": 0.00001
+    }
+  },
+  "stoneAndDressingUnchanged": true,
+  "stoneDigest": "45a7f8940789c4a16d7a4d8eb43396dc8999c3dab14c73822a5d3e5692e4179f",
+  "pillowsDigest": "0f48bcea557449582b42562dddc021cfdb7dec8f7b53c24c4eff8b4838e88d52",
+  "passageWeightRange": [
+    1,
+    1
+  ]
+}

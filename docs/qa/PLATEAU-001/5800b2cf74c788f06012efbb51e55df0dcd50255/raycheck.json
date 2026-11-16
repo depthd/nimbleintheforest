@@ -1,0 +1,61 @@
+{
+  "view": "two",
+  "hits": [
+    {
+      "pixel": [
+        1510,
+        344
+      ],
+      "part": "snow.closures",
+      "faceIndex": 1368,
+      "closureRegion": "end of patch",
+      "world": [
+        249.78144636833215,
+        102.10298665303928,
+        88.52237613858955
+      ]
+    },
+    {
+      "pixel": [
+        1540,
+        350
+      ],
+      "part": "snow.closures",
+      "faceIndex": 1358,
+      "closureRegion": "end of patch",
+      "world": [
+        251.07858054326013,
+        101.82383254304423,
+        88.7625761189545
+      ]
+    },
+    {
+      "pixel": [
+        1580,
+        345
+      ],
+      "part": "snow.closures",
+      "faceIndex": 1365,
+      "closureRegion": "end of patch",
+      "world": [
+        252.6264179760806,
+        102.06465137055243,
+        89.32785160642742
+      ]
+    },
+    {
+      "pixel": [
+        1550,
+        330
+      ],
+      "part": "snow.closures",
+      "faceIndex": 1379,
+      "closureRegion": "end of patch",
+      "world": [
+        251.27542731212552,
+        102.73926370584104,
+        89.13230712731156
+      ]
+    }
+  ]
+}
