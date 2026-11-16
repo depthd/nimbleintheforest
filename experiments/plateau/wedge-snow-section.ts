@@ -44,6 +44,7 @@ export function snowSectionSvg(stone: MeshData[], snow: ReturnType<typeof buildS
   <defs><clipPath id="plot"><rect x="90" y="150" width="1420" height="710"/></clipPath></defs>
   <text x="60" y="55" font-size="30" fill="#26343e">${variant} · разрез реальной геометрии</text>
   <text x="60" y="92" fill="#596670">Серый — неизменный камень; голубой — снежный объём. Обе оси в одном масштабе.</text>
+  ${variant.length > 1 ? '<text x="60" y="122" fill="#9b4a30">Проба без исправлений. Незамкнутое сечение снега показано линиями без заливки.</text>' : ''}
   <g stroke="#e4e8eb" stroke-width="1" clip-path="url(#plot)">${grid}</g>
   <g clip-path="url(#plot)"><path d="${fills}" fill="#c0e0f9"/><path d="${path(rock)}" fill="none" stroke="#686f75" stroke-width="4"/><path d="${path(flakes)}" fill="none" stroke="#3486c8" stroke-width="2.5"/></g>
   <path d="M${px(0)},155 V850" stroke="#89949c" stroke-dasharray="7 7"/><text x="${px(0) - 190}" y="142" fill="#596670">Каменная кромка →</text>

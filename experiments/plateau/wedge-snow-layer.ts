@@ -22,6 +22,32 @@ export function ringPoint(boundary: Boundary, a: number): Point {
   const t = Math.max(0, Math.min(1, -cr(p.x, p.z) / cr(q.x - p.x, q.z - p.z)));
   return lerp(p, q, t);
 }
+// Adapter only: include the rim's existing knots; never change its meshes.
+export function snowEdgeBoundary(reference: Boundary, deform?: (p: Point) => Point, knots: Point[] = [], renderedTop?: MeshData): Boundary {
+  const angle = (p: Point) => (Math.atan2(p.z / 180, p.x / 260) + TAU) % TAU;
+  const values = [...reference.angles, ...knots.map(angle)].sort((a, b) => a - b).filter((a, i, all) => !i || a - all[i - 1] > 1e-9);
+  const points = values.map(a => canonical(deform ? deform(ringPoint(reference, a)) : ringPoint(reference, a)));
+  const ordered = points.map(p => ({ p, a: angle(p) })).sort((a, b) => a.a - b.a);
+  const approximate = { points: ordered.map(v => v.p), angles: ordered.map(v => v.a), radius: reference.radius, sourceTriangles: [] };
+  if (!renderedTop) return approximate;
+  // Read the existing top boundary vertices, including every triangle split.
+  // In arcs, deforming only the old ring/knots misses small linear subsegments.
+  const edges = new Map<string, [Point, Point]>(), key = (p: Point) => [p.x,p.y,p.z].join(',');
+  for (let k = 0; k < renderedTop.indices.length; k += 3) {
+    const tri = Array.from(renderedTop.indices.subarray(k,k+3), id => ({x:renderedTop.positions[id*3],y:renderedTop.positions[id*3+1],z:renderedTop.positions[id*3+2]}));
+    for (let i = 0; i < 3; i++) { const a=tri[i],b=tri[(i+1)%3],id=[key(a),key(b)].sort().join('|'); if(edges.has(id))edges.delete(id);else edges.set(id,[a,b]); }
+  }
+  const boundary = new Map<string,Point>();
+  for (const pair of edges.values()) {
+    if (!pair.every(p => { const q=ringPoint(approximate,angle(p));return Math.hypot(q.x-p.x,q.z-p.z)<.05; })) continue;
+    for (const p of pair) boundary.set(key(p),p);
+  }
+  const actual = [...boundary.values()].map(p=>({p,a:angle(p)})).sort((a,b)=>a.a-b.a).filter((v,i,all)=>!i||v.a-all[i-1].a>1e-10);
+  if (actual.length<3) throw Error('No rendered rim boundary found');
+  return { points: actual.map(v=>v.p), angles:actual.map(v=>v.a), radius:reference.radius, sourceTriangles:[] };
+}
+// Probe controls only sampling/domain, never repairs support heights, gaps or passage folds.
+export interface SnowProbe { angleLimits?: [number, number]; recordSamplingFailure?: boolean }
 // A shared 2 m derivative field avoids folding a normal-offset layer over 4 m rock facets.
 // It changes snow placement / optional upper normals only; the stone vertices stay fixed.
 export function upperNormal(upper: SourceGrid, x: number, z: number, radius = snowSettings.normalRadius): Point {
@@ -35,7 +61,7 @@ export function snowThickness(v: number, normal: Point, settings = snowSettings)
   const nominal = settings.plateau + (settings.edge - settings.plateau) * smoothstep(.55, 1, v);
   return Math.max(settings.minThickness, nominal * factor);
 }
-export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary, rounded: boolean, settings: SnowSettings = snowSettings) {
+export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary, rounded: boolean, settings: SnowSettings = snowSettings, probe: SnowProbe = {}) {
   const edgeCache = new Map<number, Point>(), seamCache = new Map<number, Point>(), planCache = new Map<number, Point>();
   const edge = (a: number) => { let p = edgeCache.get(a); if (!p) { p = ringPoint(nose, a); edgeCache.set(a, p); } return p; };
   const atE = (a: number) => { let p = seamCache.get(a); if (!p) { p = ringPoint(seam, a); seamCache.set(a, p); } return p; };
@@ -64,13 +90,14 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
     const n = unit(cross(sub(top(a + da, v).p, top(a - da, v).p), sub(top(a, hi).p, top(a, lo).p)));
     return canonical(n.y < 0 ? { x: -n.x, y: -n.y, z: -n.z } : n);
   }
+  let capDivisions = 1;
   function profile(a: number, curve = rounded) {
     const n = edge(a), direction = planNormal(a), t = top(a, 1), height = t.p.y - n.y;
     const points: Point[] = [t.p], under: boolean[] = [false];
     const push = (x: number, y: number, underside: boolean) => { points.push(canonical(add({ ...n, y: n.y + y }, direction, x))); under.push(underside); };
-    const line = (x0: number, y0: number, x1: number, y1: number, count: number, underside: boolean) => { for (let k = 1; k <= count; k++) { const u = k / count; push(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, underside); } };
+    const line = (x0: number, y0: number, x1: number, y1: number, count: number, underside: boolean) => { count *= capDivisions; for (let k = 1; k <= count; k++) { const u = k / count; push(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, underside); } };
     if (!t.thickness) {
-      const count = curve ? 41 : 36; for (let k = 1; k <= count; k++) { points.push(canonical(n)); under.push(k > count / 2); }
+      const count = (curve ? 41 : 36) * capDivisions; for (let k = 1; k <= count; k++) { points.push(canonical(n)); under.push(k > count / 2); }
       return { points, under };
     }
     if (!curve) {
@@ -81,9 +108,9 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
       const radius = Math.min(settings.radius, settings.overhang, Math.max(.01, height - settings.minThickness));
       const bottomRadius = Math.max(.01, Math.min(height - radius, settings.overhang / 4));
       line(0, height, settings.overhang - radius, height, 1, false);
-      for (let k = 1; k <= 16; k++) { const theta = k / 16 * Math.PI / 2; push(settings.overhang - radius + radius * Math.sin(theta), height - radius + radius * Math.cos(theta), false); }
+      for (let k = 1; k <= 16 * capDivisions; k++) { const theta = k / (16 * capDivisions) * Math.PI / 2; push(settings.overhang - radius + radius * Math.sin(theta), height - radius + radius * Math.cos(theta), false); }
       line(settings.overhang, height - radius, settings.overhang, bottomRadius, 8, false);
-      for (let k = 1; k <= 6; k++) { const theta = k / 6 * Math.PI / 2; push(settings.overhang - bottomRadius + bottomRadius * Math.cos(theta), bottomRadius - bottomRadius * Math.sin(theta), true); }
+      for (let k = 1; k <= 6 * capDivisions; k++) { const theta = k / (6 * capDivisions) * Math.PI / 2; push(settings.overhang - bottomRadius + bottomRadius * Math.cos(theta), bottomRadius - bottomRadius * Math.sin(theta), true); }
       line(settings.overhang - bottomRadius, 0, 0, -settings.embed, 10, true);
     }
     return { points, under };
@@ -97,12 +124,13 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
   let alongStep = settings.alongStep, innerRows = 24, outerRows = 160;
   let angles: number[] = [], columns: ReturnType<typeof top>[][] = [], profiles: ReturnType<typeof profile>[] = [], vRows: number[] = [];
   let maxAlong = 0, maxAcross = 0, maxCap = 0;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const lo = angleAt(centerS - settings.length / 2), hi = angleAt(centerS + settings.length / 2), values = [lo, hi, settings.centerAngle];
+  let refinedAngles: number[] | undefined, samplingConverged = false;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const lo = probe.angleLimits?.[0] ?? angleAt(centerS - settings.length / 2), hi = probe.angleLimits?.[1] ?? angleAt(centerS + settings.length / 2), values = [lo, hi, settings.centerAngle];
     const count = Math.ceil(settings.length / alongStep);
     for (let k = 1; k < count; k++) values.push(angleAt(centerS - settings.length / 2 + settings.length * k / count));
     values.push(...seam.angles.filter(a => a > lo && a < hi), ...nose.angles.filter(a => a > lo && a < hi));
-    angles = [...new Set(values)].sort((a, b) => a - b);
+    angles = refinedAngles ?? [...new Set(values.filter(a => a >= lo && a <= hi))].sort((a, b) => a - b);
     vRows = Array.from({ length: innerRows }, (_, k) => -1 + k / innerRows).concat(Array.from({ length: outerRows + 1 }, (_, k) => k / outerRows));
     columns = angles.map(a => vRows.map(v => top(a, v))); profiles = angles.map(a => profile(a));
     const otherProfiles = angles.map(a => profile(a, !rounded));
@@ -112,11 +140,20 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
       for (let j = 0; j < vRows.length; j++) { if (i) maxAlong = Math.max(maxAlong, distance(columns[i][j].p, columns[i - 1][j].p)); if (j) maxAcross = Math.max(maxAcross, distance(columns[i][j].p, columns[i][j - 1].p)); }
       for (const pp of [profiles, otherProfiles]) for (let j = 0; j < pp[i].points.length; j++) { if (i) maxAlong = Math.max(maxAlong, distance(pp[i].points[j], pp[i - 1].points[j])); if (j) maxCap = Math.max(maxCap, distance(pp[i].points[j], pp[i].points[j - 1])); }
     }
-    if (maxAlong <= settings.maxStep && maxAcross <= settings.maxStep && maxCap <= settings.maxStep) break;
-    if (maxAlong > settings.maxStep) alongStep /= 2;
+    if (maxAlong <= settings.maxStep && maxAcross <= settings.maxStep && maxCap <= settings.maxStep) { samplingConverged = true; break; }
+    if (maxAlong > settings.maxStep) {
+      const inserts: number[] = [];
+      for (let i = 1; i < angles.length; i++) {
+        let length = 0;
+        for (let j = 0; j < vRows.length; j++) length = Math.max(length, distance(columns[i][j].p, columns[i - 1][j].p));
+        for (const pp of [profiles, otherProfiles]) for (let j = 0; j < pp[i].points.length; j++) length = Math.max(length, distance(pp[i].points[j], pp[i - 1].points[j]));
+        if (length > settings.maxStep) inserts.push((angles[i - 1] + angles[i]) / 2);
+      }
+      refinedAngles = [...angles, ...inserts].sort((a, b) => a - b);
+    }
     if (maxAcross > settings.maxStep) { innerRows *= 2; outerRows *= 2; }
-    if (maxCap > settings.maxStep) throw Error('Snow cap parameters exceed configured sampling');
-    if (attempt === 4) throw Error('Snow sampling failed to converge');
+    if (maxCap > settings.maxStep) capDivisions *= 2;
+    if (attempt === 11 && !probe.recordSamplingFailure) throw Error('Snow sampling failed to converge');
   }
   const storage = () => ({ p: [] as number[], n: [] as number[], i: [] as number[] });
   const inner = storage(), outer = storage(), bottom = storage(), cap = storage(), capBottom = storage(), closures = storage();
@@ -153,5 +190,5 @@ export function buildSnowLayer(upper: SourceGrid, seam: Boundary, nose: Boundary
   }
   const pack = (s: ReturnType<typeof storage>): SnowMesh => ({ positions: new Float32Array(s.p), normals: new Float32Array(s.n), indices: new Uint32Array(s.i) });
   return { inner: pack(inner), outer: pack(outer), bottom: pack(bottom), cap: pack(cap), capBottom: pack(capBottom), closures: pack(closures), settings, rounded, angles, vRows, seamRow: innerRows, columns, normals: Ns, profiles, base, top, normal, edge, planNormal,
-    stats: { maxAlongM: maxAlong, maxAcrossM: maxAcross, maxCapM: maxCap, alongSamples: angles.length, crossSamples: vRows.length, minThicknessM: columns.flat().reduce((v, p) => p.thickness > 0 ? Math.min(v, p.thickness) : v, Infinity), bareVertices: columns.flat().filter(p => !p.thickness).length, maxSupportLiftM: columns.flat().reduce((v, p) => Math.max(v, p.lift), 0) } };
+    stats: { samplingConverged, maxAlongM: maxAlong, maxAcrossM: maxAcross, maxCapM: maxCap, alongSamples: angles.length, crossSamples: vRows.length, minThicknessM: columns.flat().reduce((v, p) => p.thickness > 0 ? Math.min(v, p.thickness) : v, Infinity), bareVertices: columns.flat().filter(p => !p.thickness).length, maxSupportLiftM: columns.flat().reduce((v, p) => Math.max(v, p.lift), 0) } };
 }
