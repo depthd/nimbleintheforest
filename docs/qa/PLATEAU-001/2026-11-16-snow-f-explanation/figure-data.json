@@ -1,0 +1,45 @@
+{
+  "inputs": [
+    {
+      "name": "Эталон F",
+      "path": "9462b0b498b89ec0932f536140378b6c821cc6aa/section-E.svg",
+      "sha256": "14d6f86d00cb266db8b4781e4e3e0fb100cb5c7bca85d2d47472e9669fd94caf",
+      "edge": [
+        0.0,
+        0.0
+      ],
+      "edgeThicknessM": 2.499994946,
+      "straightAtTipM": 0.0
+    },
+    {
+      "name": "F на кромке «дуги»",
+      "path": "ffa4079e8707073bf573240c43e3622cb6de8ad5/arcs-section.svg",
+      "sha256": "052931b1c2ef3f28ff1c09eddf10158d0be668fec8b46a390280a67dde8e6e62",
+      "edge": [
+        -0.0015785723468379079,
+        -1.7143059097173818
+      ],
+      "edgeThicknessM": 2.4999982887173817,
+      "straightAtTipM": 0.0001650067336933514
+    }
+  ],
+  "sharedSourceSvgCoordinates": {
+    "pixelsPerMetre": 28,
+    "stoneEdgeReferenceX": 1370,
+    "heightReferenceY": 490
+  },
+  "commonPlotMetres": {
+    "x": [
+      -18,
+      3
+    ],
+    "height": [
+      -7,
+      4
+    ]
+  },
+  "airGapAtMinus6m": 2.696500174,
+  "areaWideLiftFromExistingArcsJson": 4.407349834137136,
+  "correction": "The selected arcs section has no long straight tip and no excess edge thickness. The gap is visible. Area-wide maximum must not be assigned to this section.",
+  "newSceneCaptures": false
+}
