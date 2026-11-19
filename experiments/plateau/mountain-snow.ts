@@ -4,8 +4,8 @@ import { type MeshData, type Point } from './cavity';
 import { type SourceGrid, sampleGrid } from './seam-boundary';
 import { type buildWedgeAscent } from './wedge-ascent';
 import { ringPoint, upperNormal, snowSettings, type SnowMesh } from './wedge-snow-layer';
-import { contourTangent } from './plateau-profile';
-import { profile } from './ascent';
+import { contourTangent, plateauRadius } from './plateau-profile';
+import { ascentSample, profile } from './ascent';
 import { smoothstep } from '../../src/core/rng';
 
 const TAU = Math.PI * 2;
@@ -28,16 +28,54 @@ function storage(){return {p:[] as number[],n:[] as number[],i:[] as number[],ve
 function emit(s:ReturnType<typeof storage>,ps:Point[],ns:Point[]){const d=cross(sub(ps[1],ps[0]),sub(ps[2],ps[0]));if(Math.hypot(d.x,d.y,d.z)<1e-9)return;ps.forEach((p,i)=>{const n=ns[i],k=[p.x,p.y,p.z,Math.fround(n.x),Math.fround(n.y),Math.fround(n.z)].join(',');let id=s.vertices.get(k);if(id===undefined){id=s.p.length/3;s.vertices.set(k,id);s.p.push(p.x,p.y,p.z);s.n.push(n.x,n.y,n.z);}s.i.push(id);});}
 function pack(s:ReturnType<typeof storage>):SnowMesh{return {positions:new Float32Array(s.p),normals:new Float32Array(s.n),indices:new Uint32Array(s.i)};}
 
-export function buildMountainSnow(upper:SourceGrid,junction:ReturnType<typeof buildWedgeAscent>,roof:MeshData[]) {
-  const nose={...junction.accepted.nose,points:junction.nose,angles:junction.nose.map(angle)},seam=junction.accepted.seam;
+// The excavated walls have their own inward-facing lip. Sample the roof on
+// each bank and taper into the existing cover where the pass reaches the top.
+function passageLip(upper:SourceGrid, roof:(x:number,z:number)=>{y:number}) {
+  const positions:number[]=[],indices:number[]=[];
+  for(const side of [-1,1]){
+    let previous:number[]|undefined;
+    for(let x=-274;x<=18;x+=1){
+      const p=ascentSample(x),edge=p.z+side*p.w,h=sampleGrid(upper,x,edge).y;
+      const extent=smoothstep(0,.10,1-plateauRadius(x,edge))*smoothstep(8,31,h-p.y);
+      if(extent<.001){previous=undefined;continue;}
+      const depth=(2.25+.5*Math.sin(x/13+side)+.32*Math.sin(x/6.7))*extent;
+      const row:number[]=[];
+      for(const [d,relative] of [[13,-.08],[9,.28],[5,.71],[2,1],[.2,.94],[-.75,.79],[-1.25,.54],[-1.35,.27],[-1.15,.02],[.9,-.28]]){
+        const offset=d<2?d*extent:d, z=edge+side*offset;
+        const height=roof(x,z).y+relative*depth;
+        row.push(positions.length/3);positions.push(x,height,z);
+      }
+      if(previous)for(let j=0;j<row.length-1;j++){
+        const a=previous[j],b=row[j],c=previous[j+1],d=row[j+1];
+        if(side===1)indices.push(a,b,c,c,b,d);else indices.push(a,c,b,c,d,b);
+      }
+      previous=row;
+    }
+  }
+  return {positions:new Float32Array(positions),indices:new Uint32Array(indices)};
+}
+
+export function mountainRim(junction:ReturnType<typeof buildWedgeAscent>) {
+  return {...junction.accepted.nose, points:junction.nose, angles:junction.nose.map(angle)};
+}
+
+export function buildMountainSnow(upper:SourceGrid,junction:ReturnType<typeof buildWedgeAscent>,roof:MeshData[],
+  rim: Partial<Pick<typeof snowSettings, 'edge' | 'radius' | 'overhang'> & { interiorStepM: number; edgeStepM: number }> = {}) {
+  const nose=mountainRim(junction),seam=junction.accepted.seam;
   const cache=new Map<string,{p:Point;b:Point;n:Point;coverage:number;edgeDistance:number}>();
-  const settings={...snowSettings,passageBareM:4,passageFadeM:10,interiorStepM:2,edgeStepM:.5};
+  const settings={...snowSettings,passageBareM:4,passageFadeM:10,interiorStepM:2,edgeStepM:.5,...rim};
+  const bounds = {
+    x0: profile[0].x - settings.passageFadeM, x1: profile[profile.length-1].x + settings.passageFadeM,
+    z0: Math.min(...profile.map(p=>p.z-p.w)) - settings.passageFadeM,
+    z1: Math.max(...profile.map(p=>p.z+p.w)) + settings.passageFadeM
+  };
   function field(x:number,z:number){
     const a=angle({x,y:0,z}),n=ringPoint(nose,a),e=ringPoint(seam,a),h=sampleGrid(upper,x,z).y;
     const width=Math.hypot(n.x-e.x,n.z-e.z)*(Math.hypot(n.x,n.z)>=Math.hypot(e.x,e.z)?1:-1);
     const edgeDistance=Math.hypot(n.x-x,n.z-z),outward=(Math.hypot(x,z)-Math.hypot(e.x,e.z))/Math.max(.001,width);
     const v=Math.max(0,Math.min(1,outward)),cornice=smoothstep(0,12,width);
-    const coverage=smoothstep(settings.passageBareM,settings.passageFadeM,distanceToAscent({x,z}));
+    const coverage=x<bounds.x0||x>bounds.x1||z<bounds.z0||z>bounds.z1 ? 1
+      : smoothstep(settings.passageBareM,settings.passageFadeM,distanceToAscent({x,z}));
     const normal=upperNormal(upper,x,z),slope=Math.acos(Math.max(-1,Math.min(1,normal.y)))*180/Math.PI;
     const nominal=settings.plateau+(settings.edge-settings.plateau)*smoothstep(.55,1,v)*cornice;
     const thickness=Math.max(settings.minThickness,nominal*(1-smoothstep(settings.slopeStart,settings.slopeEnd,slope)));
@@ -54,7 +92,7 @@ export function buildMountainSnow(upper:SourceGrid,junction:ReturnType<typeof bu
   const top=storage(),bottom=storage(),cap=storage(),boundaries=new Map<string,{a:Point;b:Point}>();
   const edges=(a:Point,b:Point)=>[key(a),key(b)].sort().join('|');
   for(const mesh of roof)for(let k=0;k<mesh.indices.length;k+=3){const ps=Array.from(mesh.indices.subarray(k,k+3),id=>point({x:mesh.positions[id*3],y:mesh.positions[id*3+1],z:mesh.positions[id*3+2]}));for(let i=0;i<3;i++){const a=ps[i],b=ps[(i+1)%3],ek=edges(a,b);if(boundaries.has(ek))boundaries.delete(ek);else boundaries.set(ek,{a,b});}}
-  function needsSplit(a:Point,b:Point){const m=mix(a,b,.5),near=Math.min(sample(a).edgeDistance,sample(b).edgeDistance,field(m.x,m.z).edgeDistance)<14;return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)/(near?settings.edgeStepM:settings.interiorStepM);}
+  function needsSplit(a:Point,b:Point){const m=mix(a,b,.5),n=ringPoint(nose,angle(m)),near=Math.min(sample(a).edgeDistance,sample(b).edgeDistance,Math.hypot(m.x-n.x,m.z-n.z))<14;return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)/(near?settings.edgeStepM:settings.interiorStepM);}
   let triangles=0,maxLeafEdgeM=0;
   function triangle(ps:Point[],depth=0){
     const ratios=ps.map((p,i)=>needsSplit(p,ps[(i+1)%3])),ratio=Math.max(...ratios);
@@ -88,5 +126,5 @@ export function buildMountainSnow(upper:SourceGrid,junction:ReturnType<typeof bu
     }
   }
   for(const {a,b}of boundaries.values())boundary(a,b);
-  return {top:pack(top),bottom:pack(bottom),cap:pack(cap),settings,stats:{roofTriangles:triangles,capSegments,sampledVertices:cache.size,maxLeafEdgeM},field};
+  return {top:pack(top),bottom:pack(bottom),cap:pack(cap),passageLip:passageLip(upper,field),settings,stats:{roofTriangles:triangles,capSegments,sampledVertices:cache.size,maxLeafEdgeM},field};
 }
