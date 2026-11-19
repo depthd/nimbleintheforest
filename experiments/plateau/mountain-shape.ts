@@ -68,6 +68,11 @@ export function buildMountainMasses(
   wallAt: (angle: number, y: number) => Point2 | undefined,
   groundAt: (x: number, z: number) => number,
   seed = 13947,
+  placement: {
+    cave?: boolean;
+    supported?: (x:number,z:number,radius:number)=>boolean;
+    reserved?: (x:number,z:number,radius:number)=>boolean;
+  } = {},
 ) {
   const rng = new Rng(seed),
     stone = buffer(),
@@ -276,7 +281,8 @@ export function buildMountainMasses(
   }
 
   function admissible(x: number, z: number, margin: number) {
-    if (!portalClear({ x, z }, margin)) return false;
+    if (placement.cave !== false && !portalClear({ x, z }, margin)) return false;
+    if (placement.supported && !placement.supported(x,z,margin)) return false;
     const p = ascentSample(x);
     return x < -300 - margin || x > 20 + margin || Math.abs(z - p.z) > p.w + margin;
   }
@@ -586,7 +592,7 @@ export function buildMountainMasses(
       const x = gx + rng.float(-18, 18),
         z = gz + rng.float(-13, 13),
         w = rng.float(5, 19);
-      if (!admissible(x, z, w * 0.7) || plateauRadius(x, z) > 0.94) continue;
+      if (!admissible(x, z, w * 0.7) || plateauRadius(x, z) > 0.94 || placement.reserved?.(x,z,w*.7)) continue;
       mass(
         {
           x,

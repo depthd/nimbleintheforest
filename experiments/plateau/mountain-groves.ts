@@ -4,20 +4,23 @@ import { Rng } from '../../src/core/rng';
 import { plateauRadius } from './plateau-profile';
 import { distanceToAscent } from './mountain-snow';
 
-export async function buildMountainGroves(
-  snowHeight: (x: number, z: number) => number,
-  outcrops: { x: number; z: number; radius: number }[],
-) {
+export interface GroveSite {
+  seed: number;
+  density: number;
+  heightFactor: number;
+  outcrops: { x: number; z: number; radius: number }[];
+  rootAt: (x: number, z: number, outside: boolean) => { x: number; y: number; z: number } | undefined;
+}
+
+export async function buildMountainGroves(sites: GroveSite[]) {
   const tree = (
     await new GLTFLoader().loadAsync(new URL('../../models/conifer_c1.glb', document.baseURI).href)
   ).scene;
   tree.updateMatrixWorld(true);
   const bounds = new Box3().setFromObject(tree),
     modelHeight = bounds.max.y - bounds.min.y;
-  const rng = new Rng(941003),
-    poses: Matrix4[] = [],
+  const poses: Matrix4[] = [],
     transform = new Object3D();
-  const roots: { x: number; z: number }[] = [];
   // The crest shelters small groves. The middle of the plateau and the pass are open.
   const groves = [
     [-169, 58, 7],
@@ -37,24 +40,34 @@ export async function buildMountainGroves(
     [-346, 43, 4],
     [-374, -144, 3],
   ];
-  for (const [gx, gz, count] of groves) {
-    for (let i = 0, planted = 0; i < count * 2 && planted < count; i++) {
-      const x = gx + rng.float(-27, 27),
-        z = gz + rng.float(-23, 23),
-        r = plateauRadius(x, z);
-      if ((r > 0.91 && r < 1.32) || distanceToAscent({ x, z }) < 7) continue;
-      if (roots.some((p) => Math.hypot(x - p.x, z - p.z) < 7)) continue;
-      if (outcrops.some((p) => Math.hypot(x - p.x, z - p.z) < p.radius + 1)) continue;
-      const height = rng.float(8, 24) * (r > 1 ? 1.18 : 1),
-        scale = height / modelHeight;
-      transform.position.set(x, (r < 1 ? snowHeight(x, z) : 0) - 0.23 - bounds.min.y * scale, z);
-      transform.rotation.set(rng.float(-0.035, 0.035), rng.float(0, Math.PI * 2), rng.float(-0.04, 0.04));
-      transform.scale.setScalar(scale);
-      transform.updateMatrix();
-      poses.push(transform.matrix.clone());
-      roots.push({ x, z });
-      planted++;
+  const counts: number[] = [];
+  for (const site of sites) {
+    const rng = new Rng(site.seed),
+      start = poses.length;
+    const roots: { x: number; z: number }[] = [];
+    for (const [gx, gz, originalCount] of groves) {
+      const count = Math.max(1, Math.round(originalCount * site.density));
+      for (let i = 0, planted = 0; i < count * 2 && planted < count; i++) {
+        const x = gx + rng.float(-27, 27),
+          z = gz + rng.float(-23, 23),
+          r = plateauRadius(x, z);
+        if ((r > 0.91 && r < 1.32) || distanceToAscent({ x, z }) < 7) continue;
+        if (roots.some((p) => Math.hypot(x - p.x, z - p.z) < 7)) continue;
+        if (site.outcrops.some((p) => Math.hypot(x - p.x, z - p.z) < p.radius + 1)) continue;
+        const root = site.rootAt(x, z, r > 1);
+        if (!root) continue;
+        const height = site.heightFactor * rng.float(8, 24) * (r > 1 ? 1.18 : 1),
+          scale = height / modelHeight;
+        transform.position.set(root.x, root.y - 0.23 - bounds.min.y * scale, root.z);
+        transform.rotation.set(rng.float(-0.035, 0.035), rng.float(0, Math.PI * 2), rng.float(-0.04, 0.04));
+        transform.scale.setScalar(scale);
+        transform.updateMatrix();
+        poses.push(transform.matrix.clone());
+        roots.push({ x, z });
+        planted++;
+      }
     }
+    counts.push(poses.length - start);
   }
   const group = new Group(),
     matrix = new Matrix4();
@@ -86,5 +99,6 @@ export async function buildMountainGroves(
     group.add(instances);
   });
   group.userData.count = poses.length;
+  group.userData.tierCounts = counts;
   return group;
 }
