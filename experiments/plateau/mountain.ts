@@ -211,7 +211,7 @@ async function start(){
       front: { eye: [-1660, 475, -735], target: [20, 63, 6], fov: 22 },
       overview: { eye: [-1170, 760, 890], target: [15, 50, 12], fov: 31 },
       back: { eye: [1290, 550, 860], target: [42, 78, 7], fov: 26 },
-      top: { eye: [35, 1610, 1], target: [35, 0, 0], fov: 29 },
+      top: { eye: [35, 1610, 1], target: [35, 0, 0], fov: 35 },
     });
     for (const tier of tiers.slice(1)) {
       const eye = worldPlan(tier, -345, -205),
