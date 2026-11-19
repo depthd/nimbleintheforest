@@ -6,11 +6,13 @@ import { noiseTexture } from '../../src/core/noisetex';
 import { reliefGrid } from './seam-relief-fixture';
 import { buildWedgeAscent } from './wedge-ascent';
 import { bluntTip } from './wedge-tip-profile';
-import { buildMountainMasses, mountainSnowProfile, plateauTop } from './mountain-shape';
+import { buildMountainMasses, mountainEnding, mountainSnowProfile, plateauTop } from './mountain-shape';
 import { buildMountainGroves } from './mountain-groves';
 import { subtract, interior, type MeshData } from './cavity';
 import { ascentCenter, ascentHeight } from './ascent';
-import { ringPoint, upperNormal } from './wedge-snow-layer';
+import { ringPoint, snowSettings, upperNormal } from './wedge-snow-layer';
+import { sampleGrid } from './seam-boundary';
+import { radialSurface } from './wedge-rocks';
 import { buildMountainSnow, mountainRim } from './mountain-snow';
 
 const status=document.querySelector<HTMLElement>('#status')!;
@@ -22,7 +24,7 @@ async function start(){
   const sun=new THREE.DirectionalLight('#fff0d8',2.5);sun.position.set(-350,550,250);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-430,right:430,top:430,bottom:-430,near:1,far:1700});sun.shadow.normalBias=.6;const fill=new THREE.HemisphereLight('#b8d5f4','#727a83',2.3);scene.add(sun,sun.target,fill);groundUniforms.uNoise.value=noiseTexture();
   await frame();
   const source=reliefGrid(plateauTop),upper={...source,heights:source.heights.map((_,k)=>plateauTop(source.x0+k%(source.n+1)*source.cell,source.z0+Math.floor(k/(source.n+1))*source.cell))};
-  const junction=buildWedgeAscent(source,upper,undefined,bluntTip);
+  const junction=buildWedgeAscent(source,upper,mountainEnding,bluntTip);
   const surfaces=Object.fromEntries(Object.entries(junction.cut).map(([k,m])=>[k,subtract(m)]));
   const rawPositions=new Float32Array(source.heights.length*3),rawIndices:number[]=[];for(let k=0;k<source.heights.length;k++)rawPositions.set([source.x0+k%(source.n+1)*source.cell,source.heights[k],source.z0+Math.floor(k/(source.n+1))*source.cell],k*3);
   for(let z=0;z<source.n;z++)for(let x=0;x<source.n;x++){const a=z*(source.n+1)+x;rawIndices.push(a,a+source.n+1,a+1,a+1,a+source.n+1,a+source.n+2);}
@@ -30,18 +32,60 @@ async function start(){
   const material=makeRockMaterial(),smooth=makeRockMaterial();smooth.flatShading=false;
   const hook=smooth.onBeforeCompile;smooth.onBeforeCompile=function(shader,r){hook.call(this,shader,r);shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vSmoothWorldNormal;').replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvSmoothWorldNormal=normalize(mat3(modelMatrix)*normal);');shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vSmoothWorldNormal;').replace('vec3 N = normalize(cross(dFdx(vRockPos), dFdy(vRockPos)));','vec3 N = normalize(vSmoothWorldNormal);');};smooth.customProgramCacheKey=()=> 'snow-diagnostic-smooth-upper-v1';
   const snowMaterial=new THREE.MeshStandardMaterial({color:new THREE.Color(.9,.925,.955),roughness:.88});
-  // At the passage fade the snow reaches zero thickness on the rock itself.
+  // At the upper exit the snow layer tapers into the turning route.
   const snowTopMaterial=snowMaterial.clone();snowTopMaterial.polygonOffset=true;snowTopMaterial.polygonOffsetFactor=-1;snowTopMaterial.polygonOffsetUnits=-1;
   const groups={stone:new THREE.Group(),rocks:new THREE.Group(),snow:new THREE.Group(),trees:new THREE.Group(),cave:new THREE.Group()};Object.values(groups).forEach(g=>scene.add(g));
-  function mesh(data:MeshData&{normals?:Float32Array;colors?:number[]},mat:THREE.Material,top=false){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(data.positions,3));g.setIndex(new THREE.BufferAttribute(data.indices,1));if(data.normals)g.setAttribute('normal',new THREE.BufferAttribute(data.normals,3));else if(top){const ns=new Float32Array(data.positions.length);for(let k=0;k<data.positions.length;k+=3){const n=upperNormal(upper,data.positions[k],data.positions[k+2]);ns.set([n.x,n.y,n.z],k);}g.setAttribute('normal',new THREE.BufferAttribute(ns,3));}else g.computeVertexNormals();const colors=data.colors?new Float32Array(data.colors):new Float32Array(data.positions.length);if(!data.colors){const c=new THREE.Color('#505a65').toArray();for(let k=0;k<colors.length;k+=3)colors.set(c,k);}g.setAttribute('color',new THREE.BufferAttribute(colors,3));const m=new THREE.Mesh(g,mat);m.castShadow=m.receiveShadow=true;return m;}
-  for(const [name,data]of Object.entries(surfaces)){const top=name==='plateau'||name==='strip';const m=mesh(data,top?smooth:material,top);m.name=name;groups.stone.add(m);}
-  const caveMaterial=makeRockMaterial(),caveHook=caveMaterial.onBeforeCompile;caveMaterial.onBeforeCompile=function(shader,r){caveHook.call(this,shader,r);shader.fragmentShader=shader.fragmentShader.replace('frost * 0.92','0.0');};caveMaterial.customProgramCacheKey=()=> 'plateau-den-dry-rock';groups.cave.add(mesh(cave,caveMaterial));
+  function mesh(data: MeshData & { normals?: Float32Array; colors?: number[] }, mat: THREE.Material, grid?: typeof source) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(data.positions,3));
+    g.setIndex(new THREE.BufferAttribute(data.indices,1));
+    if (data.normals) {
+      g.setAttribute('normal',new THREE.BufferAttribute(data.normals,3));
+    } else if (grid) {
+      const normals=new Float32Array(data.positions.length);
+      const d=snowSettings.normalRadius, span=grid.n*grid.cell-d-.001;
+      for(let k=0;k<normals.length;k+=3) {
+        const x=THREE.MathUtils.clamp(data.positions[k],grid.x0+d,grid.x0+span);
+        const z=THREE.MathUtils.clamp(data.positions[k+2],grid.z0+d,grid.z0+span);
+        const n=upperNormal(grid,x,z,d);
+        normals.set([n.x,n.y,n.z],k);
+      }
+      g.setAttribute('normal',new THREE.BufferAttribute(normals,3));
+    } else {
+      g.computeVertexNormals();
+    }
+    const colors=data.colors?new Float32Array(data.colors):new Float32Array(data.positions.length);
+    if(!data.colors) {
+      const color=new THREE.Color('#505a65').toArray();
+      for(let k=0;k<colors.length;k+=3)colors.set(color,k);
+    }
+    g.setAttribute('color',new THREE.BufferAttribute(colors,3));
+    const result=new THREE.Mesh(g,mat);
+    result.castShadow=result.receiveShadow=true;
+    return result;
+  }
+  for(const [name,data] of Object.entries(surfaces)) {
+    const grid=name==='plateau'||name==='strip'?upper:name==='flank'||name==='restored'?source:undefined;
+    const m=mesh(data,grid?smooth:material,grid);
+    m.name=name;
+    groups.stone.add(m);
+  }
+  function rockWithFrost(amount:number) {
+    const stone=makeRockMaterial(),compile=stone.onBeforeCompile;
+    stone.onBeforeCompile=function(shader,renderer) {
+      compile.call(this,shader,renderer);
+      shader.fragmentShader=shader.fragmentShader.replace('frost * 0.92','frost * '+amount.toFixed(2));
+    };
+    stone.customProgramCacheKey=()=> 'plateau-rock-frost-'+amount;
+    return stone;
+  }
+  groups.cave.add(mesh(cave,rockWithFrost(0)));
   status.textContent='Скалы и снежные полки…';await frame();
   const rim=mountainRim(junction);
-  const dressing=buildMountainMasses(a=>ringPoint(rim,a));
-  groups.rocks.add(mesh(dressing.rocks,material),mesh(dressing.snow,snowMaterial));
+  const dressing=buildMountainMasses(a=>ringPoint(rim,a),radialSurface([surfaces.underside]),(x,z)=>sampleGrid(source,x,z).y);
+  groups.rocks.add(mesh(dressing.rocks,rockWithFrost(.29)),mesh(dressing.snow,snowMaterial));
   status.textContent='Снежная шапка по всей горе…';await frame();
-  const snow=buildMountainSnow(upper,junction,[surfaces.plateau,surfaces.strip],mountainSnowProfile);for(const [name,data]of [['top',snow.top],['bottom',snow.bottom],['cap',snow.cap],['passage-lip',snow.passageLip]]as const){const m=mesh(data,name==='top'?snowTopMaterial:snowMaterial);m.name='snow-'+name;m.castShadow=name!=='bottom';groups.snow.add(m);}
+  const snow=buildMountainSnow(upper,junction,[surfaces.plateau,surfaces.strip],mountainSnowProfile);for(const [name,data]of [['top',snow.top],['bottom',snow.bottom],['cap',snow.cap]]as const){const m=mesh(data,name==='top'?snowTopMaterial:snowMaterial);m.name='snow-'+name;m.castShadow=name!=='bottom';groups.snow.add(m);}
   const groves=await buildMountainGroves((x,z)=>snow.field(x,z).y,dressing.stoneFootprints);
   groups.trees.add(groves);groups.trees.userData.count=groves.userData.count;
   let activeView='overview';
