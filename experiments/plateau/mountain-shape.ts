@@ -168,7 +168,20 @@ export function buildMountainMasses(
       stone.indices.push(ridgeId, rings[2][i], rings[2][j]);
       if (i > 0 && i + 1 < corners.length) stone.indices.push(rings[0][0], rings[0][i + 1], rings[0][i]);
     }
-    if (s.crown > 0) {
+    // Count projected roof area. A sharp, steeply dipping blade can expose
+    // a strip of its roof in front of a taller slab, but cannot carry a pillow.
+    let roofArea = 0,
+      steepArea = 0;
+    for (let i = 0; i < top.length; i++) {
+      const facet = top[i]
+        .clone()
+        .sub(crownCenter)
+        .cross(top[(i + 1) % top.length].clone().sub(crownCenter));
+      const area = Math.max(0, facet.y);
+      roofArea += area;
+      if (facet.y < 0.69 * facet.length()) steepArea += area;
+    }
+    if (s.crown > 0 && steepArea < 0.18 * roofArea) {
       // Smooth the plan corners of the accumulated snow while leaving the rock arrises sharp.
       const outline: Vector3[] = [];
       top.forEach((p, i) => {
@@ -279,11 +292,11 @@ export function buildMountainMasses(
       const z = profile.z + side * profile.w;
       const edge = rimAt(Math.atan2(z / 180, x / 260));
       const rockHeight = Math.hypot(x, z) < Math.hypot(edge.x, edge.z) ? plateauTop(x, z) : groundAt(x, z);
-      const y = Math.max(profile.y, rockHeight);
+      const floor = Math.min(profile.y, rockHeight);
       return {
-        p: { x, z, y },
+        p: { x, z, y: rockHeight },
         tan: { x: side, z: side * (next.z - profile.z) + next.w - profile.w },
-        base: profile.y - 2,
+        base: floor - 2,
       };
     }
     const styleRng = new Rng(seed ^ Math.round(start * 87193));
