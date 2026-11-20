@@ -155,6 +155,10 @@ export function wallOutcrop(s: OutcropShape, corners: number[][], seed: number) 
     // Start inside the convex fragment. Its sharp half-space intersection
     // gives an upper bound, then refine just the rounded shoulder.
     const p = new Vector3();
+    // The same weathering trace runs through both fragments in parent-rock space.
+    const phase = (Math.abs(seed % 701) / 701) * Math.PI * 2;
+    const bedHeight = 0.18 * Math.sin(phase);
+    const bedSlope = 0.4 + 0.22 * Math.cos(phase);
     const clearance: number[] = [],
       exposure: number[] = [];
     // Slip along the joint plane. A vertical offset alone can push one face
@@ -184,6 +188,14 @@ export function wallOutcrop(s: OutcropShape, corners: number[][], seed: number) 
       const distanceInside = side ? side * (crack.n.dot(p) - crack.d) : 1;
       clearance.push(distanceInside);
       exposure.push(smoothstep(0.015, 0.09, distanceInside));
+      const bed = p.y - bedSlope * p.x - bedHeight + 0.15 * p.z;
+      const exposedFace = smoothstep(-0.08, 0.55, p.z) * smoothstep(0.015, 0.2, distanceInside);
+      // A ledge tapers along the front of the stone. Its projecting lower lip
+      // and recessed joint above it share an oblique bedding direction.
+      const lens = Math.max(0, 1 - ((p.x + 0.15 * Math.cos(phase)) / 1.12) ** 2);
+      const lip = Math.max(0, 1 - Math.abs((bed + 0.29) / 0.39));
+      const hollow = Math.max(0, 1 - Math.abs((bed - 0.085) / 0.29));
+      p.z += exposedFace * lens * (0.22 * lip - 0.25 * hollow);
       p.add(slip);
       const t = (p.y + 1) * 0.5,
         du = p.x * s.width * 0.5 + s.rake * t,

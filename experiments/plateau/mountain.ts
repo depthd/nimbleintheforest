@@ -90,13 +90,28 @@ async function start(){
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nattribute vec3 rockFinish;\n' + varying)
         .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvRockFinish = rockFinish; vWornNormal = normalize(normalMatrix * normal);');
+      // Large mineral patches change tone across a whole face. Interpolating
+      // across triangular cells leaves broad quiet areas and a broken grain.
+      const mineralField = `
+        float mineralGrain(vec2 q) {
+          vec2 i = floor(q), f = fract(q);
+          vec2 diagonal = f.x > f.y ? vec2(1.0,0.0) : vec2(0.0,1.0);
+          vec3 ids = vec3(dot(i,vec2(17.0,61.0)), dot(i+diagonal,vec2(17.0,61.0)), dot(i+1.0,vec2(17.0,61.0)));
+          vec3 values = fract(sin(ids) * 17389.57);
+          return dot(values,vec3(1.0-max(f.x,f.y),abs(f.x-f.y),min(f.x,f.y)));
+        }`;
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\n' + varying)
+        .replace('#include <common>', '#include <common>\n' + varying + mineralField)
         .replace('float frost =', `
           vec2 bed = vec2(0.72*vRockPos.x - 0.53*vRockPos.z, vRockPos.y + 0.22*vRockPos.x + 0.34*vRockPos.z);
           vec2 mineral = texture2D(uNoise, bed * vec2(0.003,0.010)).rg;
           float bedding = smoothstep(0.28,0.72,mineral.r + 0.14*(mineral.g-0.5));
-          col *= mix(vec3(1.0), mix(vec3(0.80,0.92,1.04),vec3(1.18,1.03,0.92),bedding),0.52*(1.0-vRockFinish.x));
+          vec2 strike = vec2(0.82*vRockPos.x-0.58*vRockPos.z, vRockPos.y-0.41*vRockPos.x+0.20*vRockPos.z);
+          float mineralValue = 0.65 * mineralGrain(strike * vec2(0.057,0.076))
+                      + 0.24 * mineralGrain(strike * 0.18 + 14.3) + 0.11 * bedding;
+          float warm = smoothstep(0.41,0.73,mineralValue);
+          col *= mix(vec3(0.76,0.85,1.06),vec3(1.23,1.06,0.99),warm);
+          col *= 0.78 + 0.4 * mineralValue;
           col *= 0.62 + 0.38 * smoothstep(0.012,0.085,vRockFinish.z);
           float frost =`)
         .replace('frost * 0.92', 'frost * 0.29 * vRockFinish.x')

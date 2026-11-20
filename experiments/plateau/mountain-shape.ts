@@ -587,7 +587,7 @@ export function buildMountainMasses(
       tz = tangent.z / speed;
     const strike = Math.atan2(tz, tx);
     const width = atEntrance ? 87 : site.float(53, 83),
-      height = p.y * (atEntrance ? 1.08 : site.float(0.78, 1.03));
+      height = p.y * (atEntrance ? 1.2 : site.float(0.84, 1.12));
     const hand = site.chance(0.5) ? -1 : 1;
     const slab = site.chance(0.29) && !atEntrance;
     function block(
@@ -636,9 +636,9 @@ export function buildMountainMasses(
     }
     block(
       0,
-      atEntrance ? 8 : site.float(4, 19),
+      atEntrance ? 19 : site.float(8, 22),
       width,
-      width * (slab ? 0.47 : 0.78),
+      width * (slab ? 0.47 : 0.89),
       height,
       hand * site.float(0.04, 0.29),
       hand * width * (slab ? 0.47 : 0.26),
@@ -649,7 +649,7 @@ export function buildMountainMasses(
       site.float(21, 32),
       width * site.float(0.48, 0.7),
       width * site.float(0.38, 0.57),
-      height * site.float(0.36, 0.66),
+      height * site.float(0.44, 0.74),
       -hand * site.float(0.12, 0.47),
       -hand * width * 0.08,
       site.float(0.44, 0.86),
