@@ -1,0 +1,98 @@
+{
+  "source": "5a6981b46fb8608f2e662b76c8b1747cfb855ed5",
+  "before": "8fd1a125003898d0b754f69ee898a0d237b5f293",
+  "runtime": "Production WebGL render in Chromium, 1440x780",
+  "view": {
+    "eye": [
+      -950,
+      160,
+      -580
+    ],
+    "target": [
+      -270,
+      66,
+      -126
+    ],
+    "fov": 27
+  },
+  "comparisonCrop": [
+    30,
+    242,
+    994,
+    752
+  ],
+  "oldTrees": {
+    "count": 122,
+    "tierCounts": [
+      55,
+      36,
+      31
+    ]
+  },
+  "newTrees": {
+    "count": 122,
+    "tierCounts": [
+      55,
+      36,
+      31
+    ]
+  },
+  "oldRocks": [
+    {
+      "buttresses": 43,
+      "passage": 13,
+      "talus": 137,
+      "summit": 25
+    },
+    {
+      "buttresses": 39,
+      "passage": 13,
+      "talus": 108,
+      "summit": 17
+    },
+    {
+      "buttresses": 42,
+      "passage": 13,
+      "talus": 117,
+      "summit": 29
+    }
+  ],
+  "newRocks": [
+    {
+      "buttresses": 78,
+      "passage": 13,
+      "talus": 137,
+      "summit": 25
+    },
+    {
+      "buttresses": 62,
+      "passage": 13,
+      "talus": 108,
+      "summit": 17
+    },
+    {
+      "buttresses": 69,
+      "passage": 13,
+      "talus": 117,
+      "summit": 29
+    }
+  ],
+  "trianglesInMiddleView": {
+    "before": 1718787,
+    "after": 2079227
+  },
+  "tests": [
+    "experiment TypeScript check",
+    "Vite production build",
+    "repository scope check",
+    "mountain.test.cjs (ground, cave, ascent and snow)",
+    "mountain-tiers.test.cjs",
+    "wall-outcrop.test.cjs (split and intact rock snow support)",
+    "single- and three-tier pages loaded; wall camera button worked in both"
+  ],
+  "routeSamples": 45,
+  "maxRouteFloorError": 0,
+  "terraceSamples": 15,
+  "browserErrors": [],
+  "limitations": "Stand uses free camera. Traversal with a player controller, frame-rate benchmarking and visual acceptance are not part of these checks."
+}
