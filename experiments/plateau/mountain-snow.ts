@@ -56,14 +56,19 @@ export function buildMountainSnow(upper:SourceGrid,junction:ReturnType<typeof bu
     const coverage=Math.max(coverAwayFromPass,bank);
     const normal=upperNormal(upper,x,z),slope=Math.acos(Math.max(-1,Math.min(1,normal.y)))*180/Math.PI;
     const shelter=.5+.5*Math.cos(5*a+.45)*Math.cos(2*a-.8);
-    const edgeDepth=settings.edge*(.65+.34*shelter);
+    // Long patches of exposed rim and sheltered pockets, measured along
+    // the same perimeter as the rock. Keep the authored cut-bank roll.
+    const windLoad=smoothstep(0.08,0.90,0.5+0.35*Math.cos(3*a-0.9)+0.19*Math.sin(7*a+1.1)+0.09*Math.cos(12*a));
+    const exposedRim=coverAwayFromPass*(1-bank);
+    const rimLoad=shelter+(windLoad-shelter)*exposedRim;
+    const edgeDepth=settings.edge*((.65+.34*shelter)*(1-exposedRim)+(.055+1.16*rimLoad)*exposedRim);
     const lip=Math.max(smoothstep(.42,1,v)*cornice,bank*.76);
     const nominal=settings.plateau+(edgeDepth-settings.plateau)*lip;
     const thickness=Math.max(settings.minThickness,nominal*(1-smoothstep(settings.slopeStart,settings.slopeEnd,slope)));
     const blend=smoothstep(.78,1,v)*cornice;
     // Vertical placement cannot fold over the steep parts of the original normal-offset layer.
     const y=h+coverage*Math.max(settings.minThickness,h+blend*(n.y-h)+thickness-h);
-    return {y,coverage,edgeDistance,lip,shelter};
+    return {y,coverage,edgeDistance,lip,shelter,rimLoad,exposedRim};
   }
   function sample(p:Point){const k=key(p);let q=cache.get(k);if(q)return q;
     const f=field(p.x,p.z),d=settings.normalRadius;
@@ -97,8 +102,8 @@ export function buildMountainSnow(upper:SourceGrid,junction:ReturnType<typeof bu
     const f=field(p.x,p.z),q=sample(p);
     const outward=unit({x:tangent.z,y:0,z:-tangent.x});
     const h=q.p.y-p.y, scale=f.lip*f.coverage;
-    const reach=Math.min(settings.overhang,settings.radius)*(.40+.47*f.shelter)*scale;
-    const drop=settings.edge*(.16+.26*f.shelter)*scale;
+    const reach=Math.min(settings.overhang,settings.radius)*((.40+.47*f.shelter)*(1-f.exposedRim)+(.03+1.17*f.rimLoad)*f.exposedRim)*scale;
+    const drop=settings.edge*((.16+.26*f.shelter)*(1-f.exposedRim)+(.02+.48*f.rimLoad)*f.exposedRim)*scale;
     const ps:Point[]=[q.p];
     // A quarter-round shelf leaves a flat bottom visible above the rock.
     // Roll past the edge, then bury the return in the steep upper tip.

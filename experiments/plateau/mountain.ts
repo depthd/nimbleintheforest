@@ -81,6 +81,31 @@ async function start(){
     stone.customProgramCacheKey=()=> 'plateau-rock-frost-'+amount;
     return stone;
   }
+  function cliffDressingMaterial() {
+    const mat = makeRockMaterial();
+    const compile = mat.onBeforeCompile;
+    mat.onBeforeCompile = function(shader, renderer) {
+      compile.call(this, shader, renderer);
+      const varying = 'varying vec3 vRockFinish;\nvarying vec3 vWornNormal;';
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec3 rockFinish;\n' + varying)
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvRockFinish = rockFinish; vWornNormal = normalize(normalMatrix * normal);');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\n' + varying)
+        .replace('float frost =', `
+          vec2 bed = vec2(0.72*vRockPos.x - 0.53*vRockPos.z, vRockPos.y + 0.22*vRockPos.x + 0.34*vRockPos.z);
+          vec2 mineral = texture2D(uNoise, bed * vec2(0.003,0.010)).rg;
+          float bedding = smoothstep(0.28,0.72,mineral.r + 0.14*(mineral.g-0.5));
+          col *= mix(vec3(1.0), mix(vec3(0.80,0.92,1.04),vec3(1.18,1.03,0.92),bedding),0.52*(1.0-vRockFinish.x));
+          col *= 0.62 + 0.38 * smoothstep(0.012,0.085,vRockFinish.z);
+          float frost =`)
+        .replace('frost * 0.92', 'frost * 0.29 * vRockFinish.x')
+        .replace('#include <normal_fragment_begin>',
+          '#include <normal_fragment_begin>\nnormal = normalize(mix(normal, normalize(vWornNormal), vRockFinish.y));');
+    };
+    mat.customProgramCacheKey = () => 'mountain-jointed-rock';
+    return mat;
+  }
   status.textContent = 'Снежный край и плато…';
   await frame();
   const rim = mountainRim(junction);
@@ -149,7 +174,7 @@ async function start(){
   }
   place(mesh(cave, rockWithFrost(0)), tiers[0], groups.cave);
   const wall = radialSurface([surfaces.underside]),
-    frost = rockWithFrost(0.29);
+    cliffMaterial = cliffDressingMaterial();
   const dressings: ReturnType<typeof buildMountainMasses>[] = [],
     sites: GroveSite[] = [];
   for (const [i, tier] of tiers.entries()) {
@@ -171,7 +196,9 @@ async function start(){
     );
     dressings.push(dressing);
     const rocks = new THREE.Group();
-    rocks.add(mesh(dressing.rocks, frost), mesh(dressing.snow, snowMaterial));
+    const outcrops = mesh(dressing.rocks, cliffMaterial);
+    outcrops.geometry.setAttribute('rockFinish', new THREE.BufferAttribute(dressing.rocks.finish, 3));
+    rocks.add(outcrops, mesh(dressing.snow, snowTopMaterial));
     place(rocks, tier, groups.rocks);
     place(i === 0 ? baseStone : upperStone.clone(), tier, groups.stone);
     place(snowCover.clone(), tier, groups.snow);
@@ -193,6 +220,7 @@ async function start(){
   const dressing = dressings[0];
   let activeView='overview';
   const views:Record<string,{eye:number[];target:number[];fov?:number}>={
+    wall:{eye:[-510,160,-314],target:[-146,66,-68],fov:27},
     front:{eye:[-970,191,-395],target:[-6,48,2],fov:17},
     overview:{eye:[520,310,560],target:[0,48,0],fov:45},back:{eye:[-560,280,-480],target:[0,48,0],fov:45},
     ascent:{eye:[-370,190,-230],target:[-130,50,-35],fov:45},ascentFoot:{eye:[-310,20,-60],target:[-190,45,-20],fov:55},ascentTop:{eye:[30,132,ascentCenter(20)],target:[-140,62,ascentCenter(-140)],fov:50},
@@ -208,6 +236,7 @@ async function start(){
         p[2] *= base.width;
       }
     Object.assign(views, {
+      wall: { eye: [-950,160,-580], target:[-270,66,-126], fov:27 },
       front: { eye: [-1660, 475, -735], target: [20, 63, 6], fov: 22 },
       overview: { eye: [-1170, 760, 890], target: [15, 50, 12], fov: 31 },
       back: { eye: [1290, 550, 860], target: [42, 78, 7], fov: 26 },

@@ -1,6 +1,7 @@
 import { Color, Vector3 } from 'three';
 import { Rng, Simplex2, smoothstep } from '../../src/core/rng';
 import { ascentSample } from './ascent';
+import { wallOutcrop, type OutcropShape } from './wall-outcrop';
 import { ascentEnding } from './wedge-ascent';
 import { contourTangent, plateauRadius } from './plateau-profile';
 
@@ -49,19 +50,7 @@ function portalClear(p: Point2, allowance = 0) {
 }
 
 // Local x follows the strike, local z points out of the rock face.
-type Mass = {
-  x: number;
-  z: number;
-  angle: number;
-  width: number;
-  depth: number;
-  base: number;
-  height: number;
-  lean: number;
-  rake: number;
-  crown: number;
-  bedDip?: number;
-};
+type Mass = OutcropShape & { bedDip?: number };
 
 export function buildMountainMasses(
   rimAt: (angle: number) => { x: number; y: number; z: number },
@@ -70,8 +59,8 @@ export function buildMountainMasses(
   seed = 13947,
   placement: {
     cave?: boolean;
-    supported?: (x:number,z:number,radius:number)=>boolean;
-    reserved?: (x:number,z:number,radius:number)=>boolean;
+    supported?: (x: number, z: number, radius: number) => boolean;
+    reserved?: (x: number, z: number, radius: number) => boolean;
   } = {},
 ) {
   const rng = new Rng(seed),
@@ -82,7 +71,15 @@ export function buildMountainMasses(
   const stats = { buttresses: 0, passage: 0, talus: 0, summit: 0 };
   const stoneFootprints: { x: number; z: number; radius: number }[] = [];
 
-  function mass(s: Mass, kind: keyof typeof stats) {
+  // Frost allowance, edge wear and signed distance from the nearest interior joint.
+  const finish: number[] = [];
+  function finishStone(frost: number, worn: number, clearance?: number[]) {
+    const vertices = stone.positions.length / 3;
+    const start = finish.length / 3;
+    for (let i = start; i < vertices; i++) finish.push(frost, worn, clearance?.[i - start] ?? 1);
+  }
+
+  function mass(s: Mass, kind: keyof typeof stats, random = rng) {
     const tx = Math.cos(s.angle),
       tz = Math.sin(s.angle),
       nx = tz,
@@ -92,8 +89,8 @@ export function buildMountainMasses(
     // A fractured block has a pair of principal joint planes and chipped ends.
     // Keep the same corners up the face so its longest facets run across most of its height.
     const stoneRng = new Rng(seed ^ Math.round(1193 * s.x + 6131 * s.z));
-    const a = rng.float(0.11, 0.34),
-      b = rng.float(0.1, 0.36);
+    const a = random.float(0.11, 0.34),
+      b = random.float(0.1, 0.36);
     const block = [
       [-0.5 + a, -0.53],
       [0.5 - b, -0.47],
@@ -134,19 +131,38 @@ export function buildMountainMasses(
       rings: number[][] = [];
     const boulder = kind === 'talus' || kind === 'summit';
     const crownWidth = boulder ? stoneRng.float(0.3, 0.73) : stoneRng.float(0.51, 0.9);
-    const color = new Color(rng.pick(palette));
-    const middle = rng.float(0.26, 0.76),
-      toe = rng.float(0.9, 1.52),
-      waist = rng.float(0.86, 1.21);
+    const color = new Color(random.pick(palette));
+    const middle = random.float(0.26, 0.76),
+      toe = random.float(0.9, 1.52),
+      waist = random.float(0.86, 1.21);
+    // Each original corner owns its bedding and lateral displacement. Cuts
+    // interpolate these controls, so refinement cannot move the other stones.
+    const control = corners.map(([u, v]) => [u, v, random.float(-0.22, 0.22), random.float(0.92, 1.08)]);
+    if (kind === 'buttresses') {
+      const pieces = wallOutcrop(s, control, seed ^ Math.round(s.x * 831 - s.z * 197));
+      for (const piece of pieces) {
+        for (const [shell, target, tint] of [
+          [piece.rock, stone, color],
+          [piece.snow, snow, white],
+        ] as const) {
+          const offset = target.positions.length / 3;
+          for (const point of shell.points) vertex(target, point, tint);
+          for (const index of shell.indices) target.indices.push(offset + index);
+        }
+        finishStone(0, 0.46, piece.clearance);
+      }
+      stats[kind] += pieces.length;
+      return;
+    }
     for (const [row, t, scale] of [
       [0, 0, toe],
       [1, middle, waist],
       [2, 1, crownWidth],
     ]) {
       const ring: number[] = [];
-      for (const [u, v] of corners) {
-        const fraction = row === 1 ? t + rng.float(-0.22, 0.22) : t;
-        const width = scale * (row === 1 ? rng.float(0.92, 1.08) : 1);
+      for (const [u, v, bend, spread] of control) {
+        const fraction = row === 1 ? t + bend : t;
+        const width = row === 1 ? scale * spread : scale;
         const p = world(
           u * width + s.rake * fraction,
           v * width + s.lean * fraction,
@@ -163,15 +179,15 @@ export function buildMountainMasses(
     crownCenter.y += Math.min(s.height * 0.1, Math.min(s.depth, s.width) * stoneRng.float(0.06, 0.17));
     const ridgeId = vertex(stone, crownCenter, color);
     // Local (strike, outward) is right-handed when viewed from above.
-    for (let i = 0; i < corners.length; i++) {
-      const j = (i + 1) % corners.length;
-      for (let row = 0; row < 2; row++) {
+    for (let i = 0; i < top.length; i++) {
+      const j = (i + 1) % top.length;
+      for (let row = 0; row < rings.length - 1; row++) {
         const lo = rings[row],
           hi = rings[row + 1];
         stone.indices.push(lo[i], lo[j], hi[j], lo[i], hi[j], hi[i]);
       }
-      stone.indices.push(ridgeId, rings[2][i], rings[2][j]);
-      if (i > 0 && i + 1 < corners.length) stone.indices.push(rings[0][0], rings[0][i + 1], rings[0][i]);
+      stone.indices.push(ridgeId, rings[rings.length - 1][i], rings[rings.length - 1][j]);
+      if (i > 0 && i + 1 < top.length) stone.indices.push(rings[0][0], rings[0][i + 1], rings[0][i]);
     }
     // Count projected roof area. A sharp, steeply dipping blade can expose
     // a strip of its roof in front of a taller slab, but cannot carry a pillow.
@@ -275,6 +291,7 @@ export function buildMountainMasses(
           );
       }
     }
+    finishStone(1, 0);
     stats[kind]++;
     if (kind === 'summit')
       stoneFootprints.push({ x: s.x, z: s.z, radius: Math.max(s.width, s.depth) * 0.54 });
@@ -282,7 +299,7 @@ export function buildMountainMasses(
 
   function admissible(x: number, z: number, margin: number) {
     if (placement.cave !== false && !portalClear({ x, z }, margin)) return false;
-    if (placement.supported && !placement.supported(x,z,margin)) return false;
+    if (placement.supported && !placement.supported(x, z, margin)) return false;
     const p = ascentSample(x);
     return x < -300 - margin || x > 20 + margin || Math.abs(z - p.z) > p.w + margin;
   }
@@ -311,7 +328,7 @@ export function buildMountainMasses(
       ? Math.sin(middle / 27)
       : Math.sin(3 * middle - 1.8) + 0.65 * Math.cos(7 * middle + 0.4);
     const shelf = !side && style < -0.28;
-    const split = style > -0.6;
+    const split = style > 0.5;
     const span = Math.hypot(station(start).p.x - station(end).p.x, station(start).p.z - station(end).p.z);
     const rake = styleRng.float(-0.27, 0.29) * span;
     const toe = side ? styleRng.float(4, 9) : shelf ? styleRng.float(2, 10) : styleRng.float(10, 31);
@@ -331,12 +348,11 @@ export function buildMountainMasses(
       const broad = styleRng.chance(0.62);
       const rightShoulder = styleRng.float(0.67, 0.86);
       const columns = broad ? [0, ridge * 0.64, rightShoulder, 1] : [0, ridge, 1];
-      const crossJoint = !shelf && (part === 0 || style < 0) && styleRng.chance(0.77);
-      const levels = shelf
-        ? [0, 0.2, 0.48, 1]
-        : crossJoint
-          ? [0, crestBend - 0.0055, crestBend, crestBend + 0.008, 1]
-          : [0, crestBend, 1];
+      const crossJoint = !shelf && part === 0 && styleRng.chance(0.38);
+      const lipDepth = styleRng.float(0.1, 0.18);
+      const levels = shelf ? [0, lipDepth, 0.28, 0.48, 1] : [0, lipDepth, crestBend, 0.79, 1];
+      if (crossJoint) levels.splice(2, 1, crestBend - 0.012, crestBend, crestBend + 0.018);
+      const shoulder = styleRng.float(4, 13) * (side ? 0.32 : 1);
       const notch = styleRng.float(0.95, 2.65) * (side ? 0.65 : 1);
       const dipSign = jointPitch > 0 ? 1 : -1;
       if (crossJoint) columns.push(0.42, 0.74);
@@ -351,11 +367,12 @@ export function buildMountainMasses(
           tz = tan.z / l,
           nx = tz,
           nz = -tx;
-        const rib = broad
+        const flatRib = broad
           ? Math.max(0.22, Math.min(1, u / (ridge * 0.64), (1 - u) / (1 - rightShoulder)))
           : u < ridge
             ? u / ridge
             : (1 - u) / (1 - ridge);
+        const rib = broad ? smoothstep(0, 0.95, flatRib) : 1 - (1 - flatRib) ** 2;
         const bend = crossJoint
           ? dipSign *
             (0.11 * Math.max(0, 1 - Math.abs(u - 0.42) / 0.42) -
@@ -368,12 +385,16 @@ export function buildMountainMasses(
           -0.45 +
           (toe * (0.34 + 0.66 * rib) * faceDepth + 0.45) * t +
           Math.sin(Math.PI * t) * (side ? 4 : 9) * rib;
+        // Rock reaches the snow with a local shoulder. Its depth dies away
+        // independently toward the two joints and toward the foot of the wall.
+        const crownBulge = smoothstep(0, lipDepth, t) * (1 - smoothstep(lipDepth, 0.6, t));
+        out += shoulder * crownBulge * (0.16 + 0.84 * rib);
         if (shelf && t > 0 && t < 1) {
           const wall = wallAt(a, height);
           if (wall) {
             const under = (wall.x - p.x) * nx + (wall.z - p.z) * nz;
             // Use the actual cut underside behind the lower face of the slab.
-            out = under + (t <= 0.21 ? 5 + rib * 7 : 1 + rib * 2.4);
+            out = under + 1 + 2.4 * rib + crownBulge * (4 + 6 * rib);
           }
         }
         if (crossJoint && t === crestBend) out -= notch * (1 - smoothstep(0.56, 1, u));
@@ -384,11 +405,20 @@ export function buildMountainMasses(
           p.z + (tz * lean + nz * out) * widthFactor,
         );
       }
+      if (!side) {
+        const steps = Math.ceil((span * (count === 2 ? 0.6 : 1)) / 8);
+        for (let i = 1; i < steps; i++) columns.push(i / steps);
+      }
       if (side && Math.min(start * side, end * side) < -195) {
         for (let i = 1; i < Math.ceil(span / 4); i++) columns.push(i / Math.ceil(span / 4));
       }
       columns.sort((a, b) => a - b);
-      const rows = levels.map((t) => columns.map((u) => vertex(stone, surface(u, t), color)));
+      const recessColor = color.clone().multiplyScalar(0.58);
+      const rows = levels.map((t) =>
+        columns.map((u) =>
+          vertex(stone, surface(u, t), crossJoint && t === crestBend && u < 0.74 ? recessColor : color),
+        ),
+      );
       for (let row = 0; row + 1 < levels.length; row++) {
         for (let c = 0; c + 1 < columns.length; c++) {
           const upper = rows[row],
@@ -423,6 +453,8 @@ export function buildMountainMasses(
         }
       }
     }
+    // These upward-facing bevels are inside joints; ledge snow has its own surface.
+    finishStone(0, 0.68);
     stats[side ? 'passage' : 'buttresses']++;
   }
   for (let a = 0.024; a < tau + 0.024; ) {
@@ -537,6 +569,104 @@ export function buildMountainMasses(
         );
     }
   }
+  // Place a few related outcrops at each site, then leave a length of exposed
+  // parent wall. Their different strikes, heights and setbacks make the cleft.
+  const groups = new Rng(seed ^ 0x609c3);
+  // Start on the broad shoulder to the left of the route mouth. An upper
+  // edge intersects the plateau there; smaller members step out toward the toe.
+  const entranceShoulder = Math.PI + 0.78;
+  for (let angle = entranceShoulder; angle < entranceShoulder + tau; ) {
+    const atEntrance = angle === entranceShoulder;
+    const a = angle % tau;
+    const tangent = contourTangent(a);
+    const speed = Math.hypot(tangent.x, tangent.z);
+    angle += groups.float(95, 160) / speed;
+    const site = new Rng(seed ^ Math.round(83413 * a));
+    const p = rimAt(a),
+      tx = tangent.x / speed,
+      tz = tangent.z / speed;
+    const strike = Math.atan2(tz, tx);
+    const width = atEntrance ? 87 : site.float(53, 83),
+      height = p.y * (atEntrance ? 1.08 : site.float(0.78, 1.03));
+    const hand = site.chance(0.5) ? -1 : 1;
+    const slab = site.chance(0.29) && !atEntrance;
+    function block(
+      along: number,
+      front: number,
+      w: number,
+      depth: number,
+      h: number,
+      turn: number,
+      rake: number,
+      wear: number,
+    ) {
+      const x = p.x + tx * along + tz * front,
+        z = p.z + tz * along - tx * front;
+      const lean = -front * site.float(0.06, 0.37);
+      const yaw = strike + turn,
+        c = Math.cos(yaw),
+        sin = Math.sin(yaw);
+      // Check both ends of the raked block in the supporting terrain's frame.
+      for (const t of [0, 1]) {
+        for (const u of [-0.61, 0, 0.61])
+          for (const v of [-0.6, 0, 0.6]) {
+            const du = u * w + t * rake,
+              dv = v * depth + t * lean;
+            if (!admissible(x + c * du + sin * dv, z + sin * du - c * dv, 2)) return;
+          }
+      }
+      mass(
+        {
+          x,
+          z,
+          angle: yaw,
+          width: w,
+          depth,
+          height: h + 5,
+          base: -5,
+          rake,
+          lean,
+          wear,
+          bedDip: slab ? -0.52 : site.float(-0.38, 0.09),
+          crown: site.float(1.8, 3.3),
+        },
+        'buttresses',
+        site,
+      );
+    }
+    block(
+      0,
+      atEntrance ? 8 : site.float(4, 19),
+      width,
+      width * (slab ? 0.47 : 0.78),
+      height,
+      hand * site.float(0.04, 0.29),
+      hand * width * (slab ? 0.47 : 0.26),
+      slab ? 0.28 : 0.88,
+    );
+    block(
+      hand * width * 0.36,
+      site.float(21, 32),
+      width * site.float(0.48, 0.7),
+      width * site.float(0.38, 0.57),
+      height * site.float(0.36, 0.66),
+      -hand * site.float(0.12, 0.47),
+      -hand * width * 0.08,
+      site.float(0.44, 0.86),
+    );
+    if (site.chance(0.53) || atEntrance) {
+      block(
+        -hand * width * 0.4,
+        site.float(12, 26),
+        width * 0.36,
+        width * 0.4,
+        height * site.float(0.39, 0.79),
+        hand * 0.38,
+        hand * width * 0.15,
+        0.31,
+      );
+    }
+  }
   for (const side of [-1, 1]) {
     for (let x = -259; x < -2; ) {
       const end = Math.min(-2, x + rng.float(28, 61));
@@ -592,7 +722,8 @@ export function buildMountainMasses(
       const x = gx + rng.float(-18, 18),
         z = gz + rng.float(-13, 13),
         w = rng.float(5, 19);
-      if (!admissible(x, z, w * 0.7) || plateauRadius(x, z) > 0.94 || placement.reserved?.(x,z,w*.7)) continue;
+      if (!admissible(x, z, w * 0.7) || plateauRadius(x, z) > 0.94 || placement.reserved?.(x, z, w * 0.7))
+        continue;
       mass(
         {
           x,
@@ -610,5 +741,10 @@ export function buildMountainMasses(
       );
     }
   }
-  return { rocks: pack(stone), snow: pack(snow), stats, stoneFootprints };
+  return {
+    rocks: { ...pack(stone), finish: new Float32Array(finish) },
+    snow: pack(snow),
+    stats,
+    stoneFootprints,
+  };
 }
