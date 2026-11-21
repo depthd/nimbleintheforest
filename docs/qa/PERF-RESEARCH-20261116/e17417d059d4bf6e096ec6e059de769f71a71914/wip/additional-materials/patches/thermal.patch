@@ -1,0 +1,56 @@
+--- a/src/game/thermal.ts
++++ b/src/game/thermal.ts
+@@ -109,6 +109,8 @@
+   private lvert: number[] = [];
+   private lopen: number[] = [];
+   private linkK = new Float64Array(0);
++  private sumK = new Float64Array(N);
++  private sumM = new Float64Array(N);
+   private nbStart = new Int32Array(N + 1);
+   private nbCell = new Int32Array(0);
+   private nbLink = new Int32Array(0);
+@@ -510,7 +512,10 @@
+     }
+     // mixing between cells (coefficients from the start of the step); warm air below cold air
+     // turns over, warm air spreads sideways under the ceiling
+-    const K = this.linkK;
++    const K = this.linkK, sumK = this.sumK, sumM = this.sumM;
++    sumK.fill(0); sumM.fill(0);
++    // CSR neighbours were inserted in link order. Accumulating in the same
++    // order preserves Float64 sums while reusing them across all three sweeps.
+     for (let i = 0; i < this.la.length; i++) {
+       const a = this.la[i], b = this.lb[i];
+       let k = this.lk[i];
+@@ -527,6 +532,8 @@
+         if (dr > 0.1) k *= 1 + dr * 2;
+       }
+       K[i] = k;
++      sumK[a] += k; sumK[b] += k;
++      if (this.lopen[i]) { const m = k / RHO_C; sumM[a] += m; sumM[b] += m; }
+     }
+     // envelope
+     const R_IN = 0.13;
+@@ -599,20 +606,18 @@
+       for (let q = 0; q < N; q++) {
+         const c = fwd ? q : N - 1 - q;
+         if (!this.active[c]) continue;
+-        let st = 0, sk = 0, sh = 0, sm = 0;
++        let st = 0, sh = 0;
+         for (let j = ns[c]; j < ns[c + 1]; j++) {
+           const b = nc[j];
+           const k = K[nl[j]];
+           st += k * T[b];
+-          sk += k;
+           if (open[nl[j]]) {
+             const m = k / RHO_C;
+             sh += m * AH[b];
+-            sm += m;
+           }
+         }
+-        T[c] = (num[c] + dt * st) / (den[c] + dt * sk);
+-        AH[c] = Math.max(0.05, (hnum[c] + dt * sh) / (hden[c] + dt * sm));
++        T[c] = (num[c] + dt * st) / (den[c] + dt * sumK[c]);
++        AH[c] = Math.max(0.05, (hnum[c] + dt * sh) / (hden[c] + dt * sumM[c]));
+       }
+     }
+   }

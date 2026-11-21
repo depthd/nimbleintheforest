@@ -1,0 +1,106 @@
+Исследование производительности depthd/nimbleintheforest, 16 ноября 2026
+
+Начать с report/report.pdf или report/report.html. Исходные числа — results/,
+сводные CPU/GPU/попиксельные CSV — report/. Варианты не объединены.
+
+База: e17417d059d4bf6e096ec6e059de769f71a71914
+Все экспериментальные SHA — report/versions.json. Их исходники — в локальном
+experiments.bundle и отдельных patches/*.patch (только src, без координационных карточек).
+Ничего не отправлялось на GitHub, не мержилось и не публиковалось.
+
+Главный результат: scoped-reader снега улучшает настоящую ходьбу в метели
+без изменения данных. Thermal.aggregate экономит немного времени подсистемы,
+но ускорение всего кадра не подтверждено. Третья приоритетная гипотеза —
+погодный полный refresh снега в Worker; реализации и процента выигрыша пока нет.
+Аппаратной видеокарты в среде нет, FPS игрока не измерен.
+
+Воспроизведение (пустая Linux-папка с распакованным архивом):
+
+  export RESEARCH_ROOT="$PWD"
+  export CHROMIUM_PATH=/usr/bin/chromium
+  mkdir -p results baseline builds
+  git clone https://github.com/depthd/nimbleintheforest.git repo
+  git -C repo fetch ../experiments.bundle 'refs/heads/*:refs/heads/*'
+  git -C repo switch --detach e17417d059d4bf6e096ec6e059de769f71a71914
+  (cd repo && npm ci && npm run build)
+  git -C repo archive e17417d059d4bf6e096ec6e059de769f71a71914 | tar -x -C baseline
+  ln -s ../repo/node_modules baseline/node_modules
+
+В облаке Playwright уже установлен. Иначе установить его в отдельный tooling/:
+
+  npm install --prefix tooling --no-save --no-package-lock playwright
+  export NODE_PATH="$RESEARCH_ROOT/tooling/node_modules"
+
+Использовались Node 24.22.1, npm 11.9.0, системный Chromium 156.0.8078.79.
+Версии game dependencies закреплены package-lock.json базы.
+
+Терминал 1 (production baseline, оставлять неизменным):
+
+  node serve.cjs repo/dist 5196
+
+Терминал 2 (те же RESEARCH_ROOT, CHROMIUM_PATH и NODE_PATH):
+
+  node probe.cjs
+  node survey.cjs
+  node cpu-survey.cjs base
+  SCENARIOS=forest-walk,blizzard-walk N=1200 node cpu-survey.cjs base-walk
+  node paired-render.cjs
+
+Поочерёдно построить отдельные production-кандидаты, не трогая baseline dist:
+
+  for trial in snow-reader thermal thermal-aggregate glint lights forest32 shadow-color shadow1536 backdrop16 far-order; do
+    git -C repo switch "task/PERF-RESEARCH-20261116-$trial"
+    (cd repo && npm run build -- --outDir "$RESEARCH_ROOT/builds/$trial")
+  done
+  node serve.cjs builds 5197
+
+Каждый следующий браузерный эксперимент запускать только после завершения предыдущего:
+
+  SCENARIOS=forest-walk,blizzard-walk N=1200 URL=http://127.0.0.1:5197/snow-reader/ node cpu-survey.cjs snow-reader-walk
+  node thermal-production.cjs
+  PREFIX=pcf SCENARIOS=spawn,blizzard MODES=base,no-shadow-color,shadow1536,no-shadows-diagnostic N=4 ROUNDS=1 node paired-render.cjs
+  PREFIX=gpu-diagnostic SCENARIOS=spawn MODES=no-shadow-color,base,no-terrain-diagnostic,no-far-diagnostic,no-forest-diagnostic,packed-last N=5 ROUNDS=1 node paired-render.cjs
+  PREFIX=backdrop SCENARIOS=spawn MODES=base,backdrop16 N=3 ROUNDS=2 node paired-render.cjs
+  PREFIX=far-order SCENARIOS=spawn MODES=base,far-last N=3 ROUNDS=2 node paired-render.cjs
+  node motion-visual.cjs
+
+Исходниковые проверки:
+
+  git -C repo switch task/PERF-RESEARCH-20261116-snow-reader
+  node snow-reader-compare.cjs
+  (cd repo && npm run test:trails && npm run test:snow && npm run test:snow-cover)
+  git -C repo switch task/PERF-RESEARCH-20261116-thermal-aggregate
+  node thermal-compare.cjs "$RESEARCH_ROOT/repo" "$RESEARCH_ROOT/baseline"
+  git -C repo switch task/PERF-RESEARCH-20261116-forest32
+  node forest32-check.cjs
+  git -C repo switch task/PERF-RESEARCH-20261116-glint
+  (cd repo && npm run test:terrain-geometry && npm run test:spatial-geometry)
+
+Каждая карточка кандидата указывает свою ветку. repo-check запускать в ней:
+
+  (cd repo && node scripts/repo-check.mjs --task .coord/tasks/PERF-RESEARCH-20261116.json)
+
+Протоколы:
+- survey.cjs: штатный RAF, 20 кадров на сцену; p95/p99 в такой выборке слабые.
+  Исторический первый spawn сохранён отдельно как 80-кадровый partial; он не
+  получен стандартным коротким survey. Поле readyMs того partial не использовать.
+- cpu-survey.cjs: graphics warmup=0 и render отключён; время игры управляемое.
+  Это не FPS. 900 кадров по умолчанию; настоящая ходьба — N=1200 и *-walk.
+  Старые forest/blizzard без суффикса используют teleport-проход для стриминга.
+- paired-render.cjs: замороженная production-сцена, runtime-патчи, последовательно
+  render/readPixels и GPU query. Исходниковые эквиваленты имеют свои SHA/сборки.
+  Нельзя считать эти runtime-пробы замером FPS каждой бинарной сборки.
+- Отключения no-*-diagnostic только измеряют стоимость категорий; не предлагаются
+  как оптимизация. shadow1536 — явный компромисс качества, не скрытый параметр.
+- discarded-unsynchronized/ содержит исключённые попытки без надёжного GPU-барьера.
+  Ни одна таблица отчёта не использует их времена.
+- Общий результат двух рекомендуемых CPU-проб не измерялся. Выигрыши не складывать.
+- Скрипты принудительно используют SwiftShader. Для целевой карты нужен отдельный
+  протокол без этих flags с повторной записью фактического renderer и условий.
+
+Python make-report.py требует numpy/Pillow для сравнения RGBA и изображений.
+CPU profiles можно открыть в Chromium DevTools. Полные browser traces не снимались.
+Размеры/положение камеры и настройки — в JSON каждого GPU-прогона.
+
+Отчёт не является разрешением на merge или выпуск. Переносить выбранные src-патчи
+в собственную задачу и проверять точный итоговый SHA, включая целевую видеокарту.

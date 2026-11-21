@@ -1,0 +1,58 @@
+{
+  "report_commit": "8f6516da952f2f40255d129bf14b299c46d13673",
+  "research_branch": "task/PERF-RESEARCH-20261116",
+  "base_sha": "e17417d059d4bf6e096ec6e059de769f71a71914",
+  "selected_source_candidates": {
+    "snow-reader": "831058908824abdd6b4150e0d6273a0554f66e55",
+    "thermal-aggregate": "f5c21491d981afe5f81d28543df5156e68fdb6e7"
+  },
+  "repo_guards": {
+    "guard-backdrop16.json": {
+      "result": "PASS",
+      "candidate": "f05d4cc868ee8dce50c69639011b6f2b3c339e87"
+    },
+    "guard-far-order.json": {
+      "result": "PASS",
+      "candidate": "3a39b9b20e5ebc7d5cda0e705b95c2df072795e1"
+    },
+    "guard-report.json": {
+      "result": "PASS",
+      "candidate": "8f6516da952f2f40255d129bf14b299c46d13673"
+    },
+    "guard-shadow1536.json": {
+      "result": "PASS",
+      "candidate": "d680ad1ce3974d76483094d964c87e02d71bcb5e"
+    },
+    "guard-snow-reader.json": {
+      "result": "PASS",
+      "candidate": "831058908824abdd6b4150e0d6273a0554f66e55"
+    },
+    "guard-glint.json": {
+      "result": "PASS",
+      "candidate": "e3fd700c65e837c6edd6c69e78c774fd132aa07f"
+    },
+    "guard-forest32.json": {
+      "result": "PASS",
+      "candidate": "41a53963c90025a043f276bd2f919f29fc24b25c"
+    },
+    "guard-lights.json": {
+      "result": "PASS",
+      "candidate": "9a30be29edd387c3d8de31e0fac3df9b05574a83"
+    },
+    "guard-shadow-color.json": {
+      "result": "PASS",
+      "candidate": "0cbfc9c9421b32d0264f49fb9a4f6dd1a8fedd37"
+    },
+    "guard-thermal-aggregate.json": {
+      "result": "PASS",
+      "candidate": "f5c21491d981afe5f81d28543df5156e68fdb6e7"
+    },
+    "guard-thermal.json": {
+      "result": "PASS",
+      "candidate": "e7a72f9ba87237270e5058382c17bb37d68ddaf7"
+    }
+  },
+  "push_merge_publish": false,
+  "shared_checkout_clean": true,
+  "bundle_verified": true
+}

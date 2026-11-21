@@ -1,0 +1,18 @@
+--- a/src/world/terrain.ts
++++ b/src/world/terrain.ts
+@@ -186,6 +186,7 @@
+         '#include <opaque_fragment>',
+         /* glsl */ `
+   {
++    if (camDist < 28.0 && uGlint > 0.0 && rockK < 1.0) {
+     // sun glints on the snow
+     vec3 V = normalize(cameraPosition - vWPos);
+     vec3 cell = floor(vWPos * 70.0);
+@@ -196,6 +197,7 @@
+     float lit = smoothstep(0.55, 0.9, dot(outgoingLight, vec3(0.333)) / max(0.05, dot(diffuseColor.rgb, vec3(0.333))));
+     g *= (1.0 - rockK) * uGlint * lit * (1.0 - smoothstep(6.0, 28.0, camDist));
+     outgoingLight += vec3(g * 1.2);
++    }
+   }
+ #include <opaque_fragment>`,
+       );
