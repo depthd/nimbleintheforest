@@ -1,0 +1,86 @@
+{
+  "readyMs": 47671,
+  "errors": [],
+  "states": [
+    {
+      "view": "overview",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 871910,
+        "capSegments": 4500,
+        "sampledVertices": 443676,
+        "maxLeafEdgeM": 2.0000019493154064
+      },
+      "legacy": false,
+      "dressingStats": {
+        "largeMasses": 27,
+        "secondaryMasses": 38,
+        "snowCaps": 39,
+        "rejected": 8
+      }
+    },
+    {
+      "view": "back",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 871910,
+        "capSegments": 4500,
+        "sampledVertices": 443676,
+        "maxLeafEdgeM": 2.0000019493154064
+      },
+      "legacy": false,
+      "dressingStats": {
+        "largeMasses": 27,
+        "secondaryMasses": 38,
+        "snowCaps": 39,
+        "rejected": 8
+      }
+    },
+    {
+      "view": "ascent",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 871910,
+        "capSegments": 4500,
+        "sampledVertices": 443676,
+        "maxLeafEdgeM": 2.0000019493154064
+      },
+      "legacy": false,
+      "dressingStats": {
+        "largeMasses": 27,
+        "secondaryMasses": 38,
+        "snowCaps": 39,
+        "rejected": 8
+      }
+    },
+    {
+      "view": "edge",
+      "exposure": 1.05,
+      "fill": 2.3,
+      "snow": true,
+      "rocks": true,
+      "snowStats": {
+        "roofTriangles": 871910,
+        "capSegments": 4500,
+        "sampledVertices": 443676,
+        "maxLeafEdgeM": 2.0000019493154064
+      },
+      "legacy": false,
+      "dressingStats": {
+        "largeMasses": 27,
+        "secondaryMasses": 38,
+        "snowCaps": 39,
+        "rejected": 8
+      }
+    }
+  ]
+}
