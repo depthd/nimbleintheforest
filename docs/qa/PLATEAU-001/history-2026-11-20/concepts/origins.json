@@ -1,0 +1,67 @@
+{
+  "abc": {
+    "original": "exec-0ceeb0e7-d3a2-4bb8-a229-1fd0b4da9e56.png",
+    "description": "Первая подборка A, B, C",
+    "sha256": "14ec51d7364bfd3f6524e8a476381241cf4804be36b8229987a3893a91cdd4f3"
+  },
+  "wall-closeup": {
+    "original": "exec-5cf2d354-99e8-48a2-91e7-cbe0b9556779.png",
+    "description": "Крупный план боковины",
+    "sha256": "be88d16f1526126460bc0cd185470c0f218eb7668499691054dd571b82e4b047"
+  },
+  "three-tiers": {
+    "original": "exec-18631e94-2bf7-4190-b1f4-08b8e79e8d79.png",
+    "description": "Общий вид трёх ярусов",
+    "sha256": "be5f35096c7f1deebb0a6d77c88892ee4e2c179fc7ca3e9fca232fc3c780a6a2"
+  },
+  "massive-outcrops": {
+    "original": "exec-56219b01-31d9-43f8-8220-eda9c47181e7.png",
+    "description": "Крупные глыбы у края",
+    "sha256": "bcc874ab5a5a69b2296494d4b7be858496155f1a794730827755706cc6c30ccd"
+  },
+  "varied-rocks": {
+    "original": "exec-d02f8bd6-f125-4c0f-8a55-bd3b3942eef4.png",
+    "description": "Массив с разными по наклону блоками",
+    "sha256": "dc797ae2516ad2e079646e3fbc5dd9d82dfdbd25d0d21c4aa26f40e50fa40835"
+  },
+  "long-slabs": {
+    "original": "exec-bef0beef-da0e-4bc4-87e5-5646cac7db4d.png",
+    "description": "Длинные наклонные плиты",
+    "sha256": "5c01fb25da9858231e9044f29c597a2e90231fbe9005bd18f108506ca1b9d134"
+  },
+  "fractured-rocks": {
+    "original": "exec-7c15a958-a833-4ff6-80fc-74c974038c8b.png",
+    "description": "Больше отдельных фасеток и расколов",
+    "sha256": "3beeeaa035b9fe852a83fb22511fceb1d894cd4c0440625307ad9d449255b928"
+  },
+  "01-04": {
+    "original": "exec-4cfa7646-2460-4884-85d8-ae0bb00c3947.png",
+    "description": "№ 01–04",
+    "sha256": "3d42ce14cbe9692618525ee3b51cf9bdbc740dffc2fb3c8fa2ab02a66dfc41e6"
+  },
+  "05-08": {
+    "original": "exec-13041ec0-a768-4137-ad99-1fdf5ea8d419.png",
+    "description": "№ 05–08",
+    "sha256": "6705cf25117f4c97d9e408ef8ff78662a80a27a22dba0a09597aeb63dcaee8aa"
+  },
+  "09-12": {
+    "original": "exec-eabd647f-963c-4531-b3f1-58100eb71304.png",
+    "description": "№ 09–12",
+    "sha256": "cff01526559778b3bd07520709b343222c64b6900162a7eea6345c8cb8659272"
+  },
+  "13-16": {
+    "original": "exec-90813ddd-f8b1-4df6-aef4-353d146daee2.png",
+    "description": "№ 13–16",
+    "sha256": "8f3c92e5b032547e2b6a30de61bebf135008e13df0c65b9718998815eb403f66"
+  },
+  "17-20": {
+    "original": "exec-00e6eca8-ad9b-4cf2-848e-28f06575d66a.png",
+    "description": "№ 17–20",
+    "sha256": "c1824de00b4b436b76226d50a98a60076f61397caf70e6b94c1c3e27c109026b"
+  },
+  "21-24": {
+    "original": "exec-7b00fb42-bc55-4973-aee8-4a563f24eb94.png",
+    "description": "№ 21–24",
+    "sha256": "49c5c84c1abedd49cf2b5d0fb17c69296621a7a5d211c303f82e99b0ab2162e8"
+  }
+}

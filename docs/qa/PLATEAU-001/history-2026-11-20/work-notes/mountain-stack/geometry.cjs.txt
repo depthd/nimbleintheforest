@@ -1,0 +1,43 @@
+module.exports = async function sampleGeometry(page) {
+  await page.addScriptTag({path:'/workspace/work/mountain-polish/probe-lib.js'});
+  return page.evaluate(() => {
+    const m=window.__mountain, ray=new window.mountProbe.Raycaster();
+    const all=[m.groups.snow,m.groups.rocks,m.groups.stone,m.groups.cave];
+    const summaries=[];
+    function local(tier,x,z) {
+      const dx=x-tier.x,dz=z-tier.z,c=Math.cos(tier.yaw),s=Math.sin(tier.yaw);
+      return [(dx*c-dz*s)/tier.width,(dz*c+dx*s)/tier.width];
+    }
+    function world(tier,x,z) {
+      const c=Math.cos(tier.yaw),s=Math.sin(tier.yaw);
+      return [tier.x+tier.width*(x*c+z*s),tier.z+tier.width*(z*c-x*s)];
+    }
+    function downward(x,z) {
+      ray.ray.origin.set(x,400,z);ray.ray.direction.set(0,-1,0);
+      return ray.intersectObjects(all,true)[0];
+    }
+    function ascent(x) {
+      const k=(x+300)*24/320,i=Math.min(23,Math.floor(k)),frac=k-i;
+      const pt=i=>{const t=i/24;return [103*t*t,-50+45*Math.sin(Math.PI*t)-12*Math.sin(2*Math.PI*t)]};
+      const a=pt(i),b=pt(i+1);
+      return [a[0]+frac*(b[0]-a[0]),a[1]+frac*(b[1]-a[1])];
+    }
+    for(const [i,tier] of m.tiers.entries()){
+      const parent=m.tiers[i-1],route=[],terrace=[];
+      for(const x of [-220,-155,-90,-35,5]) {
+        const [floor,z]=ascent(x);
+        for (const off of [-5,0,5]) {
+          const [wx,wz]=world(tier,x,z+off),hit=downward(wx,wz);
+          const expected=Math.max(tier.y+tier.rise*floor,parent?parent.y+parent.rise*m.snow.field(...local(parent,wx,wz)).y:0);
+          route.push({x,off,surface:hit?.object.name,delta:hit ? +(hit.point.y-expected).toFixed(3):null});
+        }
+      }
+      for(const [x,z] of [[-150,65],[-95,80],[-67,-104],[34,-103],[-160,92]]) {
+        const [wx,wz]=world(tier,x,z),hit=downward(wx,wz);
+        terrace.push({x,z,tier:hit?.object.parent.name,surface:hit?.object.name});
+      }
+      summaries.push({name:tier.name,route,terrace});
+    }
+    return summaries;
+  });
+};

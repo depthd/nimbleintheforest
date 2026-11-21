@@ -1,0 +1,23 @@
+from pathlib import Path
+p=Path('experiments/plateau/wall-outcrop.ts');s=p.read_text().replace("    const exposure: number[] = [];","""    const clearance: number[] = [], exposure: number[] = [];
+    // Slip along the joint plane. A vertical offset alone can push one face
+    // back through its neighbor on an inclined fracture.
+    const slip = new Vector3();
+    if (side === 1) {
+      slip.set(0,-0.056,0.045);
+      slip.addScaledVector(crack.n,-slip.dot(crack.n));
+    }""").replace('      exposure.push(smoothstep','      clearance.push(distanceInside);\n      exposure.push(smoothstep').replace('      const t=(p.y+1)*0.5, du=p.x*s.width*0.5+s.rake*t, dv=p.z*s.depth*0.5+s.lean*t;\n','').replace('      const slip = side === 1 ? 0.028 : 0;','''      p.add(slip);
+      const t=(p.y+1)*0.5, du=p.x*s.width*0.5+s.rake*t, dv=p.z*s.depth*0.5+s.lean*t;''').replace('sn*(dv+slip*s.depth)','sn*dv').replace('(t-slip)*s.height','t*s.height').replace('c*(dv+slip*s.depth)','c*dv').replace('return { rock, exposure, snow:','return { rock, clearance, snow:')
+p.write_text(s)
+p=Path('experiments/plateau/mountain-shape.ts');s=p.read_text().replace("import { wallOutcrop }", "import { wallOutcrop, type OutcropShape }")
+a=s.index('type Mass = {');b=s.index('\n};',a)+3;s=s[:a]+'type Mass = OutcropShape & { bedDip?: number };'+s[b:]
+s=s.replace('// Per-vertex pair: how much frost a surface can carry, and how worn its edges are.','// Frost allowance, edge wear and signed distance from the nearest interior joint.')
+s=s.replace('function finishStone(frost: number, worn: number)', 'function finishStone(frost: number, worn: number, clearance?: number[])').replace('for (let i = finish.length / 2; i < vertices; i++) finish.push(frost, worn);','const start = finish.length / 3;\n    for (let i = start; i < vertices; i++) finish.push(frost, worn, clearance?.[i - start] ?? 1);')
+s=s.replace('    const wear = s.wear ?? (kind === \'buttresses\' ? 0.55 : 0);\n','').replace('    if (wear) {',"    if (kind === 'buttresses') {")
+a=s.index('          for (const [k, point]');b=s.index('          for (const index of shell.indices)',a)
+s=s[:a]+'          for (const point of shell.points) vertex(target, point, tint);\n'+s[b:]
+s=s.replace('        }\n      }\n      finishStone(0, 0.46);','        }\n        finishStone(0, 0.46, piece.clearance);\n      }')
+s=s.replace('const slab = site.chance(0.29);','const slab = site.chance(0.29) && !atEntrance;').replace('if (site.chance(0.53)) {','if (site.chance(0.53) || atEntrance) {').replace('height * site.float(0.39, 0.79), turn','height * site.float(0.39, 0.79), turn')
+p.write_text(s)
+p=Path('experiments/plateau/mountain.ts');s=p.read_text().replace('vec2 vRockFinish','vec3 vRockFinish').replace('vec2 rockFinish','vec3 rockFinish').replace('float frost =`)', 'col *= 0.62 + 0.38 * smoothstep(0.012,0.085,vRockFinish.z);\n          float frost =`)').replace('BufferAttribute(dressing.rocks.finish, 2)','BufferAttribute(dressing.rocks.finish, 3)');p.write_text(s)
+p=Path('experiments/plateau/wall-outcrop.test.cjs');s=p.read_text().replace('rock,snow,exposure','rock,snow,clearance').replace('exposure.length','clearance.length').replace('exposure.every(v=>v>=0 && v<=1)','clearance.every(v=>Number.isFinite(v) && v>=0)');p.write_text(s)

@@ -1,0 +1,33 @@
+THREE.WebGLProgram: Shader Error 0 - VALIDATE_STATUS false
+
+Material Name:
+Material Type: MeshStandardMaterial
+
+Program Info Log: Fragment shader is not compiled.
+
+FRAGMENT
+
+ERROR: 0:1725: 'patch' : Illegal use of reserved word
+ERROR: 0:1725: 'patch' : syntax error
+
+  1720:     vec3 col = diffuseColor.rgb * (0.78 + 0.9 * tex) * (0.9 + 0.2 * nz.g);
+  1721:     // faces turned up are snow, not dust: the white of a ledge reaches its edge
+  1722:
+  1723:           vec2 bed = vec2(0.72*vRockPos.x - 0.53*vRockPos.z, vRockPos.y + 0.22*vRockPos.x + 0.34*vRockPos.z);
+  1724:           vec2 mineral = texture2D(uNoise, bed * vec2(0.003,0.010)).rg;
+> 1725:           float patch = smoothstep(0.28,0.72,mineral.r + 0.14*(mineral.g-0.5));
+  1726:           col *= mix(vec3(1.0), mix(vec3(0.80,0.92,1.04),vec3(1.18,1.03,0.92),patch),1.0-vRockFinish.x);
+  1727:           float frost = smoothstep(0.5, 0.72, N.y + 0.14 * (nz.r - 0.5));
+  1728:     col = mix(col, vec3(0.9, 0.925, 0.955), frost * 0.29 * vRockFinish.x);
+  1729:     col *= mix(1.0, 0.7, smoothstep(0.0, -0.75, N.y));
+  1730:     diffuseColor.rgb = col;
+  1731:   }
+wall
+front
+back
+middle
+page.evaluate: Execution context was destroyed, most likely because of a navigation
+    at /workspace/work/mountain-wall/shot.cjs:15:25 {
+  log: [],
+  name: 'Error'
+}

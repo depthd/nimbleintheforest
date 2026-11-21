@@ -1,0 +1,42 @@
+from pathlib import Path
+p=Path('experiments/plateau/wall-outcrop.ts');s=p.read_text()
+s=s.replace('function snowPatch(rock: Shell, depth: number, wind: Vector3): Shell {','function snowPatch(rock: Shell, depth: number, wind: Vector3, exposure: number[]): Shell {')
+s=s.replace('const coverage = normals.map(n => { n.normalize(); return n.y - 0.58 - 0.22 * n.dot(wind); });','''const coverage = normals.map((n,i) => {
+    n.normalize();
+    return n.y - 0.71 - 0.13 * n.dot(wind) - 0.9 * (1-exposure[i]);
+  });''')
+s=s.replace('0.10 + 0.15*wear','0.045 + 0.12*wear').replace('0.10 + 0.20*wear','0.07 + 0.14*wear').replace('0.08 + wear*0.23','0.052 + wear*0.13')
+s=s.replace('  const split = s.height > 46', '''  // A fresh oblique break truncates one of the old rounded shoulders.
+  const chipAngle = rng.float(-0.85,0.85);
+  planes.push(plane(Math.sin(chipAngle),rng.float(-0.48,0.55),Math.cos(chipAngle),rng.float(0.63,0.88),0.025));
+  const split = s.height > 46''')
+s=s.replace('crack.d - 0.022','crack.d - 0.010').replace('    const p = new Vector3();','    const p = new Vector3();\n    const exposure: number[] = [];')
+s=s.replace('      const slip = side === 1 ? 0.07 : 0;','''      const distanceInside = side ? side*(crack.n.dot(p) - crack.d) : 1;
+      exposure.push(smoothstep(0.015,0.09,distanceInside));
+      const slip = side === 1 ? 0.028 : 0;''').replace('return { rock, snow: snowPatch(rock,s.crown,wind) };','return { rock, exposure, snow: snowPatch(rock,s.crown,wind,exposure) };')
+p.write_text(s)
+p=Path('experiments/plateau/mountain-shape.ts');s=p.read_text()
+s=s.replace('for (const point of shell.points) vertex(target, point, tint);','''for (const [k, point] of shell.points.entries()) {
+            const shade = target === stone ? 0.44 + 0.56 * piece.exposure[k] : 1;
+            vertex(target, point, shade === 1 ? tint : tint.clone().multiplyScalar(shade));
+          }''').replace('finishStone(0, 0.96);','finishStone(0, 0.74);')
+s=s.replace('const split = style > 0.20;', 'const split = style > 0.50;')
+s=s.replace('if (side && Math.min(start * side, end * side) < -195) {','''if (!side) {
+        const steps = Math.ceil(span * (count === 2 ? 0.6 : 1) / 8);
+        for (let i=1; i<steps; i++) columns.push(i/steps);
+      }
+      if (side && Math.min(start * side, end * side) < -195) {''')
+s=s.replace('const rib = broad','const flatRib = broad').replace('        const bend = crossJoint','''        const rib = broad ? smoothstep(0,0.95,flatRib) : 1 - (1-flatRib)**2;
+        const bend = crossJoint''')
+s=s.replace('    finishStone(0, 0.44);','    finishStone(0, 0.68);')
+s=s.replace('height = p.y * site.float(0.82, 0.99)','height = p.y * site.float(0.85, 1.035)').replace('hand * width * (slab ? 0.40 : 0.12)','hand * width * (slab ? 0.47 : 0.26)')
+p.write_text(s)
+p=Path('experiments/plateau/mountain.ts');s=p.read_text()
+s=s.replace(".replace('frost * 0.92', 'frost * 0.29 * vRockFinish.x')", """.replace('float frost =', `
+          vec2 bed = vec2(0.72*vRockPos.x - 0.53*vRockPos.z, vRockPos.y + 0.22*vRockPos.x + 0.34*vRockPos.z);
+          vec2 mineral = texture2D(uNoise, bed * vec2(0.003,0.010)).rg;
+          float patch = smoothstep(0.28,0.72,mineral.r + 0.14*(mineral.g-0.5));
+          col *= mix(vec3(1.0), mix(vec3(0.80,0.92,1.04),vec3(1.18,1.03,0.92),patch),1.0-vRockFinish.x);
+          float frost =`)
+        .replace('frost * 0.92', 'frost * 0.29 * vRockFinish.x')""")
+p.write_text(s)

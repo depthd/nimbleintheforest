@@ -1,0 +1,28 @@
+THREE.WebGLProgram: Shader Error 0 - VALIDATE_STATUS false
+
+Material Name:
+Material Type: MeshStandardMaterial
+
+Program Info Log: Fragment shader is not compiled.
+
+FRAGMENT
+
+ERROR: 0:1734: 'patch' : Illegal use of reserved word
+ERROR: 0:1734: 'patch' : syntax error
+
+  1729:
+  1730:           vec2 bed = vec2(0.72*vRockPos.x - 0.53*vRockPos.z, vRockPos.y + 0.22*vRockPos.x + 0.34*vRockPos.z);
+  1731:           vec2 mineral = texture2D(uNoise, bed * vec2(0.003,0.010)).rg;
+  1732:           float bedding = smoothstep(0.28,0.72,mineral.r + 0.14*(mineral.g-0.5));
+  1733:           vec2 strike = vec2(0.82*vRockPos.x-0.58*vRockPos.z, vRockPos.y-0.41*vRockPos.x+0.20*vRockPos.z);
+> 1734:           float patch = 0.65 * mineralGrain(strike * vec2(0.057,0.076))
+  1735:                       + 0.24 * mineralGrain(strike * 0.18 + 14.3) + 0.11 * bedding;
+  1736:           float warm = smoothstep(0.41,0.73,patch);
+  1737:           col *= mix(vec3(0.76,0.85,1.06),vec3(1.23,1.06,0.99),warm);
+  1738:           col *= 0.78 + 0.4 * patch;
+  1739:           col *= 0.62 + 0.38 * smoothstep(0.012,0.085,vRockFinish.z);
+  1740:           float frost = smoothstep(0.5, 0.72, N.y + 0.14 * (nz.r - 0.5));
+wall
+front
+back
+middle

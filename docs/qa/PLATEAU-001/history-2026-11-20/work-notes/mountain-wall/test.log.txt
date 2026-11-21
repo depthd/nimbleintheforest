@@ -1,0 +1,29 @@
+stone ready
+snow ready {
+  roofTriangles: 77741,
+  capSegments: 1997,
+  sampledVertices: 39920,
+  maxLeafEdgeM: 5.699959346137997
+}
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: Crown depth/contact: 4479,-2.615561549523406,2.945251140805567
+    at Object.<anonymous> (<repo>/experiments/plateau/mountain.test.cjs:56:8)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.22.1

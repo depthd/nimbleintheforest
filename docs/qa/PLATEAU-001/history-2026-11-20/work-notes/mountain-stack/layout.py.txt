@@ -1,0 +1,23 @@
+import numpy as np, math
+a=np.linspace(0,2*np.pi,200,endpoint=False)
+def outline(a):return 1+.095*np.sin(3*a+.7)+.055*np.cos(5*a-.4)
+def dims(x,z):return np.hypot(x/260,z/180)/outline(np.arctan2(z/180,x/260))
+def transform(x,z,yaw,fx,fz,ox,oz):
+ c,s=math.cos(yaw),math.sin(yaw);return ox+c*x*fx+s*z*fz,oz-s*x*fx+c*z*fz
+t=np.arange(25)/24
+px=-300+320*t;pz=-50+45*np.sin(np.pi*t)-12*np.sin(2*np.pi*t);pw=32+6*np.sin(5.1*t+1)+3*np.sin(13*t)
+def test(relx,relz):
+ results=[]
+ for yaw in [-.90,-.65,-.42,-.23,.12,.34,.62,1.0,1.48,-1.40,2.0,-2.54,2.8]:
+  xs,zs=transform(260*1.19*outline(a)*np.cos(a),180*1.19*outline(a)*np.sin(a),yaw,relx,relz,0,0)
+  for ox in range(45,136,5):
+   for oz in range(0,81,5):
+    x,z=xs+ox,zs+oz;r=dims(x,z).max()
+    # Distance from the full parent pass to the unscaled child perimeter, via center & boundaries.
+    yy,zz=np.meshgrid(px,np.linspace(-1,1,7));zroute=pz+zz*pw; xx=yy-ox;vz=zroute-oz
+    c,s=math.cos(yaw),math.sin(yaw);u=(c*xx-s*vz)/relx;v=(s*xx+c*vz)/relz
+    sep=dims(u,v).min()
+    if r<.985 and sep>1.14:results.append((round(min((1-r)*220,(sep-1.10)*90),1),round(r,3),round(sep,3),ox,oz,yaw))
+ print(sorted(results,reverse=True)[:12]);print('nearest forward',sorted([v for v in results if abs(v[-1])<.95],reverse=True)[:6])
+test(.49,.485)
+test(.435,.41)

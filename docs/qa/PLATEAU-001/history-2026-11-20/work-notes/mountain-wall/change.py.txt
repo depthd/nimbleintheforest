@@ -1,0 +1,131 @@
+from pathlib import Path
+p=Path('experiments/plateau/mountain-shape.ts');s=p.read_text()
+s=s.replace('  bedDip?: number;','  bedDip?: number;\n  wear?: number;')
+s=s.replace('  function mass(s: Mass, kind: keyof typeof stats) {','''  // Per-vertex pair: how much frost a surface can carry, and how worn its edges are.
+  const finish: number[] = [];
+  function finishStone(frost: number, worn: number) {
+    const vertices = stone.positions.length / 3;
+    for (let i = finish.length / 2; i < vertices; i++) finish.push(frost, worn);
+  }
+
+  function mass(s: Mass, kind: keyof typeof stats, random = rng) {''')
+start=s.index('  function mass');end=s.index('  function admissible')
+part=s[start:end].replace('rng.float','random.float').replace('rng.pick','random.pick')
+part=part.replace('    const corners = polygon.map', '''    const wear = s.wear ?? 0;
+    // Trim only selected corners of a worn block; the opposite side retains a
+    // full fracture plane. The cut corners continue down the same solid.
+    const cutStart = stoneRng.int(0, polygon.length - 1);
+    const outlinePlan = !wear ? polygon : polygon.flatMap((p, i) => {
+      if ((i + polygon.length - cutStart) % polygon.length > 2) return [p];
+      const trim = 0.12 + 0.19 * wear;
+      const points = [polygon[(i + polygon.length - 1) % polygon.length], polygon[(i + 1) % polygon.length]];
+      return points.map(q => [p[0] + (q[0] - p[0]) * trim, p[1] + (q[1] - p[1]) * trim]);
+    });
+    const corners = outlinePlan.map''')
+# Avoid jitter that would undo the chamfer or make short edges cross.
+part=part.replace('stoneRng.float(0.96, 1.03)','stoneRng.float(wear ? 0.992 : 0.96, wear ? 1.008 : 1.03)')
+a=part.index('    for (const [row, t, scale]');b=part.index('    const crownCenter',a)
+part=part[:a]+'''    const profile = wear
+      ? [[0, 1.13], [middle * 0.82, 1.04], [0.79, 0.88 + 0.10 * wear], [0.92, 0.82], [1, 0.77 - wear * 0.21]]
+      : [[0, toe], [middle, waist], [1, crownWidth]];
+    const shoulderTilt = stoneRng.float(-0.12, 0.12);
+    for (const [row, [t, scale]] of profile.entries()) {
+      const ring: number[] = [];
+      for (const [u, v] of corners) {
+        const jitter = wear ? Math.sin(Math.PI * t) * shoulderTilt * (u / s.width + v / s.depth)
+          : row === 1 ? random.float(-0.22, 0.22) : 0;
+        const fraction = t + jitter;
+        const width = scale * (!wear && row === 1 ? random.float(0.92, 1.08) : 1);
+        const p = world(
+          u * width + s.rake * fraction,
+          v * width + s.lean * fraction,
+          s.base + (topHeight(u, v) - s.base) * fraction,
+        );
+        ring.push(vertex(stone, p, color));
+        if (t === 1) top.push(p);
+      }
+      rings.push(ring);
+    }
+'''+part[b:]
+part=part.replace('for (let row = 0; row < 2; row++)','for (let row = 0; row < rings.length - 1; row++)').replace('rings[2][i], rings[2][j]','rings[rings.length - 1][i], rings[rings.length - 1][j]')
+part=part.replace('    stats[kind]++;','    finishStone(wear ? 0.16 : 1, wear * 0.74);\n    stats[kind]++;')
+s=s[:start]+part+s[end:]
+s=s.replace('const split = style > -0.6;', 'const split = style > 0.20;')
+s=s.replace('const crossJoint = !shelf && (part === 0 || style < 0) && styleRng.chance(0.77);','const crossJoint = !shelf && part === 0 && styleRng.chance(0.38);')
+s=s.replace('const rows = levels.map((t) => columns.map((u) => vertex(stone, surface(u, t), color)));','''const recessColor = color.clone().multiplyScalar(0.58);
+      const rows = levels.map(t => columns.map(u => vertex(stone, surface(u, t),
+        crossJoint && t === crestBend && u < 0.74 ? recessColor : color)));''')
+s=s.replace("    stats[side ? 'passage' : 'buttresses']++;", """    // These upward-facing bevels are inside joints; ledge snow has its own surface.
+    finishStone(0, 0.16);
+    stats[side ? 'passage' : 'buttresses']++;""")
+a=s.index('    const bench =');b=s.index('    // Wind deposits',a)
+s=s[:a]+s[b:]
+a=s.index('  for (const side of [-1, 1])')
+s=s[:a]+'''  // Place a few related outcrops at each site, then leave a length of exposed
+  // parent wall. Their different strikes, heights and setbacks make the cleft.
+  const groups = new Rng(seed ^ 0x609c3);
+  for (let angle = 0.16; angle < tau; ) {
+    const a = angle;
+    const tangent = contourTangent(a);
+    const speed = Math.hypot(tangent.x, tangent.z);
+    angle += groups.float(82, 144) / speed;
+    const site = new Rng(seed ^ Math.round(83413 * a));
+    const p = rimAt(a), tx = tangent.x / speed, tz = tangent.z / speed;
+    const strike = Math.atan2(tz, tx);
+    const width = site.float(50, 85), height = p.y * site.float(0.68, 0.94);
+    const hand = site.chance(0.5) ? -1 : 1;
+    const slab = site.chance(0.29);
+    function block(along: number, front: number, w: number, depth: number,
+      h: number, turn: number, rake: number, wear: number) {
+      const x = p.x + tx * along + tz * front, z = p.z + tz * along - tx * front;
+      const lean = -front * site.float(0.28, 0.63);
+      const yaw = strike + turn, c = Math.cos(yaw), sin = Math.sin(yaw);
+      // Check both ends of the raked block in the supporting terrain's frame.
+      for (const t of [0, 1]) {
+        for (const u of [-0.61, 0, 0.61]) for (const v of [-0.60, 0, 0.60]) {
+          const du = u * w + t * rake, dv = v * depth + t * lean;
+          if (!admissible(x + c * du + sin * dv, z + sin * du - c * dv, 2)) return;
+        }
+      }
+      mass({x, z, angle: yaw, width: w, depth, height: h + 5, base: -5, rake, lean, wear,
+        bedDip: slab ? -0.45 : -0.14, crown: site.float(1.5, 3.6)}, 'buttresses', site);
+    }
+    block(0, site.float(22, 34), width, width * (slab ? 0.47 : 0.78), height,
+      hand * site.float(0.04, 0.29), hand * width * (slab ? 0.40 : 0.12), slab ? 0.28 : 0.88);
+    block(hand * width * 0.43, site.float(35, 46), width * site.float(0.48, 0.70),
+      width * site.float(0.38, 0.57), height * site.float(0.36, 0.66),
+      -hand * site.float(0.12, 0.47), -hand * width * 0.08, site.float(0.44, 0.86));
+    if (site.chance(0.53)) {
+      block(-hand * width * 0.40, site.float(18, 35), width * 0.36, width * 0.40,
+        height * site.float(0.39, 0.79), hand * 0.38, hand * width * 0.15, 0.31);
+    }
+  }
+'''+s[a:]
+s=s.replace('return { rocks: pack(stone), snow: pack(snow), stats, stoneFootprints };','return { rocks: { ...pack(stone), finish: new Float32Array(finish) }, snow: pack(snow), stats, stoneFootprints };')
+p.write_text(s)
+p=Path('experiments/plateau/mountain.ts');s=p.read_text()
+a=s.index("  status.textContent = 'Снежный край")
+s=s[:a]+'''  function cliffDressingMaterial() {
+    const mat = makeRockMaterial();
+    const compile = mat.onBeforeCompile;
+    mat.onBeforeCompile = function(shader, renderer) {
+      compile.call(this, shader, renderer);
+      const varying = 'varying vec2 vRockFinish;\\nvarying vec3 vWornNormal;';
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\\nattribute vec2 rockFinish;\\n' + varying)
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\\nvRockFinish = rockFinish; vWornNormal = normalize(normalMatrix * normal);');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\\n' + varying)
+        .replace('frost * 0.92', 'frost * 0.29 * vRockFinish.x')
+        .replace('#include <normal_fragment_begin>',
+          '#include <normal_fragment_begin>\\nnormal = normalize(mix(normal, normalize(vWornNormal), vRockFinish.y));');
+    };
+    mat.customProgramCacheKey = () => 'mountain-jointed-rock';
+    return mat;
+  }
+'''+s[a:]
+s=s.replace('frost = rockWithFrost(0.29);','cliffMaterial = cliffDressingMaterial();')
+s=s.replace('rocks.add(mesh(dressing.rocks, frost), mesh(dressing.snow, snowMaterial));',"""const outcrops = mesh(dressing.rocks, cliffMaterial);
+    outcrops.geometry.setAttribute('rockFinish', new THREE.BufferAttribute(dressing.rocks.finish, 2));
+    rocks.add(outcrops, mesh(dressing.snow, snowMaterial));""")
+p.write_text(s)

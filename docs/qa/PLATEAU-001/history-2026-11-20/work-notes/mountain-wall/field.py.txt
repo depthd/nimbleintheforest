@@ -1,0 +1,38 @@
+from pathlib import Path
+import subprocess
+p=Path('experiments/plateau/mountain-shape.ts')
+s=p.read_text();old=subprocess.check_output(['git','show','HEAD:'+str(p)],text=True)
+s=s.replace("import { surfaceRoof } from './wedge-rocks';","import { wallOutcrop } from './wall-outcrop';")
+s=s.replace('    const profileRng = new Rng(seed ^ Math.round(s.x * 831 - s.z * 197));\n','')
+s=s.replace('    const firstVertex = stone.positions.length / 3, firstIndex = stone.indices.length;\n','')
+a=s.index('    const cutStart =');b=s.index('    const crownCenter',a)
+s=s[:a]+'''    if (wear) {
+      const pieces = wallOutcrop(s, control, seed ^ Math.round(s.x * 831 - s.z * 197));
+      for (const piece of pieces) {
+        for (const [shell, target, tint] of [[piece.rock, stone, color], [piece.snow, snow, white]] as const) {
+          const offset = target.positions.length / 3;
+          for (const point of shell.points) vertex(target, point, tint);
+          for (const index of shell.indices) target.indices.push(offset + index);
+        }
+      }
+      finishStone(0, 0.96);
+      stats[kind] += pieces.length;
+      return;
+    }
+    for (const [row, t, scale] of [[0,0,toe],[1,middle,waist],[2,1,crownWidth]]) {
+      const ring: number[] = [];
+      for (const [u,v,bend,spread] of control) {
+        const fraction = row === 1 ? t + bend : t;
+        const width = row === 1 ? scale * spread : scale;
+        const p = world(u*width+s.rake*fraction,v*width+s.lean*fraction,
+          s.base + (topHeight(u,v) - s.base)*fraction);
+        ring.push(vertex(stone,p,color));
+        if(row === 2) top.push(p);
+      }
+      rings.push(ring);
+    }
+'''+s[b:]
+a=s.index('      const shoulderRoof =');b=s.index('      const radius',a);s=s[:a]+s[b:]
+a=s.index('      const radius');b=s.index('    stats[kind]++;',a)
+s=s[:a]+old[old.index('      const radius'):old.index('    stats[kind]++;')]+'    finishStone(1, 0);\n'+s[b:]
+p.write_text(s)

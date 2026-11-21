@@ -1,0 +1,13 @@
+middle {
+  minEmbed: 3.4025487687371623,
+  nearestPass: 4.2858246629324075,
+  outerRadius: 0.9591209913631917
+}
+summit {
+  minEmbed: 3.1491120894494884,
+  nearestPass: 4.92052801696988,
+  outerRadius: 0.9406222562695682
+}
+(node:12883) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

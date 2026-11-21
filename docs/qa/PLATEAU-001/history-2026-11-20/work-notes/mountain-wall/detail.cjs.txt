@@ -1,0 +1,17 @@
+const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
+const [port,dir,mode='3']=process.argv.slice(2);
+(async()=>{fs.mkdirSync(dir,{recursive:true});const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--js-flags=--max-old-space-size=6000']});try{
+const page=await browser.newPage({viewport:{width:1440,height:780},deviceScaleFactor:1});const errors=[];
+page.on('pageerror',e=>{errors.push(e.message);console.error(e.message)});page.on('console',m=>{if(m.type()==='error'){errors.push(m.text());console.error(m.text())}});page.on('response',r=>{if(r.status()>=400)errors.push(r.url()+' '+r.status())});
+await page.goto('http://127.0.0.1:'+port+'/experiments/plateau/mountain.html'+(mode==='1'?'?tiers=1':''));
+await page.waitForFunction(()=>window.__mountain?.ready || document.querySelector('#status').textContent.startsWith('Ошибка'),null,{timeout:360000});
+if(!await page.evaluate(()=>window.__mountain?.ready))throw Error(await page.locator('#status').textContent());
+await page.addStyleTag({content:'aside,#status{display:none!important}'});
+await page.evaluate(()=>{const m=window.__mountain;Object.assign(m.views,{profile:{eye:[-1190,197,-240],target:[-120,85,-30],fov:25},shoulder:{eye:[-830,152,525],target:[-320,62,80],fov:29},approach:{eye:[-700,53,-287],target:[-350,80,-143],fov:43},sunward:{eye:[-560,192,960],target:[-115,70,150],fov:26}})});
+for(const name of mode==='1'?['front']:['profile','shoulder','approach','sunward']){
+ const data=await page.evaluate(name=>{const m=window.__mountain;m.view(name);return m.renderer.domElement.toDataURL('image/png').split(',')[1]},name);
+ fs.writeFileSync(path.join(dir,name+'.png'),Buffer.from(data,'base64'));console.log(name);
+}
+const report=await page.evaluate(()=>{const m=window.__mountain;return {tiers:m.tiers,views:m.views,trees:m.groups.trees.children[0].userData,rocks:m.dressings.map(d=>d.stats),triangles:m.renderer.info.render.triangles,layoutLink:document.querySelector('#layout').getAttribute('href'),drawCalls:m.renderer.info.render.calls}});
+const geometry = process.env.CHECK_GEOMETRY ? await require('/workspace/work/mountain-stack/geometry.cjs')(page) : [];fs.writeFileSync(path.join(dir,'capture.json'),JSON.stringify({...report,geometry,errors},null,2));if(errors.length)process.exitCode=1;
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

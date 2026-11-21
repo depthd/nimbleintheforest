@@ -1,0 +1,24 @@
+const {createRequire}=require('node:module'); require=createRequire(process.cwd()+'/experiments/plateau/mountain.test.cjs');
+const fs=require('fs'),ts=require('typescript'),assert=require('assert/strict'),crypto=require('crypto');require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,f);
+const {sampleGrid}=require('./seam-boundary.ts');
+const {ascentSample}=require('./ascent.ts');
+const {plateauTop,mountainEnding,mountainSnowProfile,buildMountainMasses}=require('./mountain-shape.ts');
+const {reliefGrid}=require('./seam-relief-fixture.ts'),{buildWedgeAscent}=require('./wedge-ascent.ts'),{bluntTip}=require('./wedge-tip-profile.ts'),{subtract,interior}=require('./cavity.ts'),{buildMountainSnow,distanceToAscent}=require('./mountain-snow.ts');
+const source=reliefGrid(plateauTop),upper={...source,heights:source.heights.map((_,k)=>plateauTop(source.x0+k%(source.n+1)*source.cell,source.z0+Math.floor(k/(source.n+1))*source.cell))},j=buildWedgeAscent(source,upper,mountainEnding,bluntTip),hash=(...arrays)=>{const h=crypto.createHash('sha256');for(const a of arrays)h.update(a);return h.digest('hex')},before=hash(source.heights,upper.heights,...Object.values(j.cut).flatMap(m=>[m.positions,m.indices]));
+
+const THREE=require('three');
+const {ringPoint}=require('./wedge-snow-layer.ts');
+const rim=require('./mountain-snow.ts').mountainRim(j);
+const wall=require('./wedge-rocks.ts').radialSurface([j.cut.underside]);
+const reports=[];
+for(const seed of [711,24586,53103]){
+ const d=buildMountainMasses(a=>ringPoint(rim,a),wall,(x,z)=>sampleGrid(source,x,z).y,seed);
+ const objs=[d.rocks,d.snow].map(m=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(m.positions,3));g.setIndex(new THREE.BufferAttribute(m.indices,1));return new THREE.Mesh(g,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}))});
+ const cast=(x,y,z,dx,dy,dz,far)=>new THREE.Raycaster(new THREE.Vector3(x,y,z),new THREE.Vector3(dx,dy,dz),0,far).intersectObjects(objs);
+ let columns=0;
+ for(let x=-245;x<=5;x+=10)for(const off of [-9,0,9]){const p=ascentSample(x);assert.equal(cast(x,p.y+1.8,p.z+off,0,1,0,160).length,0,'ascent '+seed+' '+x+' '+off);columns++;}
+ assert.equal(cast(279,6.8,0,1,0,0,100).length,0,'cave '+seed);
+ assert.ok(d.rocks.positions.every(Number.isFinite)&&d.snow.positions.every(Number.isFinite));
+ reports.push({seed,columns,stats:d.stats});
+}
+console.log(JSON.stringify(reports));

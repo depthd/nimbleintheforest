@@ -1,0 +1,15 @@
+from pathlib import Path
+p=Path('experiments/plateau/mountain-shape.ts');s=p.read_text()
+a=s.index('      const levels = shelf');b=s.index('      const notch',a)
+s=s[:a]+'''      const lipDepth = styleRng.float(0.10, 0.18);
+      const levels = shelf ? [0, lipDepth, 0.28, 0.48, 1] : [0, lipDepth, crestBend, 0.79, 1];
+      if (crossJoint) levels.splice(2, 1, crestBend - 0.012, crestBend, crestBend + 0.018);
+      const shoulder = styleRng.float(4, 13) * (side ? 0.32 : 1);
+'''+s[b:]
+s=s.replace('if (shelf && t > 0 && t < 1) {','''// Rock reaches the snow with a local shoulder. Its depth dies away
+        // independently toward the two joints and toward the foot of the wall.
+        const crownBulge = smoothstep(0, lipDepth, t) * (1 - smoothstep(lipDepth, 0.60, t));
+        out += shoulder * crownBulge * (0.16 + 0.84 * rib);
+        if (shelf && t > 0 && t < 1) {''').replace('out = under + (t <= 0.21 ? 5 + rib * 7 : 1 + rib * 2.4);','out = under + 1 + 2.4 * rib + crownBulge * (4 + 6 * rib);')
+s=s.replace('    finishStone(0, 0.16);','    finishStone(0, 0.44);')
+p.write_text(s)

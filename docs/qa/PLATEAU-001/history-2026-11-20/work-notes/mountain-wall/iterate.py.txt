@@ -1,0 +1,73 @@
+from pathlib import Path
+import subprocess
+p=Path('experiments/plateau/mountain-shape.ts');s=p.read_text()
+old=subprocess.check_output(['git','show','HEAD:'+str(p)],text=True)
+# The old large stones become the intermediate size in the new groups. Their
+# placement stream also drives the existing talus/plateau dressing.
+oldsites=old[old.index('    const bench ='):old.index('    // Wind deposits')]
+s=s.replace('    // Wind deposits',oldsites+'    // Wind deposits')
+a=s.index('    const wear =');b=s.index('    const pitch',a)
+s=s[:a]+'''    const wear = s.wear ?? (kind === 'buttresses' ? 0.55 : 0);
+    const profileRng = new Rng(seed ^ Math.round(s.x * 831 - s.z * 197));
+    const corners = polygon.map(([u, v]) => [
+      u * s.width * stoneRng.float(0.96, 1.03),
+      v * s.depth * stoneRng.float(0.96, 1.03),
+    ]);
+'''+s[b:]
+a=s.index('    const profile =');b=s.index('    const crownCenter',a)
+s=s[:a]+'''    // Each original corner owns its bedding and lateral displacement. Cuts
+    // interpolate these controls, so refinement cannot move the other stones.
+    const control = corners.map(([u, v]) => [u, v, random.float(-0.22, 0.22), random.float(0.92, 1.08)]);
+    const cutStart = profileRng.int(0, control.length - 1);
+    const wornCorners = !wear ? control : control.flatMap((corner, i) => {
+      if ((i + control.length - cutStart) % control.length > 2) return [corner];
+      const trim = 0.12 + 0.19 * wear;
+      const neighbors = [control[(i + control.length - 1) % control.length], control[(i + 1) % control.length]];
+      return neighbors.map(q => corner.map((v, k) => v + (q[k] - v) * trim));
+    });
+    const shoulder = profileRng.float(0.58, 0.79);
+    const profile = wear
+      ? [[0, toe], [middle * 0.71, waist], [shoulder, 0.91], [0.92, 0.78], [1, 0.72 - wear * 0.12]]
+      : [[0, toe], [middle, waist], [1, crownWidth]];
+    for (const [row, [t, scale]] of profile.entries()) {
+      const ring: number[] = [];
+      for (const [u, v, bend, spread] of wornCorners) {
+        const shoulderBend = 0.52 * bend + 0.10 * (u / s.width - v / s.depth);
+        const fraction = wear ? t + Math.sin(Math.PI * t) * shoulderBend : row === 1 ? t + bend : t;
+        const section = wear ? 1 + Math.sin(Math.PI * t) * (spread - 1) : row === 1 ? spread : 1;
+        const p = world(
+          u * scale * section + s.rake * fraction,
+          v * scale * section + s.lean * fraction,
+          s.base + (topHeight(u, v) - s.base) * fraction,
+        );
+        ring.push(vertex(stone, p, color));
+        if (t === 1) top.push(p);
+      }
+      rings.push(ring);
+    }
+'''+s[b:]
+a=s.index('    const crownCenter');b=s.index('    // Count projected',a);s=s[:a]+s[a:b].replace('corners.length','top.length')+s[b:]
+# Dress the wall nearer the crest, not as a set of free-standing boulders.
+s=s.replace('angle += groups.float(82, 144) / speed;','angle += groups.float(95, 160) / speed;')
+s=s.replace('const width = site.float(50, 85), height = p.y * site.float(0.68, 0.94);','const width = site.float(53, 86), height = p.y * site.float(0.82, 0.99);')
+s=s.replace('const lean = -front * site.float(0.28, 0.63);','const lean = -front * site.float(0.06, 0.37);')
+s=s.replace('block(0, site.float(22, 34)','block(0, site.float(13, 23)').replace('block(hand * width * 0.43, site.float(35, 46)','block(hand * width * 0.40, site.float(21, 32)').replace('site.float(18, 35), width * 0.36','site.float(12, 26), width * 0.36')
+s=s.replace("bedDip: slab ? -0.45 : -0.14, crown: site.float(1.5, 3.6)","bedDip: slab ? -0.52 : site.float(-0.38, 0.09), crown: site.float(1.8, 3.3)")
+# Sample snow over the upper flank as well as its roof, so a rounded deposit
+# follows a real shoulder and feathers out lower on the sheltered side.
+s=s.replace("import { ascentSample } from './ascent';","import { ascentSample } from './ascent';\nimport { surfaceRoof } from './wedge-rocks';")
+s=s.replace('    const top: Vector3[]','    const firstVertex = stone.positions.length / 3, firstIndex = stone.indices.length;\n    const top: Vector3[]')
+a=s.index('      const radius =')
+s=s[:a]+'''      const shoulderRoof = wear ? surfaceRoof([{
+        positions: new Float32Array(stone.positions.slice(firstVertex * 3)),
+        indices: Uint32Array.from(stone.indices.slice(firstIndex), index => index - firstVertex),
+      }]) : undefined;
+'''+s[a:]
+s=s.replace('const cover = 0.985 - exposure * wind ** 2;', '''const cover = wear ? 1.18 - 0.28 * wind - exposure * 0.25 * wind ** 2 : 0.985 - exposure * wind ** 2;''')
+s=s.replace('q.y = roofHeight(q) + s.crown * lift * (1 - 0.45 * wind * scale);','''let bed = shoulderRoof?.(q.x, q.z);
+          if (shoulderRoof && bed === undefined) {
+            q.copy(center).lerp(p, Math.min(0.98, scale * cover));
+            bed = shoulderRoof(q.x, q.z);
+          }
+          q.y = (bed ?? roofHeight(q)) + s.crown * lift * (1 - 0.45 * wind * scale);''')
+p.write_text(s)

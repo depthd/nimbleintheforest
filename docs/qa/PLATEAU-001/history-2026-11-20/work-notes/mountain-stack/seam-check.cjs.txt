@@ -1,0 +1,23 @@
+const {chromium}=require('playwright');
+(async()=>{
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--js-flags=--max-old-space-size=6000']});
+ try{
+ const page=await browser.newPage({viewport:{width:1440,height:780}});
+ await page.goto('http://127.0.0.1:5295/experiments/plateau/mountain.html');
+ await page.waitForFunction(()=>window.__mountain?.ready,null,{timeout:160000});
+ await page.addScriptTag({path:'/workspace/work/mountain-polish/probe-lib.js'});
+ console.log(JSON.stringify(await page.evaluate(()=>{
+ const m=window.__mountain,ray=new window.mountProbe.Raycaster();
+ m.view('middle');const groups=Object.values(m.groups), points=[[208,516],[208,524],[208,532],[287,670],[287,678],[287,685],[839,372],[1119,612]];
+ return points.map(([x,y])=>{
+ ray.setFromCamera({x:(x+.5)/1440*2-1,y:1-(y+.5)/780*2},m.camera);
+ const h=ray.intersectObjects(groups,true)[0],obj=h.object,p=obj.parent;
+ let category=Object.entries(m.groups).find(([k,g])=>g===p.parent)?.[0];
+ const a=obj.geometry.attributes.position, A=m.camera.position.clone().fromBufferAttribute(a,h.face.a), B=m.camera.position.clone().fromBufferAttribute(a,h.face.b), C=m.camera.position.clone().fromBufferAttribute(a,h.face.c);
+ for(const v of [A,B,C])v.applyMatrix4(obj.matrixWorld);
+ const n=B.sub(A).cross(C.sub(A)).normalize();
+ return {x,y,category,tier:p.name,mesh:obj.name||p.children.indexOf(obj),normalY:+n.y.toFixed(3),face:h.faceIndex};
+ });
+ }),null,2));
+ }finally{await browser.close()}
+})().catch(e=>{console.error(e);process.exitCode=1});

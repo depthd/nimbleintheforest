@@ -1,0 +1,209 @@
+{
+  "first-wall": {
+    "original": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "before": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "after": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "second": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "third": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "verified": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ]
+  },
+  "rim-polish": {
+    "first": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "second": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "third": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "fourth": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "final": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "checked": [
+      "front",
+      "rim",
+      "shoulder",
+      "route",
+      "entrance",
+      "plateau"
+    ],
+    "route-diag": [
+      "bare"
+    ],
+    "final-diag": [
+      "bare"
+    ]
+  },
+  "stack": {
+    "pilot": [
+      "front",
+      "overview",
+      "top",
+      "back",
+      "middle",
+      "summit"
+    ],
+    "checked": [
+      "front",
+      "overview",
+      "top",
+      "back",
+      "middle",
+      "summit"
+    ],
+    "checked-single": [
+      "front"
+    ]
+  },
+  "outcrops": {
+    "before": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "pilot": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "round2": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "field": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "before-detail": [
+      "approach",
+      "shoulder",
+      "profile",
+      "sunward"
+    ],
+    "field-detail": [
+      "approach",
+      "shoulder",
+      "profile",
+      "sunward"
+    ],
+    "correct": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "crest": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "edge": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "checked": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "checked-single": [
+      "front"
+    ],
+    "face": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "verified": [
+      "wall",
+      "front",
+      "back",
+      "middle"
+    ],
+    "verified-single": [
+      "front"
+    ]
+  }
+}

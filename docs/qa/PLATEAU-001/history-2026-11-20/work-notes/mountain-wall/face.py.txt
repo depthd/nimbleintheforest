@@ -1,0 +1,39 @@
+from pathlib import Path
+p=Path('experiments/plateau/wall-outcrop.ts')
+s=p.read_text().replace("    const p = new Vector3();", """    const p = new Vector3();
+    // The same weathering trace runs through both fragments in parent-rock space.
+    const phase = (Math.abs(seed % 701) / 701) * Math.PI * 2;
+    const bedHeight = 0.18 * Math.sin(phase);
+    const bedSlope = 0.4 + 0.22 * Math.cos(phase);""")
+s=s.replace("      p.add(slip);", """      const bed = p.y - bedSlope * p.x - bedHeight + 0.15 * p.z;
+      const exposedFace = smoothstep(-0.08, 0.55, p.z) * smoothstep(0.015, 0.2, distanceInside);
+      // A ledge tapers along the front of the stone. Its projecting lower lip
+      // and recessed joint above it share an oblique bedding direction.
+      const lens = Math.max(0, 1 - ((p.x + 0.15 * Math.cos(phase)) / 1.12) ** 2);
+      const lip = Math.max(0, 1 - Math.abs((bed + 0.29) / 0.39));
+      const hollow = Math.max(0, 1 - Math.abs((bed - 0.085) / 0.29));
+      p.z += exposedFace * lens * (0.22 * lip - 0.25 * hollow);
+      p.add(slip);""");p.write_text(s)
+p=Path('experiments/plateau/mountain-shape.ts')
+s=p.read_text().replace("height = p.y * (atEntrance ? 1.08 : site.float(0.78, 1.03))", "height = p.y * (atEntrance ? 1.2 : site.float(0.84, 1.12))").replace("atEntrance ? 8 : site.float(4, 19)", "atEntrance ? 19 : site.float(8, 22)").replace("width * (slab ? 0.47 : 0.78)", "width * (slab ? 0.47 : 0.89)").replace("      height * site.float(0.36, 0.66),","      height * site.float(0.44, 0.74),")
+p.write_text(s)
+p=Path('experiments/plateau/mountain.ts')
+s=p.read_text().replace("      shader.fragmentShader = shader.fragmentShader\n        .replace('#include <common>', '#include <common>\\n' + varying)", """      // Large mineral patches change tone across a whole face. Interpolating
+      // across triangular cells leaves broad quiet areas and a broken grain.
+      const mineralField = `
+        float mineralGrain(vec2 q) {
+          vec2 i = floor(q), f = fract(q);
+          vec2 diagonal = f.x > f.y ? vec2(1.0,0.0) : vec2(0.0,1.0);
+          vec3 ids = vec3(dot(i,vec2(17.0,61.0)), dot(i+diagonal,vec2(17.0,61.0)), dot(i+1.0,vec2(17.0,61.0)));
+          vec3 values = fract(sin(ids) * 17389.57);
+          return dot(values,vec3(1.0-max(f.x,f.y),abs(f.x-f.y),min(f.x,f.y)));
+        }`;
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\\n' + varying + mineralField)""")
+s=s.replace("""          col *= mix(vec3(1.0), mix(vec3(0.80,0.92,1.04),vec3(1.18,1.03,0.92),bedding),0.52*(1.0-vRockFinish.x));""","""          vec2 strike = vec2(0.82*vRockPos.x-0.58*vRockPos.z, vRockPos.y-0.41*vRockPos.x+0.20*vRockPos.z);
+          float patch = 0.65 * mineralGrain(strike * vec2(0.057,0.076))
+                      + 0.24 * mineralGrain(strike * 0.18 + 14.3) + 0.11 * bedding;
+          float warm = smoothstep(0.41,0.73,patch);
+          col *= mix(vec3(0.76,0.85,1.06),vec3(1.23,1.06,0.99),warm);
+          col *= 0.78 + 0.4 * patch;""")
+p.write_text(s)

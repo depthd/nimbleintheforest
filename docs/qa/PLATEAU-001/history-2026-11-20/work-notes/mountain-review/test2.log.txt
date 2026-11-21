@@ -1,0 +1,34 @@
+stone ready
+snow ready {
+  roofTriangles: 76687,
+  capSegments: 1636,
+  sampledVertices: 39807,
+  maxLeafEdgeM: 5.699959346137997
+}
+node:assert:152
+  throw new AssertionError(obj);
+  ^
+
+AssertionError [ERR_ASSERTION]: overhead obstruction at -55,62.218619791666654,-16.993106446305376
++ actual - expected
+
++ 32.18393356018457
+- null
+
+    at Object.<anonymous> (<repo>/experiments/plateau/mountain.test.cjs:26:12)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 32.18393356018457,
+  expected: null,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1
