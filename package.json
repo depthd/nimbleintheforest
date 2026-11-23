@@ -8,6 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test:audio": "node tests/audio.cjs",
+    "test:footstep-surface": "node tests/footstep-surface.cjs",
     "test:locomotion": "node tests/locomotion.cjs",
     "test:movement": "node tests/movement.cjs",
     "test:snow": "node tests/snow.cjs",

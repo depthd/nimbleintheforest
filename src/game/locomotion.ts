@@ -1,6 +1,7 @@
 // Fixed-step, world-space foot placement. Rendering and physics stay separate:
 // planted soles are anchors, not a looping animation translated with the camera.
 import * as THREE from 'three';
+import type { FootstepMaterial } from './footstep-surface';
 
 export const THIGH = 0.46;
 export const SHIN = 0.45;
@@ -17,6 +18,8 @@ export interface FootSurface {
   normal: THREE.Vector3;
   support?: number;
   snowDepth?: number;
+  material?: FootstepMaterial;
+  compaction?: number;
 }
 export type GroundProbe = (x: number, z: number, referenceY: number) => FootSurface | null;
 export interface MotionInput {
@@ -35,6 +38,10 @@ export interface FootContact {
   speed: number;
   landing: boolean;
   serial: number;
+  support?: number;
+  snowDepth?: number;
+  material?: FootstepMaterial;
+  compaction?: number;
 }
 
 export class FootState {
@@ -181,7 +188,7 @@ export class Locomotion {
   }
 
   update(dt: number, input: MotionInput, probe: GroundProbe) {
-    if (dt <= 0) return;
+    if (dt <= 0) { this.contacts.length = 0; return; }
     if (!this.ready || input.position.distanceToSquared(this.position) > 4) this.reset(input, probe);
     this.contacts.length = 0;
     this.previousPosition.copy(this.position);
@@ -233,6 +240,7 @@ export class Locomotion {
       this.wasGrounded = false;
     } else {
       if (!this.wasGrounded) {
+        let landingSurface: FootSurface | undefined;
         for (const f of this.feet) {
           const rest = this.restPoint(f);
           const hit = probe(rest.x, rest.z, this.position.y);
@@ -243,11 +251,12 @@ export class Locomotion {
             f.grounded = true;
             f.needsPlant = false;
             f.support = hit.support;
+            if (f.side === 'left') landingSurface = hit;
           }
           f.progress = 1;
         }
         // One landing sound, not two simultaneous steps. Initial placement is silent.
-        if (!this.suppressLanding && this.feet[0].grounded) this.contact(this.feet[0], true);
+        if (!this.suppressLanding && this.feet[0].grounded) this.contact(this.feet[0], true, landingSurface);
         this.suppressLanding = false;
       }
       this.wasGrounded = true;
@@ -545,13 +554,14 @@ export class Locomotion {
       f.target.copy(hit.point);
       f.normal.copy(hit.normal);
       f.support = hit.support;
-      this.contact(f, false);
+      this.contact(f, false, hit);
     } else this.releaseFoot(f);
   }
 
-  private contact(f: FootState, landing: boolean) {
+  private contact(f: FootState, landing: boolean, surface?: FootSurface) {
     this.contacts.push({ side: f.side, position: f.position.clone(), normal: f.normal.clone(),
-      speed: this.speed, landing, serial: ++this.stepSerial });
+      speed: this.speed, landing, serial: ++this.stepSerial, support: surface?.support ?? f.support,
+      snowDepth: surface?.snowDepth, material: surface?.material, compaction: surface?.compaction });
   }
 
   private separateFeet(f: FootState, target: THREE.Vector3) {
