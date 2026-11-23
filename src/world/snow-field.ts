@@ -49,13 +49,16 @@ export class SnowField {
   }
   private read(ix: number, iz: number, initial?: number) {
     const a = this.address(ix, iz), t = this.tiles.get(a.key);
+    return this.readTile(t, a.index, ix, iz, initial);
+  }
+  private readTile(t: Tile | undefined, index: number, ix: number, iz: number, initial?: number) {
     let delta = 0, compaction = 0, exposure = 0;
-    if (t?.hot) { delta = t.hot.mass[a.index]; compaction = t.hot.packed[a.index] / 255; exposure = t.hot.exposure[a.index]; }
+    if (t?.hot) { delta = t.hot.mass[index]; compaction = t.hot.packed[index] / 255; exposure = t.hot.exposure[index]; }
     else if (t?.cold) {
       const c = t.cold;
       let lo = 0, hi = c.indices.length;
-      while (lo < hi) { const mid = (lo + hi) >>> 1; if (c.indices[mid] < a.index) lo = mid + 1; else hi = mid; }
-      if (c.indices[lo] === a.index) { delta = c.mass[lo]; compaction = c.packed[lo] / 255; exposure = c.exposure[lo]; }
+      while (lo < hi) { const mid = (lo + hi) >>> 1; if (c.indices[mid] < index) lo = mid + 1; else hi = mid; }
+      if (c.indices[lo] === index) { delta = c.mass[lo]; compaction = c.packed[lo] / 255; exposure = c.exposure[lo]; }
     }
     return this.weathered(ix, iz, delta, compaction, exposure, initial);
   }
@@ -73,6 +76,21 @@ export class SnowField {
     return { mass, compaction, height, surfaceCompaction: compaction * Math.exp(-dose / 0.012) };
   }
   gridState(ix: number, iz: number, initial?: number) { return this.read(ix, iz, initial); }
+  /** Cache the last tile during one synchronous renderer refresh. */
+  gridReader() {
+    let tileX = NaN, tileZ = NaN;
+    let tile: Tile | undefined;
+    return (ix: number, iz: number, initial: number) => {
+      const x = Math.floor(ix / TILE_CELLS), z = Math.floor(iz / TILE_CELLS);
+      if (x !== tileX || z !== tileZ) {
+        tileX = x;
+        tileZ = z;
+        tile = this.tiles.get(`${x},${z}`);
+      }
+      const index = (iz - z * TILE_CELLS) * TILE_CELLS + ix - x * TILE_CELLS;
+      return this.readTile(tile, index, ix, iz, initial);
+    };
+  }
   /** Game seconds, not frame count or distance. Calm clear weather preserves tracks. */
   advanceWeather(seconds: number, weather: { snow: number; wind: number }) {
     const snowfall = clamp(weather.snow, 0, 1) * 0.004 / 60;

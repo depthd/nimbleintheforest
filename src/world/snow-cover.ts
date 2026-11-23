@@ -76,9 +76,13 @@ export class SnowCover {
   looseAt(x: number, z: number, y: number) {
     let factor=1;
     for (const id of this.near(x,z)) {
-      const zone=this.zones[id], d=this.distance(zone,x,z);
-      if (zone.kind==='floor') { if (d<=0 && Math.abs(y-zone.y)<1) return 0; }
-      else if (y<zone.y) factor=Math.min(factor,THREE.MathUtils.smoothstep(d,0,SNOW_ROOF_FADE));
+      const zone=this.zones[id];
+      // The bin is deliberately coarse. Most members cannot affect this point.
+      // Outside the fade-expanded bounds the roof factor is exactly one.
+      if (!zone.ellipse && (x<zone.minX || x>zone.maxX || z<zone.minZ || z>zone.maxZ)) continue;
+      if (zone.kind==='floor') {
+        if (Math.abs(y-zone.y)<1 && this.distance(zone,x,z)<=0) return 0;
+      } else if (y<zone.y) factor=Math.min(factor,THREE.MathUtils.smoothstep(this.distance(zone,x,z),0,SNOW_ROOF_FADE));
     }
     return factor;
   }
