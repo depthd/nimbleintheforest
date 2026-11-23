@@ -116,7 +116,7 @@ export function buildRoundedWall(site: RoundedWallSite, count: 4 | 7 | 10, seed:
     }
   }
 
-  const capTriangleCount = snow.indices.length / 3;
+  const snowWallIndexCount = snow.indices.length;
   // Wind packs a low bank at the rock feet; its edge passes under the actual
   // terrain and the inner crest projects into the block. Separate small banks
   // reach the gaps between blocks, leaving stretches of exposed dark rock.
@@ -153,5 +153,5 @@ export function buildRoundedWall(site: RoundedWallSite, count: 4 | 7 | 10, seed:
   function pack(data: Mesh) {
     return { positions: Float32Array.from(data.positions), indices: Uint32Array.from(data.indices), colors: data.colors };
   }
-  return { rock: pack(rock), snow: pack(snow), masses, capTriangleCount };
+  return { rock: pack(rock), snow: pack(snow), masses, snowWallIndexCount, capTriangleCount: snowWallIndexCount / 3 };
 }
