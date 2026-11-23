@@ -2,6 +2,7 @@
   {
     "seed": 13947,
     "count": 5,
+    "snowPercent": 25.718822270546408,
     "rockTriangles": 120,
     "snowTriangles": 166,
     "maxWidth": 32.20975717726107,
@@ -12,6 +13,7 @@
   {
     "seed": 13947,
     "count": 8,
+    "snowPercent": 25.658696070260913,
     "rockTriangles": 192,
     "snowTriangles": 181,
     "maxWidth": 32.385640293966546,
@@ -22,6 +24,7 @@
   {
     "seed": 13947,
     "count": 12,
+    "snowPercent": 25.118290806699758,
     "rockTriangles": 288,
     "snowTriangles": 196,
     "maxWidth": 23.636253910937427,
@@ -32,6 +35,7 @@
   {
     "seed": 42,
     "count": 5,
+    "snowPercent": 25.72398794307299,
     "rockTriangles": 120,
     "snowTriangles": 168,
     "maxWidth": 31.801815693373882,
@@ -42,6 +46,7 @@
   {
     "seed": 42,
     "count": 8,
+    "snowPercent": 25.53008989226652,
     "rockTriangles": 192,
     "snowTriangles": 181,
     "maxWidth": 31.906246089709995,
@@ -52,6 +57,7 @@
   {
     "seed": 42,
     "count": 12,
+    "snowPercent": 23.416423869644976,
     "rockTriangles": 288,
     "snowTriangles": 170,
     "maxWidth": 23.296982340172747,
@@ -62,6 +68,7 @@
   {
     "seed": 7,
     "count": 5,
+    "snowPercent": 25.726814446516123,
     "rockTriangles": 120,
     "snowTriangles": 161,
     "maxWidth": 32.071895952054334,
@@ -72,6 +79,7 @@
   {
     "seed": 7,
     "count": 8,
+    "snowPercent": 24.813111882643646,
     "rockTriangles": 192,
     "snowTriangles": 185,
     "maxWidth": 31.669445077304076,
@@ -82,6 +90,7 @@
   {
     "seed": 7,
     "count": 12,
+    "snowPercent": 26.20681205586866,
     "rockTriangles": 288,
     "snowTriangles": 198,
     "maxWidth": 24.362906664424926,
@@ -92,6 +101,7 @@
   {
     "seed": 8191,
     "count": 5,
+    "snowPercent": 26.256281407035175,
     "rockTriangles": 120,
     "snowTriangles": 165,
     "maxWidth": 32.27162754628837,
@@ -102,6 +112,7 @@
   {
     "seed": 8191,
     "count": 8,
+    "snowPercent": 25.758999449178628,
     "rockTriangles": 192,
     "snowTriangles": 180,
     "maxWidth": 32.127444267980536,
@@ -112,6 +123,7 @@
   {
     "seed": 8191,
     "count": 12,
+    "snowPercent": 26.439542027366656,
     "rockTriangles": 288,
     "snowTriangles": 174,
     "maxWidth": 23.740468017260497,
@@ -122,6 +134,7 @@
   {
     "seed": 23011,
     "count": 5,
+    "snowPercent": 25.513916964702222,
     "rockTriangles": 120,
     "snowTriangles": 165,
     "maxWidth": 32.55116570159285,
@@ -132,6 +145,7 @@
   {
     "seed": 23011,
     "count": 8,
+    "snowPercent": 24.89116960244472,
     "rockTriangles": 192,
     "snowTriangles": 181,
     "maxWidth": 32.357754302943334,
@@ -142,6 +156,7 @@
   {
     "seed": 23011,
     "count": 12,
+    "snowPercent": 25.40533438444357,
     "rockTriangles": 288,
     "snowTriangles": 187,
     "maxWidth": 24.003382948428836,
@@ -152,6 +167,7 @@
   {
     "seed": 818723,
     "count": 5,
+    "snowPercent": 25.752142881535363,
     "rockTriangles": 120,
     "snowTriangles": 160,
     "maxWidth": 32.25550407437407,
@@ -162,6 +178,7 @@
   {
     "seed": 818723,
     "count": 8,
+    "snowPercent": 25.587124848019453,
     "rockTriangles": 192,
     "snowTriangles": 170,
     "maxWidth": 31.84762509688437,
@@ -172,6 +189,7 @@
   {
     "seed": 818723,
     "count": 12,
+    "snowPercent": 26.294995610184372,
     "rockTriangles": 288,
     "snowTriangles": 196,
     "maxWidth": 23.79510164575271,
