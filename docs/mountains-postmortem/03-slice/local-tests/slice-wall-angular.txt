@@ -1,0 +1,203 @@
+[
+  {
+    "seed": 13947,
+    "count": 5,
+    "snowPercent": 25.718822270546408,
+    "rockTriangles": 120,
+    "snowTriangles": 166,
+    "maxWidth": 32.20975717726107,
+    "minRouteClearance": 41.47591476271663,
+    "minSnowNormalY": 0.47465125992011786,
+    "maxSnowSupportGap": 0.0550085751365863
+  },
+  {
+    "seed": 13947,
+    "count": 8,
+    "snowPercent": 25.658696070260913,
+    "rockTriangles": 192,
+    "snowTriangles": 181,
+    "maxWidth": 32.385640293966546,
+    "minRouteClearance": 39.95400135767215,
+    "minSnowNormalY": 0.4615138803267354,
+    "maxSnowSupportGap": 0.05500462362672209
+  },
+  {
+    "seed": 13947,
+    "count": 12,
+    "snowPercent": 25.118290806699758,
+    "rockTriangles": 288,
+    "snowTriangles": 196,
+    "maxWidth": 23.636253910937427,
+    "minRouteClearance": 38.93688877212302,
+    "minSnowNormalY": 0.4630188802882263,
+    "maxSnowSupportGap": 0.055008764647134
+  },
+  {
+    "seed": 42,
+    "count": 5,
+    "snowPercent": 25.72398794307299,
+    "rockTriangles": 120,
+    "snowTriangles": 168,
+    "maxWidth": 31.801815693373882,
+    "minRouteClearance": 42.62285636716262,
+    "minSnowNormalY": 0.46404232989491984,
+    "maxSnowSupportGap": 0.0550106866841773
+  },
+  {
+    "seed": 42,
+    "count": 8,
+    "snowPercent": 25.53008989226652,
+    "rockTriangles": 192,
+    "snowTriangles": 181,
+    "maxWidth": 31.906246089709995,
+    "minRouteClearance": 40.671694640022366,
+    "minSnowNormalY": 0.49237639924846877,
+    "maxSnowSupportGap": 0.05500699579680557
+  },
+  {
+    "seed": 42,
+    "count": 12,
+    "snowPercent": 23.416423869644976,
+    "rockTriangles": 288,
+    "snowTriangles": 170,
+    "maxWidth": 23.296982340172747,
+    "minRouteClearance": 39.22899831618057,
+    "minSnowNormalY": 0.4783865865140747,
+    "maxSnowSupportGap": 0.055000305175813224
+  },
+  {
+    "seed": 7,
+    "count": 5,
+    "snowPercent": 25.726814446516123,
+    "rockTriangles": 120,
+    "snowTriangles": 161,
+    "maxWidth": 32.071895952054334,
+    "minRouteClearance": 42.69583064750139,
+    "minSnowNormalY": 0.4712919642040285,
+    "maxSnowSupportGap": 0.05500766512289346
+  },
+  {
+    "seed": 7,
+    "count": 8,
+    "snowPercent": 24.813111882643646,
+    "rockTriangles": 192,
+    "snowTriangles": 185,
+    "maxWidth": 31.669445077304076,
+    "minRouteClearance": 40.54846334912373,
+    "minSnowNormalY": 0.4696417855214157,
+    "maxSnowSupportGap": 0.055009206896638574
+  },
+  {
+    "seed": 7,
+    "count": 12,
+    "snowPercent": 26.20681205586866,
+    "rockTriangles": 288,
+    "snowTriangles": 198,
+    "maxWidth": 24.362906664424926,
+    "minRouteClearance": 38.88978184003385,
+    "minSnowNormalY": 0.47865555476132193,
+    "maxSnowSupportGap": 0.05500884505410042
+  },
+  {
+    "seed": 8191,
+    "count": 5,
+    "snowPercent": 26.256281407035175,
+    "rockTriangles": 120,
+    "snowTriangles": 165,
+    "maxWidth": 32.27162754628837,
+    "minRouteClearance": 42.071506588792154,
+    "minSnowNormalY": 0.5146570081536531,
+    "maxSnowSupportGap": 0.055003501192635085
+  },
+  {
+    "seed": 8191,
+    "count": 8,
+    "snowPercent": 25.758999449178628,
+    "rockTriangles": 192,
+    "snowTriangles": 180,
+    "maxWidth": 32.127444267980536,
+    "minRouteClearance": 40.18032175534734,
+    "minSnowNormalY": 0.4971660109397439,
+    "maxSnowSupportGap": 0.055007278301641094
+  },
+  {
+    "seed": 8191,
+    "count": 12,
+    "snowPercent": 26.439542027366656,
+    "rockTriangles": 288,
+    "snowTriangles": 174,
+    "maxWidth": 23.740468017260497,
+    "minRouteClearance": 38.94455039798595,
+    "minSnowNormalY": 0.46966561061191064,
+    "maxSnowSupportGap": 0.05500030517583454
+  },
+  {
+    "seed": 23011,
+    "count": 5,
+    "snowPercent": 25.513916964702222,
+    "rockTriangles": 120,
+    "snowTriangles": 165,
+    "maxWidth": 32.55116570159285,
+    "minRouteClearance": 40.70252223307134,
+    "minSnowNormalY": 0.46663626356221244,
+    "maxSnowSupportGap": 0.05500567682204682
+  },
+  {
+    "seed": 23011,
+    "count": 8,
+    "snowPercent": 24.89116960244472,
+    "rockTriangles": 192,
+    "snowTriangles": 181,
+    "maxWidth": 32.357754302943334,
+    "minRouteClearance": 39.311532406969654,
+    "minSnowNormalY": 0.46111033291969566,
+    "maxSnowSupportGap": 0.05500790328870764
+  },
+  {
+    "seed": 23011,
+    "count": 12,
+    "snowPercent": 25.40533438444357,
+    "rockTriangles": 288,
+    "snowTriangles": 187,
+    "maxWidth": 24.003382948428836,
+    "minRouteClearance": 38.84747000099085,
+    "minSnowNormalY": 0.4624748745552056,
+    "maxSnowSupportGap": 0.05500907853995329
+  },
+  {
+    "seed": 818723,
+    "count": 5,
+    "snowPercent": 25.752142881535363,
+    "rockTriangles": 120,
+    "snowTriangles": 160,
+    "maxWidth": 32.25550407437407,
+    "minRouteClearance": 41.14762865505159,
+    "minSnowNormalY": 0.47243523140995125,
+    "maxSnowSupportGap": 0.055009639462397786
+  },
+  {
+    "seed": 818723,
+    "count": 8,
+    "snowPercent": 25.587124848019453,
+    "rockTriangles": 192,
+    "snowTriangles": 170,
+    "maxWidth": 31.84762509688437,
+    "minRouteClearance": 39.63142269482319,
+    "minSnowNormalY": 0.4726854218447523,
+    "maxSnowSupportGap": 0.055010800884701894
+  },
+  {
+    "seed": 818723,
+    "count": 12,
+    "snowPercent": 26.294995610184372,
+    "rockTriangles": 288,
+    "snowTriangles": 196,
+    "maxWidth": 23.79510164575271,
+    "minRouteClearance": 40.429669024551075,
+    "minSnowNormalY": 0.4645619448384829,
+    "maxSnowSupportGap": 0.055009125179317664
+  }
+]
+(node:24317) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

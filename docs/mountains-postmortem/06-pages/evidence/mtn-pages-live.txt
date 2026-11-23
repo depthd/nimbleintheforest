@@ -1,0 +1,11 @@
+PASS production bytes, SHA, published preview, and link in the test menu
+page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://depthd.github.io/nimbleintheforest/test/experiments/plateau/review.html
+Call log:
+[2m  - navigating to "https://depthd.github.io/nimbleintheforest/test/experiments/plateau/review.html", waiting until "domcontentloaded"[22m
+
+    at /tmp/mtn-pages-browser.cjs:13:14 {
+  log: [
+    '  - navigating to "https://depthd.github.io/nimbleintheforest/test/experiments/plateau/review.html", waiting until "domcontentloaded"'
+  ],
+  name: 'Error'
+}

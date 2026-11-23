@@ -1,0 +1,47 @@
+PASS dashboard toggles, camera reset, route/seed, Pointer Lock and reference gallery
+den { x: 15, y: 0.04, z: 37, yaw: 0, attached: false, grounded: false } {
+  x: 15.001061551431654,
+  y: 0.11997978060535391,
+  z: 20.330099916129257,
+  yaw: 0,
+  attached: false,
+  grounded: true
+}
+rope {
+  x: -4,
+  y: 0.04,
+  z: 35.800000000000004,
+  yaw: 0,
+  attached: false,
+  grounded: false
+} {
+  x: -4.3300366488471544,
+  y: 14.030099379904277,
+  z: 2.799352863803506,
+  yaw: 0,
+  attached: false,
+  grounded: true
+}
+cave { x: 17, y: 14.04, z: 16.7, yaw: 0, attached: false, grounded: false } {
+  x: 16.999954520385444,
+  y: 22.030080478326997,
+  z: -11.292203091084957,
+  yaw: 0,
+  attached: false,
+  grounded: true
+}
+bridge {
+  x: 55.8,
+  y: 14.04,
+  z: 0.4212558215484026,
+  yaw: -1.5707963267948966,
+  attached: false,
+  grounded: false
+} {
+  x: 100.52894332259893,
+  y: 14.030099351498938,
+  z: 0.42200675834746937,
+  yaw: -1.5707963267948966,
+  attached: false,
+  grounded: true
+}

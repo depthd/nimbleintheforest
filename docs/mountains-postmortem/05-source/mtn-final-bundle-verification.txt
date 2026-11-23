@@ -1,0 +1,17 @@
+/workspace/work/mountains-delivery/mountains-final.bundle is okay
+The bundle contains these 4 refs:
+3910d955d353e824513b2fcf77a15707e6a18c27 refs/heads/integration/mountains-1
+e0e66ef60686e9ad9832d4511765408e7b28ec73 refs/heads/track/wall-rounded
+ae0bfe8df29cc288a78b3b84e0276ec7a9bceb5b refs/heads/track/wall-angular
+64dedb06d53eb46d0523a635000967ef16c3dc95 refs/heads/track/bridges
+The bundle requires these 4 refs:
+670fe76ccc42f61eda74fda1403ae9d19f951d5c 
+934a99e6f35f1a3b34535f525c0f17d5031ca2d4 
+88c34f3f8914e84b27d7e0f7e46cc7e105f7f9fa 
+5a0ef9508e3804f541991167166e1689e2e76fa9 
+The bundle uses this hash algorithm: sha1
+From /workspace/work/mountains-delivery/mountains-final.bundle
+   88c34f3..64dedb0  track/bridges      -> mountains-review/track/bridges
+   934a99e..ae0bfe8  track/wall-angular -> mountains-review/track/wall-angular
+   5a0ef95..e0e66ef  track/wall-rounded -> mountains-review/track/wall-rounded
+   670fe76..3910d95  integration/mountains-1 -> mountains-review/integration/mountains-1

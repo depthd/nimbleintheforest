@@ -1,0 +1,129 @@
+{
+  "viewport": [
+    800,
+    450
+  ],
+  "errors": [],
+  "report": [
+    {
+      "family": "angular",
+      "preset": 0,
+      "seed": 42,
+      "triangles": 2087436,
+      "calls": 42,
+      "drawMs": [
+        41054.59999999963,
+        10526.900000000373,
+        8175.100000000559,
+        5525.0999999996275,
+        5670.9000000003725
+      ],
+      "medianMs": 6923.000000000466,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 17559,
+        "snowPixels": 6051,
+        "bankPixels": 7802,
+        "wholePercent": 44.100980516999876,
+        "percent": 25.628970775095297
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "seed": 42,
+      "triangles": 2087521,
+      "calls": 42,
+      "drawMs": [
+        14963,
+        4626.199999999255,
+        5374.9000000003725,
+        4192.9000000003725,
+        2748.5
+      ],
+      "medianMs": 4409.549999999814,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 17077,
+        "snowPixels": 6534,
+        "bankPixels": 4799,
+        "wholePercent": 39.89088349172827,
+        "percent": 27.67354199313879
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 2,
+      "seed": 42,
+      "triangles": 2087606,
+      "calls": 42,
+      "drawMs": [
+        6099.899999999441,
+        2653.4000000003725,
+        2727.2000000001863,
+        2588.0999999996275,
+        2739.2000000001863
+      ],
+      "medianMs": 2690.3000000002794,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 21858,
+        "snowPixels": 8174,
+        "bankPixels": 3777,
+        "wholePercent": 35.34857582300571,
+        "percent": 27.21763452317528
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "seed": 7,
+      "triangles": 3941819,
+      "calls": 80,
+      "drawMs": [],
+      "medianMs": null,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 18265,
+        "snowPixels": 7298,
+        "bankPixels": 4576,
+        "wholePercent": 39.39745844254952,
+        "percent": 28.54907483472206
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "seed": 8191,
+      "triangles": 3941809,
+      "calls": 80,
+      "drawMs": [],
+      "medianMs": null,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 19691,
+        "snowPixels": 6584,
+        "bankPixels": 4773,
+        "wholePercent": 36.57884565833548,
+        "percent": 25.05803996194101
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "seed": 23011,
+      "triangles": 3941811,
+      "calls": 80,
+      "drawMs": [],
+      "medianMs": null,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 21201,
+        "snowPixels": 7785,
+        "bankPixels": 4555,
+        "wholePercent": 36.7907933573835,
+        "percent": 26.857793417511903
+      }
+    }
+  ]
+}

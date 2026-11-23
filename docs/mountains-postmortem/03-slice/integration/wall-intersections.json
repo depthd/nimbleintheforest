@@ -1,0 +1,352 @@
+{
+  "toleranceM": 0.00001,
+  "site": {
+    "x": -206.5008053555278,
+    "z": -141.42690281926113,
+    "angle": -0.7888201985996071,
+    "height": 106.39975301077203,
+    "width": 100
+  },
+  "tiers": [
+    {
+      "name": "lower",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "yaw": 0,
+      "width": 1.85,
+      "rise": 1,
+      "seed": 13947
+    },
+    {
+      "name": "middle",
+      "x": 222,
+      "z": 74,
+      "yaw": 0.34,
+      "width": 0.82325,
+      "rise": 0.88,
+      "seed": 24586,
+      "y": 87.4590783203529
+    },
+    {
+      "name": "summit",
+      "x": 306.7133938918371,
+      "z": 78.96330251838053,
+      "yaw": -2.2,
+      "width": 0.35811375,
+      "rise": 0.57,
+      "seed": 53103,
+      "y": 166.53666677925844
+    }
+  ],
+  "blobs": {
+    "slice-wall-rounded": "693e225572ada2423eabeffdab88c2fcb6c1e7fd",
+    "slice-wall-angular": "7d467d070239558438aa158f2b42467891a006a0"
+  },
+  "rows": [
+    {
+      "family": "rounded",
+      "count": 4,
+      "seed": 42,
+      "pairs": 6,
+      "separatedAxisPairs": 6,
+      "withinTolerancePairs": 0,
+      "minMassGapM": 4.7608,
+      "roofs": {
+        "rockTop": {
+          "minHorizontalGapM": null,
+          "horizontalGapAtLeastM": 32,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "ascentStrip": {
+          "minHorizontalGapM": 18.7064,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "snowTop": {
+          "minHorizontalGapM": 18.7064,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        }
+      }
+    },
+    {
+      "family": "rounded",
+      "count": 7,
+      "seed": 42,
+      "pairs": 21,
+      "separatedAxisPairs": 21,
+      "withinTolerancePairs": 0,
+      "minMassGapM": 3.7625,
+      "roofs": {
+        "rockTop": {
+          "minHorizontalGapM": null,
+          "horizontalGapAtLeastM": 32,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "ascentStrip": {
+          "minHorizontalGapM": 22.3448,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "snowTop": {
+          "minHorizontalGapM": 22.3448,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        }
+      }
+    },
+    {
+      "family": "rounded",
+      "count": 10,
+      "seed": 42,
+      "pairs": 45,
+      "separatedAxisPairs": 45,
+      "withinTolerancePairs": 0,
+      "minMassGapM": 2.8488,
+      "roofs": {
+        "rockTop": {
+          "minHorizontalGapM": null,
+          "horizontalGapAtLeastM": 32,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "ascentStrip": {
+          "minHorizontalGapM": 21.4082,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "snowTop": {
+          "minHorizontalGapM": 21.4082,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        }
+      }
+    },
+    {
+      "family": "rounded",
+      "count": 7,
+      "seed": 23011,
+      "pairs": 21,
+      "separatedAxisPairs": 21,
+      "withinTolerancePairs": 0,
+      "minMassGapM": 4.3991,
+      "roofs": {
+        "rockTop": {
+          "minHorizontalGapM": null,
+          "horizontalGapAtLeastM": 32,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "ascentStrip": {
+          "minHorizontalGapM": 22.1133,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "snowTop": {
+          "minHorizontalGapM": 22.1133,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        }
+      }
+    },
+    {
+      "family": "angular",
+      "count": 5,
+      "seed": 42,
+      "pairs": 10,
+      "separatedAxisPairs": 10,
+      "withinTolerancePairs": 0,
+      "minMassGapM": 3.3634,
+      "roofs": {
+        "rockTop": {
+          "minHorizontalGapM": null,
+          "horizontalGapAtLeastM": 32,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "ascentStrip": {
+          "minHorizontalGapM": 5.8567,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "snowTop": {
+          "minHorizontalGapM": 5.8567,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        }
+      }
+    },
+    {
+      "family": "angular",
+      "count": 8,
+      "seed": 42,
+      "pairs": 28,
+      "separatedAxisPairs": 28,
+      "withinTolerancePairs": 0,
+      "minMassGapM": 1.6747,
+      "roofs": {
+        "rockTop": {
+          "minHorizontalGapM": null,
+          "horizontalGapAtLeastM": 32,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "ascentStrip": {
+          "minHorizontalGapM": 4.9328,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "snowTop": {
+          "minHorizontalGapM": 4.9328,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        }
+      }
+    },
+    {
+      "family": "angular",
+      "count": 12,
+      "seed": 42,
+      "pairs": 66,
+      "separatedAxisPairs": 66,
+      "withinTolerancePairs": 0,
+      "minMassGapM": 1.6742,
+      "roofs": {
+        "rockTop": {
+          "minHorizontalGapM": null,
+          "horizontalGapAtLeastM": 32,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "ascentStrip": {
+          "minHorizontalGapM": 1.6675,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "snowTop": {
+          "minHorizontalGapM": 1.6675,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        }
+      }
+    },
+    {
+      "family": "angular",
+      "count": 8,
+      "seed": 23011,
+      "pairs": 28,
+      "separatedAxisPairs": 28,
+      "withinTolerancePairs": 0,
+      "minMassGapM": 1.6091,
+      "roofs": {
+        "rockTop": {
+          "minHorizontalGapM": null,
+          "horizontalGapAtLeastM": 32,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "ascentStrip": {
+          "minHorizontalGapM": 3.972,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        },
+        "snowTop": {
+          "minHorizontalGapM": 3.972,
+          "horizontalGapAtLeastM": null,
+          "projectedTrianglePairs": 0,
+          "touchingPairs": 0,
+          "crossingPairs": 0,
+          "abovePairs": 0,
+          "maxWallMinusRoofM": null
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "viewport": [
+    800,
+    450
+  ],
+  "errors": [],
+  "report": [
+    {
+      "family": "original",
+      "preset": 0,
+      "seed": 42,
+      "triangles": 2097636,
+      "calls": 40,
+      "drawMs": [
+        1.7000000001862645,
+        2.6000000000931323,
+        1.6999999997206032,
+        1.400000000372529,
+        2
+      ],
+      "medianMs": 1.6999999997206032,
+      "gpu": "WebKit WebGL"
+    },
+    {
+      "family": "rounded",
+      "preset": 0,
+      "seed": 42,
+      "triangles": 2087612,
+      "calls": 42,
+      "drawMs": [
+        0.7000000001862645,
+        1,
+        0.7000000001862645,
+        0.8999999999068677,
+        1
+      ],
+      "medianMs": 0.8999999999068677,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 33123,
+        "snowPixels": 5383,
+        "percent": 13.97963953669558
+      }
+    },
+    {
+      "family": "rounded",
+      "preset": 1,
+      "seed": 42,
+      "triangles": 2087960,
+      "calls": 42,
+      "drawMs": [
+        0.5,
+        0.6000000000931323,
+        1.6000000000931323,
+        1.1999999997206032,
+        1
+      ],
+      "medianMs": 1,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 32052,
+        "snowPixels": 7779,
+        "percent": 19.530014310461702
+      }
+    },
+    {
+      "family": "rounded",
+      "preset": 2,
+      "seed": 42,
+      "triangles": 2088308,
+      "calls": 42,
+      "drawMs": [
+        0.6000000000931323,
+        1.1999999997206032,
+        4.2000000001862645,
+        1.099999999627471,
+        1.1000000000931323
+      ],
+      "medianMs": 1.1000000000931323,
+      "gpu": "WebKit WebGL",
+      "mask": {
+        "rockPixels": 32676,
+        "snowPixels": 8530,
+        "percent": 20.70086880551376
+      }
+    }
+  ]
+}

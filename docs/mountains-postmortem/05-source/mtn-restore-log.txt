@@ -1,0 +1,21 @@
+Cloning into bare repository '/tmp/mtn-audit-restore.git'...
+/workspace/work/mountains-delivery/mountains.bundle is okay
+The bundle contains these 7 refs:
+670fe76ccc42f61eda74fda1403ae9d19f951d5c refs/heads/integration/mountains-1
+a5c85c6cf407cf34a4bb8e96bffcf2b8e6156ae0 refs/heads/track/references
+5a0ef9508e3804f541991167166e1689e2e76fa9 refs/heads/track/wall-rounded
+934a99e6f35f1a3b34535f525c0f17d5031ca2d4 refs/heads/track/wall-angular
+e202a41a1233d6b75a8b55b28d3d8797caf35c44 refs/heads/track/tiers-entries
+7e59e46d929aa0b8b3f8a5f916ac17059f0fb1d6 refs/heads/track/passages
+88c34f3f8914e84b27d7e0f7e46cc7e105f7f9fa refs/heads/track/bridges
+The bundle requires this ref:
+f79fcb78595ee1d56df6854ccbe352d112a75649 
+The bundle uses this hash algorithm: sha1
+From /workspace/work/mountains-delivery/mountains.bundle
+ * [new branch]      track/bridges      -> mountains-review/track/bridges
+ * [new branch]      track/passages     -> mountains-review/track/passages
+ * [new branch]      track/tiers-entries -> mountains-review/track/tiers-entries
+ * [new branch]      track/wall-angular -> mountains-review/track/wall-angular
+ * [new branch]      track/wall-rounded -> mountains-review/track/wall-rounded
+ * [new branch]      track/references   -> mountains-review/track/references
+ * [new branch]      integration/mountains-1 -> mountains-review/integration/mountains-1

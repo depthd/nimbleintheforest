@@ -1,0 +1,143 @@
+{
+  "site": {
+    "x": -206.5008053555278,
+    "z": -141.42690281926113,
+    "angle": -0.7888201985996071,
+    "width": 100,
+    "height": 106.39975301077203
+  },
+  "rows": [
+    {
+      "count": 4,
+      "seed": 42,
+      "sha": "581726f8a3e5b608ec31e8f802164d5200dc6209636e6e9557bb31b7a8f41ed0",
+      "rockTriangles": 258,
+      "snowTriangles": 206,
+      "maxWidth": 24.32988496854133,
+      "minSnowNormal": 0.5940680999752921,
+      "minPassClearance": 41.85952331250773,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 4,
+      "seed": 7,
+      "sha": "8f0e3820008b3710c3dbce591660d388c4539facce1bc3111fa4fc1c686db175",
+      "rockTriangles": 260,
+      "snowTriangles": 204,
+      "maxWidth": 26.069678770253887,
+      "minSnowNormal": 0.5972114838902648,
+      "minPassClearance": 40.003556280785496,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 4,
+      "seed": 8191,
+      "sha": "0714f9fbb8ccf12a16ea826dabd5d1617816410bde3b740fd0eeaa2f7201a921",
+      "rockTriangles": 259,
+      "snowTriangles": 205,
+      "maxWidth": 25.017529826113297,
+      "minSnowNormal": 0.5870576098380723,
+      "minPassClearance": 42.12907663388601,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 4,
+      "seed": 23011,
+      "sha": "264d6a88371670337e56478b4501761ce992cede210045d70af0dc1562819380",
+      "rockTriangles": 260,
+      "snowTriangles": 204,
+      "maxWidth": 24.66866611451344,
+      "minSnowNormal": 0.5929651133566637,
+      "minPassClearance": 41.08653127951312,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 7,
+      "seed": 42,
+      "sha": "effa138f982090bf910d9c9d1dcd6084f29d5f168399d5e146266321e22c4e17",
+      "rockTriangles": 463,
+      "snowTriangles": 349,
+      "maxWidth": 27.064448500123667,
+      "minSnowNormal": 0.5914624123054186,
+      "minPassClearance": 39.89586951226478,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 7,
+      "seed": 7,
+      "sha": "e17871a78bd81f8dd8fe7914e34d61c056850e9ad9422cc51cfbb684029f9322",
+      "rockTriangles": 461,
+      "snowTriangles": 351,
+      "maxWidth": 26.879097706955847,
+      "minSnowNormal": 0.5882632031961015,
+      "minPassClearance": 40.42758249942112,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 7,
+      "seed": 8191,
+      "sha": "07706a1391bb8064ce07690b0cb02b50fdcad27782786c1bb2798fecba76713d",
+      "rockTriangles": 463,
+      "snowTriangles": 349,
+      "maxWidth": 29.10281954249217,
+      "minSnowNormal": 0.5928783627758728,
+      "minPassClearance": 39.78759984952578,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 7,
+      "seed": 23011,
+      "sha": "3458f5361056ec9cd88f86f5a72fee522baade3e4bdb7a7f5d9dc5b648ad587a",
+      "rockTriangles": 460,
+      "snowTriangles": 352,
+      "maxWidth": 29.19839872936099,
+      "minSnowNormal": 0.5935524603521315,
+      "minPassClearance": 39.69259094632561,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 10,
+      "seed": 42,
+      "sha": "399dc6f34f2ef6e0902eac9807419576272c56d7e2f34557cc111a23d7f49e1e",
+      "rockTriangles": 669,
+      "snowTriangles": 491,
+      "maxWidth": 22.501127229271127,
+      "minSnowNormal": 0.5940669887001616,
+      "minPassClearance": 39.572892479063334,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 10,
+      "seed": 7,
+      "sha": "a9d7b6d17dd234f460d660d166cfdffd50bba3477f741e5079e2aec4d93a2190",
+      "rockTriangles": 671,
+      "snowTriangles": 489,
+      "maxWidth": 22.9507870260831,
+      "minSnowNormal": 0.5909475380869859,
+      "minPassClearance": 39.514387780048814,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 10,
+      "seed": 8191,
+      "sha": "1bca1bac9c3c1d2af057719b603176f563210641605e6454111267bff362d002",
+      "rockTriangles": 673,
+      "snowTriangles": 487,
+      "maxWidth": 21.153285852972076,
+      "minSnowNormal": 0.5912873520196644,
+      "minPassClearance": 39.608834033910874,
+      "maxRoofIntrusion": 0
+    },
+    {
+      "count": 10,
+      "seed": 23011,
+      "sha": "a45c80e110df7eb4df055318a77feba7b1842a29a7fad543dcfcee0edc9ffce8",
+      "rockTriangles": 667,
+      "snowTriangles": 493,
+      "maxWidth": 22.20174782551332,
+      "minSnowNormal": 0.5913589680970495,
+      "minPassClearance": 39.65594111577988,
+      "maxRoofIntrusion": 0
+    }
+  ]
+}

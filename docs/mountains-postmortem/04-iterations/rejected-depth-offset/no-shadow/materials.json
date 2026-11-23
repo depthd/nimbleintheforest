@@ -1,0 +1,61 @@
+[
+  {
+    "family": "original",
+    "preset": 0,
+    "seed": 42
+  },
+  {
+    "family": "angular",
+    "preset": 0,
+    "seed": 42,
+    "material": {
+      "factor": -2,
+      "units": -1
+    }
+  },
+  {
+    "family": "angular",
+    "preset": 1,
+    "seed": 42,
+    "material": {
+      "factor": -2,
+      "units": -1
+    }
+  },
+  {
+    "family": "angular",
+    "preset": 2,
+    "seed": 42,
+    "material": {
+      "factor": -2,
+      "units": -1
+    }
+  },
+  {
+    "family": "angular",
+    "preset": 1,
+    "seed": 23011,
+    "material": {
+      "factor": -2,
+      "units": -1
+    }
+  },
+  {
+    "family": "angular",
+    "preset": 1,
+    "seed": 7,
+    "material": {
+      "factor": -2,
+      "units": -1
+    }
+  },
+  {
+    "family": "angular",
+    "preset": 1,
+    "seed": 8191,
+    "material": {
+      "factor": -2,
+      "units": -1
+    }
+  }
+]

@@ -1,0 +1,77 @@
+
+> nimble-in-the-forest@0.1.0 build
+> tsc --noEmit && vite build --outDir /workspace/work/mountains-audit-stage/06-pages/build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 175 modules transformed.
+
+(!) outDir /workspace/work/mountains-audit-stage/06-pages/build is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+
+rendering chunks...
+computing gzip size...
+../../mountains-audit-stage/06-pages/build/experiments/plateau/wedge.html                   2.38 kB │ gzip:     1.23 kB
+../../mountains-audit-stage/06-pages/build/experiments/plateau/route.html                   2.69 kB │ gzip:     1.25 kB
+../../mountains-audit-stage/06-pages/build/experiments/plateau/wedge-snow.html              3.11 kB │ gzip:     1.44 kB
+../../mountains-audit-stage/06-pages/build/experiments/mountains/index.html                 3.30 kB │ gzip:     1.55 kB
+../../mountains-audit-stage/06-pages/build/experiments/plateau/wedge-ascent.html            3.44 kB │ gzip:     1.56 kB
+../../mountains-audit-stage/06-pages/build/experiments/mountains/plan-preview.html          4.28 kB │ gzip:     2.10 kB
+../../mountains-audit-stage/06-pages/build/experiments/plateau/mountain.html                4.42 kB │ gzip:     1.91 kB
+../../mountains-audit-stage/06-pages/build/experiments/plateau/index.html                   4.67 kB │ gzip:     1.98 kB
+../../mountains-audit-stage/06-pages/build/experiments/mountains/crossing.html              4.85 kB │ gzip:     2.20 kB
+../../mountains-audit-stage/06-pages/build/experiments/plateau/review.html                  6.84 kB │ gzip:     2.26 kB
+../../mountains-audit-stage/06-pages/build/index.html                                      10.04 kB │ gzip:     3.61 kB
+../../mountains-audit-stage/06-pages/build/assets/tiers-entries-CJCFbl1v.jpg               43.90 kB
+../../mountains-audit-stage/06-pages/build/assets/terrain-worker-CnNmfg5S.js               69.98 kB
+../../mountains-audit-stage/06-pages/build/assets/snow-ridge-before-after-BS8WjMow.jpg     72.32 kB
+../../mountains-audit-stage/06-pages/build/assets/journey-BomzhstF.jpg                    110.54 kB
+../../mountains-audit-stage/06-pages/build/assets/new-seed-De54K-6V.jpg                   174.20 kB
+../../mountains-audit-stage/06-pages/build/assets/through-BTZxaJuT.jpg                    484.69 kB
+../../mountains-audit-stage/06-pages/build/assets/rope-DVqhi4QM.jpg                       492.76 kB
+../../mountains-audit-stage/06-pages/build/assets/den-ZDo4cl6G.jpg                        504.69 kB
+../../mountains-audit-stage/06-pages/build/assets/bridge-Bb3iSLn1.jpg                     587.35 kB
+../../mountains-audit-stage/06-pages/build/assets/walls-seed42-UL1uJTPS.png               746.25 kB
+../../mountains-audit-stage/06-pages/build/assets/main-vfwSP27C.css                         1.62 kB │ gzip:     0.76 kB
+../../mountains-audit-stage/06-pages/build/assets/plateauReview-DEPilMgP.css                3.56 kB │ gzip:     1.39 kB
+../../mountains-audit-stage/06-pages/build/assets/main-BqxwiJtu.css                        16.89 kB │ gzip:     4.42 kB
+../../mountains-audit-stage/06-pages/build/assets/mountainCrossing-CvyVQgtw.js              0.48 kB │ gzip:     0.38 kB
+../../mountains-audit-stage/06-pages/build/assets/mountains-Dg4sXvPk.js                     0.54 kB │ gzip:     0.42 kB
+../../mountains-audit-stage/06-pages/build/assets/modulepreload-polyfill-B5Qt9EMX.js        0.71 kB │ gzip:     0.40 kB
+../../mountains-audit-stage/06-pages/build/assets/preload-helper-PPVm8Dsz.js                1.23 kB │ gzip:     0.71 kB
+../../mountains-audit-stage/06-pages/build/assets/rng-CfIYparh.js                           1.65 kB │ gzip:     0.89 kB
+../../mountains-audit-stage/06-pages/build/assets/preview_animals-Dg73jUI8.js               1.90 kB │ gzip:     1.10 kB
+../../mountains-audit-stage/06-pages/build/assets/preview-CwzLvQDx.js                       1.94 kB │ gzip:     1.09 kB
+../../mountains-audit-stage/06-pages/build/assets/preview_wood-PicEeLk2.js                  2.09 kB │ gzip:     1.11 kB
+../../mountains-audit-stage/06-pages/build/assets/ascent-CbfbAU17.js                        2.21 kB │ gzip:     1.07 kB
+../../mountains-audit-stage/06-pages/build/assets/c1-lab-BS5fWDZB.js                        3.15 kB │ gzip:     1.90 kB
+../../mountains-audit-stage/06-pages/build/assets/plateauWedge-uY7P00xo.js                  3.57 kB │ gzip:     1.87 kB
+../../mountains-audit-stage/06-pages/build/assets/wedge-rim-BVqGem84.js                     3.76 kB │ gzip:     1.88 kB
+../../mountains-audit-stage/06-pages/build/assets/wedge-prototype-C8qwHr5g.js               4.51 kB │ gzip:     2.21 kB
+../../mountains-audit-stage/06-pages/build/assets/seam-boundary-C6Nz7Ugp.js                 5.70 kB │ gzip:     2.61 kB
+../../mountains-audit-stage/06-pages/build/assets/plateauReview-BVug7KSW.js                 6.25 kB │ gzip:     2.77 kB
+../../mountains-audit-stage/06-pages/build/assets/plateauWedgeAscent-BamxmACA.js            9.50 kB │ gzip:     4.69 kB
+../../mountains-audit-stage/06-pages/build/assets/mountainPlan-DPRiCapS.js                 14.17 kB │ gzip:     6.06 kB
+../../mountains-audit-stage/06-pages/build/assets/plateauSnow-Bgs8B31q.js                  14.20 kB │ gzip:     6.72 kB
+../../mountains-audit-stage/06-pages/build/assets/wedge-snow-layer-B6BYDUfS.js             14.42 kB │ gzip:     6.13 kB
+../../mountains-audit-stage/06-pages/build/assets/wedge-rocks-EFgzgisd.js                  16.10 kB │ gzip:     7.06 kB
+../../mountains-audit-stage/06-pages/build/assets/OrbitControls-CUw40ASG.js                19.94 kB │ gzip:     4.50 kB
+../../mountains-audit-stage/06-pages/build/assets/plateauRoute-B8OP-yty.js                 21.83 kB │ gzip:    10.33 kB
+../../mountains-audit-stage/06-pages/build/assets/mountain-groves-3dCU-RV9.js              22.58 kB │ gzip:    10.25 kB
+../../mountains-audit-stage/06-pages/build/assets/rock-skin-BkJej36q.js                    27.20 kB │ gzip:    11.92 kB
+../../mountains-audit-stage/06-pages/build/assets/plateauMountain-T0mlW8Na.js              27.22 kB │ gzip:    12.33 kB
+../../mountains-audit-stage/06-pages/build/assets/crossing-view-DlT0vlud.js                30.46 kB │ gzip:    13.01 kB
+../../mountains-audit-stage/06-pages/build/assets/plateau-CkIVeEKA.js                      32.15 kB │ gzip:    11.90 kB
+../../mountains-audit-stage/06-pages/build/assets/main-Bysyl4-C.js                         43.23 kB │ gzip:    17.81 kB
+../../mountains-audit-stage/06-pages/build/assets/cliffs-CSYuAxge.js                       44.24 kB │ gzip:    16.54 kB
+../../mountains-audit-stage/06-pages/build/assets/GLTFLoader-DgnHbwKS.js                   50.99 kB │ gzip:    15.27 kB
+../../mountains-audit-stage/06-pages/build/assets/player-Ilz4o72F.js                      123.05 kB │ gzip:    43.63 kB
+../../mountains-audit-stage/06-pages/build/assets/main-C2_pMxP6.js                        479.63 kB │ gzip:   179.61 kB
+../../mountains-audit-stage/06-pages/build/assets/three.module-n87EGkJ1.js                746.60 kB │ gzip:   192.13 kB
+../../mountains-audit-stage/06-pages/build/assets/rapier-OnF19VgH.js                    4,334.40 kB │ gzip: 1,644.49 kB
+✓ built in 5.50s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice

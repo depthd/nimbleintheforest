@@ -1,0 +1,111 @@
+{
+  "seed": 42,
+  "presetIndex": 1,
+  "camera": {
+    "target": [
+      -430,
+      48,
+      -310
+    ],
+    "horizontalRadius": 245,
+    "elevation": 13,
+    "fieldOfView": 27,
+    "azimuths": [
+      -129,
+      -125,
+      -121,
+      -117,
+      -113,
+      -109,
+      -105,
+      -117
+    ]
+  },
+  "results": [
+    {
+      "family": "rounded",
+      "crop": [
+        249,
+        230,
+        553,
+        414
+      ],
+      "viewport": [
+        800,
+        450
+      ],
+      "uniqueViews": 7,
+      "repeatCentralViewChangedPixels": 0,
+      "rgbSha256": [
+        "a6a512064338e356c9d758154c44d0d70d16fd7c168cecf745e42f0c69cc3dbd",
+        "77eca8270df16132cb1ddd98c7f29d1b8a9a21c799ca6771d01a005733292fe6",
+        "634a3cbcd16e223e82fa496b32908e9ec1d326f08ac3feb51caa6f2eac0081ae",
+        "195e52b4e3b036e90865f1e74f5e3cda71b9acb347ecf00070a0ca1e4261baeb",
+        "4e5412342c43eecb0102419b63b0e39beaa9cefcb4179909f0564132efea7f63",
+        "f3e2f97a4df4c4f86e1e5211d4eef638911edb29625b04404f08fe7654340792",
+        "d30fefd76c677c87be70a394eb881d49f3b30e682124f72a20c1fe091c488b27"
+      ]
+    },
+    {
+      "family": "angular",
+      "crop": [
+        120,
+        196,
+        424,
+        380
+      ],
+      "viewport": [
+        800,
+        450
+      ],
+      "uniqueViews": 7,
+      "repeatCentralViewChangedPixels": 0,
+      "rgbSha256": [
+        "502e384dbc00cca77aaf2fd0a6e8a85d43ddfe8d2bd47855c53f7fc71c7193f1",
+        "10183613222ac28522908f7dd9f0205be2211e76d45a79ded630d2ff71734b8a",
+        "02bf2a9c57b652f0ca7ca6ecfe445ffc67e63fad51f51cea676136209475b617",
+        "bf18a16c483a2d5f6eb1b77343c888a8727b4df09d5bd6a82b1588ea7daf63a1",
+        "55bcf4d079e36704b103da3c0afa892803d01372cae5b193db7f58401932cfdf",
+        "3736d35f82fb9ced834cec7a8f6adf6c2bcb725e58fbadbf59303702ccfb06c4",
+        "208704769576906f38069f05e196acad7951f4f6f4fcc00db5f37752b92c843f"
+      ]
+    }
+  ],
+  "angularShadowControlChangedPixels": 60807,
+  "angularDetail": [
+    139,
+    256,
+    271,
+    313
+  ],
+  "angularBeforeAfter": [
+    {
+      "azimuth": -129,
+      "changedPixels": 368
+    },
+    {
+      "azimuth": -125,
+      "changedPixels": 275
+    },
+    {
+      "azimuth": -121,
+      "changedPixels": 289
+    },
+    {
+      "azimuth": -117,
+      "changedPixels": 297
+    },
+    {
+      "azimuth": -113,
+      "changedPixels": 267
+    },
+    {
+      "azimuth": -109,
+      "changedPixels": 203
+    },
+    {
+      "azimuth": -105,
+      "changedPixels": 292
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+stone ready
+snow ready {
+  roofTriangles: 77741,
+  capSegments: 1997,
+  sampledVertices: 39920,
+  maxLeafEdgeM: 5.699959346137997
+}
+{
+  "result": "PASS",
+  "stoneBefore": "f2e51e731faf14077704e90d0371038aad22bc519981dd7bdc19902b6fd6b318",
+  "stoneUnchanged": true,
+  "snowStats": {
+    "roofTriangles": 77741,
+    "capSegments": 1997,
+    "sampledVertices": 39920,
+    "maxLeafEdgeM": 5.699959346137997
+  },
+  "contact": {
+    "minTopClearance": 0,
+    "maxFoundationGap": 0,
+    "maxFoundationEmbed": 0.02001242715873275,
+    "bankRolls": [
+      {
+        "x": -175,
+        "side": -1,
+        "high": 3.570965974340737,
+        "low": -1.3824595740087915
+      },
+      {
+        "x": -175,
+        "side": 1,
+        "high": 2.8764273193738603,
+        "low": -0.8367116798000325
+      },
+      {
+        "x": -130,
+        "side": -1,
+        "high": 3.565251702800893,
+        "low": -1.354143400516108
+      },
+      {
+        "x": -130,
+        "side": 1,
+        "high": 3.1370855832101654,
+        "low": -1.02397746661579
+      },
+      {
+        "x": -85,
+        "side": -1,
+        "high": 3.756004086271929,
+        "low": -1.8643801300366647
+      },
+      {
+        "x": -85,
+        "side": 1,
+        "high": 3.1750109782523452,
+        "low": -1.060273761349265
+      }
+    ],
+    "crownSamples": 5553,
+    "maxSummitLift": 1.790366584462717,
+    "minSummitLift": -6.619195028734168
+  },
+  "maskControlledVertices": 286,
+  "caveRays": {
+    "exit": null,
+    "back": 9,
+    "floor": 1.7999999999999998,
+    "roof": 3.7
+  },
+  "ascentRays": {
+    "sky": null,
+    "floor": 1
+  },
+  "snowSettings": {
+    "centerAngle": 0.7,
+    "normalRadius": 2,
+    "length": 64,
+    "inside": 5,
+    "plateau": 0.8,
+    "edge": 4.8,
+    "overhang": 4.2,
+    "radius": 3.8,
+    "minThickness": 0.15,
+    "slopeStart": 50,
+    "slopeEnd": 60,
+    "alongStep": 0.3,
+    "capStep": 0.2,
+    "maxStep": 0.5,
+    "embed": 0.02,
+    "passageBareM": 4,
+    "passageFadeM": 10,
+    "interiorStepM": 5.7,
+    "edgeStepM": 1.55
+  },
+  "roofReversedTriangles": 0,
+  "nonfiniteVertices": 0,
+  "roofTrianglesInsideOpenPassage": 0,
+  "unpairedEdges": 0,
+  "edgeExamples": [],
+  "minSnowY": 90.74772644042969,
+  "caveCuts": {
+    "plateau": 0,
+    "strip": 0,
+    "underside": 0,
+    "flank": 17,
+    "restored": 0,
+    "ending": 0,
+    "interior": 0
+  }
+}
+(node:24282) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)

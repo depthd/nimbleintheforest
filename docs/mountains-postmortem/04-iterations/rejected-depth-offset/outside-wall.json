@@ -1,0 +1,151 @@
+{
+  "viewport": [
+    800,
+    450
+  ],
+  "seed": 42,
+  "silhouetteMarginPixels": 2,
+  "withShadows": [
+    {
+      "family": "rounded",
+      "count": 4,
+      "changedPixels": 55575,
+      "outsideCompared": 300707,
+      "outsideChanged": 775,
+      "outsideBBox": [
+        114,
+        310,
+        154,
+        374
+      ]
+    },
+    {
+      "family": "rounded",
+      "count": 7,
+      "changedPixels": 59678,
+      "outsideCompared": 297796,
+      "outsideChanged": 1210,
+      "outsideBBox": [
+        114,
+        310,
+        154,
+        378
+      ]
+    },
+    {
+      "family": "rounded",
+      "count": 10,
+      "changedPixels": 59964,
+      "outsideCompared": 298291,
+      "outsideChanged": 1286,
+      "outsideBBox": [
+        114,
+        310,
+        154,
+        380
+      ]
+    },
+    {
+      "family": "angular",
+      "count": 5,
+      "changedPixels": 70348,
+      "outsideCompared": 287067,
+      "outsideChanged": 1284,
+      "outsideBBox": [
+        114,
+        310,
+        154,
+        374
+      ]
+    },
+    {
+      "family": "angular",
+      "count": 8,
+      "changedPixels": 67015,
+      "outsideCompared": 290185,
+      "outsideChanged": 1318,
+      "outsideBBox": [
+        114,
+        310,
+        268,
+        385
+      ]
+    },
+    {
+      "family": "angular",
+      "count": 12,
+      "changedPixels": 68234,
+      "outsideCompared": 289132,
+      "outsideChanged": 974,
+      "outsideBBox": [
+        93,
+        310,
+        154,
+        397
+      ]
+    }
+  ],
+  "baseAgainstDefault": {
+    "changedPixels": 0,
+    "changedBBox": null
+  },
+  "noShadowControlAgainstDefault": {
+    "changedPixels": 38299,
+    "changedBBox": [
+      0,
+      64,
+      800,
+      450
+    ]
+  },
+  "withoutShadows": [
+    {
+      "family": "rounded",
+      "count": 4,
+      "changedPixels": 54647,
+      "outsideCompared": 300707,
+      "outsideChanged": 0,
+      "outsideBBox": null
+    },
+    {
+      "family": "rounded",
+      "count": 7,
+      "changedPixels": 58186,
+      "outsideCompared": 297796,
+      "outsideChanged": 0,
+      "outsideBBox": null
+    },
+    {
+      "family": "rounded",
+      "count": 10,
+      "changedPixels": 58377,
+      "outsideCompared": 298291,
+      "outsideChanged": 0,
+      "outsideBBox": null
+    },
+    {
+      "family": "angular",
+      "count": 5,
+      "changedPixels": 68772,
+      "outsideCompared": 287067,
+      "outsideChanged": 0,
+      "outsideBBox": null
+    },
+    {
+      "family": "angular",
+      "count": 8,
+      "changedPixels": 65360,
+      "outsideCompared": 290185,
+      "outsideChanged": 0,
+      "outsideBBox": null
+    },
+    {
+      "family": "angular",
+      "count": 12,
+      "changedPixels": 66979,
+      "outsideCompared": 289132,
+      "outsideChanged": 0,
+      "outsideBBox": null
+    }
+  ]
+}

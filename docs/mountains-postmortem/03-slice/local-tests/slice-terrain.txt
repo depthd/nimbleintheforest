@@ -1,0 +1,341 @@
+Verified 42 [ 3, 3 ] cut
+Verified 7 [ 2, 3 ] wide
+Verified 8191 [ 4, 1 ] wide
+Verified 3 [ 2, 2 ] cut
+Verified 23011 [ 2, 1 ] cut
+[
+  {
+    "seed": 42,
+    "counts": [
+      3,
+      3
+    ],
+    "entry": "cut",
+    "entryProfile": {
+      "length": 42.35,
+      "floorWidthAtQuarter": 4.7,
+      "midpointDeflection": 0.16
+    },
+    "mountainEntries": {
+      "main": "cut",
+      "satellite": "cut"
+    },
+    "graph": [
+      {
+        "id": "main-1",
+        "accessible": true,
+        "observed": true,
+        "height": 14
+      },
+      {
+        "id": "main-2",
+        "accessible": true,
+        "observed": true,
+        "height": 21.96
+      },
+      {
+        "id": "main-3",
+        "accessible": true,
+        "observed": true,
+        "height": 26.57
+      },
+      {
+        "id": "satellite-1",
+        "accessible": true,
+        "observed": true,
+        "height": 14
+      },
+      {
+        "id": "satellite-2",
+        "accessible": true,
+        "observed": true,
+        "height": 20.59
+      },
+      {
+        "id": "satellite-3",
+        "accessible": false,
+        "observed": false,
+        "height": 31.4
+      }
+    ],
+    "physical": [
+      {
+        "mountain": "main",
+        "ticks": 8080,
+        "roundTrip": true
+      },
+      {
+        "mountain": "satellite",
+        "ticks": 3659,
+        "roundTrip": true
+      }
+    ],
+    "trees": 52,
+    "treesPerTier": {
+      "main-1": 26,
+      "main-2": 6,
+      "main-3": 2,
+      "satellite-1": 14,
+      "satellite-2": 4,
+      "satellite-3": 0
+    },
+    "rockTriangles": 19948,
+    "snowTriangles": 10260,
+    "sha256": "bb7b9f3f9c58d9812742b72766674a49c3912047faf207e25726e01f35e0ffec"
+  },
+  {
+    "seed": 7,
+    "counts": [
+      2,
+      3
+    ],
+    "entry": "wide",
+    "entryProfile": {
+      "length": 42.5,
+      "side": "whole west side"
+    },
+    "mountainEntries": {
+      "main": "wide",
+      "satellite": "wide"
+    },
+    "graph": [
+      {
+        "id": "main-1",
+        "accessible": true,
+        "observed": true,
+        "height": 13.99
+      },
+      {
+        "id": "main-2",
+        "accessible": true,
+        "observed": true,
+        "height": 21.98
+      },
+      {
+        "id": "satellite-1",
+        "accessible": true,
+        "observed": true,
+        "height": 14
+      },
+      {
+        "id": "satellite-2",
+        "accessible": true,
+        "observed": true,
+        "height": 20.58
+      },
+      {
+        "id": "satellite-3",
+        "accessible": false,
+        "observed": false,
+        "height": 31.4
+      }
+    ],
+    "physical": [
+      {
+        "mountain": "main",
+        "ticks": 6205,
+        "roundTrip": true
+      },
+      {
+        "mountain": "satellite",
+        "ticks": 3481,
+        "roundTrip": true
+      }
+    ],
+    "trees": 50,
+    "treesPerTier": {
+      "main-1": 26,
+      "main-2": 6,
+      "satellite-1": 14,
+      "satellite-2": 4,
+      "satellite-3": 0
+    },
+    "rockTriangles": 18646,
+    "snowTriangles": 10032,
+    "sha256": "92e9c4435e9b3d1e36ee387d31e192c37df3a170e82f46574fb0499e3539e0bb"
+  },
+  {
+    "seed": 8191,
+    "counts": [
+      4,
+      1
+    ],
+    "entry": "wide",
+    "entryProfile": {
+      "length": 40.42,
+      "side": "whole west side"
+    },
+    "mountainEntries": {
+      "main": "wide",
+      "satellite": "none"
+    },
+    "graph": [
+      {
+        "id": "main-1",
+        "accessible": true,
+        "observed": true,
+        "height": 14
+      },
+      {
+        "id": "main-2",
+        "accessible": true,
+        "observed": true,
+        "height": 21.99
+      },
+      {
+        "id": "main-3",
+        "accessible": true,
+        "observed": true,
+        "height": 26.57
+      },
+      {
+        "id": "main-4",
+        "accessible": false,
+        "observed": false,
+        "height": 35.94
+      },
+      {
+        "id": "satellite-1",
+        "accessible": true,
+        "observed": true,
+        "height": 14
+      }
+    ],
+    "physical": [
+      {
+        "mountain": "main",
+        "ticks": 8081,
+        "roundTrip": true
+      }
+    ],
+    "trees": 48,
+    "treesPerTier": {
+      "main-1": 26,
+      "main-2": 6,
+      "main-3": 2,
+      "main-4": 0,
+      "satellite-1": 14
+    },
+    "rockTriangles": 18600,
+    "snowTriangles": 9770,
+    "sha256": "e6a20e04094b6fba46c08201f7aec3f971136fbc89a9159ea6c0a776971b3e76"
+  },
+  {
+    "seed": 3,
+    "counts": [
+      2,
+      2
+    ],
+    "entry": "cut",
+    "entryProfile": {
+      "length": 39.37,
+      "floorWidthAtQuarter": 6.15,
+      "midpointDeflection": -0.11
+    },
+    "mountainEntries": {
+      "main": "cut",
+      "satellite": "wide"
+    },
+    "graph": [
+      {
+        "id": "main-1",
+        "accessible": true,
+        "observed": true,
+        "height": 13.97
+      },
+      {
+        "id": "main-2",
+        "accessible": true,
+        "observed": true,
+        "height": 21.99
+      },
+      {
+        "id": "satellite-1",
+        "accessible": true,
+        "observed": true,
+        "height": 14
+      },
+      {
+        "id": "satellite-2",
+        "accessible": true,
+        "observed": true,
+        "height": 20.59
+      }
+    ],
+    "physical": [
+      {
+        "mountain": "main",
+        "ticks": 6206,
+        "roundTrip": true
+      },
+      {
+        "mountain": "satellite",
+        "ticks": 3609,
+        "roundTrip": true
+      }
+    ],
+    "trees": 50,
+    "treesPerTier": {
+      "main-1": 26,
+      "main-2": 6,
+      "satellite-1": 14,
+      "satellite-2": 4
+    },
+    "rockTriangles": 21564,
+    "snowTriangles": 10388,
+    "sha256": "10b0c68e5677c88abb467e05188b6f69a0c55742db47351c1878552116c1d805"
+  },
+  {
+    "seed": 23011,
+    "counts": [
+      2,
+      1
+    ],
+    "entry": "cut",
+    "entryProfile": {
+      "length": 40.54,
+      "floorWidthAtQuarter": 6.2,
+      "midpointDeflection": 0.78
+    },
+    "mountainEntries": {
+      "main": "cut",
+      "satellite": "none"
+    },
+    "graph": [
+      {
+        "id": "main-1",
+        "accessible": true,
+        "observed": true,
+        "height": 14
+      },
+      {
+        "id": "main-2",
+        "accessible": true,
+        "observed": true,
+        "height": 21.92
+      },
+      {
+        "id": "satellite-1",
+        "accessible": true,
+        "observed": true,
+        "height": 14
+      }
+    ],
+    "physical": [
+      {
+        "mountain": "main",
+        "ticks": 6314,
+        "roundTrip": true
+      }
+    ],
+    "trees": 46,
+    "treesPerTier": {
+      "main-1": 26,
+      "main-2": 6,
+      "satellite-1": 14
+    },
+    "rockTriangles": 17552,
+    "snowTriangles": 9227,
+    "sha256": "eb6f3f9218aa6c3d18009b0cbed333f22fe1954299c45ad89b0b04a2b8c9b170"
+  }
+]

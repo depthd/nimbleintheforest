@@ -1,0 +1,3512 @@
+diff --git a/.coord/tasks/MOUNTAINS-PAGES-001.json b/.coord/tasks/MOUNTAINS-PAGES-001.json
+new file mode 100644
+index 0000000..1d32360
+--- /dev/null
++++ b/.coord/tasks/MOUNTAINS-PAGES-001.json
+@@ -0,0 +1,23 @@
++{
++  "id": "MOUNTAINS-PAGES-001",
++  "status": "review",
++  "owner": "codex-coordinator",
++  "base_sha": "3910d955d353e824513b2fcf77a15707e6a18c27",
++  "branch": "task/MOUNTAINS-PAGES-001-preview",
++  "allowed_paths": [
++    ".coord/tasks/MOUNTAINS-PAGES-001.json",
++    "experiments/plateau/mountain.ts",
++    "experiments/plateau/review.html",
++    "experiments/plateau/review.css",
++    "experiments/plateau/review.ts",
++    "experiments/plateau/route.html",
++    "experiments/plateau/route.ts",
++    "index.html",
++    "vite.config.ts"
++  ],
++  "acceptance": [
++    "Live wall and route previews in one dashboard, with browser links to each check",
++    "Publish the checked SHA through the repository test Pages workflow",
++    "Verify the deployed test URL and exact production root before and after"
++  ]
++}
+diff --git a/.coord/tasks/MOUNTAINS-SLICE-001.json b/.coord/tasks/MOUNTAINS-SLICE-001.json
+new file mode 100644
+index 0000000..e296aa5
+--- /dev/null
++++ b/.coord/tasks/MOUNTAINS-SLICE-001.json
+@@ -0,0 +1,22 @@
++{
++  "id": "MOUNTAINS-SLICE-001",
++  "status": "review",
++  "owner": "coordinator",
++  "base_sha": "f79fcb78595ee1d56df6854ccbe352d112a75649",
++  "branch": "integration/mountains-1",
++  "allowed_paths": [
++    "experiments/plateau/",
++    "docs/mountains-slice/",
++    ".coord/tasks/MOUNTAINS-SLICE-001.json",
++    "vite.config.ts"
++  ],
++  "tracks": {
++    "R": "track/references",
++    "WA": "track/wall-rounded",
++    "WB": "track/wall-angular",
++    "T": "track/tiers-entries",
++    "E": "track/tiers-entries",
++    "P": "track/passages",
++    "B": "track/bridges"
++  }
++}
+diff --git a/experiments/plateau/mountain-groves.ts b/experiments/plateau/mountain-groves.ts
+index d5ab827..210f76b 100644
+--- a/experiments/plateau/mountain-groves.ts
++++ b/experiments/plateau/mountain-groves.ts
+@@ -12,11 +12,16 @@ export interface GroveSite {
+   rootAt: (x: number, z: number, outside: boolean) => { x: number; y: number; z: number } | undefined;
+ }
+ 
+-export async function buildMountainGroves(sites: GroveSite[]) {
++async function loadConifer(){
+   const tree = (
+     await new GLTFLoader().loadAsync(new URL('../../models/conifer_c1.glb', document.baseURI).href)
+   ).scene;
+   tree.updateMatrixWorld(true);
++  return tree;
++}
++
++export async function buildMountainGroves(sites: GroveSite[]) {
++  const tree=await loadConifer();
+   const bounds = new Box3().setFromObject(tree),
+     modelHeight = bounds.max.y - bounds.min.y;
+   const poses: Matrix4[] = [],
+@@ -69,6 +74,32 @@ export async function buildMountainGroves(sites: GroveSite[]) {
+     }
+     counts.push(poses.length - start);
+   }
++  const group=instanceConifers(tree,poses);
++  group.userData.tierCounts=counts;
++  return group;
++}
++
++// Use the same conifer and crown material as the art scene. Keep every needle
++// inside the crown envelope used when testing paths and bridge clearance.
++export async function buildTraversalGroves(trees: {x:number;y:number;z:number;height:number}[]) {
++  const tree=await loadConifer();
++  const bounds=new Box3().setFromObject(tree);
++  const height=bounds.max.y-bounds.min.y;
++  const radius=Math.hypot(Math.max(Math.abs(bounds.min.x),Math.abs(bounds.max.x)),
++    Math.max(Math.abs(bounds.min.z),Math.abs(bounds.max.z)));
++  const transform=new Object3D();
++  const poses=trees.map(t=>{
++    const sy=t.height/height, sx=Math.min(sy,t.height*.24/radius);
++    transform.position.set(t.x,t.y-bounds.min.y*sy,t.z);
++    transform.rotation.y=t.x*.72+t.z*.39;
++    transform.scale.set(sx,sy,sx);
++    transform.updateMatrix();
++    return transform.matrix.clone();
++  });
++  return instanceConifers(tree,poses);
++}
++
++function instanceConifers(tree:Group, poses:Matrix4[]) {
+   const group = new Group(),
+     matrix = new Matrix4();
+   tree.traverse((node) => {
+@@ -99,6 +130,5 @@ export async function buildMountainGroves(sites: GroveSite[]) {
+     group.add(instances);
+   });
+   group.userData.count = poses.length;
+-  group.userData.tierCounts = counts;
+   return group;
+ }
+diff --git a/experiments/plateau/mountain-shape.ts b/experiments/plateau/mountain-shape.ts
+index bfb2dda..75c4747 100644
+--- a/experiments/plateau/mountain-shape.ts
++++ b/experiments/plateau/mountain-shape.ts
+@@ -574,6 +574,9 @@ export function buildMountainMasses(
+   const groups = new Rng(seed ^ 0x609c3);
+   // Start on the broad shoulder to the left of the route mouth. An upper
+   // edge intersects the plateau there; smaller members step out toward the toe.
++  // Preserve all original draws/RNG and vegetation footprints. An optional wall
++  // can replace just these index ranges on the lower tier at display time.
++  let entrance = {x:0,z:0,height:0,angle:0,rockStart:0,rockEnd:0,snowStart:0,snowEnd:0};
+   const entranceShoulder = Math.PI + 0.78;
+   for (let angle = entranceShoulder; angle < entranceShoulder + tau; ) {
+     const atEntrance = angle === entranceShoulder;
+@@ -634,6 +637,7 @@ export function buildMountainMasses(
+         site,
+       );
+     }
++    if (atEntrance) entrance = {x:p.x,z:p.z,height:p.y,angle:strike,rockStart:stone.indices.length,rockEnd:0,snowStart:snow.indices.length,snowEnd:0};
+     block(
+       0,
+       atEntrance ? 19 : site.float(8, 22),
+@@ -666,6 +670,10 @@ export function buildMountainMasses(
+         0.31,
+       );
+     }
++    if (atEntrance) {
++      entrance.rockEnd = stone.indices.length;
++      entrance.snowEnd = snow.indices.length;
++    }
+   }
+   for (const side of [-1, 1]) {
+     for (let x = -259; x < -2; ) {
+@@ -746,5 +754,6 @@ export function buildMountainMasses(
+     snow: pack(snow),
+     stats,
+     stoneFootprints,
++    entrance,
+   };
+ }
+diff --git a/experiments/plateau/mountain.html b/experiments/plateau/mountain.html
+index c1c3366..1a003fe 100644
+--- a/experiments/plateau/mountain.html
++++ b/experiments/plateau/mountain.html
+@@ -1 +1 @@
+-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Гора · скалы и плато</title><link rel="icon" href="data:,"><style>*{box-sizing:border-box}body{margin:0;background:#c1d5e4;font:14px system-ui}canvas{display:block}aside{position:fixed;z-index:2;top:12px;left:12px;max-width:370px;padding:14px;background:#14232de8;color:#fff;border-radius:9px}h1{font-size:19px;margin:0 0 8px}button{margin:4px 2px;padding:7px;cursor:pointer}button[aria-pressed=true]{background:#a7d8f4}label{display:block;margin:8px 0}a{color:#a5d7ff}small{display:block;line-height:1.5;margin-top:10px}#status{position:fixed;right:12px;bottom:12px;padding:9px;background:#14232de8;color:white;border-radius:6px}</style></head><body><aside><h1>Гора · скалы и плато</h1><div><button data-view="front">Со стороны подъёма</button><button data-view="overview">Общий вид</button><button data-view="back">С обратной стороны</button><button data-view="top">Сверху</button><button data-upper data-view="middle">Средний ярус</button><button data-upper data-view="summit">Вершина</button><button data-view="wall">Боковина у подъёма</button><button data-view="edge">Край вблизи</button><button data-view="ascent">Подъём</button><button data-view="ascentFoot">Подъём снизу</button><button data-view="ascentTop">Выход наверх</button><button data-view="entrance">Вход в пещеру</button><button data-view="inside">Внутри пещеры</button></div><label><input type="checkbox" id="snow" checked> Снежная шапка</label><label><input type="checkbox" id="rocks" checked> Скалы и снежные полки</label><small>Мышь: поворот, приближение, сдвиг.<br>WASD — полёт; Q/E — вниз/вверх; Shift — быстрее.<br><a id="layout" href="?tiers=1">Одноярусная версия</a> · <a href="./wedge-snow.html?variant=F">Исходный F</a> · <a href="./index.html">Прежний прототип</a><br>Экспериментальная сцена, без физики персонажа.</small><!-- build-info --></aside><div id="status">Создание горы…</div><script type="module" src="./mountain.ts"></script></body></html>
++<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Гора · скалы и плато</title><link rel="icon" href="data:,"><style>*{box-sizing:border-box}body{margin:0;background:#c1d5e4;font:14px system-ui}canvas{display:block}aside{position:fixed;z-index:2;top:12px;left:12px;max-width:370px;padding:14px;background:#14232de8;color:#fff;border-radius:9px}h1{font-size:19px;margin:0 0 8px}button{margin:4px 2px;padding:7px;cursor:pointer}button[aria-pressed=true]{background:#a7d8f4}label{display:block;margin:8px 0}a{color:#a5d7ff}small{display:block;line-height:1.5;margin-top:10px}#status{position:fixed;right:12px;bottom:12px;padding:9px;background:#14232de8;color:white;border-radius:6px}</style></head><body><aside><h1>Гора · скалы и плато</h1><div><button data-view="front">Со стороны подъёма</button><button data-view="overview">Общий вид</button><button data-view="back">С обратной стороны</button><button data-view="top">Сверху</button><button data-upper data-view="middle">Средний ярус</button><button data-upper data-view="summit">Вершина</button><button data-view="wall">Боковина у подъёма</button><button data-view="edge">Край вблизи</button><button data-view="ascent">Подъём</button><button data-view="ascentFoot">Подъём снизу</button><button data-view="ascentTop">Выход наверх</button><button data-view="entrance">Вход в пещеру</button><button data-view="inside">Внутри пещеры</button></div><label><input type="checkbox" id="snow" checked> Снежная шапка</label><label><input type="checkbox" id="rocks" checked> Скалы и снежные полки</label><small>Мышь: поворот, приближение, сдвиг.<br>WASD — полёт; Q/E — вниз/вверх; Shift — быстрее.<br><a id="layout" href="?tiers=1">Одноярусная версия</a> · <a href="./wedge-snow.html?variant=F">Исходный F</a> · <a href="./index.html">Прежний прототип</a><br>Экспериментальная сцена, без физики персонажа.</small><label>Боковина <select id="wall-family"><option value="original">Исходная</option><option value="rounded">Округлые блоки</option><option value="angular">Угловатые глыбы</option></select></label><label>Пресет <select id="wall-preset"><option value="0">Малый</option><option value="1">Средний</option><option value="2">Большой</option></select></label><label>Сид боковины <input id="wall-seed" type="number" value="42"></label><a href="./route.html">Пеший маршрут с пещерами и мостом</a><!-- build-info --></aside><div id="status">Создание горы…</div><script type="module" src="./mountain.ts"></script></body></html>
+diff --git a/experiments/plateau/mountain.ts b/experiments/plateau/mountain.ts
+index 1bde365..150980e 100644
+--- a/experiments/plateau/mountain.ts
++++ b/experiments/plateau/mountain.ts
+@@ -1,4 +1,5 @@
+ import * as THREE from 'three';
++import { makeWallGroup, measureWallSnow, wallParameters, type WallFamily } from './slice-wall';
+ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+ import { makeRockMaterial } from '../../src/world/cliffs';
+ import { groundUniforms } from '../../src/world/terrain';
+@@ -233,6 +234,47 @@ async function start(){
+   groups.trees.add(groves);
+   groups.trees.userData.count = groves.userData.count;
+   const dressing = dressings[0];
++  const entrance = dressing.entrance;
++  const lowerRocks = groups.rocks.children[0] as THREE.Group;
++  const originalParts = lowerRocks.children.slice(0,2) as THREE.Mesh[];
++  const originals = originalParts.map(part => part.geometry.getIndex()!);
++  const cuts = [[entrance.rockStart,entrance.rockEnd],[entrance.snowStart,entrance.snowEnd]];
++  const remainder = originals.map((attr,i)=>{
++    const [start,end] = cuts[i];
++    const a = new Uint32Array(attr.count - (end-start));
++    a.set(attr.array.slice(0,start));
++    a.set(attr.array.slice(end),start);
++    return new THREE.BufferAttribute(a,1);
++  });
++  const localWallMaterial = rockWithFrost(0);
++  let activeWall: THREE.Group | undefined;
++  const wallInput = document.querySelector<HTMLSelectElement>('#wall-family')!;
++  const presetInput = document.querySelector<HTMLSelectElement>('#wall-preset')!;
++  const seedInput = document.querySelector<HTMLInputElement>('#wall-seed')!;
++  function setWall(family: WallFamily, preset: number, seed: number) {
++    if (activeWall) {
++      lowerRocks.remove(activeWall);
++      activeWall.children.forEach(o=>(o as THREE.Mesh).geometry.dispose());
++      activeWall = undefined;
++    }
++    originalParts.forEach((part,i)=>part.geometry.setIndex(family==='original'?originals[i]:remainder[i]));
++    if (family !== 'original') {
++      activeWall = makeWallGroup({...entrance,width:100,groundAt:(x,z)=>sampleGrid(source,x,z).y},family,preset,seed,localWallMaterial,snowTopMaterial);
++      lowerRocks.add(activeWall);
++    }
++    wallInput.value=family; presetInput.value=String(preset); seedInput.value=String(seed);
++    presetInput.disabled=seedInput.disabled=family==='original';
++    renderer.shadowMap.needsUpdate = true;
++    draw();
++  }
++  function updateWall(){
++    const params=new URLSearchParams(location.search);
++    params.set('wall',wallInput.value);params.set('preset',presetInput.value);params.set('seed',seedInput.value);
++    const {family,preset,seed}=wallParameters(params);
++    history.replaceState(null,'','?'+params);
++    setWall(family,preset,seed);view('wall');
++  }
++  [wallInput,presetInput,seedInput].forEach(el=>el.addEventListener('change',updateWall));
+   let activeView='overview';
+   const views:Record<string,{eye:number[];target:number[];fov?:number}>={
+     wall:{eye:[-510,160,-314],target:[-146,66,-68],fov:27},
+@@ -282,6 +324,34 @@ async function start(){
+   let previous=performance.now();function tick(now:number){const dt=Math.min(.05,(now-previous)/1000);previous=now;if(keys.size){const forward=new THREE.Vector3();camera.getWorldDirection(forward);const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize(),move=new THREE.Vector3();if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;move.multiplyScalar(dt*(keys.has('ShiftLeft')?100:25));camera.position.add(move);controls.target.add(move);controls.update();draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
+   window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();draw();});
+   renderer.shadowMap.needsUpdate=true;view(stacked?'back':'front');status.textContent=stacked?'Три яруса · подъёмы и плато':'Гора · скалы, плато и подъём';
+-  (window as any).__mountain={ready:true,renderer,scene,camera,controls,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:snow.stats})};
++  const query = new URLSearchParams(location.search);
++  const initial = wallParameters(query);
++  setWall(initial.family, initial.preset, initial.seed);
++  const initialView = query.get('view') ?? '';
++  if (Object.hasOwn(views, initialView)) view(initialView);
++  else if (initial.family !== 'original') view('wall');
++  if (query.get('embedded') === '1') {
++    document.querySelector('aside')!.hidden = true;
++    status.hidden = true;
++    window.addEventListener('message', event => {
++      if (event.origin !== location.origin || event.source !== window.parent) return;
++      const message = event.data;
++      if (message?.type !== 'mountain-review:view' ||
++          !['wall', 'overview', 'top'].includes(message.camera)) return;
++      if (message.changed) {
++        const {family, preset, seed} = wallParameters(new URLSearchParams({
++          wall: String(message.family), preset: String(message.preset), seed: String(message.seed),
++        }));
++        setWall(family, preset, seed);
++      }
++      view(message.camera);
++    });
++    window.parent.postMessage({type: 'mountain-review:ready'}, location.origin);
++  }
++  (window as any).__mountain={ready:true,setWall,wallMask:()=>measureWallSnow(scene,camera,renderer),renderer,scene,camera,controls,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:snow.stats})};
+ }
+-start().catch(e=>{status.textContent='Ошибка: '+e.message;console.error(e);});
++start().catch(e=>{
++  status.textContent='Ошибка: '+e.message;
++  if (window.parent !== window) window.parent.postMessage({type:'mountain-review:error'}, location.origin);
++  console.error(e);
++});
+diff --git a/experiments/plateau/review.css b/experiments/plateau/review.css
+new file mode 100644
+index 0000000..d0abba3
+--- /dev/null
++++ b/experiments/plateau/review.css
+@@ -0,0 +1,57 @@
++:root {
++  color-scheme: dark;
++  --bg: #11191d;
++  --panel: #1b272e;
++  --line: #3b4e57;
++  --fg: #f3f6f6;
++  --muted: #b7c6ce;
++  --accent: #c9e3ed;
++  font: 16px/1.45 Arial, sans-serif;
++}
++* { box-sizing: border-box; }
++[hidden] { display: none !important; }
++body { margin: 0; background: var(--bg); color: var(--fg); }
++.site-header, main { max-width: 1800px; margin: auto; padding-inline: clamp(14px, 3vw, 48px); }
++.site-header { display: flex; justify-content: space-between; align-items: end; gap: 12px; padding-top: 18px; padding-bottom: 14px; }
++.brand { margin: 0 0 4px; color: var(--accent); font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; }
++h1 { margin: 0; font-size: clamp(32px, 4vw, 54px); line-height: 1; letter-spacing: -.045em; }
++h2 { margin: 0; font-size: 1.17rem; }
++.site-header .build-info { margin: 0; color: var(--muted); font-size: .72rem; }
++nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
++button, select { font: inherit; color: inherit; border: 1px solid var(--line); background: var(--panel); padding: .48rem .65rem; border-radius: 4px; cursor: pointer; }
++button:hover, button:focus-visible, select:focus-visible, a:focus-visible { border-color: var(--accent); outline-color: var(--accent); }
++button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #192c35; font-weight: bold; }
++a { color: var(--accent); text-underline-offset: .2em; }
++.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 270px); gap: 12px; padding-bottom: 14px; align-items: start; }
++.stage { position: sticky; top: 8px; height: clamp(440px, 76vh, 1040px); overflow: hidden; isolation: isolate; background: #aebcc7; border: 1px solid var(--line); border-radius: 5px; }
++.stage:fullscreen { height: 100%; border: 0; border-radius: 0; }
++#scene, iframe { width: 100%; height: 100%; }
++iframe { display: block; border: 0; }
++#load-state { position: absolute; left: 14px; bottom: 14px; max-width: calc(100% - 28px); padding: 7px 12px; margin: 0; border-radius: 4px; background: #16252e; color: white; pointer-events: none; }
++aside { background: #172229; border: 1px solid var(--line); border-radius: 5px; padding: 14px; }
++.notes { color: var(--muted); font-size: .85rem; margin: .55rem 0 .8rem; }
++.base-wall, select { width: 100%; text-align: left; }
++.family { margin: .65rem 0; padding-bottom: .55rem; border-bottom: 1px solid var(--line); font-size: .92rem; }
++.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: .35rem; }
++.cameras { margin-top: 10px; }
++.cameras button { font-size: .76rem; padding-inline: 4px; }
++.field { display: block; margin: .8rem 0 .35rem; font-size: .82rem; color: var(--muted); }
++.checkpoints { display: grid; gap: 3px; }
++.checkpoints button { text-align: left; font-size: .86rem; padding: .37rem .5rem; }
++.scene-links { border-top: 1px solid var(--line); margin-top: .85rem; padding-top: .75rem; display: flex; gap: .55rem; flex-direction: column; align-items: start; font-size: .82rem; }
++#reference-panel > p { display: flex; flex-wrap: wrap; gap: 8px 24px; }
++.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 12px; padding-bottom: 20px; }
++.gallery button { display: flex; flex-direction: column; text-align: left; padding: 0; overflow: hidden; }
++.gallery img { display: block; width: 100%; height: auto; aspect-ratio: 1.9; object-fit: cover; object-position: center; }
++.gallery span { padding: .6rem; }
++dialog { max-width: 96vw; max-height: 96vh; background: var(--bg); border: 1px solid var(--line); padding: 8px; }
++dialog::backdrop { background: #050a0edb; }
++dialog form { display: flex; justify-content: end; padding-bottom: 8px; }
++dialog img { display: block; max-width: 90vw; max-height: 83vh; object-fit: contain; }
++@media (max-width: 740px) {
++  .layout { display: flex; flex-direction: column; }
++  .stage { position: relative; top: 0; width: 100%; height: max(340px, 57vh); }
++  aside { width: 100%; }
++  .site-header .build-info { max-width: 42vw !important; }
++  nav button { flex: 1 1 auto; font-size: .84rem; }
++}
+diff --git a/experiments/plateau/review.html b/experiments/plateau/review.html
+new file mode 100644
+index 0000000..6e24dc3
+--- /dev/null
++++ b/experiments/plateau/review.html
+@@ -0,0 +1,94 @@
++<!doctype html>
++<html lang="ru">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
++  <meta name="theme-color" content="#11191d">
++  <link rel="icon" href="data:,">
++  <link rel="stylesheet" href="./review.css">
++  <title>Горы · Nimble in the Forest</title>
++</head>
++<body>
++  <header class="site-header">
++    <div><p class="brand">Nimble in the Forest</p><h1>Горы</h1></div>
++    <!-- build-info -->
++  </header>
++  <main>
++    <nav aria-label="Раздел теста">
++      <button type="button" data-tab="wall" aria-pressed="true">Боковины</button>
++      <button type="button" data-tab="route" aria-pressed="false">Ярусы и маршруты</button>
++      <button type="button" data-tab="refs" aria-pressed="false">Кадры и референсы</button>
++    </nav>
++    <div id="interactive" class="layout">
++      <section class="stage" aria-label="Трёхмерная сцена">
++        <div id="scene"></div>
++        <p id="load-state" role="status">Загрузка сцены…</p>
++      </section>
++      <aside>
++        <div id="wall-panel">
++          <h2>Боковина у подъёма</h2>
++          <p class="notes">Выберите форму. Камера вернётся к ракурсу сравнения.</p>
++          <button type="button" class="base-wall" data-wall="original" aria-pressed="true">Исходная стенка</button>
++          <div class="family">Округлые блоки<div class="choices">
++            <button type="button" data-wall="rounded" data-preset="0" aria-pressed="false" aria-label="4 округлых блока">4</button>
++            <button type="button" data-wall="rounded" data-preset="1" aria-pressed="false" aria-label="7 округлых блоков">7</button>
++            <button type="button" data-wall="rounded" data-preset="2" aria-pressed="false" aria-label="10 округлых блоков">10</button>
++          </div></div>
++          <div class="family">Угловатые глыбы<div class="choices">
++            <button type="button" data-wall="angular" data-preset="0" aria-pressed="false" aria-label="5 угловатых глыб">5</button>
++            <button type="button" data-wall="angular" data-preset="1" aria-pressed="false" aria-label="8 угловатых глыб">8</button>
++            <button type="button" data-wall="angular" data-preset="2" aria-pressed="false" aria-label="12 угловатых глыб">12</button>
++          </div></div>
++          <label class="field" for="wall-seed">Сид боковины</label>
++          <select id="wall-seed" data-seed>
++            <option value="42">42 · сравнение пресетов</option><option value="7">7</option><option value="8191">8191</option><option value="23011">23011 · новый сид</option>
++          </select>
++          <div class="choices cameras">
++            <button type="button" data-camera="wall" aria-pressed="true">У подъёма</button>
++            <button type="button" data-camera="overview" aria-pressed="false">Вся гора</button>
++            <button type="button" data-camera="top" aria-pressed="false">Сверху</button>
++          </div>
++          <p class="notes">Перетащите сцену для поворота. Колесо мыши приближает камеру.</p>
++        </div>
++        <div id="route-panel" hidden>
++          <h2>Пеший маршрут</h2>
++          <label class="field" for="route-seed">Сид рельефа</label>
++          <select id="route-seed" data-seed>
++            <option value="42">42 · узкий вырез, 3 / 3</option><option value="7">7 · широкий подъём, 2 / 3</option><option value="8191">8191 · четыре яруса, 4 / 1</option><option value="23011">23011 · новый сид, 2 / 1</option>
++          </select>
++          <label class="field" for="route-wall">Стенка на маршруте</label>
++          <select id="route-wall">
++            <option value="original:1">Исходная</option>
++            <option value="rounded:0">4 округлых блока</option><option value="rounded:1">7 округлых блоков</option><option value="rounded:2">10 округлых блоков</option>
++            <option value="angular:0">5 угловатых глыб</option><option value="angular:1">8 угловатых глыб</option><option value="angular:2">12 угловатых глыб</option>
++          </select>
++          <p class="field">Место старта</p>
++          <div class="checkpoints">
++            <button type="button" data-start="overview" aria-pressed="true">Обзор обеих гор</button>
++            <button type="button" data-start="spawn" aria-pressed="false">У подножия · весь маршрут</button>
++            <button type="button" data-start="wall" aria-pressed="false">У боковины</button>
++            <button type="button" data-start="den" aria-pressed="false">У входа в логово</button>
++            <button type="button" data-start="rope" aria-pressed="false">У каната</button>
++            <button type="button" data-start="cave" aria-pressed="false">У сквозной пещеры</button>
++            <button type="button" data-start="bridge" aria-pressed="false">Перед мостом</button>
++          </div>
++          <p class="notes" id="route-hint"></p>
++        </div>
++        <div class="scene-links">
++          <a id="open-scene" href="./mountain.html?view=wall" target="_blank" rel="noopener">Сцена в отдельной вкладке ↗</a>
++          <button type="button" id="fullscreen">На весь экран</button>
++        </div>
++      </aside>
++    </div>
++    <section id="reference-panel" hidden aria-label="Кадры и референсы">
++      <p><a href="https://github.com/depthd/nimbleintheforest/blob/f79fcb78595ee1d56df6854ccbe352d112a75649/docs/qa/PLATEAU-001/ARCHIVE.md">Журнал прежних вариантов ↗</a><a id="report-link" hidden>Отчёт и проверки ↗</a></p>
++      <div class="gallery" id="gallery"></div>
++    </section>
++  </main>
++  <dialog id="photo">
++    <form method="dialog"><button aria-label="Закрыть кадр">Закрыть ×</button></form>
++    <img alt="">
++  </dialog>
++  <script type="module" src="./review.ts"></script>
++</body>
++</html>
+diff --git a/experiments/plateau/review.ts b/experiments/plateau/review.ts
+new file mode 100644
+index 0000000..bb41f5b
+--- /dev/null
++++ b/experiments/plateau/review.ts
+@@ -0,0 +1,189 @@
++import type { WallFamily } from './slice-wall';
++
++const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
++const buttons = (selector: string) => [...document.querySelectorAll<HTMLButtonElement>(selector)];
++const stage = element('scene');
++const status = element('load-state');
++const openScene = element<HTMLAnchorElement>('open-scene');
++const params = new URLSearchParams(location.search);
++const seeds = [42, 7, 8191, 23011];
++
++const starts = {
++  overview: 'Обе горы с высоты. Нажмите «Идти», чтобы начать у подножия.',
++  spawn: 'Из этой точки начнётся полный маршрут. Взгляд направлен на подъём.',
++  wall: 'Перед вами выбранная боковина. К канату и пещерам можно пройти вдоль подножия.',
++  den: 'Идите прямо до задней стены. Выход находится за спиной.',
++  rope: 'Нажмите E, чтобы взяться за канат. W — вверх, S — вниз.',
++  cave: 'Идите прямо через пещеру. Выход ведёт на второй ярус.',
++  bridge: 'Идите прямо по настилу. На дальнем берегу начинается соседнее плато.',
++};
++type Tab = 'wall' | 'route' | 'refs';
++type Start = keyof typeof starts;
++type Camera = 'wall' | 'overview' | 'top';
++const tabFromUrl = params.get('tab');
++let tab: Tab = tabFromUrl === 'route' || tabFromUrl === 'refs' ? tabFromUrl : 'wall';
++const startFromUrl = params.get('start') ?? '';
++let start: Start = Object.hasOwn(starts, startFromUrl) ? startFromUrl as Start : 'overview';
++const cameraFromUrl = params.get('camera');
++let camera: Camera = cameraFromUrl === 'overview' || cameraFromUrl === 'top' ? cameraFromUrl : 'wall';
++const wallFromUrl = params.get('wall');
++let family: WallFamily = wallFromUrl === 'rounded' || wallFromUrl === 'angular' ? wallFromUrl : 'original';
++const presetFromUrl = Number(params.get('preset') ?? 1);
++let preset = [0, 1, 2].includes(presetFromUrl) ? presetFromUrl : 1;
++const seedFromUrl = Number(params.get('seed'));
++let seed = seeds.includes(seedFromUrl) ? seedFromUrl : 42;
++let frame: HTMLIFrameElement | undefined;
++let ready = false;
++let queuedWall = false;
++let pending: number | undefined;
++const seedInputs = [...document.querySelectorAll<HTMLSelectElement>('[data-seed]')];
++const routeWall = element<HTMLSelectElement>('route-wall');
++
++const artworks = [
++  ['Шесть боковин с одной камеры', new URL('../../docs/mountains-slice/wall-rounded/walls-seed42.png', import.meta.url).href],
++  ['Оба семейства на сиде 23011', new URL('../../docs/mountains-slice/integration/new-seed.jpg', import.meta.url).href],
++  ['Узкий и широкий подъёмы, верхний пик', new URL('../../docs/mountains-slice/integration/tiers-entries.jpg', import.meta.url).href],
++  ['Кадры пройденного маршрута', new URL('../../docs/mountains-slice/integration/journey.jpg', import.meta.url).href],
++  ['Снежный гребень угловатой боковины', new URL('../../docs/mountains-slice/wall-angular/snow-ridge-before-after.jpg', import.meta.url).href],
++  ['Канат · референсы', new URL('../../docs/mountains-slice/references/rope.jpg', import.meta.url).href],
++  ['Сквозная пещера · референсы', new URL('../../docs/mountains-slice/references/through.jpg', import.meta.url).href],
++  ['Логово · референсы', new URL('../../docs/mountains-slice/references/den.jpg', import.meta.url).href],
++  ['Подвесной мост · референсы', new URL('../../docs/mountains-slice/references/bridge.jpg', import.meta.url).href],
++];
++const dialog = element<HTMLDialogElement>('photo');
++const detail = dialog.querySelector('img')!;
++for (const [label, src] of artworks) {
++  const button = document.createElement('button');
++  button.type = 'button';
++  const preview = document.createElement('img');
++  preview.loading = 'lazy';
++  preview.src = src;
++  preview.alt = '';
++  const caption = document.createElement('span');
++  caption.textContent = label;
++  button.append(preview, caption);
++  button.onclick = () => {
++    detail.src = src;
++    detail.alt = label;
++    dialog.showModal();
++  };
++  element('gallery').append(button);
++}
++
++const build = document.querySelector<HTMLElement>('.build-info[title]')?.title;
++if (build && /^[a-f0-9]{40}$/.test(build)) {
++  const report = element<HTMLAnchorElement>('report-link');
++  report.href = 'https://github.com/depthd/nimbleintheforest/blob/' + build + '/docs/mountains-slice/README.md';
++  report.hidden = false;
++}
++
++function selected(items: HTMLButtonElement[], match: (button: HTMLButtonElement) => boolean) {
++  for (const button of items) button.setAttribute('aria-pressed', String(match(button)));
++}
++
++function sceneUrl() {
++  const search = new URLSearchParams({wall: family, preset: String(preset), seed: String(seed)});
++  if (tab === 'wall') search.set('view', camera);
++  else search.set('start', start);
++  return (tab === 'wall' ? './mountain.html?' : './route.html?') + search;
++}
++
++function paintControls() {
++  selected(buttons('[data-tab]'), button => button.dataset.tab === tab);
++  selected(buttons('[data-wall]'), button => button.dataset.wall === family &&
++    (family === 'original' || Number(button.dataset.preset) === preset));
++  selected(buttons('[data-camera]'), button => button.dataset.camera === camera);
++  selected(buttons('[data-start]'), button => button.dataset.start === start);
++  for (const input of seedInputs) input.value = String(seed);
++  routeWall.value = family + ':' + (family === 'original' ? 1 : preset);
++  element('route-hint').textContent = starts[start];
++  element('interactive').hidden = tab === 'refs';
++  element('wall-panel').hidden = tab !== 'wall';
++  element('route-panel').hidden = tab !== 'route';
++  element('reference-panel').hidden = tab !== 'refs';
++  const search = new URLSearchParams({
++    tab, wall: family, preset: String(preset), seed: String(seed), start, camera,
++  });
++  history.replaceState(null, '', '?' + search);
++  if (tab !== 'refs') openScene.href = sceneUrl();
++}
++
++function openView() {
++  paintControls();
++  clearTimeout(pending);
++  frame?.remove();
++  frame = undefined;
++  ready = false;
++  queuedWall = false;
++  if (tab === 'refs') return;
++  const next = document.createElement('iframe');
++  next.title = tab === 'wall' ? 'Интерактивная боковина горы' : 'Игровой маршрут по горам';
++  next.allowFullscreen = true;
++  next.src = sceneUrl() + '&embedded=1';
++  status.hidden = false;
++  status.textContent = tab === 'wall' ? 'Загрузка полноразмерной горы…' : 'Загрузка маршрута…';
++  frame = next;
++  stage.append(next);
++  pending = window.setTimeout(() => {
++    status.textContent = 'Сцена ещё загружается. Её также можно открыть в отдельной вкладке.';
++  }, 30000);
++}
++
++function showWall(changed: boolean) {
++  paintControls();
++  if (!ready) { queuedWall = true; return; }
++  frame?.contentWindow?.postMessage({type: 'mountain-review:view', family, preset, seed, camera, changed}, location.origin);
++}
++window.addEventListener('message', event => {
++  if (event.origin !== location.origin || !frame || event.source !== frame.contentWindow) return;
++  if (event.data?.type === 'mountain-review:ready') {
++    clearTimeout(pending);
++    ready = true;
++    status.hidden = true;
++    if (queuedWall && tab === 'wall') { queuedWall = false; showWall(true); }
++  }
++  if (event.data?.type === 'mountain-review:error') {
++    clearTimeout(pending);
++    status.hidden = false;
++    status.textContent = 'Не удалось загрузить 3D. Откройте сцену в отдельной вкладке или посмотрите кадры.';
++  }
++});
++
++for (const button of buttons('[data-tab]')) button.onclick = () => {
++  const next = button.dataset.tab as Tab;
++  if (next === tab) return;
++  tab = next;
++  openView();
++};
++for (const button of buttons('[data-wall]')) button.onclick = () => {
++  family = button.dataset.wall as typeof family;
++  preset = Number(button.dataset.preset ?? 1);
++  camera = 'wall';
++  showWall(true);
++};
++for (const button of buttons('[data-camera]')) button.onclick = () => {
++  camera = button.dataset.camera as Camera;
++  showWall(false);
++};
++for (const button of buttons('[data-start]')) button.onclick = () => {
++  start = button.dataset.start as Start;
++  openView();
++};
++for (const input of seedInputs) input.onchange = () => {
++  seed = Number(input.value);
++  if (tab === 'wall') showWall(true);
++  else openView();
++};
++routeWall.onchange = () => {
++  const [shape, density] = routeWall.value.split(':');
++  family = shape as typeof family;
++  preset = Number(density);
++  openView();
++};
++const fullscreen = element<HTMLButtonElement>('fullscreen');
++fullscreen.hidden = !document.fullscreenEnabled;
++fullscreen.onclick = () => stage.parentElement?.requestFullscreen().catch(() => {
++  status.hidden = false;
++  status.textContent = 'Полноэкранный режим недоступен. Откройте сцену в отдельной вкладке.';
++});
++openView();
+diff --git a/experiments/plateau/route.html b/experiments/plateau/route.html
+new file mode 100644
+index 0000000..ee20682
+--- /dev/null
++++ b/experiments/plateau/route.html
+@@ -0,0 +1,7 @@
++<!doctype html>
++<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Горы · игровой срез</title>
++<style>
++*{box-sizing:border-box}body{margin:0;background:#c2cbd1;color:#f3f4f1;font:15px/1.4 system-ui,sans-serif}canvas{width:100vw;height:100vh;display:block}header,footer{position:fixed;left:1rem;background:#17242ce8;padding:.65rem .85rem;border:1px solid #76848a;max-width:calc(100% - 2rem)}header{top:1rem;display:flex;gap:.65rem;flex-wrap:wrap;align-items:center}button,select,input{background:#283a43;color:inherit;border:1px solid #82939a;padding:.3rem .45rem;font:inherit}input{width:6rem}a{color:inherit}footer{bottom:1rem}#cue:empty{display:none}#cue{font-weight:bold;color:#fff4bc;margin-left:1em}body.locked header{display:none}button,a,select{cursor:pointer}
++body.embedded header { left: auto; right: 1rem; }
++body.embedded header > :not(#view):not(#walk) { display: none; }
++</style></head><body><canvas id="scene"></canvas><header><a href="./mountain.html">Боковина</a><label>Сид <input type="number" id="seed" step="1"></label><label>Стенка <select id="family"><option value="original">Исходная</option><option value="rounded">Округлые блоки</option><option value="angular">Угловатые глыбы</option></select></label><button id="rebuild">Открыть срез</button><button id="view">Обзор гор</button><button id="walk">Идти</button></header><footer><span id="status" role="status">Загрузка гор и физики…</span><span id="cue"></span></footer><script type="module" src="./route.ts"></script></body></html>
+diff --git a/experiments/plateau/route.ts b/experiments/plateau/route.ts
+new file mode 100644
+index 0000000..b422438
+--- /dev/null
++++ b/experiments/plateau/route.ts
+@@ -0,0 +1,187 @@
++import * as THREE from 'three';
++import RAPIER from '@dimforge/rapier3d-compat';
++import { Input } from '../../src/core/input';
++import { G, GROUPS_STATIC, GROUPS_TREE } from '../../src/game/ctx';
++import { Player } from '../../src/game/player';
++import { makeRockMaterial } from '../../src/world/cliffs';
++import { groundUniforms } from '../../src/world/terrain';
++import { noiseTexture } from '../../src/core/noisetex';
++import { buildTraversalGroves } from './mountain-groves';
++import { generateSliceTerrain } from './slice-terrain';
++import { buildSlicePassages } from './slice-passages';
++import { stepSliceRope, createSliceRopeState } from './slice-passages-rope';
++import { buildSliceBridges } from './slice-bridges';
++import { makeWallGroup, wallParameters } from './slice-wall';
++import { wallOutcrop } from './wall-outcrop';
++import type { MeshData } from './cavity';
++
++const element = <T extends HTMLElement>(id:string) => document.getElementById(id) as T;
++const params = new URLSearchParams(location.search);
++const {seed,family,preset} = wallParameters(params);
++const embedded = params.get('embedded') === '1';
++if (embedded) document.body.classList.add('embedded');
++element<HTMLInputElement>('seed').value = String(seed);
++element<HTMLSelectElement>('family').value = family;
++element('rebuild').onclick = () => {
++  const query=new URLSearchParams(params);
++  query.set('seed',element<HTMLInputElement>('seed').value);
++  query.set('wall',element<HTMLSelectElement>('family').value);
++  location.search=query.toString();
++};
++async function start() {
++  await RAPIER.init();
++  const canvas=element<HTMLCanvasElement>('scene');
++  const renderer=new THREE.WebGLRenderer({canvas,antialias:false});
++  renderer.setPixelRatio(Math.min(1.5,devicePixelRatio));
++  const scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(68,1,.08,900);
++  scene.background=new THREE.Color('#aebcc7');
++  scene.fog=new THREE.FogExp2('#aebcc7',.0024);
++  scene.add(new THREE.HemisphereLight(0xdce8ef,0x58627a,1.25));
++  const sun=new THREE.DirectionalLight(0xfff1db,2.2);
++  sun.position.set(-50,65,40); scene.add(sun);
++  const world=new RAPIER.World({x:0,y:-9.81,z:0});
++  const terrain=generateSliceTerrain(seed,{passages:true});
++  const passages=buildSlicePassages(terrain.passageAnchors,seed);
++  const bridge=buildSliceBridges(terrain);
++  const input=new Input(canvas), handles=new Set<number>();
++  const rock=makeRockMaterial();
++  groundUniforms.uNoise.value=noiseTexture();
++  rock.side=THREE.DoubleSide;
++  const snow=new THREE.MeshStandardMaterial({color:0xd8e0e4,roughness:1,flatShading:true,side:THREE.DoubleSide});
++  const cave=makeRockMaterial(), shadeRock=cave.onBeforeCompile;
++  cave.side=THREE.DoubleSide;
++  cave.onBeforeCompile=function(shader,renderer){
++    shadeRock.call(this,shader,renderer);
++    shader.fragmentShader=shader.fragmentShader.replace('frost * 0.92','0.0');
++  };
++  cave.customProgramCacheKey=()=> 'sheltered-rock';
++  const ropeMat=new THREE.MeshStandardMaterial({color:0x9f8153,roughness:1,flatShading:true});
++  const pin=new THREE.MeshStandardMaterial({color:0x493d35,roughness:1});
++  const ground=new THREE.Mesh(new THREE.PlaneGeometry(760,650),snow);
++  ground.rotation.x=-Math.PI/2;ground.position.set(35,-.02,0);scene.add(ground);
++  handles.add(world.createCollider(RAPIER.ColliderDesc.cuboid(380,.5,325).setTranslation(35,-.5,0).setCollisionGroups(GROUPS_STATIC)).handle);
++  function trimesh(d:MeshData) {
++    handles.add(world.createCollider(RAPIER.ColliderDesc.trimesh(d.positions,d.indices).setCollisionGroups(GROUPS_STATIC)).handle);
++  }
++  function mesh(d:MeshData,material:THREE.Material,name:string,solid=true) {
++    const g=new THREE.BufferGeometry();
++    g.setAttribute('position',new THREE.BufferAttribute(d.positions,3));g.setIndex(new THREE.BufferAttribute(d.indices,1));
++    if(material===rock || material===cave) {
++      const colors=new Float32Array(d.positions.length), color=new THREE.Color(material===rock?'#616874':name==='passage-floor'?'#5c6370':'#505867');
++      for(let i=0;i<colors.length;i+=3)color.toArray(colors,i);
++      g.setAttribute('color',new THREE.BufferAttribute(colors,3));
++    }
++    g.computeVertexNormals(); const m=new THREE.Mesh(g,material);m.name=name;scene.add(m);
++    if(solid)trimesh(d);
++  }
++  mesh(terrain.rock,rock,'terrain-rock');mesh(terrain.snow,snow,'terrain-snow');
++  for(const surface of passages.surfaces) {
++    const m=surface.name==='rope'?ropeMat:surface.name==='rope-anchor'?pin:cave;
++    mesh(surface,m,surface.name,surface.collider);
++  }
++  if(bridge){scene.add(bridge.group);trimesh(bridge.collider);}
++  const wall=terrain.wallAnchor;
++  if(family!=='original') {
++    const group=makeWallGroup({...wall,angle:Math.PI,groundAt:()=>0},family,preset,seed,rock,snow);
++    scene.add(group);
++    for(const m of group.children as THREE.Mesh[]) {
++      trimesh({positions:m.geometry.getAttribute('position').array as Float32Array,indices:m.geometry.index!.array as Uint32Array});
++    }
++  } else {
++    const shape=wallOutcrop({x:wall.x,z:wall.z+1,angle:Math.PI,width:wall.width,depth:wall.width*.27,
++      height:wall.height*.83,base:-.15,lean:.14,rake:.28,crown:.09,wear:.48},
++      [[-.50,-.2],[0,-.5],[.50,-.24],[.42,.32],[0,.5],[-.45,.26]].map(([x,z])=>[x*wall.width,z*wall.width*.27,0,1]),seed);
++    for(const piece of shape)for(const [part,mat] of [[piece.rock,rock],[piece.snow,snow]] as const){
++      mesh({positions:Float32Array.from(part.points.flatMap(p=>[p.x,p.y,p.z])),indices:Uint32Array.from(part.indices)},mat,'archive-outcrop');
++    }
++  }
++  scene.add(await buildTraversalGroves(terrain.trees));
++  for(const t of terrain.trees){
++    world.createCollider(RAPIER.ColliderDesc.cylinder(t.height*.35,t.radius)
++      .setTranslation(t.x,t.y+t.height*.35,t.z).setCollisionGroups(GROUPS_TREE));
++  }
++  const hint=element('cue');
++  Object.assign(G,{world,R:RAPIER,scene,camera,input,terrain:{handles},region:{minX:-335,maxX:410,minZ:-315,maxZ:315},
++    lake:{onIce:()=>false,levelAt:()=>NaN,onThin:()=>false,handles:new Set()},house:{zoneAt:()=>null,woodenSupports:new Set()},
++    body:{fatigue:0,mood:1,core:37,frostFeet:0,condition:100},hud:{flash:()=>{},message:(s:string)=>{hint.textContent=s;}},audio:{play:()=>{}}});
++  world.step();
++  // The production avatar resolves model URLs from the game root. This entry is two levels below it.
++  THREE.DefaultLoadingManager.setURLModifier(url=>url.startsWith('models/')?new URL('../../'+url,location.href).href:url);
++  const p = new Player();
++  const {denMouth, ropeLower, throughLower} = terrain.passageAnchors;
++  const {spawn, wallAnchor} = terrain;
++  let start = spawn, yaw = -Math.PI / 2;
++  switch (params.get('start')) {
++    case 'wall':
++      start = {...wallAnchor, z: wallAnchor.z + wallAnchor.width * 1.06};
++      start.y = terrain.sampleHeight(start.x, start.z);
++      yaw = 0;
++      break;
++    case 'den':
++      start = {...denMouth, z: denMouth.z + 3};
++      yaw = 0;
++      break;
++    case 'rope':
++      start = {...ropeLower, z: ropeLower.z + .7};
++      yaw = 0;
++      break;
++    case 'cave':
++      start = {...throughLower, z: throughLower.z + 2.7};
++      yaw = 0;
++      break;
++    case 'bridge':
++      if (bridge) {
++        yaw = Math.atan2(bridge.from.x - bridge.to.x, bridge.from.z - bridge.to.z);
++        start = {...bridge.from, x: bridge.from.x + 3.2 * Math.sin(yaw), z: bridge.from.z + 3.2 * Math.cos(yaw)};
++      }
++      break;
++  }
++  p.init(new THREE.Vector3(start.x, start.y + .04, start.z), yaw);
++  p.avatar.root.visible=false;
++  let overview=params.get('start') === 'overview', ropeState=createSliceRopeState();
++  const dt=1/60;
++  function step() {
++    p.look();
++    p.yaw+=((input.down('ArrowLeft')?1:0)-(input.down('ArrowRight')?1:0))*dt*1.5;
++    const r=stepSliceRope(passages.rope,ropeState,p.pos,{
++      interact:input.hit('KeyE'),climb:Number(input.down('KeyW'))-Number(input.down('KeyS'))},dt);
++    ropeState=r.state;hint.textContent=r.hint;
++    if(r.attached) {
++      p.kcc.computeColliderMovement(p.collider,r.displacement,RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
++      const d=p.kcc.computedMovement(),t=p.body.translation();
++      p.prevPos.copy(p.pos);p.body.setNextKinematicTranslation({x:t.x+d.x,y:t.y+d.y,z:t.z+d.z});
++      p.pos.set(t.x+d.x,t.y+d.y-.9,t.z+d.z);p.vy=0;p.grounded=false;
++    } else p.physics(dt);
++    world.step();input.endFrame();
++  }
++  function draw() {
++    if(overview){camera.position.set(105,99,132);camera.lookAt(36,9,0);}
++    else {camera.position.copy(p.pos);camera.position.y+=p.crouch?1.05:1.7;camera.rotation.order='YXZ';camera.rotation.set(p.pitch,p.yaw,0);}
++    renderer.render(scene,camera);
++  }
++  const setOverview=(on:boolean)=>{overview=on;element('view').textContent=on?'От первого лица':'Обзор гор';draw();};
++  element('view').onclick=()=>setOverview(!overview);
++  const walk=()=>{setOverview(false);input.lock();};
++  canvas.onclick=walk;element('walk').onclick=walk;
++  input.onLockChange=v=>document.body.classList.toggle('locked',v);
++  const resize=()=>{renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();draw();};
++  window.addEventListener('resize',resize);resize();
++  if (overview) element('view').textContent = 'От первого лица';
++  if (embedded) window.parent.postMessage({type: 'mountain-review:ready'}, location.origin);
++  element('status').textContent='WASD · идти   Мышь / ← → · обзор   Пробел · прыгнуть   E · канат   Esc · меню';
++  const qa=params.get('qa')==='1';
++  if(qa){
++    Object.assign(window,{__route:{ready:true,terrain:{...terrain,rock:undefined,snow:undefined},passages:passages.routes,
++      bridge:bridge?.route,step:(n:number)=>{for(let i=0;i<n;i++)step();draw();},look:(yaw:number,pitch=0)=>{p.yaw=yaw;p.pitch=pitch;draw();},
++      state:()=>({x:p.pos.x,y:p.pos.y,z:p.pos.z,yaw:p.yaw,attached:ropeState.attached,grounded:p.grounded}),overview:setOverview,survey:(eye:[number,number,number],target:[number,number,number])=>{camera.position.set(...eye);camera.lookAt(...target);renderer.render(scene,camera);}}});
++  } else {
++    let last=performance.now(),pending=0;
++    renderer.setAnimationLoop(now=>{pending+=Math.min(.1,(now-last)/1000);last=now;
++      while(pending>=dt){step();pending-=dt;} draw();});
++  }
++}
++start().catch(e=>{
++  element('status').textContent=String(e);
++  if (embedded) window.parent.postMessage({type: 'mountain-review:error'}, location.origin);
++  console.error(e);
++});
+diff --git a/experiments/plateau/slice-bridges.capture.cjs b/experiments/plateau/slice-bridges.capture.cjs
+new file mode 100644
+index 0000000..38678cb
+--- /dev/null
++++ b/experiments/plateau/slice-bridges.capture.cjs
+@@ -0,0 +1,88 @@
++// Proof frames and a local rendering-cost comparison in the integrated scene.
++// Start Vite first. Set PLATEAU_URL if the server runs on a different origin.
++const fs = require('node:fs');
++const path = require('node:path');
++const { chromium } = require('playwright');
++
++const dir = path.resolve(__dirname,'../../docs/mountains-slice/bridges');
++const origin = process.env.PLATEAU_URL || 'http://127.0.0.1:5184';
++const views = [
++  {name:'profile', eye:[72,14.5,30], target:[75,12.9,0]},
++  {name:'bank', eye:[53.5,16.7,-1.8], target:[76,13.4,.4]},
++  {name:'on-deck', eye:[74,14.12,.4], target:[91,15.1,.4]},
++];
++
++async function main() {
++  const browser = await chromium.launch({
++    ...(process.env.CHROMIUM_PATH ? {executablePath:process.env.CHROMIUM_PATH} : {}),
++    args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'],
++  });
++  try {
++    const page = await browser.newPage({viewport:{width:960,height:540},deviceScaleFactor:1});
++    await page.routeWebSocket('**/*',socket=>socket.close());
++    await page.addInitScript(()=>{
++      const counts = window.__bridgeDraws = {draws:0,triangles:0};
++      const proto = WebGL2RenderingContext.prototype;
++      for (const name of ['drawArrays','drawArraysInstanced','drawElements','drawElementsInstanced']) {
++        const draw = proto[name];
++        proto[name] = function(...args) {
++          counts.draws++;
++          if (args[0]===this.TRIANGLES) {
++            const count = name.includes('Elements') ? args[1] : args[2];
++            const instances = name.endsWith('Instanced') ? args[args.length-1] : 1;
++            counts.triangles+=count/3*instances;
++          }
++          return draw.apply(this,args);
++        };
++      }
++    });
++    const captures=[];
++    for (const seed of [42,7,8191,23011]) {
++      await page.goto(origin+'/experiments/plateau/route.html?seed='+seed+'&wall=original&qa=1');
++      await page.waitForFunction(()=>window.__route?.ready,null,{timeout:60000});
++      await page.addStyleTag({content:'header,footer{display:none!important}'});
++      const raw=await page.evaluate(async ({seed,views})=>{
++        const {G} = await import('/src/game/ctx.ts');
++        const bridge = G.scene.getObjectByName('suspension-bridge');
++        const gl = document.querySelector('canvas').getContext('webgl2');
++        const ext = gl.getExtension('WEBGL_debug_renderer_info');
++        const {survey} = window.__route;
++        const pixel = new Uint8Array(4);
++        const sync = ()=>gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
++        const measure = (visible)=>{
++          bridge.visible=visible;
++          const {eye,target}=views[0];
++          for (let i=0;i<4;i++) { survey(eye,target); sync(); }
++          const samples=[];
++          let calls,triangles;
++          for (let i=0;i<12;i++) {
++            window.__bridgeDraws.draws=window.__bridgeDraws.triangles=0;
++            const start=performance.now();
++            survey(eye,target);
++            sync();
++            samples.push(performance.now()-start);
++            ({draws:calls,triangles}=window.__bridgeDraws);
++          }
++          samples.sort((a,b)=>a-b);
++          return {calls,triangles,medianMs:(samples[5]+samples[6])/2,rangeMs:[samples[0],samples.at(-1)]};
++        };
++        const off=measure(false),on=measure(true);
++        return {seed,renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),
++          off,on,endpoints:[window.__route.bridge[0],window.__route.bridge.at(-1)]};
++      },{seed,views});
++      for (const view of (seed===42?views:views.slice(0,1))) {
++        const url = await page.evaluate(view=>{
++          window.__route.survey(view.eye,view.target);
++          return document.querySelector('canvas').toDataURL('image/jpeg',.92);
++        },view);
++        fs.writeFileSync(path.join(dir,'bridge-'+seed+'-'+view.name+'.jpg'),Buffer.from(url.split(',')[1],'base64'));
++      }
++      console.log(seed,raw.off,raw.on);
++      captures.push(raw);
++    }
++    fs.writeFileSync(path.join(dir,'browser.json'),JSON.stringify({
++      viewport:[960,540],browser:browser.version(),views,measure:'12 renders per state, synchronized WebGL readPixels, median; camera profile, bridge group hidden/visible',
++      captures},null,2)+'\n');
++  } finally { await browser.close(); }
++}
++main().catch(error=>{ console.error(error);process.exitCode=1; });
+diff --git a/experiments/plateau/slice-bridges.test.cjs b/experiments/plateau/slice-bridges.test.cjs
+new file mode 100644
+index 0000000..3ab2db1
+--- /dev/null
++++ b/experiments/plateau/slice-bridges.test.cjs
+@@ -0,0 +1,131 @@
++'use strict';
++
++const assert = require('node:assert/strict');
++const path = require('node:path');
++const Module = require('node:module');
++const { buildSync } = require('esbuild');
++const R = require('@dimforge/rapier3d-compat');
++
++function compile(file) {
++  const unit = new Module(__filename);
++  unit.paths = module.paths;
++  const build = buildSync({ entryPoints: [file], bundle: true, platform: 'node', format: 'cjs', write: false });
++  unit._compile(build.outputFiles[0].text, file);
++  return unit.exports;
++}
++
++const { planSliceBridge } = compile(path.join(__dirname, 'slice-bridges.ts'));
++const { generateSliceTerrain } = compile(path.resolve(process.argv[2] || path.join(__dirname, 'slice-terrain.ts')));
++const fixedSeeds = [42, 7, 8191];
++const heldOut = 23011;
++
++// This spatial graph is built from sampled supports, independently of the
++// plan's declared reachability. Keys retain height: canyon and deck coexist.
++function supportPath(terrain, bridge) {
++  const queue = [terrain.spawn];
++  const seen = new Set();
++  for (let i = 0; i < queue.length; i++) {
++    const cur = queue[i];
++    if (cur.x > 94 && cur.y >= 13.9) return true;
++    for (const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
++      const x = cur.x+dx, z = cur.z+dz;
++      if (x < -68 || x > 166 || z < -40 || z > 40) continue;
++      const heights = [terrain.sampleHeight(x,z)];
++      if (bridge) {
++        const dx = (bridge.to.x-bridge.from.x)/bridge.span, dz = (bridge.to.z-bridge.from.z)/bridge.span;
++        const ox = x-bridge.from.x, oz = z-bridge.from.z;
++        const along = ox*dx+oz*dz, across = Math.abs(oz*dx-ox*dz);
++        if (along>=0 && along<=bridge.span && across <=bridge.width/2-.30) heights.push(bridge.point(along).y);
++      }
++      for (const y of heights) {
++        if (Math.abs(cur.y-y) > Math.tan(48*Math.PI/180)) continue;
++        if (terrain.trees.some(t => t.y<y+1.8 && t.y+t.height>y && Math.hypot(t.x-x,t.z-z)<t.radius+.30)) continue;
++        const key = [x, z, Math.round(y*100)].join('/');
++        if (seen.has(key)) continue;
++        seen.add(key);
++        queue.push({x,z,y});
++      }
++    }
++  }
++  return false;
++}
++
++function walk(terrain, bridge, enabled, reverse) {
++  const physics = new R.World({x:0,y:-9.81,z:0});
++  for (const raw of [terrain.rock,terrain.snow]) {
++    physics.createCollider(R.ColliderDesc.trimesh(raw.positions,raw.indices));
++  }
++  physics.createCollider(R.ColliderDesc.cuboid(200,.2,100).setTranslation(48,-.2,0));
++  for (const tree of terrain.trees) {
++    physics.createCollider(R.ColliderDesc.cylinder(tree.height/2,tree.radius).setTranslation(tree.x,tree.y+tree.height/2,tree.z));
++  }
++  const deck = enabled ? physics.createCollider(R.ColliderDesc.trimesh(bridge.collider.positions,bridge.collider.indices)) : null;
++  const sign = reverse ? -1 : 1;
++  const start = (reverse ? bridge.to : bridge.from).x-sign*2;
++  const finish = (reverse ? bridge.from : bridge.to).x+sign*2;
++  const body = physics.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(start,14+.95,bridge.from.z));
++  const actor = physics.createCollider(R.ColliderDesc.capsule(.6,.30),body);
++  const ctrl = physics.createCharacterController(.03);
++  ctrl.setMaxSlopeClimbAngle(48*Math.PI/180);
++  ctrl.setMinSlopeSlideAngle(55*Math.PI/180);
++  ctrl.enableAutostep(.32,.15,false);
++  ctrl.enableSnapToGround(.35);
++  physics.step();
++  let vertical = 0, crossed = false, midDeckSupport = false, minEyeClearance = Infinity;
++  for (let t=0; t<1700; t++) {
++    const prev = body.translation();
++    vertical = Math.max(-30,vertical-9.81/60);
++    ctrl.computeColliderMovement(actor,{x:sign*1.72/60,y:vertical/60,z:0});
++    const move = ctrl.computedMovement();
++    body.setNextKinematicTranslation({x:prev.x+move.x,y:prev.y+move.y,z:prev.z+move.z});
++    physics.step();
++    if (ctrl.computedGrounded()) vertical=-.5;
++    const cur=body.translation();
++    if (Math.abs(cur.x-(bridge.from.x+bridge.to.x)/2)<.6 && deck) {
++      const ray = new R.Ray({x:cur.x,y:cur.y+.80,z:cur.z},{x:0,y:-1,z:0});
++      const hit = physics.castRay(ray,2.5,true,undefined,undefined,actor);
++      if (hit && hit.collider.handle===deck.handle) {
++        midDeckSupport=true;
++        minEyeClearance=Math.min(minEyeClearance,hit.timeOfImpact);
++      }
++    }
++    if (sign*(cur.x-finish)>=0 && Math.abs(cur.y-.9-14)<.25) { crossed=true; break; }
++  }
++  const end = {...body.translation()};
++  physics.free();
++  return {crossed,midDeckSupport,minEyeClearance:Number.isFinite(minEyeClearance)?minEyeClearance:null,end};
++}
++
++async function main() {
++  await R.init();
++  for (const seed of [...fixedSeeds,heldOut]) {
++    const terrain = generateSliceTerrain(seed,{passages:true});
++    const bridge = planSliceBridge(terrain);
++    assert.ok(bridge,'Actual anchors form a valid crossing');
++    assert.notEqual(bridge.from.mountainId,bridge.to.mountainId);
++    assert.equal(bridge.span,32);
++    assert.ok(bridge.sag>0 && bridge.dropAtCenter>10);
++    const repeat = planSliceBridge(generateSliceTerrain(seed,{passages:true}));
++    assert.deepEqual(bridge.collider,repeat.collider);
++    assert.equal(supportPath(terrain,bridge),true);
++    assert.equal(supportPath(terrain,null),false);
++    const forward=walk(terrain,bridge,true,false),reverse=walk(terrain,bridge,true,true);
++    const missing=walk(terrain,bridge,false,false);
++    for (const trip of [forward,reverse]) {
++      assert.equal(trip.crossed,true);
++      assert.equal(trip.midDeckSupport,true);
++      assert.ok(trip.minEyeClearance>1.6);
++    }
++    assert.equal(missing.crossed,false);
++    assert.equal(planSliceBridge({...terrain,bridgeAnchors:terrain.bridgeAnchors.map(a=>({...a,accessible:false}))}),null);
++    assert.equal(planSliceBridge({...terrain,bridgeAnchors:terrain.bridgeAnchors.map(a=>({...a,mountainId:'one'}))}),null);
++    const mid=bridge.point(bridge.span/2);
++    assert.equal(planSliceBridge({...terrain,trees:[{...mid,y:0,height:17,radius:.35}]}),null);
++    const obstruction = {x:mid.x, y:mid.y, z:mid.z+1.45, height:.8, radius:.12};
++    const shifted = planSliceBridge({...terrain,trees:[obstruction]});
++    assert.ok(shifted && shifted.from.z !== bridge.from.z,'A clear alternative is chosen across the landing');
++    assert.equal(planSliceBridge({...terrain,sampleHeight:(x,z)=>Math.abs(x-mid.x)<.8?20:terrain.sampleHeight(x,z)}),null);
++    console.log(JSON.stringify({seed,span:bridge.span,sag:bridge.sag,clearance:bridge.dropAtCenter,deckTriangles:bridge.collider.indices.length/3,graphWith:true,graphWithout:false,forward,reverse,withoutBridge:missing}));
++  }
++}
++main().catch(error=>{console.error(error);process.exitCode=1;});
+diff --git a/experiments/plateau/slice-bridges.ts b/experiments/plateau/slice-bridges.ts
+new file mode 100644
+index 0000000..2fd55e6
+--- /dev/null
++++ b/experiments/plateau/slice-bridges.ts
+@@ -0,0 +1,172 @@
++import * as THREE from 'three';
++import { Tex } from '../../src/core/textures';
++import { Rng, hashString } from '../../src/core/rng';
++import type { Point, MeshData } from './cavity';
++
++type Anchor = Point & { mountainId: string; tierId: string; accessible: boolean };
++type Tree = Point & { radius: number; height: number };
++interface Terrain {
++  seed: number;
++  bridgeAnchors: readonly Anchor[];
++  trees: readonly Tree[];
++  sampleHeight(x: number, z: number): number;
++}
++
++const WIDTH = 2.4;
++const LANDING = 1;
++const THICKNESS = 0.12;
++// Measured in the T slice: 30 m of air and a metre of bearing at either end.
++const SLICE_SPAN = 32;
++
++function planPair(terrain: Terrain, from: Anchor, to: Anchor) {
++  if (!from.accessible || !to.accessible || from.mountainId === to.mountainId) return null;
++  const dx = to.x - from.x, dz = to.z - from.z;
++  const span = Math.hypot(dx, dz);
++  if (span <= 2 * LANDING || span > SLICE_SPAN + 1e-5) return null;
++  const forwardX = dx / span, forwardZ = dz / span;
++  const openSpan = span - LANDING * 2, sag = openSpan / 17;
++  function point(along: number, side = 0, lift = 0): Point {
++    const t = Math.max(0, Math.min(1, (along - LANDING) / openSpan));
++    return {
++      x: from.x + forwardX * along - forwardZ * side,
++      z: from.z + forwardZ * along + forwardX * side,
++      y: from.y + (to.y - from.y) * t + THICKNESS - 4 * sag * t * (1 - t) + lift,
++    };
++  }
++
++  const count = Math.ceil(span / .30);
++  const sections = [0, ...Array.from({length:count + 1}, (_, i) => LANDING + openSpan * i / count), span];
++  const route = sections.map(d => point(d));
++  for (let i = 0; i < sections.length; i++) {
++    const along = sections[i];
++    const onBank = along <= LANDING || along >= span - LANDING;
++    for (const side of [-WIDTH/2, -WIDTH/4, 0, WIDTH/4, WIDTH/2]) {
++      const p = point(along, side);
++      const ground = terrain.sampleHeight(p.x, p.z), gap = p.y - THICKNESS - ground;
++      if (!Number.isFinite(ground) || gap < -.001 || (onBank && gap > .15)) return null;
++    }
++    if (i > 0 && Math.abs(route[i].y - route[i-1].y) > Math.tan(Math.PI * 48/180) * (along - sections[i-1])) return null;
++  }
++  const center = point(span/2);
++  const dropAtCenter = center.y - THICKNESS - terrain.sampleHeight(center.x, center.z);
++  if (!(dropAtCenter > 1.8)) return null;
++  for (const tree of terrain.trees) {
++    const along = Math.max(0, Math.min(span, (tree.x-from.x)*forwardX + (tree.z-from.z)*forwardZ));
++    const p = point(along);
++    // The renderer's outermost crown has radius 0.24 × height. Enclose the
++    // whole tree and the anchor posts, not merely the centre line of the deck.
++    const reach = Math.max(tree.radius, .24 * tree.height) + WIDTH/2 + .16;
++    if (Math.hypot(tree.x-p.x, tree.z-p.z) <= reach && tree.y+tree.height >= p.y-THICKNESS && tree.y <= p.y+2) return null;
++  }
++
++  const positions: number[] = [], indices: number[] = [];
++  for (const d of sections) {
++    for (const side of [-WIDTH/2, WIDTH/2]) {
++      const p = point(d, side);
++      positions.push(p.x,p.y,p.z);
++    }
++    const last = positions.length/3-2;
++    if (last) indices.push(last-2,last-1,last+1, last-2,last+1,last);
++  }
++  const collider: MeshData = {positions:Float32Array.from(positions), indices:Uint32Array.from(indices)};
++  return {from,to,span,width:WIDTH,sag,dropAtCenter,point,sections,route,collider};
++}
++
++// Pick the shortest viable crossing after the terrain, trees and accessible
++// landing metadata are known. Equal distances retain the generator's order.
++export function planSliceBridge(terrain: Terrain) {
++  let shortest: ReturnType<typeof planPair> = null;
++  for (let a=0; a<terrain.bridgeAnchors.length; a++) {
++    for (let b=a+1; b<terrain.bridgeAnchors.length; b++) {
++      const left = terrain.bridgeAnchors[a], right = terrain.bridgeAnchors[b];
++      const length = Math.hypot(right.x-left.x, right.z-left.z);
++      if (!length || length > SLICE_SPAN + 1e-5) continue;
++      const nx = -(right.z-left.z)/length, nz = (right.x-left.x)/length;
++      const rng = new Rng(terrain.seed ^ hashString(left.tierId+'|'+right.tierId));
++      // Try a reproducible offset in the reserved 8 m corridor. If a tree or a
++      // rock blocks it, retry the centre and both sides before dropping the link.
++      for (const offset of [rng.float(-1.2,1.2),0,-1.2,1.2]) {
++        const shift = (anchor: Anchor) => ({...anchor,x:anchor.x+nx*offset,z:anchor.z+nz*offset});
++        const candidate = planPair(terrain,shift(left),shift(right));
++        if (!candidate) continue;
++        if (!shortest || candidate.span < shortest.span) shortest = candidate;
++        break;
++      }
++    }
++  }
++  return shortest;
++}
++
++export function buildSliceBridges(terrain: Terrain) {
++  const plan = planSliceBridge(terrain);
++  if (!plan) return null;
++  const {point,span,sections} = plan;
++  const group = new THREE.Group();
++  group.name = 'suspension-bridge';
++  const wood = new THREE.MeshStandardMaterial({map: Tex.planks(), color:0x94806c, roughness:1,flatShading:true});
++  const rope = new THREE.MeshStandardMaterial({color:0x514736,roughness:1,flatShading:true});
++  const pos: THREE.Vector3 = new THREE.Vector3();
++  const scale: THREE.Vector3 = new THREE.Vector3();
++  const local: THREE.Object3D = new THREE.Object3D();
++  const across = new THREE.Vector3(-(plan.to.z-plan.from.z)/span,0,(plan.to.x-plan.from.x)/span);
++  const top = new THREE.Vector3();
++  const forward = new THREE.Vector3();
++  const orientation = new THREE.Matrix4();
++
++  // Axis x is along each transverse plank, z is uphill along the path.
++  const planks = new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),wood,sections.length-1);
++  planks.name = 'transverse-planks';
++  for (let i=1; i<sections.length; i++) {
++    const a=point(sections[i-1]), b=point(sections[i]);
++    forward.set(b.x-a.x,b.y-a.y,b.z-a.z);
++    const length=forward.length();
++    forward.normalize();
++    top.crossVectors(forward,across).negate().normalize();
++    orientation.makeBasis(across,top,forward.clone().negate());
++    local.quaternion.setFromRotationMatrix(orientation);
++    local.position.set((a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2).addScaledVector(top,-THICKNESS/2);
++    local.scale.set(WIDTH,THICKNESS,length-.009);
++    local.updateMatrix();
++    planks.setMatrixAt(i-1,local.matrix);
++  }
++  planks.receiveShadow = true;
++  planks.castShadow = true;
++  group.add(planks);
++
++  const up = new THREE.Vector3(0,1,0);
++  const members: THREE.Matrix4[] = [], cables: THREE.Matrix4[] = [];
++  function bar(a: Point, b: Point, radius: number, target: THREE.Matrix4[]) {
++    const axis = new THREE.Vector3(b.x-a.x,b.y-a.y,b.z-a.z);
++    const len = axis.length();
++    const rotation = new THREE.Quaternion().setFromUnitVectors(up,axis.normalize());
++    pos.set((a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2);
++    scale.set(radius,len,radius);
++    target.push(new THREE.Matrix4().compose(pos,rotation,scale));
++  }
++  const cableSections = Math.ceil((span-2*LANDING)/1.2);
++  for (const side of [-WIDTH/2,WIDTH/2]) {
++    for (const d of [.4,span-.4]) bar(point(d,side,-.30),point(d,side,1.8),.13,members);
++    let previousTop=point(.4,side,1.65), previousBottom=point(.4,side,-.10);
++    for (let i=0;i<=cableSections;i++) {
++      const t=i/cableSections, d=LANDING+t*(span-2*LANDING);
++      const high=point(d,side,1.65-2*t*(1-t)), low=point(d,side,-.10);
++      bar(previousTop,high,.044,cables);
++      bar(previousBottom,low,.052,cables);
++      bar(low,high,.027,cables);
++      previousTop=high;previousBottom=low;
++    }
++    bar(previousTop,point(span-.4,side,1.65),.044,cables);
++    bar(previousBottom,point(span-.4,side,-.10),.052,cables);
++  }
++  function addMembers(matrices: THREE.Matrix4[], material: THREE.Material, name: string) {
++    const mesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,5,1),material,matrices.length);
++    mesh.name=name;
++    matrices.forEach((matrix,i)=>mesh.setMatrixAt(i,matrix));
++    mesh.receiveShadow=true;
++    mesh.castShadow=true;
++    group.add(mesh);
++  }
++  addMembers(members,wood,'bank-anchors');
++  addMembers(cables,rope,'suspension-cables-and-hangers');
++  return {...plan,group};
++}
+diff --git a/experiments/plateau/slice-passages-browser.cjs b/experiments/plateau/slice-passages-browser.cjs
+new file mode 100644
+index 0000000..0c4ea3b
+--- /dev/null
++++ b/experiments/plateau/slice-passages-browser.cjs
+@@ -0,0 +1,147 @@
++'use strict';
++// Browser keyboard events drive Player. The QA hook advances deterministic physics frames
++// and reads the actual pose. Fixed camera pitches are for the saved evidence.
++const { chromium } = require('playwright');
++const assert = require('node:assert/strict');
++const fs = require('node:fs/promises');
++const path = require('node:path');
++
++(async () => {
++  const base =
++    process.env.LAB_URL ||
++    'http://127.0.0.1:5184/experiments/plateau/route.html?seed=42&wall=rounded&qa=1';
++  const output =
++    process.env.QA_DIR || path.join(__dirname, '../../docs/mountains-slice/passages/browser');
++  const browser = await chromium.launch({
++    headless: true,
++    executablePath: process.env.CHROMIUM || '/usr/bin/chromium',
++    args: [
++      '--disable-dev-shm-usage',
++      '--use-gl=angle',
++      '--use-angle=swiftshader',
++      '--enable-unsafe-swiftshader',
++    ],
++  });
++  try {
++    await fs.mkdir(output, { recursive: true });
++    const p = await browser.newPage({ viewport: { width: 1000, height: 650 } });
++    // Keep one revision loaded while other worktrees are integrated into the Vite server.
++    await p.routeWebSocket(/.*/, () => {});
++    const errors = [];
++    p.on('pageerror', (e) => errors.push(String(e)));
++    await p.goto(base, { waitUntil: 'networkidle' });
++    await p.waitForFunction(() => window.__route?.ready, null, { timeout: 60000 });
++    await p.locator('#walk').click();
++    const state = () => p.evaluate(() => window.__route.state());
++    const step = (n) => p.evaluate((n) => window.__route.step(n), n);
++    const key = async (k, n) => {
++      await p.keyboard.down(k);
++      await step(n);
++      await p.keyboard.up(k);
++    };
++    const stops = {};
++    const record = async (name) => {
++      stops[name] = await state();
++    };
++    const aim = async (x, z) => {
++      const s = await state(),
++        desired = Math.atan2(s.x - x, s.z - z);
++      const delta = Math.atan2(Math.sin(desired - s.yaw), Math.cos(desired - s.yaw));
++      const frames = Math.round(Math.abs(delta) * 40);
++      if (frames) await key(delta > 0 ? 'ArrowLeft' : 'ArrowRight', frames);
++    };
++    async function walk(x, z) {
++      for (let i = 0; i < 25; i++) {
++        const s = await state(),
++          d = Math.hypot(x - s.x, z - s.z);
++        if (d < 0.38) {
++          await step(15);
++          return;
++        }
++        await aim(x, z);
++        await key('w', Math.max(2, Math.min(260, Math.floor(d * 29))));
++      }
++      throw new Error('Walk blocked at ' + JSON.stringify({ target: [x, z], pose: await state() }));
++    }
++    const shoot = async (name, pitch) => {
++      const s = await state();
++      // Read the same WebGL frame directly after drawing, before the canvas buffer is cleared.
++      const data = await p.evaluate(([yaw, tilt]) => {
++        window.__route.look(yaw, tilt);
++        return document.querySelector('#scene').toDataURL('image/jpeg', 0.9).split(',')[1];
++      }, [s.yaw, pitch]);
++      await fs.writeFile(path.join(output, name + '.jpg'), Buffer.from(data, 'base64'));
++      await p.evaluate((y) => window.__route.look(y, 0), s.yaw);
++      await record(name);
++    };
++    const ride = async (direction) => {
++      await key('e', 1);
++      assert((await state()).attached, 'E did not catch rope');
++      await p.keyboard.down(direction === 1 ? 'w' : 's');
++      for (let i = 0; i < 64; i++) {
++        await step(12);
++        if (!(await state()).attached) break;
++      }
++      await p.keyboard.up(direction === 1 ? 'w' : 's');
++      await step(40);
++      const s = await state();
++      assert(
++        !s.attached && s.grounded && Math.abs(s.y - (direction === 1 ? 14 : 0)) < 0.2,
++        JSON.stringify(s)
++      );
++    };
++    await step(20);
++    await record('spawn');
++    await walk(-66, 62);
++    await walk(15, 62);
++    await walk(15, 42);
++    await aim(15, 21);
++    await shoot('den-mouth', 0.1);
++    await walk(15, 22);
++    await aim(15, 5);
++    await key('w', 200);
++    await record('den-wall');
++    assert(stops['den-wall'].z > 20.0 && stops['den-wall'].z < 20.5);
++    await walk(15, 42);
++    await walk(-4, 42);
++    await aim(-4, 34);
++    await shoot('rope-and-anchor', 0.72);
++    await walk(-4, 35.3);
++    await ride(1);
++    await record('rope-upper-landing');
++    await walk(-0.8, 30);
++    await aim(-4, 32.5);
++    await shoot('rope-fastening', -0.28);
++    await walk(13, 32);
++    await walk(17, 22);
++    await walk(17, 8);
++    await aim(17, -10);
++    await shoot('through-cave', 0.24);
++    await walk(17, -12);
++    await record('upper-exit');
++    assert(Math.abs(stops['upper-exit'].y - 22) < 0.2);
++    await walk(17, 17);
++    await record('through-return');
++    assert(Math.abs(stops['through-return'].y - 14) < 0.2);
++    await walk(17, 23);
++    await walk(12, 32);
++    await walk(-4, 32.6);
++    await ride(-1);
++    await record('rope-lower-landing');
++    assert.deepEqual(errors, []);
++    const report = {
++      base,
++      control:
++        'Playwright keydown/up, W/E/arrow keys. QA step advances fixed frames; lookup of actual Player pose. Look sets screenshot pitch only; no teleports.',
++      errors,
++      stops,
++    };
++    await fs.writeFile(path.join(output, 'browser.json'), JSON.stringify(report, null, 2) + '\n');
++    console.log(JSON.stringify(report, null, 2));
++  } finally {
++    await browser.close();
++  }
++})().catch((e) => {
++  console.error(e);
++  process.exitCode = 1;
++});
+diff --git a/experiments/plateau/slice-passages-rope.test.cjs b/experiments/plateau/slice-passages-rope.test.cjs
+new file mode 100644
+index 0000000..0e443e2
+--- /dev/null
++++ b/experiments/plateau/slice-passages-rope.test.cjs
+@@ -0,0 +1,61 @@
++'use strict';
++const assert = require('node:assert/strict');
++const { buildSync } = require('esbuild');
++const { Module } = require('node:module');
++const R = require('@dimforge/rapier3d-compat');
++const bundle = buildSync({ entryPoints: [require.resolve('./slice-passages-rope.ts')], platform: 'node', format: 'cjs', bundle: true, write: false });
++const compiled = new Module(__filename, module);
++compiled._compile(bundle.outputFiles[0].text, __filename);
++const { createSliceRope, createSliceRopeState, stepSliceRope, distance } = compiled.exports;
++
++async function main() {
++  await R.init();
++  const rope = createSliceRope({ x:-4,y:0,z:35.1 }, { x:-4,y:14,z:32.6 });
++  const world = new R.World({x:0,y:-9.81,z:0});
++  world.createCollider(R.ColliderDesc.cuboid(50,1,70).setTranslation(0,-1,0));
++  world.createCollider(R.ColliderDesc.cuboid(30,7,30).setTranslation(0,7,4));
++  const body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(-3.94,.94,35.35));
++  const capsule = world.createCollider(R.ColliderDesc.capsule(.6,.30), body);
++  const kcc = world.createCharacterController(.03);
++  kcc.enableSnapToGround(.35); kcc.enableAutostep(.32,.15,false);
++  let state = createSliceRopeState();
++  const feet = () => { const p = body.translation(); return {x:p.x,y:p.y-.9,z:p.z}; };
++  function tick(input,dt=1/60) {
++    const r = stepSliceRope(rope,state,feet(),input,dt);
++    state = r.state;
++    kcc.computeColliderMovement(capsule,r.attached?r.displacement:{x:0,y:-.03,z:0});
++    const d=kcc.computedMovement(), p=body.translation();
++    body.setNextKinematicTranslation({x:p.x+d.x,y:p.y+d.y,z:p.z+d.z}); world.step();
++    return r;
++  }
++  world.step();
++  assert.equal(stepSliceRope(rope,state,{x:1,y:0,z:35},{interact:true,climb:1},1/60).attached,false);
++  assert.equal(tick({interact:false,climb:1}).attached,false);
++  assert.equal(tick({interact:true,climb:0}).attached,true);
++  for(let i=0;i<90;i++) tick({interact:false,climb:1});
++  assert(feet().y>2);
++  assert.equal(tick({interact:true,climb:0}).attached,false);
++  assert.equal(tick({interact:true,climb:0}).attached,true);
++  const blocker=world.createCollider(R.ColliderDesc.cuboid(1,.25,1).setTranslation(-4,6,35));
++  world.step();
++  for(let i=0;i<300;i++) tick({interact:false,climb:1});
++  const blockedY=feet().y;
++  assert(blockedY<4.3 && state.attached, 'overhead collider must actually stop ascent');
++  world.removeCollider(blocker,true);
++  let up=0;
++  while(state.attached && up++<1800) tick({interact:false,climb:1});
++  assert(!state.attached && distance(feet(),rope.upper)<.2,JSON.stringify({feet:feet(),state,up}));
++  for(let i=0;i<45;i++) tick({interact:false,climb:0});
++  const high=feet();
++  assert(Math.abs(high.y-14)<.09);
++  tick({interact:true,climb:0});
++  let down=0;
++  while(state.attached && down++<1800) tick({interact:false,climb:-1});
++  assert(!state.attached && distance(feet(),rope.lower)<.2, JSON.stringify({feet:feet(),state,down}));
++  for(let i=0;i<45;i++) tick({interact:false,climb:0});
++  const low=feet();
++  assert(Math.abs(low.y)<.09);
++  console.log(JSON.stringify({blockedY,upTicks:up,upper:high,downTicks:down,lower:low,ropeTriangles:'visual only'},null,2));
++  world.free();
++}
++main().catch(e=>{console.error(e);process.exitCode=1;});
+diff --git a/experiments/plateau/slice-passages-rope.ts b/experiments/plateau/slice-passages-rope.ts
+new file mode 100644
+index 0000000..e5c7188
+--- /dev/null
++++ b/experiments/plateau/slice-passages-rope.ts
+@@ -0,0 +1,97 @@
++import type { Point, MeshData } from './cavity';
++
++export interface SliceRope {
++  path: Point[];
++  distances: number[];
++  lower: Point;
++  upper: Point;
++}
++
++export interface SliceRopeState { attached: boolean; direction: number }
++export const createSliceRopeState = (): SliceRopeState => ({ attached: false, direction: 0 });
++export const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
++const lerp = (a: Point, b: Point, t: number): Point => ({
++  x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t
++});
++const still = { x: 0, y: 0, z: 0 };
++
++export function createSliceRope(lower: Point, upper: Point): SliceRope {
++  // The capsule clears the edge before crossing it. Both landings support ordinary walking.
++  const path = [lower, { x: lower.x, y: upper.y + 0.52, z: lower.z },
++    { x: upper.x, y: upper.y + 0.52, z: upper.z + 0.34 }, upper];
++  const distances = [0];
++  for (let i = 1; i < path.length; i++) distances.push(distances[i - 1] + distance(path[i - 1], path[i]));
++  return { lower, upper, path, distances };
++}
++
++function locate(rope: SliceRope, point: Point) {
++  let along = 0, gap = Infinity;
++  for (let i = 1; i < rope.path.length; i++) {
++    const a = rope.path[i - 1], b = rope.path[i], length = rope.distances[i] - rope.distances[i - 1];
++    const dot = (point.x-a.x)*(b.x-a.x) + (point.y-a.y)*(b.y-a.y) + (point.z-a.z)*(b.z-a.z);
++    const t = Math.max(0, Math.min(1, dot / (length * length)));
++    const dist = distance(point, lerp(a, b, t));
++    if (dist < gap) { along = rope.distances[i - 1] + t * length; gap = dist; }
++  }
++  return { along, gap };
++}
++
++function ropePoint(rope: SliceRope, along: number) {
++  const i = rope.distances.findIndex((d, j) => j > 0 && along <= d);
++  if (i < 0) return rope.upper;
++  return lerp(rope.path[i - 1], rope.path[i], (along - rope.distances[i - 1]) / (rope.distances[i] - rope.distances[i - 1]));
++}
++
++/** Feet are the capsule's actual location after the last physics step.
++ * Caller applies displacement with its normal KCC. A blocked character never advances along the rope.
++ */
++export function stepSliceRope(rope: SliceRope, state: SliceRopeState, feet: Point,
++  input: { interact: boolean; climb: number }, dt: number) {
++  const seen = locate(rope, feet), end = rope.distances[rope.distances.length - 1];
++  const nearby = seen.gap <= 1.45;
++  const release = (hint: string) => ({ state: createSliceRopeState(), attached: false, displacement: still, hint });
++  if (state.attached && (input.interact || seen.gap > 1.8)) return release('Канат отпущен');
++  if (!state.attached && !(input.interact && nearby)) return release(nearby ? 'E · взяться за канат' : '');
++  const move = Math.sign(input.climb);
++  const direction = move || (state.attached ? state.direction : 0);
++  if ((direction === 1 && distance(feet, rope.upper) < 0.10) ||
++      (direction === -1 && distance(feet, rope.lower) < 0.10)) return release('Вы на площадке');
++  const step = Math.max(0, Math.min(dt, 0.1)) * 2.0;
++  // A small lookahead on the actual polyline allows the controller to turn the corner.
++  const aim = ropePoint(rope, Math.max(0, Math.min(end, seen.along + (seen.gap > 0.18 ? 0 : move * step * 2))));
++  const t = Math.min(1, step / Math.max(1e-9, distance(feet, aim)));
++  const displacement = { x: (aim.x-feet.x)*t, y: (aim.y-feet.y)*t, z: (aim.z-feet.z)*t };
++  return { state: { attached: true, direction }, attached: true, displacement, hint: 'W/S · по канату   E · отпустить' };
++}
++
++/** A segmented low-poly cable with a visible pin and tie at the top. Nonblocking decoration. */
++export function ropeDecoration(rope: SliceRope): { line: MeshData; anchor: MeshData } {
++  const shift = (p: Point, dx: number, dy: number, dz: number): Point =>
++    ({x:p.x+dx, y:p.y+dy, z:p.z+dz});
++  function tubes(segments: [Point,Point,number][]): MeshData {
++    const positions: number[] = [], indices: number[] = [];
++    for (const [a,b,r] of segments) {
++      const dy = b.y - a.y, dz = b.z - a.z, len = Math.hypot(dy,dz);
++      const first = positions.length/3;
++      for (const p of [a,b]) for (let k=0;k<6;k++) {
++        const angle=k*Math.PI/3;
++        positions.push(p.x+r*Math.cos(angle),p.y+r*dz/len*Math.sin(angle),p.z-r*dy/len*Math.sin(angle));
++      }
++      for(let k=0;k<6;k++) {
++        const n=(k+1)%6;
++        indices.push(first+k,first+n,first+6+n,first+k,first+6+n,first+6+k);
++      }
++      for(let k=1;k<5;k++) indices.push(first,first+k+1,first+k,first+6,first+6+k,first+6+k+1);
++    }
++    return {positions:new Float32Array(positions),indices:new Uint32Array(indices)};
++  }
++  const tie=shift(rope.upper,0,0.65,-0.15), lip=shift(rope.lower,0,rope.upper.y-rope.lower.y+0.30,-0.48);
++  const tail=shift(rope.lower,0,0.36,-0.44);
++  const line: [Point,Point,number][] = [[tail,lip,0.075],[lip,tie,0.075]];
++  for(let y=tail.y+0.45;y<lip.y;y+=1.15) {
++    const a=lerp(tail,lip,(y-tail.y)/(lip.y-tail.y));
++    line.push([a,shift(a,0,0.092,0),0.11]);
++  }
++  return {line:tubes(line),anchor:tubes([[shift(tie,0,-0.85,-0.12),shift(tie,0,0.15,0.02),0.16],
++    [shift(tie,0,-0.09,0),shift(tie,0,0.08,0),0.19]])};
++}
+diff --git a/experiments/plateau/slice-passages.test.cjs b/experiments/plateau/slice-passages.test.cjs
+new file mode 100644
+index 0000000..9f4f009
+--- /dev/null
++++ b/experiments/plateau/slice-passages.test.cjs
+@@ -0,0 +1,107 @@
++'use strict';
++const assert = require('node:assert/strict');
++const path = require('node:path');
++const { createHash } = require('node:crypto');
++const { Module } = require('node:module');
++const { buildSync } = require('esbuild');
++const R = require('@dimforge/rapier3d-compat');
++
++function source(name) {
++  const bundle = buildSync({ entryPoints:[name], bundle:true,platform:'node',format:'cjs',write:false });
++  const record = new Module(name,module);
++  record._compile(bundle.outputFiles[0].text,name);
++  return record.exports;
++}
++const terrainModule = process.env.SLICE_TERRAIN || path.join(__dirname,'slice-terrain.ts');
++const {generateSliceTerrain} = source(terrainModule);
++const {buildSlicePassages} = source(path.join(__dirname,'slice-passages.ts'));
++const {createSliceRopeState,stepSliceRope,distance} = source(path.join(__dirname,'slice-passages-rope.ts'));
++const pt=(x,y,z)=>({x,y,z});
++const seeds=(process.env.SEEDS||'42,7,8191,23011').split(',').map(Number);
++const hash = p => {
++  const h=createHash('sha256');
++  for(const s of p.surfaces) { h.update(Buffer.from(s.positions.buffer));h.update(Buffer.from(s.indices.buffer)); }
++  return h.digest('hex');
++};
++
++function check(seed) {
++  const terrain=generateSliceTerrain(seed,{passages:true});
++  const passages=buildSlicePassages(terrain.passageAnchors,seed);
++  assert.equal(hash(passages),hash(buildSlicePassages(generateSliceTerrain(seed,{passages:true}).passageAnchors,seed)));
++  const physics=new R.World(pt(0,-9.81,0)), names=new Map();
++  const collider=(desc,name)=>{const c=physics.createCollider(desc);names.set(c.handle,name);return c;};
++  collider(R.ColliderDesc.cuboid(180,1,90).setTranslation(37,-1,0),'ground');
++  for(const [name,g] of [['host-rock',terrain.rock],['host-top',terrain.snow],...passages.surfaces.filter(s=>s.collider).map(s=>[s.name,s])])
++    collider(R.ColliderDesc.trimesh(g.positions,g.indices),name);
++  for(const t of terrain.trees) collider(R.ColliderDesc.cylinder(t.height/2,t.radius).setTranslation(t.x,t.y+t.height/2,t.z),'tree');
++  const spawn=terrain.spawn;
++  const b=physics.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(spawn.x,spawn.y+.94,spawn.z));
++  const body=physics.createCollider(R.ColliderDesc.capsule(.6,.3),b), kcc=physics.createCharacterController(.03);
++  kcc.setMaxSlopeClimbAngle(48*Math.PI/180);kcc.setMinSlopeSlideAngle(55*Math.PI/180);
++  kcc.enableAutostep(.32,.15,false);kcc.enableSnapToGround(.35);
++  let ticks=0, vY=0;
++  const feet=()=>{const v=b.translation();return pt(v.x,v.y-.9,v.z);};
++  function step(d) {
++    kcc.computeColliderMovement(body,d);
++    const v=b.translation(), m=kcc.computedMovement();
++    b.setNextKinematicTranslation(pt(v.x+m.x,v.y+m.y,v.z+m.z));physics.step();
++    ticks++;
++  }
++  function walk(target) {
++    for(let i=0;i<5000;i++) {
++      const p=feet(), dx=target.x-p.x,dz=target.z-p.z,l=Math.hypot(dx,dz);
++      if(l<.13 && Math.abs(p.y-target.y)<.31)return;
++      const s=Math.min(l,4.35/60)/Math.max(l,1e-9);
++      vY=Math.max(-18,vY-9.81/60);
++      step(pt(dx*s,vY/60,dz*s));
++      if(kcc.computedGrounded())vY=0;
++    }
++    throw new Error(JSON.stringify({seed,target,feet:feet(),ticks}));
++  }
++  const trace={};
++  physics.step();
++  // The entire route starts at the world spawn. Never move the rigid body to a waypoint.
++  for(const q of [pt(-66,0,40),pt(15,0,40),...passages.routes.den])walk(q);
++  for(let i=0;i<200;i++)step(pt(0,-.04,-.1));
++  trace.denStop=feet();assert(trace.denStop.z>19.99 && trace.denStop.z<20.4);
++  for(const q of [...passages.routes.den].reverse())walk(q);
++  const {rope}=passages;
++  for(const q of [pt(15,0,40),pt(rope.lower.x,0,40),rope.lower])walk(q);
++  function ride(sign) {
++    let state=createSliceRopeState();
++    for(let i=0;i<1600;i++){
++      const result=stepSliceRope(rope,state,feet(),{interact:i===0,climb:sign},1/60);
++      state=result.state;
++      if(!state.attached){assert(i>200);return;}
++      step(result.displacement);
++    }
++    throw new Error('rope stuck '+JSON.stringify(feet()));
++  }
++  ride(1);trace.ropeTop=feet();
++  assert(distance(feet(),rope.upper)<.18);
++  const lo=terrain.passageAnchors.throughLower, high=terrain.passageAnchors.throughUpper;
++  for(const q of [pt(12,14,rope.upper.z),pt(17,14,23),...passages.routes.through])walk(q);
++  trace.upperExit=feet();assert(Math.abs(trace.upperExit.y-high.y)<.15);
++  for(const q of [...passages.routes.through].reverse())walk(q);
++  trace.lowerExit=feet();assert(Math.abs(trace.lowerExit.y-lo.y)<.15);
++  for(const q of [pt(17,14,23),pt(12,14,rope.upper.z),rope.upper])walk(q);
++  ride(-1);trace.ropeBottom=feet();
++  assert(distance(feet(),rope.lower)<.18);
++  function ray(p,d,max) {
++    const hit=physics.castRay(new R.Ray(p,d),max,true,undefined,undefined,body);
++    return hit?{name:names.get(hit.collider.handle),distance:hit.timeOfImpact}:null;
++  }
++  const den=ray(pt(15,1,25),pt(0,1,0),13);
++  const denTop=ray(pt(15,17,25),pt(0,-1,0),5);
++  const back=ray(pt(15,1,24),pt(0,0,-1),9);
++  const ex=ray(pt(17,25,-7),pt(0,-1,0),8);
++  assert(den?.name==='passage-rock'&&den.distance>1.7);
++  assert.equal(denTop?.name,'host-top');
++  assert(back?.name==='passage-rock' && Math.abs(back.distance-4)<.03);
++  assert.equal(ex?.name,'passage-floor');
++  physics.free();
++  return {seed,meshHash:hash(passages),ticks,trace,denCeiling:den,retainedRoof:denTop,deadEnd:back,throughOpening:ex,
++    triangles:Object.fromEntries(passages.surfaces.map(s=>[s.name,s.indices.length/3]))};
++}
++R.init().then(()=>{console.log(JSON.stringify({method:'continuous Rapier KCC from spawn, scripted directional intent and rope E/W/S',reports:seeds.map(check)},null,2));})
++.catch(e=>{console.error(e);process.exitCode=1;});
+diff --git a/experiments/plateau/slice-passages.ts b/experiments/plateau/slice-passages.ts
+new file mode 100644
+index 0000000..0746d62
+--- /dev/null
++++ b/experiments/plateau/slice-passages.ts
+@@ -0,0 +1,85 @@
++import { Rng } from '../../src/core/rng';
++import { append, type MeshData, type Point } from './cavity';
++import { createSliceRope, ropeDecoration } from './slice-passages-rope';
++
++export interface PassageAnchors {
++  throughLower: Point; throughUpper: Point; throughSkylightStartZ: number;
++  denMouth: Point; denBack: Point; halfWidth: number; height: number;
++  ropeLower: Point; ropeUpper: Point;
++}
++
++export type PassageSurface = MeshData & {
++  name: 'passage-rock' | 'passage-floor' | 'rope' | 'rope-anchor'; collider: boolean;
++};
++
++class Faces {
++  positions: number[] = [];
++  indices: number[] = [];
++  add(points: Point[]) { append(points, this.positions, this.indices); }
++  surface(name: PassageSurface['name']): PassageSurface {
++    return { name, collider: true, positions: new Float32Array(this.positions), indices: new Uint32Array(this.indices) };
++  }
++}
++
++const pt = (x:number,y:number,z:number): Point => ({x,y,z});
++
++export function buildSlicePassages(a: PassageAnchors, seed = 0) {
++  const rock = new Faces(), floor = new Faces(), rng = new Rng(seed);
++  const half = a.halfWidth, clearance = a.height;
++  const ring = (middle: Point, top: number, edgeHeight: number, width: number, crown: number, shift=0) =>
++    [pt(middle.x-width,middle.y,middle.z),pt(middle.x+width,middle.y,middle.z),
++     pt(middle.x+width,edgeHeight,middle.z),pt(middle.x+crown+shift,top,middle.z),
++     pt(middle.x-crown+shift,top,middle.z),pt(middle.x-width,edgeHeight,middle.z)];
++
++  function closeMouth(first: Point[]) {
++    // Fill the two corners of the host's rectangular opening up to the natural stone arch.
++    rock.add([first[3],first[2],pt(first[2].x,first[3].y,first[2].z)]);
++    rock.add([first[5],first[4],pt(first[5].x,first[4].y,first[5].z)]);
++  }
++  function lining(from:Point[],to:Point[],sky:boolean) {
++    for(let k=0;k<from.length;k++) {
++      if(sky && k!==0 && k!==1 && k!==5) continue;
++      const j=(k+1)%from.length;
++      (k===0?floor:rock).add([from[k],from[j],to[j],to[k]]);
++    }
++  }
++  const lo=a.throughLower, hi=a.throughUpper, lip=a.throughSkylightStartZ;
++  const crest=hi.z+0.5;
++  const uphillFloor = (z:number) => lo.y+(hi.y-lo.y)*Math.max(0,Math.min(1,(lo.z-z)/(lo.z-crest)));
++  const along = (t:number) => lo.z+(lip-lo.z)*t;
++  const throughZ=[lo.z,along(.26),along(.53),along(.76),lip,(lip+crest)/2,crest,hi.z];
++  let last: Point[] | undefined;
++  for(const z of throughZ) {
++    const y=uphillFloor(z), open=z<=lip, mouth=z===lo.z;
++    const width=open||mouth?half:half-rng.float(.08,.35);
++    const crown=open?width:half*rng.float(.55,.75);
++    const top=open?hi.y:Math.min(hi.y,y+clearance);
++    const side=open?hi.y:top-rng.float(.55,.92);
++    const section=ring(pt(lo.x,y,z),top,side,width,crown,open?0:rng.float(-.18,.18));
++    if(last) lining(last,section,last[0].z<=lip); else closeMouth(section);
++    last=section;
++  }
++
++  const m=a.denMouth,b=a.denBack;
++  const denRings=[0,.22,.47,.72,1].map(t=>{
++    const z=m.z+(b.z-m.z)*t;
++    // The ground plane also exists under the den. Expose one floor, gently raised inside.
++    const y=m.y+.09*Math.min(1,t/.22), width=t===0?half:half*rng.float(.80,.99);
++    const top=t===0?m.y+clearance:y+clearance*rng.float(.79,.96);
++    return ring(pt(m.x+(t===0?0:rng.float(-.18,.18)),y,z),top,top-rng.float(.55,.9),
++      width,width*rng.float(.50,.75),rng.float(-.14,.14));
++  });
++  closeMouth(denRings[0]);
++  for(let i=1;i<denRings.length;i++) lining(denRings[i-1],denRings[i],false);
++  rock.add(denRings[denRings.length-1]);
++
++  const rope=createSliceRope(a.ropeLower,a.ropeUpper);
++  const cable=ropeDecoration(rope);
++  const surfaces:PassageSurface[]=[floor.surface('passage-floor'),rock.surface('passage-rock'),
++    {...cable.line,name:'rope',collider:false}, {...cable.anchor,name:'rope-anchor',collider:false}];
++  return { surfaces, rope, entrance:{through:lo,den:m},
++    routes:{
++      through:[pt(lo.x,lo.y,lo.z+2),...throughZ.map(z=>pt(lo.x,uphillFloor(z),z)),pt(hi.x,hi.y,hi.z-1.5)],
++      den:[pt(m.x,m.y,m.z+2),pt(m.x,m.y,m.z),pt(b.x,b.y+.09,b.z+1.35)],
++    } };
++}
+diff --git a/experiments/plateau/slice-terrain-browser.cjs b/experiments/plateau/slice-terrain-browser.cjs
+new file mode 100644
+index 0000000..41b4fd0
+--- /dev/null
++++ b/experiments/plateau/slice-terrain-browser.cjs
+@@ -0,0 +1,150 @@
++const { chromium } = require('playwright');
++const { mkdirSync, writeFileSync } = require('node:fs');
++const { join, resolve } = require('node:path');
++const assert = require('node:assert/strict');
++
++const output = resolve('docs/mountains-slice/tiers-entries');
++const base = process.env.SLICE_BASE_URL || 'http://127.0.0.1:5184';
++const entranceCamera = { eye: [-77, 33, -67], target: [-22, 8, -5] };
++const cases = [
++  { seed: 42, file: '42-cut.png', camera: entranceCamera },
++  { seed: 7, file: '07-wide.png', camera: entranceCamera },
++  { seed: 8191, file: '8191-peak.png', camera: { eye: [58, 38, 25], target: [34, 27, -7] } },
++];
++
++async function walk(page) {
++  const points = await page.evaluate(() => {
++    const r = window.__route;
++    r.step(40);
++    return r.terrain.routes.find((route) => route.from === 'spawn' && route.to === 'main-1').points;
++  });
++  const start = await page.evaluate(() => window.__route.state());
++  await page.keyboard.down('w');
++  let end;
++  try {
++    end = await page.evaluate((points) => {
++      const r = window.__route;
++      for (const p of points) {
++        let converged = false;
++        for (let n = 0; n < 100; n++) {
++          const q = r.state(),
++            dx = p.x - q.x,
++            dz = p.z - q.z;
++          if (Math.hypot(dx, dz) < 0.43) {
++            converged = true;
++            break;
++          }
++          r.look(Math.atan2(-dx, -dz));
++          r.step(8);
++        }
++        if (!converged)
++          throw Error(
++            'Player stuck: target ' + JSON.stringify(p) + ', position ' + JSON.stringify(r.state()),
++          );
++      }
++      return r.state();
++    }, points);
++  } finally {
++    await page.keyboard.up('w');
++  }
++  assert(Math.abs(end.y - 14) < 0.25, 'The player must finish on main-1');
++  return { start, end, checkpoints: points.length };
++}
++
++async function liveWalk(browser) {
++  const page = await browser.newPage({ viewport: { width: 320, height: 200 } });
++  try {
++    await page.goto(base + '/experiments/plateau/route.html?seed=7', { waitUntil: 'domcontentloaded' });
++    await page.waitForFunction(() => document.querySelector('#status').textContent.includes('WASD'), null, {
++      timeout: 90000,
++    });
++    assert.equal(await page.evaluate(() => Boolean(window.__route)), false);
++    const feet = () =>
++      page.evaluate(async () => {
++        const { G } = await import('/src/game/ctx.ts');
++        let result;
++        G.world.forEachRigidBody((body) => {
++          if (body.isKinematic()) {
++            const p = body.translation();
++            result = { x: p.x, y: p.y - 0.9, z: p.z };
++          }
++        });
++        return result;
++      });
++    const start = await feet(),
++      checkpoints = [start];
++    const started = Date.now();
++    let end = start;
++    await page.keyboard.down('w');
++    try {
++      while (Date.now() - started < 185000 && end.x < -15) {
++        await new Promise((resolve) => setTimeout(resolve, 1000));
++        end = await feet();
++        if (Math.abs(checkpoints.at(-1).x - end.x) >= 4) checkpoints.push(end);
++      }
++    } finally {
++      await page.keyboard.up('w');
++    }
++    assert(
++      Math.abs(start.x + 65) < 0.5 && end.x >= -15 && Math.abs(end.y - 14) < 0.3,
++      'W from spawn must reach the top, observed ' + JSON.stringify({ start, end }),
++    );
++    return {
++      seed: 7,
++      input: 'keydown W through keyup W; real animation clock; Rapier readback',
++      seconds: (Date.now() - started) / 1000,
++      start,
++      end,
++      checkpoints,
++    };
++  } finally {
++    await page.close();
++  }
++}
++
++async function run() {
++  mkdirSync(output, { recursive: true });
++  const browser = await chromium.launch({
++    headless: true,
++    executablePath: process.env.CHROMIUM || '/usr/bin/chromium',
++    args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
++  });
++  try {
++    if (process.argv.includes('--live')) {
++      const trace = await liveWalk(browser);
++      writeFileSync(join(output, 'live-walk.json'), JSON.stringify(trace, null, 2) + '\n');
++      console.log('Live W route reached', trace.end);
++      return;
++    }
++    const evidence = [];
++    for (const item of cases) {
++      const page = await browser.newPage({ viewport: { width: 1080, height: 700 } });
++      const errors = [];
++      page.on('pageerror', (e) => errors.push(e.message));
++      await page.goto(base + '/experiments/plateau/route.html?seed=' + item.seed + '&qa=1', {
++        waitUntil: 'domcontentloaded',
++      });
++      await page.waitForFunction(() => window.__route?.ready, null, { timeout: 90000 });
++      await page.addStyleTag({ content: 'header, footer { visibility: hidden }' });
++      await page.evaluate(({ eye, target }) => window.__route.survey(eye, target), item.camera);
++      await page.screenshot({ path: join(output, item.file) });
++      // Rendering each QA steering tick at screenshot resolution is expensive on software WebGL.
++      await page.setViewportSize({ width: 128, height: 96 });
++      const entrance = await page.evaluate(
++        () => window.__route.terrain.tiers.find((t) => t.id === 'main-1').entry,
++      );
++      const result = await walk(page);
++      assert.deepEqual(errors, []);
++      evidence.push({ ...item, entrance, ...result, errors });
++      console.log('Verified', item.seed, entrance, 'height', result.end.y.toFixed(2));
++      await page.close();
++    }
++    writeFileSync(join(output, 'browser.json'), JSON.stringify(evidence, null, 2) + '\n');
++  } finally {
++    await browser.close();
++  }
++}
++run().catch((e) => {
++  console.error(e);
++  process.exitCode = 1;
++});
+diff --git a/experiments/plateau/slice-terrain.test.cjs b/experiments/plateau/slice-terrain.test.cjs
+new file mode 100644
+index 0000000..793deab
+--- /dev/null
++++ b/experiments/plateau/slice-terrain.test.cjs
+@@ -0,0 +1,265 @@
++// Physical walks and independent navigation graph from the baked triangle colliders.
++const assert = require('node:assert/strict');
++const { createHash } = require('node:crypto');
++const Module = require('node:module');
++const path = require('node:path');
++const { buildSync } = require('esbuild');
++const R = require('@dimforge/rapier3d-compat');
++
++const m = new Module(__filename);
++m._compile(
++  buildSync({
++    entryPoints: [path.join(__dirname, 'slice-terrain.ts')],
++    bundle: true,
++    platform: 'node',
++    format: 'cjs',
++    write: false,
++  }).outputFiles[0].text,
++  __filename,
++);
++const { generateSliceTerrain } = m.exports;
++const seeds = [42, 7, 8191, 3, 23011];
++
++function geometryHash(t) {
++  const hash = createHash('sha256');
++  for (const mesh of [t.rock, t.snow])
++    for (const buf of [mesh.positions, mesh.indices]) hash.update(Buffer.from(buf.buffer));
++  hash.update(JSON.stringify([t.tiers, t.routes, t.trees, t.passageAnchors, t.bridgeAnchors]));
++  return hash.digest('hex');
++}
++function worldFor(t) {
++  const world = new R.World({ x: 0, y: -9.81, z: 0 });
++  world.createCollider(R.ColliderDesc.cuboid(260, 0.5, 110).setTranslation(30, -0.5, 0));
++  for (const data of [t.rock, t.snow])
++    world.createCollider(
++      R.ColliderDesc.trimesh(data.positions, data.indices, R.TriMeshFlags.FIX_INTERNAL_EDGES),
++    );
++  for (const tree of t.trees)
++    world.createCollider(
++      R.ColliderDesc.cylinder(tree.height / 2, tree.radius).setTranslation(
++        tree.x,
++        tree.y + tree.height / 2,
++        tree.z,
++      ),
++    );
++  world.step();
++  return world;
++}
++function walk(world, start, goals) {
++  const body = world.createRigidBody(
++    R.RigidBodyDesc.kinematicPositionBased().setTranslation(start.x, start.y + 0.92, start.z),
++  );
++  const col = world.createCollider(R.ColliderDesc.capsule(0.6, 0.3), body),
++    k = world.createCharacterController(0.03);
++  k.setMaxSlopeClimbAngle((48 * Math.PI) / 180);
++  k.setMinSlopeSlideAngle((55 * Math.PI) / 180);
++  k.enableAutostep(0.32, 0.15, false);
++  k.enableSnapToGround(0.35);
++  world.step();
++  let ticks = 0,
++    vertical = 0;
++  try {
++    for (const target of goals) {
++      let stuck = 0,
++        last = Infinity;
++      for (;;) {
++        const p = body.translation(),
++          dx = target.x - p.x,
++          dz = target.z - p.z,
++          dist = Math.hypot(dx, dz);
++        if (dist < 0.2) {
++          assert.ok(
++            Math.abs(p.y - 0.93 - target.y) < 0.5,
++            'wrong vertical layer at ' + JSON.stringify(target) + '; feet ' + (p.y - 0.93),
++          );
++          break;
++        }
++        if (dist >= last - 0.0005) stuck++;
++        else stuck = 0;
++        assert.ok(
++          stuck < 80 && ticks < 35000,
++          'blocked at ' + JSON.stringify(p) + ' targeting ' + JSON.stringify(target),
++        );
++        last = dist;
++        vertical = Math.max(-30, vertical - 9.81 / 60);
++        const step = Math.min(1.72 / 60, dist);
++        k.computeColliderMovement(col, { x: (step * dx) / dist, y: vertical / 60, z: (step * dz) / dist });
++        const v = k.computedMovement();
++        body.setNextKinematicTranslation({ x: p.x + v.x, y: p.y + v.y, z: p.z + v.z });
++        world.step();
++        if (k.computedGrounded()) vertical = -0.5;
++        ticks++;
++      }
++    }
++    return ticks;
++  } finally {
++    world.removeCharacterController(k);
++    world.removeRigidBody(body);
++    world.step();
++  }
++}
++// Flood the highest solid surfaces sampled by ray, including rock outcrops and trees.
++// Ground-to-satellite disconnection is the negative control for the bridge.
++function flood(world, t) {
++  const step = 1,
++    x0 = -73,
++    z0 = -45,
++    nx = 248,
++    nz = 91,
++    n = nx * nz;
++  const h = new Float32Array(n);
++  const ray = new R.Ray({ x: 0, y: 60, z: 0 }, { x: 0, y: -1, z: 0 });
++  for (let i = 0; i < n; i++) {
++    ray.origin.x = x0 + (i % nx);
++    ray.origin.z = z0 + Math.floor(i / nx);
++    const hit = world.castRay(ray, 80, true);
++    assert.ok(hit);
++    h[i] = 60 - hit.timeOfImpact;
++  }
++  const index = (p) => Math.round((p.z - z0) / step) * nx + Math.round((p.x - x0) / step);
++  function visit(start) {
++    const seen = new Uint8Array(n),
++      queue = new Int32Array(n);
++    queue[0] = index(start);
++    seen[queue[0]] = 1;
++    let front = 0,
++      end = 1;
++    while (front < end) {
++      const i = queue[front++],
++        x = i % nx,
++        z = Math.floor(i / nx);
++      for (const v of [
++        x > 0 ? i - 1 : -1,
++        x + 1 < nx ? i + 1 : -1,
++        z > 0 ? i - nx : -1,
++        z + 1 < nz ? i + nx : -1,
++      ]) {
++        if (v < 0 || seen[v] || Math.abs(h[i] - h[v]) > Math.tan((48 * Math.PI) / 180) * step + 0.02)
++          continue;
++        seen[v] = 1;
++        queue[end++] = v;
++      }
++    }
++    return seen;
++  }
++  const main = visit(t.spawn),
++    remote = visit(t.bridgeAnchors[1]);
++  assert.ok(main[index(t.bridgeAnchors[0])]);
++  assert.equal(main[index(t.bridgeAnchors[1])], 0);
++  const results = [];
++  for (const tier of t.tiers) {
++    const at =
++      tier.kind === 'peak'
++        ? tier.center
++        : (t.routes.find((r) => r.to === tier.id)?.points.at(-1) ?? t.bridgeAnchors[1]);
++    const i = index(at),
++      mine = tier.mountainId === 'main' ? main : remote;
++    assert.equal(Boolean(mine[i]), tier.accessible, 'graph ' + tier.id + ' at ' + JSON.stringify(at));
++    results.push({
++      id: tier.id,
++      accessible: tier.accessible,
++      observed: Boolean(mine[i]),
++      height: +h[i].toFixed(2),
++    });
++  }
++  return results;
++}
++function measureEntry(t) {
++  const route = t.routes.find((r) => r.to === 'main-1'),
++    a = route.points[0],
++    b = route.points.at(-1);
++  const midpoint = route.points[10];
++  if (route.kind === 'wide') return { length: +(b.x - a.x).toFixed(2), side: 'whole west side' };
++  // At one quarter of the ramp, measure the contiguous floor no more than
++  // half a metre above the rounded mesh's actual centreline elevation.
++  const q = route.points[5],
++    limit = t.sampleHeight(q.x, q.z) + 0.5;
++  let lo = q.z,
++    hi = q.z;
++  while (t.sampleHeight(q.x, lo - 0.05) <= limit && lo > q.z - 20) lo -= 0.05;
++  while (t.sampleHeight(q.x, hi + 0.05) <= limit && hi < q.z + 20) hi += 0.05;
++  return {
++    length: +(b.x - a.x).toFixed(2),
++    floorWidthAtQuarter: +(hi - lo).toFixed(2),
++    midpointDeflection: +(midpoint.z - (a.z + b.z) / 2).toFixed(2),
++  };
++}
++(async () => {
++  await R.init();
++  const results = [],
++    allCounts = new Set(),
++    entries = new Set();
++  function verifyForest(t) {
++    return Object.fromEntries(
++      t.tiers.map((tier) => {
++        const count = t.trees.filter((tree) => {
++          const nearMassif = Math.abs(tree.x - tier.center.x) < 67;
++          return nearMassif && Math.abs(tree.y - tier.center.y) < 0.03;
++        }).length;
++        assert.ok(
++          tier.accessible ? count >= 2 : count === 0,
++          'forest coverage ' + t.seed + '/' + tier.id + ': ' + count,
++        );
++        return [tier.id, count];
++      }),
++    );
++  }
++  // These thin third plateaus formerly missed all their random scatter attempts.
++  for (const seed of [46, 53, 55]) verifyForest(generateSliceTerrain(seed, { passages: true }));
++  for (const seed of seeds) {
++    const t = generateSliceTerrain(seed, { passages: true });
++    const control = generateSliceTerrain(seed, { passages: false });
++    assert.equal(geometryHash(t), geometryHash(generateSliceTerrain(seed, { passages: true })));
++    assert.equal(control.sampleHeight(17, -5), 22);
++    assert.equal(t.sampleHeight(17, -5), 14);
++    const world = worldFor(t);
++    const physical = [];
++    for (const mountain of ['main', 'satellite']) {
++      const routes = t.routes.filter((r) => r.to.startsWith(mountain + '-'));
++      if (!routes.length) continue;
++      const start = mountain === 'main' ? t.spawn : t.bridgeAnchors[1];
++      const pts = routes.flatMap((r) => r.points);
++      const ticks = walk(world, start, [...pts, ...pts.slice().reverse(), start]);
++      physical.push({ mountain, ticks, roundTrip: true });
++    }
++    const graph = flood(world, t);
++    world.free();
++    const counts = ['main', 'satellite'].map((id) => t.tiers.filter((q) => q.mountainId === id).length);
++    counts.forEach((q) => allCounts.add(q));
++    entries.add(t.routes[0].kind);
++    const row = {
++      seed,
++      counts,
++      entry: t.routes[0].kind,
++      entryProfile: measureEntry(t),
++      mountainEntries: Object.fromEntries(
++        ['main', 'satellite'].map((id) => {
++          const kinds = [...new Set(t.routes.filter((r) => r.to.startsWith(id + '-')).map((r) => r.kind))];
++          assert.ok(kinds.length <= 1, 'mixed entries within one mountain');
++          return [id, kinds[0] ?? 'none'];
++        }),
++      ),
++      graph,
++      physical,
++      trees: t.trees.length,
++      treesPerTier: verifyForest(t),
++      rockTriangles: t.rock.indices.length / 3,
++      snowTriangles: t.snow.indices.length / 3,
++      sha256: geometryHash(t),
++    };
++    results.push(row);
++    console.error('Verified', seed, counts, t.routes[0].kind);
++  }
++  assert.deepEqual([...allCounts].sort(), [1, 2, 3, 4]);
++  assert.deepEqual([...entries].sort(), ['cut', 'wide']);
++  assert.ok(
++    results.some(
++      (r) => r.mountainEntries.satellite !== 'none' && r.mountainEntries.satellite !== r.mountainEntries.main,
++    ),
++    'no region with different mountain-specific entrances',
++  );
++  console.log(JSON.stringify(results, null, 2));
++})().catch((e) => {
++  console.error(e);
++  process.exitCode = 1;
++});
+diff --git a/experiments/plateau/slice-terrain.ts b/experiments/plateau/slice-terrain.ts
+new file mode 100644
+index 0000000..5415ccf
+--- /dev/null
++++ b/experiments/plateau/slice-terrain.ts
+@@ -0,0 +1,461 @@
++// Compact, metre-scale traversal lab. The legacy art scene retains its original scale.
++import { Rng, hashString, smoothstep } from '../../src/core/rng';
++import { plateauOutline } from './plateau-profile';
++import type { MeshData } from './cavity';
++import { wallOutcrop } from './wall-outcrop';
++
++export type SlicePoint = { x: number; y: number; z: number };
++export type MountainId = 'main' | 'satellite';
++export type Entry = 'wide' | 'cut' | 'none';
++export type SliceTier = {
++  id: string;
++  mountainId: MountainId;
++  level: number;
++  accessible: boolean;
++  kind: 'plateau' | 'peak';
++  center: SlicePoint;
++  entry: Entry;
++};
++export type SliceRoute = { from: string; to: string; kind: 'wide' | 'cut' | 'terrace'; points: SlicePoint[] };
++export type SliceTree = SlicePoint & { height: number; radius: number };
++export type BridgeAnchor = SlicePoint & { mountainId: MountainId; tierId: string; accessible: boolean };
++type Box = { left: number; right: number; front: number; back: number; bottom: number; top: number };
++type Surface = Box & {
++  tier: SliceTier;
++  length: number;
++  width: number;
++  bend: number;
++  startZ: number;
++  phase: number;
++};
++const pt = (x: number, y: number, z: number): SlicePoint => ({ x, y, z });
++const clamp = (x: number) => Math.max(0, Math.min(1, x));
++const distance = (a: SlicePoint, b: SlicePoint) => Math.hypot(a.x - b.x, a.z - b.z);
++
++function rampZ(s: Surface, x: number) {
++  return s.startZ + s.bend * Math.sin(Math.PI * clamp((x - s.left) / s.length));
++}
++
++// Round the short sides without cutting into reserved landings on the straight edges.
++function inset(s: Box, x: number) {
++  const r = Math.min(12, (s.front - s.back) * 0.19, (s.right - s.left) * 0.16);
++  const dx = Math.max(0, r - Math.min(x - s.left, s.right - x));
++  return r - Math.sqrt(Math.max(0, r * r - dx * dx));
++}
++function surfaceY(s: Surface, x: number, z: number) {
++  const rise = s.top - s.bottom;
++  if (s.tier.kind === 'peak') {
++    const { center } = s.tier;
++    const radius = Math.max(
++      Math.abs((2 * (x - center.x)) / (s.right - s.left)),
++      Math.abs((2 * (z - center.z)) / (s.front - s.back)),
++    );
++    return s.top - (rise - 3) * Math.min(1, radius);
++  }
++  const t = clamp((x - s.left) / s.length);
++  // Continuous tangent at foot and crest. The entire west side blends in wide mode.
++  const ramp = s.bottom + rise * smoothstep(0, 1, t);
++  const band =
++    s.tier.entry === 'none'
++      ? 1
++      : s.tier.entry === 'wide'
++        ? 0
++        : smoothstep(s.width * 0.5, s.width * 0.5 + 1.6, Math.abs(z - rampZ(s, x)));
++  const y = ramp + (s.top - ramp) * band;
++  if (s.tier.level !== 1) return y;
++  // Soft terrain folds in the outer snowfield. Bridge, rope, cave and ascent
++  // landings sit on their original datum; the upper tier has continuous support.
++  const outer = smoothstep(0.72, 0.94, Math.abs((2 * z - s.front - s.back) / (s.front - s.back)));
++  const side = smoothstep(27, 45, Math.abs(x - (s.left + s.right) * 0.5));
++  const fold = 0.34 * (1 + Math.sin(0.21 * x + s.phase) * Math.cos(0.16 * z - s.phase));
++  return y + outer * side * fold * smoothstep(0.84, 1, t);
++}
++class TriangleBuffer {
++  xyz: number[] = [];
++  indices: number[] = [];
++  vertex(p: SlicePoint) {
++    this.xyz.push(p.x, p.y, p.z);
++    return this.xyz.length / 3 - 1;
++  }
++  quad(a: SlicePoint, b: SlicePoint, c: SlicePoint, d: SlicePoint) {
++    const i = this.vertex(a);
++    this.vertex(b);
++    this.vertex(c);
++    this.vertex(d);
++    this.indices.push(i, i + 1, i + 2, i, i + 2, i + 3);
++  }
++  finish(): MeshData {
++    return { positions: new Float32Array(this.xyz), indices: new Uint32Array(this.indices) };
++  }
++}
++function gridShape(s: Surface) {
++  if (s.tier.kind === 'peak') return { nx: 8, nz: 8 };
++  return { nx: Math.ceil((s.right - s.left) / 2), nz: Math.ceil((s.front - s.back) / 2) };
++}
++function node(s: Surface, ix: number, iz: number, nx: number, nz: number) {
++  const x = s.left + ((s.right - s.left) * ix) / nx,
++    edge = inset(s, x);
++  const z0 = s.back + ((s.front - s.back) * iz) / nz;
++  const roundingBand = Math.min(13, (s.front - s.back) * 0.22, (s.right - s.left) * 0.2);
++  const z = z0 + edge * (clamp(1 - (z0 - s.back) / roundingBand) - clamp(1 - (s.front - z0) / roundingBand));
++  return pt(x, surfaceY(s, x, z), z);
++}
++function roofHole(s: Surface, x: number, z: number, passages: boolean) {
++  return passages && s.tier.id === 'main-2' && x > 14 && x < 20 && z > -10 && z < 0;
++}
++function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer, passages: boolean) {
++  const { nx, nz } = gridShape(s);
++  const top = s.tier.kind === 'peak' ? rock : snow;
++  const start = top.xyz.length / 3;
++  // Indexed tops share edges with the boundary wall and have upward-facing winding.
++  const grid: SlicePoint[] = [];
++  for (let ix = 0; ix <= nx; ix++)
++    for (let iz = 0; iz <= nz; iz++) {
++      const p = node(s, ix, iz, nx, nz);
++      grid.push(p);
++      top.vertex(p);
++    }
++  const at = (ix: number, iz: number) => ix * (nz + 1) + iz;
++  const bankVertices = new Map<number, number>();
++  function face(i: number, j: number, k: number) {
++    const a = grid[i],
++      b = grid[j],
++      c = grid[k];
++    const ux = b.x - a.x,
++      uy = b.y - a.y,
++      uz = b.z - a.z;
++    const vx = c.x - a.x,
++      vy = c.y - a.y,
++      vz = c.z - a.z;
++    const normalY = uz * vx - ux * vz;
++    // The steep cut exposes bedrock. Keep its drivable floor on the snow mesh.
++    if (s.tier.entry === 'cut' && Math.hypot(uy * vz - uz * vy, ux * vy - uy * vx) > 1.45 * normalY) {
++      for (const index of [i, j, k]) {
++        let vertex = bankVertices.get(index);
++        if (vertex === undefined) {
++          vertex = rock.vertex(grid[index]);
++          bankVertices.set(index, vertex);
++        }
++        rock.indices.push(vertex);
++      }
++    } else {
++      top.indices.push(start + i, start + j, start + k);
++    }
++  }
++  for (let ix = 0; ix < nx; ix++)
++    for (let iz = 0; iz < nz; iz++) {
++      const a = at(ix, iz),
++        b = at(ix, iz + 1),
++        c = at(ix + 1, iz + 1),
++        d = at(ix + 1, iz);
++      if (!roofHole(s, (grid[a].x + grid[c].x) / 2, (grid[a].z + grid[c].z) / 2, passages)) {
++        face(a, b, c);
++        face(a, c, d);
++      }
++    }
++  function side(a: SlicePoint, b: SlicePoint, south = false) {
++    const mid = (a.x + b.x) * 0.5;
++    const door =
++      south &&
++      passages &&
++      ((s.tier.id === 'main-1' && mid > 12 && mid < 18) || (s.tier.id === 'main-2' && mid > 14 && mid < 20));
++    const base = s.bottom + (door ? 4 : 0);
++    if (Math.max(a.y, b.y) <= base + 0.0001) return;
++    rock.quad(b, a, pt(a.x, base, a.z), pt(b.x, base, b.z));
++  }
++  // Winding faces outward. Doorways retain their stone lintels.
++  for (let ix = 0; ix < nx; ix++) {
++    side(grid[at(ix, nz)], grid[at(ix + 1, nz)], true);
++    side(grid[at(ix + 1, 0)], grid[at(ix, 0)]);
++  }
++  for (let iz = 0; iz < nz; iz++) {
++    side(grid[at(0, iz)], grid[at(0, iz + 1)]);
++    side(grid[at(nx, iz + 1)], grid[at(nx, iz)]);
++  }
++}
++// Locate the cell in the same rounded grid used for the triangle mesh, then
++// interpolate the actual triangle. This also reports open skylights to callers.
++function sampleSurface(s: Surface, x: number, z: number, passages: boolean): number | undefined {
++  if (x < s.left || x > s.right || z < s.back || z > s.front || roofHole(s, x, z, passages)) return;
++  const { nx, nz } = gridShape(s),
++    fx = ((x - s.left) / (s.right - s.left)) * nx,
++    ix = Math.min(nx - 1, Math.floor(fx));
++  const tx = fx - ix,
++    p0 = node(s, ix, 0, nx, nz),
++    p1 = node(s, ix + 1, 0, nx, nz);
++  const back = p0.z + (p1.z - p0.z) * tx,
++    front = s.front + s.back - back;
++  if (z < back - 1e-7 || z > front + 1e-7) return;
++  let lo = 0,
++    hi = nz;
++  while (hi - lo > 1) {
++    const mid = (lo + hi) >> 1,
++      left = node(s, ix, mid, nx, nz).z,
++      right = node(s, ix + 1, mid, nx, nz).z;
++    if (left + (right - left) * tx <= z) lo = mid;
++    else hi = mid;
++  }
++  const iz = lo;
++  const a = node(s, ix, iz, nx, nz),
++    b = node(s, ix, iz + 1, nx, nz);
++  const c = node(s, ix + 1, iz + 1, nx, nz),
++    d = node(s, ix + 1, iz, nx, nz);
++  const diagonal = a.z + tx * (c.z - a.z);
++  return z >= diagonal
++    ? a.y + tx * (c.y - a.y) + ((z - diagonal) * (b.y - a.y)) / (b.z - a.z)
++    : a.y + tx * (c.y - a.y) + ((z - diagonal) * (c.y - d.y)) / (c.z - d.z);
++}
++// Use the same jointed cliff generator as the full art scene. Keep the
++// climb, cave ports, bridge landings and swappable wall frontage clear.
++function dressBackWall(s: Surface, seed: number, rock: TriangleBuffer, snow: TriangleBuffer) {
++  if (s.tier.kind === 'peak') return;
++  const rng = new Rng(seed);
++  const height = s.top - s.bottom;
++  const step = Math.max(4, height * 0.7);
++  for (let x = s.left + s.length + step; x < s.right - 3; x += step * rng.float(0.85, 1.25)) {
++    const z = s.back + inset(s, x);
++    const width = step * rng.float(0.8, 1.3);
++    const depth = Math.min(4, height * 0.45);
++    const corners = [
++      [-0.5, -0.3],
++      [0.1, -0.5],
++      [0.5, -0.2],
++      [0.45, 0.3],
++      [-0.2, 0.5],
++      [-0.5, 0.2],
++    ].map(([u, v]) => [u * width, v * depth, rng.float(-0.15, 0.15), rng.float(0.95, 1.05)]);
++    const shapes = wallOutcrop(
++      {
++        x,
++        z,
++        angle: 0,
++        width,
++        depth,
++        height: height * rng.float(0.65, 0.95),
++        base: s.bottom - 0.2,
++        lean: 0.1,
++        rake: 0.3,
++        crown: 0.08,
++        wear: 0.5,
++      },
++      corners,
++      rng.int(1, 0x7fffffff),
++    );
++    for (const shape of shapes) {
++      for (const [shell, target] of [
++        [shape.rock, rock],
++        [shape.snow, snow],
++      ] as const) {
++        const start = target.xyz.length / 3;
++        shell.points.forEach((p) => target.vertex(p));
++        shell.indices.forEach((id) => target.indices.push(id + start));
++      }
++    }
++  }
++}
++export function generateSliceTerrain(seed: number, options: { passages?: boolean } = {}) {
++  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff)
++    throw new RangeError('terrain seed must be a uint32');
++  const rng = new Rng(seed),
++    surfaces: Surface[] = [],
++    routes: SliceRoute[] = [];
++  const wide = rng.chance(0.5);
++  const mainCount = rng.int(2, 4),
++    satelliteCount = rng.int(1, 3);
++  const spawn = pt(-65, 0, -15);
++  function add(
++    id: MountainId,
++    level: number,
++    box: Box,
++    entry: Entry,
++    startZ: number,
++    length: number,
++    width: number,
++    peak = false,
++  ) {
++    if (peak) {
++      // A high narrow summit rises from the previous terrace. The three-metre
++      // vertical toe precludes reaching its upper slopes from that terrace.
++      const cx = (box.left + box.right) / 2,
++        cz = (box.front + box.back) / 2;
++      const h = box.top - box.bottom,
++        halfX = Math.min((box.right - box.left) / 2, h * 0.57),
++        halfZ = Math.min((box.front - box.back) / 2, h * 0.54);
++      box = {
++        ...box,
++        left: cx - halfX,
++        right: cx + halfX,
++        back: cz - halfZ,
++        front: cz + halfZ,
++        top: box.top + h * 0.46,
++      };
++    }
++    const center = pt((box.left + box.right) / 2, box.top, (box.front + box.back) / 2);
++    const tier: SliceTier = {
++      id: id + '-' + level,
++      mountainId: id,
++      level,
++      accessible: !peak,
++      kind: peak ? 'peak' : 'plateau',
++      center,
++      entry: peak ? 'none' : entry,
++    };
++    const s: Surface = {
++      ...box,
++      tier,
++      startZ,
++      length,
++      width,
++      bend: entry === 'cut' ? rng.float(-3, 3) : 0,
++      phase: rng.float(-Math.PI, Math.PI),
++    };
++    surfaces.push(s);
++    if (peak || entry === 'none') return;
++    const points: SlicePoint[] = [];
++    for (let i = 0; i <= 20; i++) {
++      const x = box.left + (s.length * i) / 20,
++        z = rampZ(s, x);
++      points.push(pt(x, surfaceY(s, x, z), z));
++    }
++    routes.push({ from: level === 1 ? 'spawn' : id + '-' + (level - 1), to: tier.id, kind: entry, points });
++  }
++  const box = (
++    left: number,
++    right: number,
++    back: number,
++    front: number,
++    bottom: number,
++    top: number,
++  ): Box => ({ left, right, back, front, bottom, top });
++  const entry: Entry = wide ? 'wide' : 'cut';
++  add('main', 1, box(-60, 60, -34, 34, 0, 14), entry, -15, rng.float(39, 44), rng.float(5, 8));
++  add('main', 2, box(-4, 44, -24, 14, 14, 22), entry, -14, rng.float(16, 17.5), rng.float(4.5, 6.5));
++  if (mainCount >= 3)
++    add(
++      'main',
++      3,
++      box(22, 42, -22, 0, 22, 26.6),
++      entry,
++      -12,
++      15,
++      rng.float(3.5, 5),
++      mainCount === 3 && rng.chance(0.45),
++    );
++  if (mainCount === 4) add('main', 4, box(37, 41, -8, -2, 26.6, 33), 'none', -14, 8, 3, true);
++  add('satellite', 1, box(90, 162, -30, 30, 0, 14), 'none', 0, 1, 4);
++  if (satelliteCount >= 2)
++    add(
++      'satellite',
++      2,
++      box(117, 153, -19, 17, 14, 20.6),
++      new Rng(seed ^ hashString('satellite-entry')).chance(0.5) ? 'wide' : 'cut',
++      2,
++      rng.float(20, 24),
++      rng.float(4.5, 6),
++      satelliteCount === 2 && rng.chance(0.4),
++    );
++  if (satelliteCount === 3) add('satellite', 3, box(140, 152, -15, -1, 20.6, 28), 'none', -9, 9, 3, true);
++  const rock = new TriangleBuffer(),
++    snow = new TriangleBuffer(),
++    passages = options.passages ?? false;
++  surfaces.forEach((s, i) => {
++    bakeSurface(s, rock, snow, passages);
++    dressBackWall(s, seed ^ ((i + 1) * 14591), rock, snow);
++  });
++  const sampleHeight = (x: number, z: number) =>
++    surfaces.reduce((h, s) => Math.max(h, sampleSurface(s, x, z, passages) ?? 0), 0);
++  const mainBase = surfaces[0],
++    satelliteBase = surfaces.find((s) => s.tier.id === 'satellite-1')!;
++  const bridgeAnchors: [BridgeAnchor, BridgeAnchor] = [
++    { ...pt(mainBase.right - 1, mainBase.top, 0), mountainId: 'main', tierId: 'main-1', accessible: true },
++    {
++      ...pt(satelliteBase.left + 1, satelliteBase.top, 0),
++      mountainId: 'satellite',
++      tierId: 'satellite-1',
++      accessible: true,
++    },
++  ];
++  const passageAnchors = {
++    throughLower: pt(17, 14, 14),
++    throughUpper: pt(17, 22, -10),
++    denMouth: pt(15, 0, 34),
++    denBack: pt(15, 0, 20),
++    halfWidth: 3,
++    height: 4,
++    throughSkylightStartZ: 0,
++    ropeLower: pt(-4, 0, 35.1),
++    ropeUpper: pt(-4, 14, 32.6),
++  };
++  const trees: SliceTree[] = [];
++  for (const s of surfaces) {
++    if (s.tier.kind === 'peak') continue;
++    const n = Math.max(2, Math.round(((s.right - s.left) * (s.front - s.back)) / 320));
++    let nPlaced = 0;
++    function tryTree(x: number, z: number, heights: Rng) {
++      const h = sampleSurface(s, x, z, passages);
++      if (h === undefined || Math.abs(h - s.top) > 0.02 || Math.abs(sampleHeight(x, z) - h) > 0.02) return;
++      if (
++        surfaces.some(
++          (other) =>
++            other.tier.mountainId === s.tier.mountainId &&
++            other.tier.level > s.tier.level &&
++            x > other.left - 3 &&
++            x < other.right + 3 &&
++            z > other.back - 3 &&
++            z < other.front + 3,
++        )
++      )
++        return;
++      if (
++        (Math.abs(z) < 4 && x > 46 && x < 111) ||
++        (x > 9 && x < 25 && z > -14 && z < 38) ||
++        (x > -9 && x < 2 && z > 27)
++      )
++        return;
++      if (routes.some((r) => r.points.some((p) => Math.hypot(x - p.x, z - p.z) < 4))) return;
++      const connectors = routes.filter((r) => r.from === s.tier.id);
++      const arrival = routes.find((r) => r.to === s.tier.id)?.points.at(-1) ?? bridgeAnchors[1];
++      if (
++        connectors.some((r) => {
++          const start = r.points[0],
++            dx = start.x - arrival.x,
++            dz = start.z - arrival.z;
++          const t = clamp(((x - arrival.x) * dx + (z - arrival.z) * dz) / (dx * dx + dz * dz || 1));
++          return Math.hypot(x - arrival.x - t * dx, z - arrival.z - t * dz) < 3;
++        })
++      )
++        return;
++      const p = pt(x, h, z);
++      if (trees.some((t) => distance(t, p) < 3)) return;
++      trees.push({ ...p, height: heights.float(2.4, 5.8), radius: 0.23 });
++      nPlaced++;
++    }
++    for (let i = 0; i < n * 24 && nPlaced < n; i++)
++      tryTree(rng.float(s.left + 2, s.right - 2), rng.float(s.back + 2, s.front - 2), rng);
++    // On a small shelf a random scatter can miss the remaining free strip.
++    // Fill from a deterministic grid using its own heights stream.
++    if (nPlaced < n) {
++      const fillRng = new Rng(seed ^ hashString(s.tier.id + '-forest'));
++      for (let x = s.left + 1.5; x < s.right - 1 && nPlaced < n; x += 1)
++        for (let z = s.back + 1.5; z < s.front - 1 && nPlaced < n; z += 1) tryTree(x, z, fillRng);
++    }
++  }
++  // Use the accepted plateau's contour to choose the visible frontage; the wall
++  // adapter can place either sculpting family at this same unobstructed section.
++  const width = 20 * plateauOutline(0);
++  const wallAnchor = { ...pt(-29, 0, 34), yaw: 0, width, height: 14 };
++  return {
++    seed,
++    spawn,
++    tiers: surfaces.map((s) => s.tier),
++    routes,
++    bridgeAnchors,
++    passageAnchors,
++    wallAnchor,
++    sampleHeight,
++    trees,
++    rock: rock.finish(),
++    snow: snow.finish(),
++  };
++}
++export type SliceTerrain = ReturnType<typeof generateSliceTerrain>;
+diff --git a/experiments/plateau/slice-wall-angular.test.cjs b/experiments/plateau/slice-wall-angular.test.cjs
+new file mode 100644
+index 0000000..47822a6
+--- /dev/null
++++ b/experiments/plateau/slice-wall-angular.test.cjs
+@@ -0,0 +1,147 @@
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const ts = require('typescript');
++const { PerspectiveCamera, Ray, Vector3 } = require('three');
++
++require.extensions['.ts'] = (module, file) => module._compile(
++  ts.transpileModule(fs.readFileSync(file, 'utf8'), {
++    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
++  }).outputText, file,
++);
++const { buildAngularWall } = require('./slice-wall-angular.ts');
++const { plateauTop } = require('./mountain-shape.ts');
++const { reliefGrid } = require('./seam-relief-fixture.ts');
++const { sampleGrid } = require('./seam-boundary.ts');
++const { ascentSample } = require('./ascent.ts');
++const meshPoint = (mesh, i) => new Vector3().fromArray(mesh.positions, 3 * i);
++const source = reliefGrid(plateauTop);
++// Actual lower-tier rim and tangent read from the baseline's buildMountainMasses.
++const site = {
++  x: -206.5008053555278, z: -141.42690281926113, angle: -.7888201985996071,
++  width: 100, height: 106.39975301077203,
++  groundAt: (x, z) => sampleGrid(source, x, z).y,
++};
++const along = new Vector3(Math.cos(site.angle), 0, Math.sin(site.angle));
++const across = new Vector3(along.z, 0, -along.x);
++// The full perspective camera and native 800x450 pixel grid form an independent
++// check of the generator's sparse entrance-side sampling. Rasterize the bank
++// too, since it can obscure some of the stone at the front of the fan.
++const camera = new PerspectiveCamera(27, 800 / 450, 0.2, 10500);
++camera.position.set(-950, 160, -580);
++camera.lookAt(-270, 66, -126);
++camera.updateMatrixWorld();
++function projectedSnowPercent(wall) {
++  const width = 800, height = 450;
++  const depths = new Float64Array(width * height).fill(Infinity);
++  const ids = new Uint8Array(depths.length);
++  for (const kind of ['rock', 'snow']) {
++    const mesh = wall[kind], vertices = [];
++    for (let i = 0; i < mesh.positions.length / 3; i++) {
++      const p = meshPoint(mesh, i);
++      p.x *= 1.85; p.z *= 1.85;
++      p.project(camera);
++      p.x = (p.x + 1) * width / 2;
++      p.y = (1 - p.y) * height / 2;
++      vertices.push(p);
++    }
++    for (let t = 0; t < mesh.indices.length; t += 3) {
++      const a = vertices[mesh.indices[t]], b = vertices[mesh.indices[t + 1]], c = vertices[mesh.indices[t + 2]];
++      const area = (b.y-c.y)*(a.x-c.x) + (c.x-b.x)*(a.y-c.y);
++      if (area >= 0) continue;
++      const left = Math.max(0, Math.floor(Math.min(a.x,b.x,c.x)));
++      const right = Math.min(width-1, Math.ceil(Math.max(a.x,b.x,c.x)));
++      const top = Math.max(0, Math.floor(Math.min(a.y,b.y,c.y)));
++      const bottom = Math.min(height-1, Math.ceil(Math.max(a.y,b.y,c.y)));
++      const id = kind === 'rock' ? 1 : t < wall.snowWallIndexCount ? 2 : 3;
++      for (let y = top; y <= bottom; y++) {
++        for (let x = left; x <= right; x++) {
++          const dx = x+.5-c.x, dy = y+.5-c.y;
++          const u = ((b.y-c.y)*dx + (c.x-b.x)*dy) / area;
++          const v = ((c.y-a.y)*dx + (a.x-c.x)*dy) / area;
++          const w = 1-u-v;
++          if (Math.min(u,v,w) < 0) continue;
++          const depth = u*a.z + v*b.z + w*c.z, i = y*width+x;
++          if (depth >= depths[i]) continue;
++          depths[i] = depth;
++          ids[i] = id;
++        }
++      }
++    }
++  }
++  let rock = 0, snow = 0;
++  for (const id of ids) {
++    if (id === 1) rock++;
++    if (id === 2) snow++;
++  }
++  return 100 * snow / (rock + snow);
++}
++
++const newSeed = Number(process.argv[2] || 818723);
++const rows = [];
++for (const seed of [13947, 42, 7, 8191, 23011, newSeed]) for (const count of [5, 8, 12]) {
++  const wall = buildAngularWall(site, count, seed);
++  assert.deepEqual(wall, buildAngularWall(site, count, seed), 'seed must be reproducible');
++  assert.equal(wall.masses.length, count);
++  const boxes = [], rockFaces = [];
++  let maxWidth = 0, minRouteClearance = Infinity;
++  for (const mass of wall.masses) {
++    const verts = new Set();
++    const edges = new Map(), orientation = new Map();
++    for (let t = mass.firstTriangle; t < mass.firstTriangle + mass.triangles; t++) {
++      const tri = Array.from(wall.rock.indices.slice(3*t, 3*t+3));
++      const vertices = tri.map(id => meshPoint(wall.rock, id));
++      rockFaces.push(vertices);
++      assert.ok(vertices[1].clone().sub(vertices[0]).cross(vertices[2].clone().sub(vertices[0])).lengthSq() > 1e-6);
++      for (let k = 0; k < 3; k++) {
++        const a = tri[k], b = tri[(k+1)%3], edge = [a,b].sort((a,b)=>a-b).join(',');
++        verts.add(a);
++        edges.set(edge, (edges.get(edge) || 0) + 1);
++        orientation.set(edge, (orientation.get(edge) || 0) + (a < b ? 1 : -1));
++      }
++    }
++    assert.ok([...edges.values()].every(v=>v===2), 'each rock is closed');
++    assert.ok([...orientation.values()].every(v=>v===0), 'outward winding is consistent');
++    const pts = [...verts].map(id=>meshPoint(wall.rock, id));
++    const u = pts.map(p=>p.dot(along)), v = pts.map(p=>p.dot(across));
++    assert.ok(pts.some(p=>p.y<site.groundAt(p.x,p.z)), 'rock sits into ground');
++    assert.ok(pts.every(p=>Number.isFinite(p.length())&&p.y<site.height), 'rock below snow rim');
++    const width = Math.max(...u)-Math.min(...u);
++    assert.ok(width<=site.width/3);
++    maxWidth = Math.max(maxWidth, width);
++    boxes.push([Math.min(...u),Math.max(...u),Math.min(...v),Math.max(...v)]);
++    for (const p of pts) {
++      const route = ascentSample(p.x);
++      minRouteClearance = Math.min(minRouteClearance,Math.abs(p.z-route.z)-route.w);
++    }
++  }
++  assert.ok(minRouteClearance>2, 'walk corridor is clear');
++  for(let a=0;a<count;a++) for(let b=0;b<a;b++){
++    const A=boxes[a],B=boxes[b];
++    assert.ok(A[1]<=B[0]||B[1]<=A[0]||A[3]<=B[2]||B[3]<=A[2], 'boulders have disjoint plan envelopes');
++  }
++  let minSnowNormalY=Infinity, maxSnowSupportGap=0;
++  const downward=new Vector3(0,-1,0), intersection=new Vector3();
++  for(let k=0;k<wall.snow.indices.length;k+=3) {
++    const [a,b,c]=Array.from(wall.snow.indices.slice(k,k+3),id=>meshPoint(wall.snow,id));
++    const center=a.clone().add(b).add(c).multiplyScalar(1/3);
++    if(k<wall.snowWallIndexCount) {
++      const ray=new Ray(center,downward);
++      let gap=Infinity;
++      for(const [r0,r1,r2] of rockFaces) {
++        if(ray.intersectTriangle(r0,r1,r2,true,intersection)) gap=Math.min(gap,center.y-intersection.y);
++      }
++      assert.ok(gap>=0 && gap<0.6, 'snow sits immediately over an upward rock face');
++      maxSnowSupportGap=Math.max(maxSnowSupportGap,gap);
++    }
++    const normal=b.sub(a).cross(c.sub(a)).normalize();
++    assert.ok(Number.isFinite(normal.y) && normal.y>0, 'snow triangles face up');
++    minSnowNormalY=Math.min(minSnowNormalY,normal.y);
++  }
++  const snowPercent = projectedSnowPercent(wall);
++  assert.ok(snowPercent >= 20 && snowPercent <= 30, "projected coverage stays near 25%");
++  rows.push({seed,count,snowPercent,rockTriangles:wall.rock.indices.length/3,snowTriangles:wall.snow.indices.length/3,
++    maxWidth,minRouteClearance,minSnowNormalY,maxSnowSupportGap});
++}
++assert.notDeepEqual(buildAngularWall(site, 8,7).rock.positions,buildAngularWall(site,8,42).rock.positions);
++assert.throws(()=>buildAngularWall(site,9,7),RangeError);
++console.log(JSON.stringify(rows,null,2));
+diff --git a/experiments/plateau/slice-wall-angular.ts b/experiments/plateau/slice-wall-angular.ts
+new file mode 100644
+index 0000000..7d467d0
+--- /dev/null
++++ b/experiments/plateau/slice-wall-angular.ts
+@@ -0,0 +1,303 @@
++import { Color, Ray, Triangle, Vector3 } from 'three';
++import { Rng } from '../../src/core/rng';
++
++type Site = {
++  x: number;
++  z: number;
++  angle: number;
++  width: number;
++  height: number;
++  groundAt: (x: number, z: number) => number;
++};
++
++type Mass = {
++  firstTriangle: number;
++  triangles: number;
++  minU: number;
++  maxU: number;
++  minV: number;
++  maxV: number;
++};
++
++type Buffer = { positions: number[]; indices: number[]; colors: number[] };
++
++function buffer(): Buffer {
++  return { positions: [], indices: [], colors: [] };
++}
++
++function addPoint(mesh: Buffer, point: Vector3, color: Color) {
++  const index = mesh.positions.length / 3;
++  mesh.positions.push(point.x, point.y, point.z);
++  mesh.colors.push(color.r, color.g, color.b);
++  return index;
++}
++
++function pack(mesh: Buffer) {
++  return {
++    positions: Float32Array.from(mesh.positions),
++    indices: Uint32Array.from(mesh.indices),
++    colors: mesh.colors,
++  };
++}
++
++const palette = ['#565e6e', '#677182', '#666a78', '#747782', '#5c626e'];
++const white = new Color(1, 1, 1);
++
++type Face = { vertices: Vector3[]; retention?: number[] };
++
++// Sample the pile once from the fixed entrance-side direction. Hidden backs
++// and buried courses must not increase the amount of snow on the front.
++// This runs when a preset is built and has no dependency on the current camera.
++function snowLine(faces: Face[], site: Site, tx: number, tz: number) {
++  const u = -site.width * 0.91, v = site.width * 3.38;
++  const eye = new Vector3(site.x + tx * u + tz * v, 1.50 * site.height, site.z + tz * u - tx * v);
++  const outward = new Vector3(tz - 0.19 * tx, 0.07, -tx - 0.19 * tz).normalize();
++  const right = new Vector3(outward.z, 0, -outward.x).normalize();
++  const up = outward.clone().cross(right);
++  const points = faces.flatMap(face => face.vertices).map(p => p.clone().sub(eye));
++  const x = points.map(p => p.dot(right) / -p.dot(outward));
++  const y = points.map(p => p.dot(up) / -p.dot(outward));
++  const left = Math.min(...x), bottom = Math.min(...y);
++  const width = Math.max(...x) - left, height = Math.max(...y) - bottom;
++  const ray = new Ray(eye);
++  const hit = new Vector3(), weights = new Vector3(), retention: number[] = [];
++  const columns = 40, rows = 32;
++  for (let i = 0; i < rows; i++) {
++    for (let j = 0; j < columns; j++) {
++      ray.direction.copy(outward).negate()
++        .addScaledVector(right, left + width * (j + 0.5) / columns)
++        .addScaledVector(up, bottom + height * (i + 0.5) / rows).normalize();
++      let closest = Infinity, deposit = -1;
++      for (const face of faces) {
++        const [a, b, c] = face.vertices;
++        if (!ray.intersectTriangle(a, b, c, true, hit)) continue;
++        const d = ray.origin.distanceToSquared(hit);
++        if (d >= closest) continue;
++        closest = d;
++        deposit = -1;
++        if (face.retention) {
++          Triangle.getBarycoord(hit, a, b, c, weights);
++          const [qa, qb, qc] = face.retention;
++          deposit = weights.x * qa + weights.y * qb + weights.z * qc;
++        }
++      }
++      if (closest < Infinity) retention.push(deposit);
++    }
++  }
++  retention.sort((a, b) => b - a);
++  return retention[Math.floor(retention.length * 0.25)] ?? 0;
++}
++
++function capAboveSnowLine(snow: Buffer, face: Face, threshold: number) {
++  if (!face.retention) return;
++  const patch: Vector3[] = [];
++  for (let i = 0; i < 3; i++) {
++    const j = (i + 1) % 3, a = face.vertices[i], b = face.vertices[j];
++    const qa = face.retention[i], qb = face.retention[j];
++    if (qa >= threshold) patch.push(a.clone());
++    if ((qa > threshold && qb < threshold) || (qa < threshold && qb > threshold)) {
++      patch.push(a.clone().lerp(b, (threshold - qa) / (qb - qa)));
++    }
++  }
++  if (patch.length < 3) return;
++  const first = snow.positions.length / 3;
++  for (const p of patch) {
++    p.y += 0.055;
++    addPoint(snow, p, white);
++  }
++  // All vertices have the same vertical offset from their supporting plane,
++  // including the ends of every shared edge between two snow-bearing planes.
++  for (let i = 1; i < patch.length - 1; i++) snow.indices.push(first, first + i, first + i + 1);
++}
++
++type Ridge = { a: number; b: number; neighbors: number[] };
++
++// On a sharp, completely snow-covered crest, multisample depth testing can
++// expose the stone in a single sample. Give the snow room only inside that
++// buried fold. The original boundary vertices and snow surface stay in place.
++function recessCoveredRidges(rock: Buffer, faces: Face[], ridges: Ridge[], masses: Mass[], line: number) {
++  const replacements = new Map<number, number[]>();
++  const point = (id: number) => new Vector3().fromArray(rock.positions, id * 3);
++  for (const ridge of ridges) {
++    const { a, b, neighbors } = ridge;
++    const panels = neighbors.map(t => {
++      const ids = rock.indices.slice(3 * t, 3 * t + 3);
++      const opposite = ids.find(id => id !== a && id !== b)!;
++      const q = faces[t].retention;
++      const qa = q?.[ids.indexOf(a)], qb = q?.[ids.indexOf(b)];
++      const guarded = q && qa !== undefined && qb !== undefined
++        && Math.min(qa, qb, 0.48 * (qa + qb) + 0.04 * q[ids.indexOf(opposite)]) >= line;
++      const normal = Triangle.getNormal(...(faces[t].vertices as [Vector3, Vector3, Vector3]), new Vector3());
++      return { t, ids, opposite, covered: guarded, normal };
++    });
++    if (!panels.every(face => face.covered) || panels[0].normal.dot(panels[1].normal) >= 0.5) continue;
++    const av = point(a), bv = point(b), middle = av.clone().lerp(bv, 0.5);
++    const tint = new Color().fromArray(rock.colors, a * 3);
++    const low = [0.075, 0.925].map(t => {
++      const p = av.clone().lerp(bv, t);
++      p.y -= 0.32;
++      return addPoint(rock, p, tint);
++    });
++    for (const { t, ids, opposite } of panels) {
++      const side = middle.clone().lerp(point(opposite), 0.04);
++      const guard = addPoint(rock, side, tint);
++      const forward = ids[(ids.indexOf(opposite) + 1) % 3] === a;
++      const [v0, l0, l1, v1] = forward ? [a, ...low, b] : [b, low[1], low[0], a];
++      replacements.set(t, [
++        v0, l0, guard, l0, l1, guard, l1, v1, guard,
++        v0, guard, opposite, guard, v1, opposite,
++      ]);
++    }
++  }
++
++  const original = rock.indices;
++  rock.indices = [];
++  for (const mass of masses) {
++    const start = mass.firstTriangle, end = start + mass.triangles;
++    mass.firstTriangle = rock.indices.length / 3;
++    for (let t = start; t < end; t++) {
++      const revised = replacements.get(t);
++      if (revised) rock.indices.push(...revised);
++      else rock.indices.push(original[3 * t], original[3 * t + 1], original[3 * t + 2]);
++    }
++    mass.triangles = rock.indices.length / 3 - mass.firstTriangle;
++  }
++}
++
++// A talus fan in three dimensions. The rear line carries the tall, tilted
++// blocks; successive courses occupy the pockets below them toward the toe.
++export function buildAngularWall(site: Site, count: number, seed: number) {
++  if (![5, 8, 12].includes(count)) throw new RangeError('Angular wall presets are 5, 8 and 12.');
++  const rng = new Rng(seed ^ 0x58ee46), rock = buffer(), snow = buffer();
++  const rows = count === 5 ? [3, 2] : count === 8 ? [3, 3, 2] : [4, 4, 4];
++  const tx = Math.cos(site.angle), tz = Math.sin(site.angle);
++  function point(u: number, v: number, y: number) {
++    return new Vector3(site.x + tx * u + tz * v, y, site.z + tz * u - tx * v);
++  }
++  const masses: Mass[] = [];
++  const faces: Face[] = [];
++  const ridges: Ridge[] = [];
++  // Each row has shared cell boundaries. Its fracture planes stay inside
++  // those cells, including at the widest seam between adjacent boulders.
++  const maxDepth = site.width * 0.84;
++  const rowDepth = maxDepth / rows.length;
++  for (const [row, columns] of rows.entries()) {
++    const phase = row / (rows.length - 1);
++    const shift = (row % 2 ? -1 : 1) * site.width * 0.028;
++    const rowWidth = site.width * (columns === 2 ? 0.67 : 0.94);
++    const cellWidth = rowWidth / columns;
++    const boundaries = Array.from({ length: columns + 1 }, (_, i) =>
++      shift - rowWidth / 2 + i * cellWidth +
++      (i > 0 && i < columns ? rng.float(-0.04, 0.04) * cellWidth : 0));
++    for (let col = 0; col < columns; col++) {
++      const lo = boundaries[col], hi = boundaries[col + 1];
++      const span = Math.min(hi - lo, site.width / 3) * rng.float(0.95, 0.997);
++      const u = (lo + hi) / 2;
++      const v = rowDepth * (row + 0.5) + site.width * 0.02;
++      const depth = rowDepth * rng.float(0.9, 0.985);
++      const h = site.height * (0.67 - 0.43 * phase) * rng.float(0.67, 1.16);
++      const shoulder = rng.float(0.38, 0.65);
++      const shoulderTip = rng.float(-0.27, 0.27);
++      const outline = [
++        [-0.50, rng.float(-0.36, -0.17)], [rng.float(-0.33, 0.04), -0.50],
++        [0.49, rng.float(-0.38, -0.18)], [rng.float(0.28, 0.49), rng.float(0.12, 0.36)],
++        [rng.float(-0.06, 0.23), 0.50], [-0.48, rng.float(0.13, 0.38)],
++      ];
++      const ground = (du: number, dv: number) => {
++        const p = point(u + du, v + dv, 0);
++        return site.groundAt(p.x, p.z);
++      };
++      const base = Math.min(...outline.map(([x, z]) => ground(x * span, z * depth))) - 1.8;
++      const tint = new Color(rng.pick(palette));
++      const points: Vector3[] = [];
++      const tris: number[] = [];
++      for (const [x, z] of outline) {
++        points.push(point(u + x * span * 0.81, v + z * depth * 0.84, base));
++      }
++      for (const [x, z] of outline) {
++        const height = shoulder + shoulderTip * x - 0.17 * z + rng.float(-0.07, 0.07);
++        points.push(point(u + x * span, v + z * depth, base + h * height));
++      }
++      // A diagonal fracture ridge meets the broken eaves. There is no level
++      // cap: its two ends can differ by a third of the whole boulder's height.
++      const ridgeSlope = rng.pick([-1, 1]) * rng.float(0.11, 0.25);
++      const ridgeDepth = rng.float(-0.16, 0.03);
++      const ridgeTwist = rng.float(-0.12, 0.12);
++      points.push(
++        point(u - span * rng.float(0.26, 0.43), v + (ridgeDepth + ridgeTwist) * depth, base + h * (0.86 + ridgeSlope)),
++        point(u + span * rng.float(0.17, 0.39), v + (ridgeDepth - ridgeTwist) * depth, base + h * (0.86 - ridgeSlope)),
++      );
++      const n = outline.length;
++      for (let i = 1; i < n - 1; i++) tris.push(0, i + 1, i);
++      for (let i = 0; i < n; i++) {
++        const a = i, b = (i + 1) % n;
++        tris.push(a, b, b + n, a, b + n, a + n);
++      }
++      const roof = [
++        0, 1, 6,  1, 2, 7,  1, 7, 6,  2, 3, 7,
++        3, 4, 7,  4, 6, 7,  4, 5, 6,  5, 0, 6,
++      ];
++      for (const index of roof) tris.push(n + index);
++      const start = rock.indices.length / 3;
++      const offset = rock.positions.length / 3;
++      for (const p of points) addPoint(rock, p, tint);
++      for (const index of tris) rock.indices.push(offset + index);
++
++      // Both ends of the ridge retain snow. Wind exposure varies around its
++      // broken edge; the same vertex has the same value on adjoining planes.
++      const wind = rng.float(-Math.PI, Math.PI);
++      const retention = points.map((p, id) => {
++        const pu = (p.x - site.x) * tx + (p.z - site.z) * tz;
++        const pv = (p.x - site.x) * tz - (p.z - site.z) * tx;
++        const exposure = Math.cos(wind) * (pu - u) / span + Math.sin(wind) * (pv - v) / depth;
++        return (id >= 2 * n ? 0.82 : 0.38) + 0.34 * exposure + 0.20 * (p.y - base) / h;
++      });
++      const ridge: Ridge = { a: offset + 2 * n, b: offset + 2 * n + 1, neighbors: [] };
++      for (let i = 0; i < tris.length; i += 3) {
++        const ids = tris.slice(i, i + 3);
++        const vertices = ids.map(id => points[id]);
++        const [a, b, c] = vertices;
++        const normal = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
++        const roofFace = i >= tris.length - roof.length;
++        const canHoldSnow = roofFace && normal.y > 0.46;
++        if (ids.includes(2 * n) && ids.includes(2 * n + 1)) ridge.neighbors.push(faces.length);
++        faces.push({ vertices, retention: canHoldSnow ? ids.map(id => retention[id]) : undefined });
++      }
++      ridges.push(ridge);
++      masses.push({
++        firstTriangle: start, triangles: rock.indices.length / 3 - start,
++        minU: u - span * 0.5, maxU: u + span * 0.5,
++        minV: v - depth * 0.5, maxV: v + depth * 0.5,
++      });
++    }
++  }
++  const threshold = snowLine(faces, site, tx, tz);
++  recessCoveredRidges(rock, faces, ridges, masses, threshold);
++  for (const face of faces) capAboveSnowLine(snow, face, threshold);
++  // A low snow bank fills the crevices at ground level. Radial ends dip
++  // below the actual ground, so the bank has no open visible hem.
++  const snowWallIndexCount = snow.indices.length;
++  const footV = maxDepth * 0.93;
++  const bankOffset = snow.positions.length / 3;
++  const bankProfile = [
++    [-rowDepth * 0.71, -0.35], [-rowDepth * 0.32, 2.4], [0.1, 3.1],
++    [rowDepth * 0.24, 1], [rowDepth * 0.50, -0.35],
++  ];
++  for (let i = 0; i <= 16; i++) {
++    const t = i / 16, u = (t - 0.5) * site.width * 1.02;
++    const taper = Math.sin(t * Math.PI);
++    const crest = footV + Math.sin(t * 13) * rowDepth * 0.13;
++    for (const [distance, height] of bankProfile) {
++      const p = point(u, crest + distance, 0);
++      p.y = site.groundAt(p.x, p.z) - 0.30 + taper * height;
++      addPoint(snow, p, white);
++    }
++  }
++  for (let i = 0; i < 16; i++) {
++    for (let k = 0; k < bankProfile.length - 1; k++) {
++      const a = bankOffset + i * bankProfile.length + k, b = a + bankProfile.length;
++      snow.indices.push(a, b, b + 1, a, b + 1, a + 1);
++    }
++  }
++  return { rock: pack(rock), snow: pack(snow), masses, snowWallIndexCount };
++}
+diff --git a/experiments/plateau/slice-wall-rounded.test.cjs b/experiments/plateau/slice-wall-rounded.test.cjs
+new file mode 100644
+index 0000000..34936a5
+--- /dev/null
++++ b/experiments/plateau/slice-wall-rounded.test.cjs
+@@ -0,0 +1,107 @@
++const assert = require('node:assert/strict');
++const crypto = require('node:crypto');
++const fs = require('node:fs');
++const ts = require('typescript');
++require.extensions['.ts'] = (module, file) => module._compile(
++  ts.transpileModule(fs.readFileSync(file, 'utf8'), {
++    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
++  }).outputText, file);
++const { buildRoundedWall } = require('./slice-wall-rounded.ts');
++const { plateauTop, mountainEnding } = require('./mountain-shape.ts');
++const { reliefGrid } = require('./seam-relief-fixture.ts');
++const { buildWedgeAscent } = require('./wedge-ascent.ts');
++const { bluntTip } = require('./wedge-tip-profile.ts');
++const { mountainRim } = require('./mountain-snow.ts');
++const { ringPoint } = require('./wedge-snow-layer.ts');
++const { contourTangent } = require('./plateau-profile.ts');
++const { sampleGrid } = require('./seam-boundary.ts');
++const { ascentSample } = require('./ascent.ts');
++const { surfaceRoof } = require('./wedge-rocks.ts');
++
++const source = reliefGrid(plateauTop);
++const heights = source.heights.map((_, i) => plateauTop(
++  source.x0 + i % (source.n + 1) * source.cell,
++  source.z0 + Math.floor(i / (source.n + 1)) * source.cell));
++const junction = buildWedgeAscent(source, { ...source, heights }, mountainEnding, bluntTip);
++const angle = Math.PI + 0.78;
++const p = ringPoint(mountainRim(junction), angle);
++const tangent = contourTangent(angle);
++const roof = surfaceRoof([junction.cut.plateau, junction.cut.strip]);
++const site = {
++  x: p.x, z: p.z, angle: Math.atan2(tangent.z, tangent.x), width: 100, height: p.y,
++  groundAt: (x, z) => sampleGrid(source, x, z).y
++};
++const seen = new Set();
++const rows = [];
++for (const count of [4, 7, 10]) {
++  for (const seed of [42, 7, 8191, Number(process.env.NEW_SEED || 23011)]) {
++    const wall = buildRoundedWall(site, count, seed);
++    const repeated = buildRoundedWall(site, count, seed);
++    assert.deepEqual(wall, repeated);
++    const sha = crypto.createHash('sha256').update(wall.rock.positions).update(wall.snow.positions).digest('hex');
++    assert.ok(!seen.has(sha));
++    seen.add(sha);
++    assert.equal(wall.masses.length, count);
++    let maxWidth = 0;
++    let minSnowNormal = 1;
++    let minPassClearance = Infinity;
++    let maxRoofIntrusion = 0;
++    const edges = new Map();
++    // Combined rock and snow crowns form a closed oriented shell. Foot drifts
++    // intentionally end below the sampled terrain and are tested separately.
++    for (const [material, mesh] of [['rock', wall.rock], ['snow', wall.snow]]) {
++      const { indices, positions } = mesh;
++      assert.equal(mesh.colors.length, positions.length);
++      for (let k = 0; k < indices.length; k += 3) {
++        const triangle = Array.from(indices.subarray(k, k + 3), (id) =>
++          Array.from(positions.subarray(3 * id, 3 * id + 3)));
++        const [a, b, c] = triangle;
++        const ab = b.map((x, i) => x - a[i]), ac = c.map((x, i) => x - a[i]);
++        const normal = [ab[1]*ac[2]-ab[2]*ac[1], ab[2]*ac[0]-ab[0]*ac[2], ab[0]*ac[1]-ab[1]*ac[0]];
++        const length = Math.hypot(...normal);
++        assert.ok(length > 1e-6);
++        if (material === 'snow' && k < wall.capTriangleCount * 3) {
++          minSnowNormal = Math.min(minSnowNormal, normal[1] / length);
++          assert.ok(normal[1] / length > 0.58, 'Snow on a vertical or downward rock face');
++        }
++        const roofClearance = roof.triangleClearance(triangle.map(([x,y,z]) => ({x,y,z})));
++        maxRoofIntrusion = Math.max(maxRoofIntrusion, -roofClearance);
++        for (const [x,y,z] of [...triangle, a.map((v,i) => (v+b[i]+c[i])/3)]) {
++          assert.ok([x,y,z].every(Number.isFinite));
++          const ramp = ascentSample(x);
++          if (x >= -300 && x <= 20) minPassClearance = Math.min(minPassClearance, Math.abs(z-ramp.z) - ramp.w);
++        }
++        if (material === 'rock' || k < 3 * wall.capTriangleCount) {
++          for (let j = 0; j < 3; j++) {
++            const aKey = triangle[j].join(','), bKey = triangle[(j+1)%3].join(',');
++            const key = aKey < bKey ? aKey+'|'+bKey : bKey+'|'+aKey;
++            const edge = edges.get(key) || [0,0];
++            edge[0]++; edge[1] += aKey < bKey ? 1 : -1; edges.set(key,edge);
++          }
++        }
++      }
++    }
++    for (const [uses, direction] of edges.values()) assert.deepEqual([uses, direction], [2, 0]);
++    assert.ok(minPassClearance > 2, 'Entrance piece intrudes into the existing passage');
++    assert.equal(maxRoofIntrusion, 0, 'A triangle emerges through the plateau');
++    for (const [i, bounds] of wall.masses.entries()) {
++      maxWidth = Math.max(maxWidth, bounds.maxU - bounds.minU);
++      for (const other of wall.masses.slice(i + 1)) {
++        assert.ok(other.minU > bounds.maxU || bounds.minU > other.maxU ||
++          other.minV > bounds.maxV || bounds.minV > other.maxV, 'Individual solid blocks intersect');
++      }
++    }
++    assert.ok(maxWidth <= site.width / 3);
++    // The last two vertices of each middle triangle are perimeter vertices.
++    for (let k = wall.capTriangleCount * 3; k < wall.snow.indices.length; k += 9) {
++      for (const i of [4,5]) {
++        const vertex = wall.snow.indices[k+i] * 3;
++        const [x,y,z] = wall.snow.positions.subarray(vertex, vertex+3);
++        assert.ok(y < site.groundAt(x,z) - 0.14);
++      }
++    }
++    rows.push({ count, seed, sha, rockTriangles: wall.rock.indices.length/3,
++      snowTriangles: wall.snow.indices.length/3, maxWidth, minSnowNormal, minPassClearance, maxRoofIntrusion });
++  }
++}
++console.log(JSON.stringify({site, rows},null,2));
+diff --git a/experiments/plateau/slice-wall-rounded.ts b/experiments/plateau/slice-wall-rounded.ts
+new file mode 100644
+index 0000000..693e225
+--- /dev/null
++++ b/experiments/plateau/slice-wall-rounded.ts
+@@ -0,0 +1,157 @@
++// The camera and the plateau use the existing mountain frame. Local u is along
++// the entrance shoulder and v increases out of the mountain.
++import { Color, Vector3 } from 'three';
++import { Rng } from '../../src/core/rng';
++
++export type RoundedWallSite = {
++  x: number;
++  z: number;
++  angle: number;
++  width: number;
++  height: number;
++  groundAt: (x: number, z: number) => number;
++};
++
++type Point = { u: number; v: number; y: number };
++type Mesh = { positions: number[]; indices: number[]; colors: number[] };
++type Bounds = { minU: number; maxU: number; minV: number; maxV: number; minY: number; maxY: number };
++
++export function buildRoundedWall(site: RoundedWallSite, count: 4 | 7 | 10, seed: number) {
++  const rng = new Rng(seed ^ 0x5f77c1);
++  const rock: Mesh = { positions: [], indices: [], colors: [] };
++  const snow: Mesh = { positions: [], indices: [], colors: [] };
++  const masses: Bounds[] = [];
++  const cosine = Math.cos(site.angle);
++  const sine = Math.sin(site.angle);
++  const white = new Color(1, 1, 1);
++  const palette = ['#6c7380', '#636b7a', '#626977', '#737682', '#686e7b'];
++  function world({ u, v, y }: Point) {
++    return new Vector3(site.x + cosine * u + sine * v, y, site.z + sine * u - cosine * v);
++  }
++
++  // Each triangle belongs to just one material. The common snow-line vertices
++  // close the cap without overlaying two coincident rock and snow faces.
++  function triangle(mesh: Mesh, a: Point, b: Point, c: Point, colour: Color) {
++    const first = mesh.positions.length / 3;
++    for (const p of [a, b, c]) {
++      const w = world(p);
++      mesh.positions.push(w.x, w.y, w.z);
++      mesh.colors.push(colour.r, colour.g, colour.b);
++    }
++    mesh.indices.push(first, first + 1, first + 2);
++  }
++
++  // Bilateral bevels, not a subdivided sphere. The truncated shoulders and the
++  // wide central face remain visible on the smallest preset.
++  const outline = [
++    [-0.48, -0.27], [-0.28, -0.48], [0.29, -0.48], [0.48, -0.24],
++    [0.48, 0.26], [0.22, 0.49], [-0.26, 0.47], [-0.49, 0.23],
++  ];
++  const rear = count === 4 ? 4 : count === 7 ? 4 : 6;
++  const rowCounts = count === 4 ? [rear] : [rear, count - rear];
++  for (const [row, blocks] of rowCounts.entries()) {
++    const weights = Array.from({ length: blocks }, () => rng.float(0.84, 1.13));
++    const total = weights.reduce((s, w) => s + w, 0);
++    let start = site.width * (row === 1 ? -0.44 : -0.5);
++    const span = site.width * (row === 1 ? 0.88 : 1);
++    for (const [i, weight] of weights.entries()) {
++      const cell = span * weight / total;
++      const middle = start + cell / 2;
++      start += cell;
++      const width = Math.min(site.width / 3, cell * 0.965);
++      const forward = site.width * (count === 4 ? rng.float(0.30, 0.34) : row ? 0.507 : 0.258);
++      const depth = site.width * (count === 4 ? rng.float(0.39, 0.47) : row ? 0.232 : 0.255);
++      const bottom = -3;
++      const silhouette = [0.76, 0.83, 0.43, 0.64, 0.77, 0.52];
++      const height = site.height * (row ? rng.float(0.24, 0.44) :
++        silhouette[i % silhouette.length] * rng.float(0.88, 1.08));
++      const dip = rng.float(0.43, 0.58);
++      const skew = rng.float(-0.09, 0.09);
++      const corners = outline.map(([u, v]) => ({
++        u: u * width * rng.float(0.93, 1.0),
++        v: v * depth * rng.float(0.88, 1.0),
++      }));
++      const tint = new Color(rng.pick(palette));
++      const rings: Point[][] = [];
++      const ranges: Bounds = { minU: Infinity, maxU: -Infinity, minV: Infinity, maxV: -Infinity, minY: bottom, maxY: 0 };
++      // The upper portion recedes inward. The flatter, snow-holding shoulder
++      // therefore projects beyond the summit, especially on the camera side.
++      for (const [scale, fraction, retreat] of [
++        [0.93, 0, 0.01], [1.0, 0.40, 0.01], [0.91, 0.70, 0],
++        [0.84, 0.85, -0.03], [0.48, 1.0, -0.17],
++      ]) {
++        const ring = corners.map(({ u, v }) => {
++          const p = {
++            u: middle + u * scale + width * skew * (1 - scale),
++            v: forward + v * scale + depth * retreat,
++            y: bottom + fraction * (height - bottom + skew * u - dip * v),
++          };
++          ranges.minU = Math.min(ranges.minU, p.u);
++          ranges.maxU = Math.max(ranges.maxU, p.u);
++          ranges.minV = Math.min(ranges.minV, p.v);
++          ranges.maxV = Math.max(ranges.maxV, p.v);
++          ranges.maxY = Math.max(ranges.maxY, p.y);
++          return p;
++        });
++        rings.push(ring);
++      }
++      const base = { u: middle, v: forward + depth * 0.01, y: bottom };
++      const crown = { u: middle + width * skew * 0.52, v: forward - depth * 0.17, y: height + depth * 0.035 };
++      ranges.maxY = Math.max(ranges.maxY, crown.y);
++      masses.push(ranges);
++      for (let j = 0; j < corners.length; j++) {
++        const k = (j + 1) % corners.length;
++        triangle(rock, base, rings[0][k], rings[0][j], tint);
++        for (let level = 0; level < rings.length - 1; level++) {
++          const lo = rings[level], hi = rings[level + 1];
++          for (const [a, b, c] of [[lo[j], lo[k], hi[k]], [lo[j], hi[k], hi[j]]]) {
++            const normal = world(b).sub(world(a)).cross(world(c).sub(world(a))).normalize();
++            const covered = level >= 2 && normal.y > 0.59;
++            triangle(covered ? snow : rock, a, b, c, covered ? white : tint);
++          }
++        }
++        const top = rings[rings.length - 1];
++        triangle(snow, crown, top[j], top[k], white);
++      }
++    }
++  }
++
++  const snowWallIndexCount = snow.indices.length;
++  // Wind packs a low bank at the rock feet; its edge passes under the actual
++  // terrain and the inner crest projects into the block. Separate small banks
++  // reach the gaps between blocks, leaving stretches of exposed dark rock.
++  for (const [i, mass] of masses.entries()) {
++    const width = mass.maxU - mass.minU;
++    const u = (mass.minU + mass.maxU) / 2 + width * rng.float(-0.18, 0.18);
++    const v = mass.maxV + site.width * 0.008;
++    const crest = Math.min(4.8, site.width * rng.float(0.029, 0.045));
++    const reach = site.width * rng.float(0.055, 0.091);
++    const radius = width * rng.float(0.60, 0.76);
++    // Keep banks of the rear row within their own footprint when front blocks
++    // stand in front of them; snow in these gaps is visible between the toes.
++    const minor = i < rear && rowCounts.length > 1 ? reach * 0.68 : reach;
++    const bankPoint = (u: number, v: number, lift: number) => {
++      const p = { u, v, y: 0 };
++      const w = world(p);
++      p.y = site.groundAt(w.x, w.z) + lift;
++      return p;
++    };
++    const center = bankPoint(u, v, crest);
++    const edge = Array.from({ length: 12 }, (_, j) => {
++      const a = 2 * Math.PI * j / 12;
++      return bankPoint(u + radius * Math.cos(a), v + minor * Math.sin(a), -0.17);
++    });
++    const shoulder = edge.map(p => bankPoint(0.55 * p.u + 0.45 * u, 0.55 * p.v + 0.45 * v, crest * 0.60));
++    for (let j = 0; j < edge.length; j++) {
++      const k = (j + 1) % edge.length;
++      triangle(snow, center, shoulder[j], shoulder[k], white);
++      triangle(snow, shoulder[j], edge[j], edge[k], white);
++      triangle(snow, shoulder[j], edge[k], shoulder[k], white);
++    }
++  }
++
++  function pack(data: Mesh) {
++    return { positions: Float32Array.from(data.positions), indices: Uint32Array.from(data.indices), colors: data.colors };
++  }
++  return { rock: pack(rock), snow: pack(snow), masses, snowWallIndexCount, capTriangleCount: snowWallIndexCount / 3 };
++}
+diff --git a/experiments/plateau/slice-wall.ts b/experiments/plateau/slice-wall.ts
+new file mode 100644
+index 0000000..9949e86
+--- /dev/null
++++ b/experiments/plateau/slice-wall.ts
+@@ -0,0 +1,76 @@
++import * as THREE from 'three';
++import { buildAngularWall } from './slice-wall-angular';
++import { buildRoundedWall, type RoundedWallSite } from './slice-wall-rounded';
++
++export type WallFamily = 'original' | 'rounded' | 'angular';
++export const wallCounts = { rounded: [4, 7, 10] as const, angular: [5, 8, 12] as const };
++export function wallParameters(params: URLSearchParams) {
++  const value = params.get('wall');
++  const family: WallFamily = value === 'rounded' || value === 'angular' ? value : 'original';
++  const p = Number(params.get('preset') ?? 1);
++  const rawSeed = Number(params.get('seed') ?? 42);
++  return { family, preset: [0, 1, 2].includes(p) ? p : 1, seed: Number.isSafeInteger(rawSeed) ? rawSeed : 42 };
++}
++
++export function makeWallGroup(site: RoundedWallSite, family: Exclude<WallFamily,'original'>, preset: number, seed: number, rockMaterial: THREE.Material, snowMaterial: THREE.Material) {
++  const data = family === 'rounded'
++    ? buildRoundedWall(site, wallCounts.rounded[preset], seed)
++    : buildAngularWall(site, wallCounts.angular[preset], seed);
++  const group = new THREE.Group();
++  for (const [kind, material] of [['rock',rockMaterial], ['snow',snowMaterial]] as const) {
++    const raw = data[kind];
++    const g = new THREE.BufferGeometry();
++    g.setAttribute('position', new THREE.BufferAttribute(raw.positions, 3));
++    g.setAttribute('color', new THREE.Float32BufferAttribute(raw.colors, 3));
++    g.setIndex(new THREE.BufferAttribute(raw.indices, 1));
++    g.computeVertexNormals();
++    const mesh = new THREE.Mesh(g, material);
++    mesh.name = 'slice-wall-' + kind;
++    if (kind==='snow' && 'snowWallIndexCount' in data) mesh.userData.snowWallIndexCount=data.snowWallIndexCount;
++    mesh.castShadow = mesh.receiveShadow = true;
++    group.add(mesh);
++  }
++  group.userData.count = data.masses.length;
++  return group;
++}
++
++// Render semantic IDs with depth testing, including all foreground occluders.
++export function measureWallSnow(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer) {
++  const oldBg = scene.background;
++  const oldFog = scene.fog;
++  const size = renderer.getDrawingBufferSize(new THREE.Vector2());
++  const target = new THREE.WebGLRenderTarget(size.x, size.y);
++  const originalTarget = renderer.getRenderTarget();
++  const materials = [0x000000,0xff0000,0x00ff00,0x0000ff].map(color => new THREE.MeshBasicMaterial({color, toneMapped:false,side:THREE.DoubleSide}));
++  const oldMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
++  const snowMeshes:THREE.Mesh[]=[];
++  const pixels = new Uint8Array(size.x * size.y * 4);
++  try {
++    scene.background = new THREE.Color(0);
++    scene.fog = null;
++    scene.traverse(o => {
++      if (o instanceof THREE.Mesh) {
++        oldMaterials.set(o, o.material);
++        o.material = materials[o.name === 'slice-wall-rock' ? 1 : o.name === 'slice-wall-snow' ? 2 : 0];
++        if(o.name==='slice-wall-snow' && Number.isInteger(o.userData.snowWallIndexCount)){
++          const g=o.geometry;
++          g.addGroup(0,o.userData.snowWallIndexCount,0);
++          g.addGroup(o.userData.snowWallIndexCount,g.index!.count-o.userData.snowWallIndexCount,1);
++          o.material=[materials[2],materials[3]];
++          snowMeshes.push(o);
++        }
++      }
++    });
++    renderer.setRenderTarget(target);
++    renderer.render(scene,camera);
++    renderer.readRenderTargetPixels(target,0,0,size.x,size.y,pixels);
++  } finally {
++    renderer.setRenderTarget(originalTarget);
++    oldMaterials.forEach((v,k)=>{k.material=v;});
++    snowMeshes.forEach(m=>m.geometry.clearGroups());
++    scene.background=oldBg; scene.fog=oldFog; target.dispose(); materials.forEach(m=>m.dispose());
++  }
++  let rock=0,snow=0,base=0;
++  for(let i=0;i<pixels.length;i+=4){if(pixels[i]>127)rock++;if(pixels[i+1]>127)snow++;if(pixels[i+2]>127)base++;}
++  return {rockPixels:rock,snowPixels:snow,bankPixels:base,wholePercent:(snow+base)*100/(snow+base+rock),percent:snow+rock?100*snow/(snow+rock):null};
++}
+diff --git a/index.html b/index.html
+index 1eb1238..ce356d4 100644
+--- a/index.html
++++ b/index.html
+@@ -112,6 +112,7 @@
+         <label class="chk"><input id="st-horror" type="checkbox" checked /> Жуть по ночам</label>
+       </div>
+       <button id="st-go">Начать</button>
++      <!-- mountain-review -->
+       <a class="snow-start" href="./experiments/mountains/?seed=42" style="font-size:18px;font-weight:600">Исследовать новые горы</a>
+       <a class="snow-start" href="?snow=1">Испытать изменяемый снег</a>
+       <a class="snow-start" href="?cliffs=1">Испытать скалы</a>
+diff --git a/vite.config.ts b/vite.config.ts
+index ce0baec..a033782 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -14,7 +14,10 @@ const buildInfo = `<p class="hint build-info" title="${sha}" style="text-align:c
+ 
+ export default defineConfig({
+   base: './',
+-  plugins: [{ name: 'build-info', transformIndexHtml: html => html.replaceAll('<!-- build-info -->', buildInfo) }],
++  plugins: [{ name: 'build-info', transformIndexHtml: html => html.replaceAll('<!-- build-info -->', buildInfo)
++    .replace('<!-- mountain-review -->', process.env.BUILD_CHANNEL === 'test'
++      ? '<a class="snow-start" href="./experiments/plateau/review.html">Горы · интерактивный тест</a>'
++      : '') }],
+   build: {
+     target: 'es2022',
+     rollupOptions: { input: {
+@@ -27,6 +30,8 @@ export default defineConfig({
+       plateauWedgeAscent: 'experiments/plateau/wedge-ascent.html',
+       plateauSnow: 'experiments/plateau/wedge-snow.html',
+       plateauMountain: 'experiments/plateau/mountain.html',
++      plateauRoute: 'experiments/plateau/route.html',
++      plateauReview: 'experiments/plateau/review.html',
+     } },
+     chunkSizeWarningLimit: 6000,
+   },

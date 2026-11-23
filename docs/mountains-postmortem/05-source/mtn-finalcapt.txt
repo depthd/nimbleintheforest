@@ -1,0 +1,11 @@
+original-0-42 2097636 16579.299999999814
+rounded-0-42 2087612 15434.349999999627
+rounded-1-42 2087960 9662.499999999534
+rounded-2-42 2088308 10424.25
+rounded-1-7 2087960 5774.049999999814
+rounded-1-8191 2087960 2720.399999999907
+rounded-1-23011 2087960 4069.7999999998137
+page.evaluate: Target page, context or browser has been closed
+    at /workspace/work/mtn-run/I/docs/mountains-slice/integration/capture-walls.cjs:22:27 {
+  log: []
+}

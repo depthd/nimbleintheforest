@@ -1,0 +1,62 @@
+
+> nimble-in-the-forest@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 172 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/experiments/plateau/route.html                 2.37 kB │ gzip:     1.15 kB
+dist/experiments/plateau/wedge.html                 2.45 kB │ gzip:     1.24 kB
+dist/experiments/plateau/wedge-snow.html            3.18 kB │ gzip:     1.45 kB
+dist/experiments/mountains/index.html               3.28 kB │ gzip:     1.55 kB
+dist/experiments/plateau/wedge-ascent.html          3.52 kB │ gzip:     1.57 kB
+dist/experiments/mountains/plan-preview.html        4.28 kB │ gzip:     2.10 kB
+dist/experiments/plateau/mountain.html              4.49 kB │ gzip:     1.92 kB
+dist/experiments/plateau/index.html                 4.75 kB │ gzip:     2.00 kB
+dist/experiments/mountains/crossing.html            4.85 kB │ gzip:     2.20 kB
+dist/index.html                                     9.89 kB │ gzip:     3.57 kB
+dist/assets/terrain-worker-CnNmfg5S.js             69.98 kB
+dist/assets/main-vfwSP27C.css                       1.62 kB │ gzip:     0.76 kB
+dist/assets/main-BqxwiJtu.css                      16.89 kB │ gzip:     4.42 kB
+dist/assets/mountainCrossing-DNA2Y2D4.js            0.48 kB │ gzip:     0.38 kB
+dist/assets/mountains-DKu-_rTA.js                   0.54 kB │ gzip:     0.42 kB
+dist/assets/modulepreload-polyfill-B5Qt9EMX.js      0.71 kB │ gzip:     0.40 kB
+dist/assets/preload-helper-PPVm8Dsz.js              1.23 kB │ gzip:     0.71 kB
+dist/assets/rng-CfIYparh.js                         1.65 kB │ gzip:     0.89 kB
+dist/assets/preview_animals-xNfZNfeQ.js             1.90 kB │ gzip:     1.11 kB
+dist/assets/preview-T1H9LWR5.js                     1.94 kB │ gzip:     1.09 kB
+dist/assets/preview_wood-BEP-tAaA.js                2.09 kB │ gzip:     1.11 kB
+dist/assets/ascent-khjlaMfz.js                      2.22 kB │ gzip:     1.07 kB
+dist/assets/seam-boundary-Bp5Uw9fJ.js               2.50 kB │ gzip:     1.26 kB
+dist/assets/c1-lab-E2NFzChd.js                      3.15 kB │ gzip:     1.90 kB
+dist/assets/plateau-profile-Bs3LIxkH.js             3.28 kB │ gzip:     1.55 kB
+dist/assets/plateauWedge-HB_HoVLG.js                3.60 kB │ gzip:     1.89 kB
+dist/assets/wedge-rim-cDsPS6TK.js                   3.76 kB │ gzip:     1.88 kB
+dist/assets/wedge-prototype-C40VNGdN.js             4.56 kB │ gzip:     2.23 kB
+dist/assets/plateauWedgeAscent-BonX3Y4S.js          9.54 kB │ gzip:     4.71 kB
+dist/assets/wall-outcrop-DEI0Byfl.js               11.99 kB │ gzip:     5.57 kB
+dist/assets/mountainPlan-DPRiCapS.js               14.17 kB │ gzip:     6.06 kB
+dist/assets/plateauSnow-Br0DvLGH.js                14.24 kB │ gzip:     6.73 kB
+dist/assets/wedge-snow-layer-DL7y6FuZ.js           14.46 kB │ gzip:     6.15 kB
+dist/assets/wedge-rocks-kI1eSofD.js                16.14 kB │ gzip:     7.08 kB
+dist/assets/OrbitControls-WEisXgd0.js              19.94 kB │ gzip:     4.50 kB
+dist/assets/plateauRoute-ZETesUSp.js               20.80 kB │ gzip:     9.87 kB
+dist/assets/rock-skin-BkJej36q.js                  27.20 kB │ gzip:    11.92 kB
+dist/assets/crossing-view-BR1AuNKk.js              30.46 kB │ gzip:    13.01 kB
+dist/assets/plateau-DKcGCWxZ.js                    32.19 kB │ gzip:    11.92 kB
+dist/assets/plateauMountain-DEoMEYJK.js            34.32 kB │ gzip:    15.46 kB
+dist/assets/main-DGOnJ2Oe.js                       43.23 kB │ gzip:    17.81 kB
+dist/assets/cliffs-DUpJuGKS.js                     44.24 kB │ gzip:    16.54 kB
+dist/assets/GLTFLoader-C3J_BCL8.js                 50.99 kB │ gzip:    15.26 kB
+dist/assets/player-BexLK3Ab.js                    123.04 kB │ gzip:    43.63 kB
+dist/assets/main-UYj3KBgB.js                      479.63 kB │ gzip:   179.61 kB
+dist/assets/three.module-B6dfA8ub.js              746.59 kB │ gzip:   192.14 kB
+dist/assets/rapier-OnF19VgH.js                  4,334.40 kB │ gzip: 1,644.49 kB
+✓ built in 20.89s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice

@@ -1,0 +1,187 @@
+{
+  "viewport": [
+    960,
+    540
+  ],
+  "browser": "156.0.8078.79",
+  "views": [
+    {
+      "name": "profile",
+      "eye": [
+        72,
+        14.5,
+        30
+      ],
+      "target": [
+        75,
+        12.9,
+        0
+      ]
+    },
+    {
+      "name": "bank",
+      "eye": [
+        53.5,
+        16.7,
+        -1.8
+      ],
+      "target": [
+        76,
+        13.4,
+        0.4
+      ]
+    },
+    {
+      "name": "on-deck",
+      "eye": [
+        74,
+        14.12,
+        0.4
+      ],
+      "target": [
+        91,
+        15.1,
+        0.4
+      ]
+    }
+  ],
+  "measure": "12 renders per state, synchronized WebGL readPixels, median; camera profile, bridge group hidden/visible",
+  "captures": [
+    {
+      "seed": 42,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "off": {
+        "calls": 6,
+        "triangles": 33954,
+        "medianMs": 1027.9500000001863,
+        "rangeMs": [
+          686.0999999996275,
+          2514.699999999255
+        ]
+      },
+      "on": {
+        "calls": 9,
+        "triangles": 38542,
+        "medianMs": 507.59999999962747,
+        "rangeMs": [
+          413.29999999981374,
+          1667.7000000001863
+        ]
+      },
+      "endpoints": [
+        {
+          "x": 59,
+          "z": 0.42125582154840235,
+          "y": 14.12
+        },
+        {
+          "x": 91,
+          "z": 0.42125582154840235,
+          "y": 14.12
+        }
+      ]
+    },
+    {
+      "seed": 7,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "off": {
+        "calls": 6,
+        "triangles": 32280,
+        "medianMs": 314.20000000018626,
+        "rangeMs": [
+          250.5,
+          483.09999999962747
+        ]
+      },
+      "on": {
+        "calls": 9,
+        "triangles": 36868,
+        "medianMs": 337.9499999997206,
+        "rangeMs": [
+          306.80000000074506,
+          415
+        ]
+      },
+      "endpoints": [
+        {
+          "x": 59,
+          "z": 0.39703707452863446,
+          "y": 14.12
+        },
+        {
+          "x": 91,
+          "z": 0.39703707452863446,
+          "y": 14.12
+        }
+      ]
+    },
+    {
+      "seed": 8191,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "off": {
+        "calls": 6,
+        "triangles": 31756,
+        "medianMs": 283.25,
+        "rangeMs": [
+          262.59999999962747,
+          598.2999999998137
+        ]
+      },
+      "on": {
+        "calls": 9,
+        "triangles": 36344,
+        "medianMs": 245.5,
+        "rangeMs": [
+          196.20000000018626,
+          352.69999999925494
+        ]
+      },
+      "endpoints": [
+        {
+          "x": 59,
+          "z": 0.7092573596164584,
+          "y": 14.12
+        },
+        {
+          "x": 91,
+          "z": 0.7092573596164584,
+          "y": 14.12
+        }
+      ]
+    },
+    {
+      "seed": 23011,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "off": {
+        "calls": 6,
+        "triangles": 30093,
+        "medianMs": 424.5,
+        "rangeMs": [
+          258.59999999962747,
+          587.1000000005588
+        ]
+      },
+      "on": {
+        "calls": 9,
+        "triangles": 34681,
+        "medianMs": 406.54999999981374,
+        "rangeMs": [
+          270.29999999981374,
+          978.5
+        ]
+      },
+      "endpoints": [
+        {
+          "x": 59,
+          "z": 0.0709347546100616,
+          "y": 14.12
+        },
+        {
+          "x": 91,
+          "z": 0.0709347546100616,
+          "y": 14.12
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "base": "http://127.0.0.1:5184/experiments/plateau/route.html?seed=42&wall=rounded&qa=1",
+  "control": "Playwright keydown/up, W/E/arrow keys. QA step advances fixed frames; lookup of actual Player pose. Look sets screenshot pitch only; no teleports.",
+  "errors": [],
+  "stops": {
+    "spawn": {
+      "x": -65.00004006462495,
+      "y": -0.005107171722920578,
+      "z": -15.000054421280765,
+      "yaw": -1.5707963267948966,
+      "attached": false,
+      "grounded": true
+    },
+    "den-mouth": {
+      "x": 14.99750612751086,
+      "y": -0.1469096945787896,
+      "z": 42.07096224837005,
+      "yaw": 0.004203673205102114,
+      "attached": false,
+      "grounded": true
+    },
+    "den-wall": {
+      "x": 14.991056380531518,
+      "y": 0.1200322473101551,
+      "z": 20.33009950021369,
+      "yaw": 0.004203673205102114,
+      "attached": false,
+      "grounded": true
+    },
+    "rope-and-anchor": {
+      "x": -3.882325305366521,
+      "y": -0.007646422293328181,
+      "z": 42.049990875026424,
+      "yaw": 0.0292036732051021,
+      "attached": false,
+      "grounded": true
+    },
+    "rope-upper-landing": {
+      "x": -4.011094756244347,
+      "y": 14.030099929566495,
+      "z": 32.437632588887936,
+      "yaw": 0.0542036732051021,
+      "attached": false,
+      "grounded": true
+    },
+    "rope-fastening": {
+      "x": -0.7796731599855207,
+      "y": 14.030099351498938,
+      "z": 29.979967089936615,
+      "yaw": -4.045796326794888,
+      "attached": false,
+      "grounded": true
+    },
+    "through-cave": {
+      "x": 17.00895464194582,
+      "y": 16.087475933157837,
+      "z": 8.010957768885419,
+      "yaw": 0.004203673205102114,
+      "attached": false,
+      "grounded": true
+    },
+    "upper-exit": {
+      "x": 17.00170150678605,
+      "y": 22.030100600387957,
+      "z": -12.06024381192401,
+      "yaw": -0.04579632679489789,
+      "attached": false,
+      "grounded": true
+    },
+    "through-return": {
+      "x": 17.008263340991107,
+      "y": 14.030041172468918,
+      "z": 16.93381835706532,
+      "yaw": -3.170796326794891,
+      "attached": false,
+      "grounded": true
+    },
+    "rope-lower-landing": {
+      "x": -3.864447305270005,
+      "y": -0.004642825033806697,
+      "z": 35.09172377101822,
+      "yaw": -4.645796326794897,
+      "attached": false,
+      "grounded": true
+    }
+  }
+}

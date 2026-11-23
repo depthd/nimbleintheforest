@@ -1,0 +1,978 @@
+commit fe4277c96426aeaa09c0ddbd208ade1d7b33f2ab
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T16:01:32+04:00
+
+    Add an interactive Pages review for the mountain slice
+
+ .coord/tasks/MOUNTAINS-PAGES-001.json |  23 +++++
+ experiments/plateau/mountain.ts       |  33 +++++-
+ experiments/plateau/review.css        |  57 ++++++++++
+ experiments/plateau/review.html       |  94 +++++++++++++++++
+ experiments/plateau/review.ts         | 189 ++++++++++++++++++++++++++++++++++
+ experiments/plateau/route.html        |   2 +
+ experiments/plateau/route.ts          |  44 +++++++-
+ index.html                            |   1 +
+ vite.config.ts                        |   6 +-
+ 9 files changed, 440 insertions(+), 9 deletions(-)
+
+commit 3910d955d353e824513b2fcf77a15707e6a18c27
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:48:20+04:00
+
+    Sign off the tested mountain slice and document the separated snow ridge
+
+ docs/mountains-slice/README.md                    | 33 ++++++-----
+ docs/mountains-slice/integration/wall-timing.json | 70 +++++++++++------------
+ 2 files changed, 53 insertions(+), 50 deletions(-)
+
+commit b61374b1caac24bbbec00751c3db51dd53d2f885
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:46:31+04:00
+
+    Save final angular-wall masks, shadows and release UI and walking checks
+
+ docs/mountains-slice/integration/capture-walls.cjs |   5 +-
+ .../integration/final-walls/angular-0-42.png       | Bin 259199 -> 254862 bytes
+ .../integration/final-walls/angular-1-23011.png    | Bin 261156 -> 256907 bytes
+ .../integration/final-walls/angular-1-42.png       | Bin 262705 -> 258959 bytes
+ .../integration/final-walls/angular-1-7.png        | Bin 261943 -> 257916 bytes
+ .../integration/final-walls/angular-1-8191.png     | Bin 262063 -> 258424 bytes
+ .../integration/final-walls/angular-2-42.png       | Bin 265022 -> 261770 bytes
+ .../final-walls/no-shadow/angular-0-42.png         | Bin 366206 -> 252522 bytes
+ .../final-walls/no-shadow/angular-1-42.png         | Bin 370599 -> 256224 bytes
+ .../final-walls/no-shadow/angular-2-42.png         | Bin 373164 -> 258577 bytes
+ .../integration/final-walls/report.json            |  82 ++++++++-------------
+ .../integration/seed-42/metrics.json               |   2 +-
+ .../integration/seed-7/metrics.json                |   2 +-
+ .../mountains-slice/integration/wall-controls.json |   2 +-
+ 14 files changed, 38 insertions(+), 55 deletions(-)
+
+commit 99703e73d4c524d3ec162e5c2ef2401d9cf9e7fd
+Merge: 59e3c49 ae0bfe8
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:46:30+04:00
+
+    Merge commit 'ae0bfe8' into integration/mountains-1
+
+commit ae0bfe8df29cc288a78b3b84e0276ec7a9bceb5b
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:46:10+04:00
+
+    Verify the covered crest in nine full-scene color and depth comparisons
+
+ docs/mountains-slice/wall-angular/README.md        |  10 ++
+ .../wall-angular/snow-ridge-before-after.jpg       | Bin 0 -> 72318 bytes
+ .../wall-angular/snow-ridge-check.json             | 171 +++++++++++++++++++++
+ 3 files changed, 181 insertions(+)
+
+commit 59e3c49a809379efa6168c3b1837f07a8af24048
+Merge: 9e483aa e0e66ef
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:45:40+04:00
+
+    Merge commit 'e0e66ef' into integration/mountains-1
+
+commit e0e66ef60686e9ad9832d4511765408e7b28ec73
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:44:58+04:00
+
+    Recheck the angular crest repair across seven views and four seeds
+
+ docs/mountains-slice/wall-rounded/README.md        |  11 +-
+ .../wall-rounded/angular-revision.json             | 172 +++++++++++++++++++++
+ .../mountains-slice/wall-rounded/capture-seams.cjs |  27 +++-
+ .../wall-rounded/capture-without-shadows.cjs       |  28 +++-
+ .../wall-rounded/compare-angular-revision.py       |  53 +++++++
+ .../wall-rounded/make-seam-sheet.py                |  19 ++-
+ docs/mountains-slice/wall-rounded/seams.jpg        | Bin 210687 -> 215700 bytes
+ docs/mountains-slice/wall-rounded/seams.json       |  46 +++++-
+ docs/mountains-slice/wall-rounded/walls-seed42.png | Bin 746264 -> 746247 bytes
+ 9 files changed, 329 insertions(+), 27 deletions(-)
+
+commit 9e483aa1d01bd165652b6ee528301f261880143a
+Merge: cb4e6f4 64dedb0
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:39:43+04:00
+
+    Merge commit '64dedb0' into integration/mountains-1
+
+commit 64dedb06d53eb46d0523a635000967ef16c3dc95
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:39:16+04:00
+
+    Verify plateau clearances after recessing the covered stone ridges
+
+ docs/mountains-slice/integration/wall-intersections.json | 2 +-
+ docs/mountains-slice/integration/wall-intersections.md   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+commit cb4e6f41e07992b8008a3d1452880e6f2788f473
+Merge: 143da4b ed02069
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:38:18+04:00
+
+    Merge commit 'ed02069' into integration/mountains-1
+
+commit ed020699f6a6defa7eb55ddcac2fca71a83f8715
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:37:42+04:00
+
+    Recess the stone only inside sharp, fully snow-covered crest folds
+
+ docs/mountains-slice/wall-angular/geometry.json | 52 +++++++++++-----------
+ experiments/plateau/slice-wall-angular.ts       | 59 +++++++++++++++++++++++++
+ 2 files changed, 85 insertions(+), 26 deletions(-)
+
+commit 143da4b703ec56c61e392aeac47b432a78249cfd
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:33:16+04:00
+
+    Verify the wall options, direct URL, reload and original reset through the UI
+
+ docs/mountains-slice/README.md                     |  2 ++
+ docs/mountains-slice/integration/wall-controls.cjs | 29 ++++++++++++++++++++++
+ .../mountains-slice/integration/wall-controls.json |  8 ++++++
+ 3 files changed, 39 insertions(+)
+
+commit 0f1672454a587ccbf68c801c45f41fec185ff8a1
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:29:27+04:00
+
+    Revert "Keep the angular snow cap above its support at multisampled seams"
+    
+    This reverts commit dbe4a8120c70ec5e7d5ea83f507aa0f2ced01c05.
+
+ experiments/plateau/mountain.ts | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+commit dbe4a8120c70ec5e7d5ea83f507aa0f2ced01c05
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:26:39+04:00
+
+    Keep the angular snow cap above its support at multisampled seams
+
+ experiments/plateau/mountain.ts | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+commit 670fe76ccc42f61eda74fda1403ae9d19f951d5c
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:22:52+04:00
+
+    Record the localized angular snow seam visible during the camera sweep
+
+ docs/mountains-slice/README.md | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+commit 5552fc72772317fb3ed6de0893df780035160bb5
+Merge: a5604c1 5a0ef95
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:22:52+04:00
+
+    Merge commit '5a0ef95' into integration/mountains-1
+
+commit 5a0ef9508e3804f541991167166e1689e2e76fa9
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:22:30+04:00
+
+    Inspect snow seams across seven close camera angles
+
+ docs/mountains-slice/wall-rounded/README.md        |  14 +++
+ .../mountains-slice/wall-rounded/capture-seams.cjs |  62 ++++++++++++++
+ .../wall-rounded/make-seam-sheet.py                |  94 +++++++++++++++++++++
+ docs/mountains-slice/wall-rounded/seams.jpg        | Bin 0 -> 210687 bytes
+ docs/mountains-slice/wall-rounded/seams.json       |  81 ++++++++++++++++++
+ 5 files changed, 251 insertions(+)
+
+commit a5604c174aaae23599321ad18e6c4bb30061f4df
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:19:12+04:00
+
+    Report acceptance evidence, workload and open decisions by direction
+
+ .coord/tasks/MOUNTAINS-SLICE-001.json             |   2 +-
+ docs/mountains-slice/README.md                    |  81 +++++++++++++++
+ docs/mountains-slice/integration/wall-timing.json | 114 ++++++++++++++++++++++
+ 3 files changed, 196 insertions(+), 1 deletion(-)
+
+commit d76840ae525b2d3b2f61e5082d7f1c78756f3c09
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:17:42+04:00
+
+    Place both middle presets on the new seed side by side
+
+ docs/mountains-slice/integration/new-seed.jpg | Bin 0 -> 174204 bytes
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+
+commit caaffff7ee62558106ee6e0b59dbe8c5cccabe9e
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:17:12+04:00
+
+    Save thirteen full-scene wall captures with masks and shadow controls
+
+ .../integration/benchmark-walls.cjs                |  32 +++
+ docs/mountains-slice/integration/capture-walls.cjs |   4 +-
+ .../integration/final-walls/angular-0-42.png       | Bin 0 -> 259199 bytes
+ .../integration/final-walls/angular-1-23011.png    | Bin 0 -> 261156 bytes
+ .../integration/final-walls/angular-1-42.png       | Bin 0 -> 262705 bytes
+ .../integration/final-walls/angular-1-7.png        | Bin 0 -> 261943 bytes
+ .../integration/final-walls/angular-1-8191.png     | Bin 0 -> 262063 bytes
+ .../integration/final-walls/angular-2-42.png       | Bin 0 -> 265022 bytes
+ .../final-walls/no-shadow/angular-0-42.png         | Bin 0 -> 366206 bytes
+ .../final-walls/no-shadow/angular-1-42.png         | Bin 0 -> 370599 bytes
+ .../final-walls/no-shadow/angular-2-42.png         | Bin 0 -> 373164 bytes
+ .../final-walls/no-shadow/original-0-42.png        | Bin 0 -> 368455 bytes
+ .../final-walls/no-shadow/rounded-0-42.png         | Bin 0 -> 355350 bytes
+ .../final-walls/no-shadow/rounded-1-42.png         | Bin 0 -> 359601 bytes
+ .../final-walls/no-shadow/rounded-2-42.png         | Bin 0 -> 360742 bytes
+ .../integration/final-walls/original-0-42.png      | Bin 0 -> 259725 bytes
+ .../integration/final-walls/report.json            | 283 +++++++++++++++++++++
+ .../integration/final-walls/rounded-0-42.png       | Bin 0 -> 254615 bytes
+ .../integration/final-walls/rounded-1-23011.png    | Bin 0 -> 255385 bytes
+ .../integration/final-walls/rounded-1-42.png       | Bin 0 -> 255707 bytes
+ .../integration/final-walls/rounded-1-7.png        | Bin 0 -> 255200 bytes
+ .../integration/final-walls/rounded-1-8191.png     | Bin 0 -> 255670 bytes
+ .../integration/final-walls/rounded-2-42.png       | Bin 0 -> 257155 bytes
+ 23 files changed, 318 insertions(+), 1 deletion(-)
+
+commit f912db65a1eae94391683197747251c42895a405
+Merge: c0d09b9 07252c8
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:15:34+04:00
+
+    Merge commit '07252c8' into integration/mountains-1
+
+commit 07252c895a1744271784917b31a0f241311e745d
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:15:13+04:00
+
+    Verify wall geometry and lighting; capture six matched camera views
+
+ docs/mountains-slice/wall-rounded/README.md        |  48 +++++++
+ .../wall-rounded/capture-without-shadows.cjs       |  58 ++++++++
+ docs/mountains-slice/wall-rounded/compare_views.py | 103 ++++++++++++++
+ docs/mountains-slice/wall-rounded/geometry.json    | 143 +++++++++++++++++++
+ .../mountains-slice/wall-rounded/outside-wall.json | 151 +++++++++++++++++++++
+ .../wall-rounded/project-footprint.cjs             |  99 ++++++++++++++
+ docs/mountains-slice/wall-rounded/walls-seed42.png | Bin 0 -> 746264 bytes
+ experiments/plateau/slice-wall-rounded.test.cjs    |   8 +-
+ 8 files changed, 606 insertions(+), 4 deletions(-)
+
+commit c0d09b9e695fe2cf8188c5f6c4b24aff0118ecb3
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:14:21+04:00
+
+    Photograph the release geometry and repeat the angular-wall walk
+
+ docs/mountains-slice/integration/journey.jpg       | Bin 99471 -> 110541 bytes
+ .../integration/release-views/bridge.jpg           | Bin 0 -> 38477 bytes
+ .../integration/release-views/den.jpg              | Bin 0 -> 21720 bytes
+ .../integration/release-views/rope.jpg             | Bin 0 -> 36214 bytes
+ .../integration/seed-7/metrics.json                |   2 +-
+ docs/mountains-slice/integration/survey.cjs        |  26 +++++++++++++++++++++
+ 6 files changed, 27 insertions(+), 1 deletion(-)
+
+commit 8927c05c9d345db84f686ca0389c0c6639a465a7
+Merge: 4412cbd 934a99e
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:13:55+04:00
+
+    Merge commit '934a99e' into integration/mountains-1
+
+commit 934a99e6f35f1a3b34535f525c0f17d5031ca2d4
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:13:18+04:00
+
+    Regress angular wall coverage against an independent full camera mask
+
+ docs/mountains-slice/wall-angular/geometry.json | 18 ++++++++
+ experiments/plateau/slice-wall-angular.test.cjs | 59 ++++++++++++++++++++++++-
+ 2 files changed, 75 insertions(+), 2 deletions(-)
+
+commit 4412cbd3b629f1cc3da774c027faaaf6973b6b97
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:13:13+04:00
+
+    Collect playable route and tier views for the owner review
+
+ docs/mountains-slice/integration/journey.jpg       | Bin 0 -> 99471 bytes
+ docs/mountains-slice/integration/tiers-entries.jpg | Bin 0 -> 43895 bytes
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+
+commit 30a9bfad28b1a8f8b34b492cc06ed1ee3a56c82c
+Merge: cd5c3b4 88c34f3
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:13:12+04:00
+
+    Merge commit '88c34f3' into integration/mountains-1
+
+commit cd5c3b4fdc13dafbe783e42d8722eab65bcd5041
+Merge: d21ec23 e71f2a2
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:13:12+04:00
+
+    Merge commit 'e71f2a2' into integration/mountains-1
+
+commit 88c34f3f8914e84b27d7e0f7e46cc7e105f7f9fa
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:12:35+04:00
+
+    Recheck wall clearances on the final angular snow geometry
+
+ .../integration/wall-intersections.json            | 26 +++++++++++-----------
+ .../integration/wall-intersections.md              | 12 +++++-----
+ 2 files changed, 19 insertions(+), 19 deletions(-)
+
+commit e71f2a26eace42677eccbfd634c96f276c36a3b3
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:12:28+04:00
+
+    Record angular wall coverage across six seeds and the shape preview
+
+ docs/mountains-slice/wall-angular/README.md       |  12 +-
+ docs/mountains-slice/wall-angular/projection.jpg  | Bin 0 -> 131441 bytes
+ docs/mountains-slice/wall-angular/projection.json | 148 ++++++++++++++++++++++
+ 3 files changed, 157 insertions(+), 3 deletions(-)
+
+commit d21ec2372fabfe10cc7f65a6c104e7aab3655751
+Merge: 0f2d846 dcbeb96
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:11:33+04:00
+
+    Merge commit 'dcbeb96' into integration/mountains-1
+
+commit 0f2d846ca62ffcf30c270a0aeba2cc574de88cf0
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:11:26+04:00
+
+    Index historical mountain branches and file revisions for lookup
+
+ docs/mountains-slice/CONTEXT.md           |    4 +
+ docs/mountains-slice/archive-branches.tsv |   13 +
+ docs/mountains-slice/archive-changes.tsv  | 1605 +++++++++++++++++++++++++++++
+ 3 files changed, 1622 insertions(+)
+
+commit 1bdd46192d64caff0d577547ca054db61e129830
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:11:05+04:00
+
+    Record continuous walks through the release geometry on four seeds
+
+ .../integration/seed-23011/metrics.json            |  84 +++++++++++++++------
+ .../integration/seed-42/01-wall.jpg                | Bin 58196 -> 57111 bytes
+ .../mountains-slice/integration/seed-42/02-den.jpg | Bin 30723 -> 35767 bytes
+ .../integration/seed-42/04-through.jpg             | Bin 31882 -> 38942 bytes
+ .../integration/seed-42/05-bridge.jpg              | Bin 65602 -> 67004 bytes
+ .../integration/seed-42/metrics.json               |  50 ++++++------
+ .../integration/seed-7/metrics.json                |  42 ++++++++++-
+ .../integration/seed-8191/metrics.json             |  42 ++++++++++-
+ 8 files changed, 163 insertions(+), 55 deletions(-)
+
+commit dcbeb9624a466274824fc2b9cb4a0b113031ef8f
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:10:54+04:00
+
+    Distribute snow over supported talus faces for quarter coverage
+
+ docs/mountains-slice/wall-angular/geometry.json | 156 ++++++++++++++++--------
+ experiments/plateau/slice-wall-angular.test.cjs |   2 +-
+ experiments/plateau/slice-wall-angular.ts       | 129 +++++++++++++-------
+ 3 files changed, 197 insertions(+), 90 deletions(-)
+
+commit 29d426d695d93e99737bb25e4709a74ea16e3b2c
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:09:46+04:00
+
+    Repeat individual comparisons and isolate received shadows explicitly
+
+ docs/mountains-slice/integration/capture-walls.cjs | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
+
+commit ce66744d01d85d7fd585fd5b0a088bf52efd7d20
+Merge: 827c58d e202a41
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:09:29+04:00
+
+    Merge commit 'e202a41' into integration/mountains-1
+
+commit e202a41a1233d6b75a8b55b28d3d8797caf35c44
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:09:08+04:00
+
+    Attach measured seed matrix, keyboard traces, and three in-engine views
+
+ docs/mountains-slice/tiers-entries/07-wide.png    | Bin 0 -> 68402 bytes
+ docs/mountains-slice/tiers-entries/42-cut.png     | Bin 0 -> 110223 bytes
+ docs/mountains-slice/tiers-entries/8191-peak.png  | Bin 0 -> 116052 bytes
+ docs/mountains-slice/tiers-entries/README.md      |  64 +++++
+ docs/mountains-slice/tiers-entries/browser.json   | 107 +++++++
+ docs/mountains-slice/tiers-entries/live-walk.json |  77 +++++
+ docs/mountains-slice/tiers-entries/physics.json   | 336 ++++++++++++++++++++++
+ 7 files changed, 584 insertions(+)
+
+commit 6a09cb1759cd43d3c93a9b97da2970869e64c5a4
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:09:01+04:00
+
+    Record tier and entrance distribution, playable walks and paired camera evidence
+
+ experiments/plateau/slice-terrain-browser.cjs | 150 ++++++++++++++++++++++++++
+ experiments/plateau/slice-terrain.test.cjs    |  21 ++++
+ 2 files changed, 171 insertions(+)
+
+commit 827c58d8108666e2076928e72c7c8ab3eb0a04f3
+Merge: 22094c9 72074f2
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:08:50+04:00
+
+    Merge commit '72074f2' into integration/mountains-1
+
+commit 22094c95e8ed399bc29a43782f3eccaa948aa99b
+Merge: f898819 a5c85c6
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:08:50+04:00
+
+    Merge commit 'a5c85c6' into integration/mountains-1
+
+commit a5c85c6cf407cf34a4bb8e96bffcf2b8e6156ae0
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:08:19+04:00
+
+    Verify realtime input and pointer lock on the static mountain build
+
+ .../mountains-slice/integration/realtime/README.md |   7 +++
+ .../mountains-slice/integration/realtime/input.jpg | Bin 0 -> 37208 bytes
+ .../integration/realtime/metrics.json              |  60 +++++++++++++++++++++
+ 3 files changed, 67 insertions(+)
+
+commit 72074f24512f25bf25305add4bdf7df152d01bcc
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:08:06+04:00
+
+    Measure rock-to-rock gaps and check wall faces against the original plateau roofs
+
+ .../integration/wall-intersections.cjs             | 198 ++++++++++++
+ .../integration/wall-intersections.json            | 352 +++++++++++++++++++++
+ .../integration/wall-intersections.md              |  28 ++
+ 3 files changed, 578 insertions(+)
+
+commit f898819486222e87e73573f2a198eb7bb6b9ba2c
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:07:39+04:00
+
+    Document the archive, ownership, traversal state and review scope
+
+ docs/mountains-slice/CONTEXT.md | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+commit 1edaa03eb56ebbd7fd6ca68ba78a8c404b0f1e05
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:04:18+04:00
+
+    Avoid a missing icon request on the standalone route
+
+ experiments/plateau/route.html | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit c75ee7c1f11c08718679c4d191548eddf69dc0ff
+Merge: 5e6e43d 57b8210
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:03:13+04:00
+
+    Merge commit '57b8210' into integration/mountains-1
+
+commit 5e6e43d0b939e0651f0f2cc472c40c6796fe7bc7
+Merge: 77cc049 0a4efcc
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:03:06+04:00
+
+    Merge commit '0a4efcc' into integration/mountains-1
+
+commit 57b821054c4fbf31f42c6c7eaeaf57add2986793
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:02:46+04:00
+
+    Keep forests on small living shelves and expose steep cut banks
+
+ experiments/plateau/slice-terrain.test.cjs | 18 ++++++++++
+ experiments/plateau/slice-terrain.ts       | 57 ++++++++++++++++++++++++------
+ 2 files changed, 64 insertions(+), 11 deletions(-)
+
+commit 77cc0499c226b5476b916df6f80997fbbb304260
+Merge: a200701 7e59e46
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:02:09+04:00
+
+    Merge commit '7e59e46' into integration/mountains-1
+
+commit a2007019ca986945b1ac13e5642483844e205c19
+Merge: 4ef48be 88c8e10
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:02:08+04:00
+
+    Merge commit '88c8e10' into integration/mountains-1
+
+commit 4ef48be93c987db98c900d491392d4789499e05c
+Merge: e22a22f a34804f
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:02:08+04:00
+
+    Merge commit 'a34804f' into integration/mountains-1
+
+commit 0a4efcc057e648c6fcffdd0d9be200ed18cdda98
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:01:52+04:00
+
+    Record continuous traversal on three additional mountain seeds
+
+ .../integration/seed-23011/metrics.json            | 136 +++++++++++++++++++++
+ .../integration/seed-7/metrics.json                | 136 +++++++++++++++++++++
+ .../integration/seed-8191/metrics.json             | 136 +++++++++++++++++++++
+ 3 files changed, 408 insertions(+)
+
+commit e22a22f33deec32a291c2a77d5e97636b762cbbe
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:01:50+04:00
+
+    Render traversal with the established conifers and sheltered rock material
+
+ experiments/plateau/mountain-groves.ts | 34 +++++++++++++++++++++++++++++++--
+ experiments/plateau/route.ts           | 35 ++++++++++++++--------------------
+ 2 files changed, 46 insertions(+), 23 deletions(-)
+
+commit 7e59e46d929aa0b8b3f8a5f916ac17059f0fb1d6
+Author: Codex <codex@local>
+Date:   2026-11-23T12:01:48+04:00
+
+    Record keyboard traversal of rope, through cave and den on combined terrain
+
+ docs/mountains-slice/passages/DECISION.md          |  16 ++-
+ docs/mountains-slice/passages/browser/browser.json |  87 ++++++++++++
+ .../mountains-slice/passages/browser/den-mouth.jpg | Bin 0 -> 19310 bytes
+ .../passages/browser/rope-and-anchor.jpg           | Bin 0 -> 20788 bytes
+ .../passages/browser/rope-fastening.jpg            | Bin 0 -> 10428 bytes
+ .../passages/browser/through-cave.jpg              | Bin 0 -> 14467 bytes
+ experiments/plateau/slice-passages-browser.cjs     | 147 +++++++++++++++++++++
+ 7 files changed, 247 insertions(+), 3 deletions(-)
+
+commit 88c8e1073b3c01ac56b6fbbaf373bf1800e6b9f2
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:01:42+04:00
+
+    Capture bridge approaches and measure render cost in the integrated scene
+
+ docs/mountains-slice/bridges/REVIEW.md             |  49 ++++++
+ .../bridges/bridge-23011-profile.jpg               | Bin 0 -> 32162 bytes
+ docs/mountains-slice/bridges/bridge-42-bank.jpg    | Bin 0 -> 33731 bytes
+ docs/mountains-slice/bridges/bridge-42-on-deck.jpg | Bin 0 -> 43937 bytes
+ docs/mountains-slice/bridges/bridge-42-profile.jpg | Bin 0 -> 34804 bytes
+ docs/mountains-slice/bridges/bridge-7-profile.jpg  | Bin 0 -> 33199 bytes
+ .../bridges/bridge-8191-profile.jpg                | Bin 0 -> 33416 bytes
+ docs/mountains-slice/bridges/browser.json          | 187 +++++++++++++++++++++
+ experiments/plateau/slice-bridges.capture.cjs      |  88 ++++++++++
+ experiments/plateau/slice-bridges.test.cjs         |  14 +-
+ 10 files changed, 333 insertions(+), 5 deletions(-)
+
+commit a34804f606fef615c9d13580b79543128fa1e227
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T12:00:24+04:00
+
+    Trace every visible roof patch to its supporting rock plane
+
+ docs/mountains-slice/wall-angular/README.md     | 19 +++++++++++++
+ docs/mountains-slice/wall-angular/geometry.json | 36 ++++++++++++++++---------
+ experiments/plateau/slice-wall-angular.test.cjs | 26 ++++++++++++++----
+ 3 files changed, 64 insertions(+), 17 deletions(-)
+
+commit 28d62b831bed9a3bfda49cc5f448bb5fd407f2c2
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:59:33+04:00
+
+    Open the original cliff at the same review camera from a direct link
+
+ experiments/plateau/mountain.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit b21364d1a747988b4948adfa4ad7b72392e4faa5
+Merge: 5267c89 424aa56
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:59:33+04:00
+
+    Merge commit '424aa56' into integration/mountains-1
+
+commit 424aa56b7c9f3c90363dad79cd04166513aca8b0
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:59:05+04:00
+
+    Widen snow-bearing upper bevels on the wall face
+
+ experiments/plateau/slice-wall-rounded.ts | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+commit 5267c892ca64853a6ed585ba629237a6c0384c96
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:57:16+04:00
+
+    Measure snow on the cliff face separately from the foot of the cliff
+
+ experiments/plateau/slice-wall.ts | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+commit 0bdb2b2df6bf1580b321763dfca961af53128aa8
+Merge: 8cf21d9 5e321f7
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:57:16+04:00
+
+    Merge commit '5e321f7' into integration/mountains-1
+
+commit 8cf21d9e2246abd84e1b03ee82347f5d58ada821
+Merge: 7b6e2d9 3574572
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:57:16+04:00
+
+    Merge commit '3574572' into integration/mountains-1
+
+commit 7b6e2d9d379c958c21268f76dc1950bbaf39c056
+Merge: 3b99a61 b3addcc
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:56:40+04:00
+
+    Merge commit 'b3addcc' into integration/mountains-1
+
+commit 3b99a6168d76a75c3e9fe020f99e8d8420c81ed9
+Merge: 3ddb845 bf56072
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:56:40+04:00
+
+    Merge commit 'bf56072' into integration/mountains-1
+
+commit 3ddb845d4ca31dad354078622b59e036c8101522
+Merge: 89347e4 a709afa
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:56:40+04:00
+
+    Merge commit 'a709afa' into integration/mountains-1
+
+commit 3574572fc472e9f004276351bfa1d169490674e2
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:56:33+04:00
+
+    Share the wall-only snow index boundary with both families
+
+ experiments/plateau/slice-wall-angular.ts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 5e321f7628c970c9947be0f2e5026956ef08e4cb
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:56:24+04:00
+
+    Walk the integrated mountain route with real keyboard input
+
+ .../integration/seed-42/01-wall.jpg                | Bin 0 -> 58196 bytes
+ .../mountains-slice/integration/seed-42/02-den.jpg | Bin 0 -> 30723 bytes
+ .../integration/seed-42/03-rope.jpg                | Bin 0 -> 40855 bytes
+ .../integration/seed-42/04-through.jpg             | Bin 0 -> 31882 bytes
+ .../integration/seed-42/05-bridge.jpg              | Bin 0 -> 65602 bytes
+ .../integration/seed-42/metrics.json               | 172 +++++++++++++++++
+ docs/mountains-slice/integration/walk-route.cjs    | 212 +++++++++++++++++++++
+ 7 files changed, 384 insertions(+)
+
+commit bf560725e7a88a51d9c9574751e293f4b02b5339
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:55:59+04:00
+
+    Cut irregular fracture ridges and verify grounded angular talus
+
+ docs/mountains-slice/wall-angular/geometry.json  | 110 ++++++++++++
+ docs/mountains-slice/wall-angular/slab-rays.json | 131 ++++++++++++++
+ experiments/plateau/slice-wall-angular.test.cjs  |  76 ++++++++
+ experiments/plateau/slice-wall-angular.ts        | 215 ++++++++++++++---------
+ 4 files changed, 451 insertions(+), 81 deletions(-)
+
+commit b3addccc8dedd2081ab6b23f74cefe2d40958f82
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:55:58+04:00
+
+    Seed entry families per massif and exercise their independent combinations
+
+ experiments/plateau/slice-terrain.test.cjs | 15 ++++++++++++++-
+ experiments/plateau/slice-terrain.ts       |  8 ++++----
+ 2 files changed, 18 insertions(+), 5 deletions(-)
+
+commit a709afaff106ce1dd4364b377b54305f881a7a06
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:55:55+04:00
+
+    Expose the snow index range above the ground drifts
+
+ experiments/plateau/slice-wall-rounded.ts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 89347e49d92703e3c1685499cf03c4dd19304abd
+Merge: fe64349 e5f23d1
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:55:48+04:00
+
+    Merge commit 'e5f23d1' into integration/mountains-1
+
+commit fe643491003bcfb757f60c01a62e438f794b9742
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:55:33+04:00
+
+    Synchronize frame sampling and capture a shadow-free comparison control
+
+ docs/mountains-slice/integration/capture-walls.cjs | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+commit e5f23d1935b2df50778f3ec1ddf286a30f272ff5
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:55:32+04:00
+
+    Shape staggered rounded shoulders to hold visible snow patches
+
+ experiments/plateau/slice-wall-rounded.ts | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+commit 12470c4b61b84f2c683fd3812cf4dc88f11295cc
+Merge: ad48bda b6357fe
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:55:32+04:00
+
+    Merge commit 'b6357fe' into integration/mountains-1
+
+commit ad48bda589b7af2abded192c48fbb313370b31db
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:55:00+04:00
+
+    Integrate the wall comparator and play the metric mountain route with the game controller
+
+ experiments/plateau/mountain-shape.ts |   9 ++
+ experiments/plateau/mountain.html     |   2 +-
+ experiments/plateau/mountain.ts       |  47 +++++++++-
+ experiments/plateau/route.html        |   5 ++
+ experiments/plateau/route.ts          | 158 ++++++++++++++++++++++++++++++++++
+ experiments/plateau/slice-wall.ts     |  66 ++++++++++++++
+ vite.config.ts                        |   1 +
+ 7 files changed, 286 insertions(+), 2 deletions(-)
+
+commit b6357fe835d568c5ddf1a3a629780202bc77231d
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:54:06+04:00
+
+    Verify actual seeded ascent surfaces, sharp peaks and traversable connections
+
+ experiments/plateau/slice-terrain.test.cjs | 213 ++++++++++++
+ experiments/plateau/slice-terrain.ts       | 500 +++++++++++++++++++++--------
+ 2 files changed, 574 insertions(+), 139 deletions(-)
+
+commit dd112d3423d7ae84b955b4f144226968b47f1dcc
+Merge: 93ef933 e199687
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:53:19+04:00
+
+    Merge commit 'e199687' into integration/mountains-1
+
+commit 93ef93330595b7f4bd8a8750d7c2070c2fb67ed6
+Merge: 64a2c3c c9b50bf
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:53:19+04:00
+
+    Merge commit 'c9b50bf' into integration/mountains-1
+
+commit c9b50bf701f4059720911df31d3f4ec23e03d6a7
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:52:48+04:00
+
+    Select unobstructed bridge seats and verify return and missing-deck controls
+
+ docs/mountains-slice/bridges/physics.ndjson |   4 +
+ experiments/plateau/slice-bridges.test.cjs  | 127 ++++++++++++++++++++++++++++
+ experiments/plateau/slice-bridges.ts        |  21 ++++-
+ 3 files changed, 148 insertions(+), 4 deletions(-)
+
+commit e19968743684f02a941e5bbdd6e2c7ce0c4532eb
+Author: Codex <codex@local>
+Date:   2026-11-23T11:51:34+04:00
+
+    Verify four seeded continuous routes, rope collisions and cave boundaries
+
+ docs/mountains-slice/passages/DECISION.md   |  29 ++++
+ docs/mountains-slice/passages/physics.json  | 221 ++++++++++++++++++++++++++++
+ docs/mountains-slice/passages/rope.json     |  16 ++
+ experiments/plateau/slice-passages.test.cjs | 107 ++++++++++++++
+ 4 files changed, 373 insertions(+)
+
+commit 64a2c3c9b721e7baee152eec9aaa3641da3a31f7
+Merge: 87ba4a0 3c12120
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:51:01+04:00
+
+    Merge commit '3c12120' into integration/mountains-1
+
+commit 87ba4a0ab39077b252339fd84e14113a23610167
+Merge: 65ca9dd b0112c9
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:51:01+04:00
+
+    Merge branch 'track/tiers-entries' into integration/mountains-1
+
+commit 65ca9ddf57b854af67fbcda5fd3f2e0b2605a506
+Merge: ec6bfd7 24d7b6e
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:51:00+04:00
+
+    Merge branch 'track/bridges' into integration/mountains-1
+
+commit ec6bfd79d61d7df934bb95daae4aa98e56eca1f0
+Merge: a0e46b5 bb3daf9
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:51:00+04:00
+
+    Merge branch 'track/passages' into integration/mountains-1
+
+commit 3c12120f73ca75ea6de3ce872286146ab33eb891
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:50:30+04:00
+
+    Add sourced mountain traversal reference sheets
+
+ docs/mountains-slice/references/README.md   |  61 ++++++++++++++++++++++++++++
+ docs/mountains-slice/references/bridge.jpg  | Bin 0 -> 587346 bytes
+ docs/mountains-slice/references/den.jpg     | Bin 0 -> 504689 bytes
+ docs/mountains-slice/references/rope.jpg    | Bin 0 -> 492758 bytes
+ docs/mountains-slice/references/through.jpg | Bin 0 -> 484689 bytes
+ 5 files changed, 61 insertions(+)
+
+commit b0112c969e314ffe061b957bd8b99a0dfbd3a96e
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:49:24+04:00
+
+    Dress the shielded cliffs with the archived jointed outcrop generator
+
+ experiments/plateau/slice-terrain.ts | 30 +++++++++++++++++++++++++++++-
+ 1 file changed, 29 insertions(+), 1 deletion(-)
+
+commit 24d7b6e5098c9fd58122a2fe67a74688ed7b9c91
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:49:22+04:00
+
+    Build seeded terrace crossing from validated cliff-edge landings
+
+ experiments/plateau/slice-bridges.ts | 159 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 159 insertions(+)
+
+commit bb3daf98fa65740a5995f8bb662e34237776ee3a
+Author: Codex <codex@local>
+Date:   2026-11-23T11:48:55+04:00
+
+    Connect living terraces by a continuous rock tunnel and add a closed den
+
+ experiments/plateau/slice-passages.ts | 85 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 85 insertions(+)
+
+commit a0e46b5478d29fa0219884a6c079eac0eb3d9523
+Merge: eb0083d 49d52ed
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:47:54+04:00
+
+    Merge branch 'track/tiers-entries' into integration/mountains-1
+
+commit 84451175e9b41374e31921373de9c39beff428f4
+Author: Codex <codex@local>
+Date:   2026-11-23T11:47:47+04:00
+
+    Add collision-constrained fixed-rope ascent, release and landing
+
+ docs/mountains-slice/passages/DECISION.md        |  2 +-
+ experiments/plateau/slice-passages-rope.test.cjs | 61 +++++++++++++++
+ experiments/plateau/slice-passages-rope.ts       | 97 ++++++++++++++++++++++++
+ 3 files changed, 159 insertions(+), 1 deletion(-)
+
+commit 49d52eda392eda32bd86725bed26dd08bfca953e
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:47:33+04:00
+
+    Face cliff contacts outward and keep the cave landing level
+
+ experiments/plateau/slice-terrain.ts | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+commit eb0083ddefa96df8f97f9d1770e55f931d2917d9
+Merge: cef0ff0 3ac859f
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:47:26+04:00
+
+    Merge branch 'track/wall-rounded' into integration/mountains-1
+
+commit 6db559d5e81eb6223484b1cb8026aafbe13eb844
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:47:02+04:00
+
+    Add seed-based living terraces, west entrances and reserved passage ports
+
+ experiments/plateau/slice-terrain.ts | 176 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 176 insertions(+)
+
+commit cef0ff0fc24cc7336bfc3f4bd4a9f731b5b49ef0
+Merge: bd95225 2e4f0a8
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:46:37+04:00
+
+    Merge branch 'track/wall-angular' into integration/mountains-1
+
+commit bd95225ed73cfbee3d05c8ceba8ffff0f3e7e65f
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:46:37+04:00
+
+    Record seven mountain briefs, shared rules and unmodified wall baseline
+
+ .coord/tasks/MOUNTAINS-SLICE-001.json              |  22 ++++
+ docs/mountains-slice/briefs/B.md                   |  23 ++++
+ docs/mountains-slice/briefs/E.md                   |  18 +++
+ docs/mountains-slice/briefs/P.md                   |  17 +++
+ docs/mountains-slice/briefs/R.md                   |  20 +++
+ docs/mountains-slice/briefs/T.md                   |  20 +++
+ docs/mountains-slice/briefs/WA.md                  |  38 ++++++
+ docs/mountains-slice/briefs/WB.md                  |  38 ++++++
+ docs/mountains-slice/briefs/assignment.md          | 137 +++++++++++++++++++++
+ docs/mountains-slice/briefs/working-rules.md       |  27 ++++
+ .../integration/baseline/original-0-42.png         | Bin 0 -> 259725 bytes
+ .../integration/baseline/report.json               |  25 ++++
+ docs/mountains-slice/integration/capture-walls.cjs |  39 ++++++
+ 13 files changed, 424 insertions(+)
+
+commit 3ac859fd474526fd653ed295b1f723fab087405b
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:46:27+04:00
+
+    Build seeded bevelled entrance buttresses with snow-bearing shoulders
+
+ experiments/plateau/slice-wall-rounded.test.cjs | 107 ++++++++++++++++
+ experiments/plateau/slice-wall-rounded.ts       | 156 ++++++++++++++++++++++++
+ 2 files changed, 263 insertions(+)
+
+commit 2e4f0a819f15c670d54ec0cc424abaa532c802da
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:45:47+04:00
+
+    Build seeded angular talus walls with supported snow patches
+
+ experiments/plateau/slice-wall-angular.ts | 144 ++++++++++++++++++++++++++++++
+ 1 file changed, 144 insertions(+)
+
+commit 47d58da44337d8f2a7a0c3ebfb162086bf2809d1
+Author: Codex <codex@local>
+Date:   2026-11-23T11:44:29+04:00
+
+    Record same-scene cave ownership, physics and rope decision
+
+ docs/mountains-slice/passages/DECISION.md | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+commit ec1aaa2a8bb593b9caaaa7e9539d26dad1133ea2
+Author: Alexey Kotlov <squeeze9x@gmail.com>
+Date:   2026-11-23T11:44:18+04:00
+
+    Record suspension bridge ownership and landing scale
+
+ docs/mountains-slice/bridges/DECISION.md | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)

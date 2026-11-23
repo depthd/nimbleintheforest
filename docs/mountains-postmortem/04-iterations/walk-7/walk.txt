@@ -1,0 +1,20 @@
+spawn {"name":"spawn","frame":0,"x":-65,"y":0.04,"z":-15,"attached":false}
+[wall] { x: -65, y: 0.04, z: -15 }
+wall exterior {"name":"wall exterior","frame":3964,"x":-32.133,"y":-0.109,"z":57.997,"attached":false}
+[P3 dead end and return] { x: -32.133, y: -0.109, z: 57.997 }
+den entrance {"name":"den entrance","frame":6568,"x":14.992,"y":0.005,"z":34.195,"attached":false}
+den back wall {"name":"den back wall","frame":7182,"x":14.999,"y":0.12,"z":20.33,"attached":false}
+returned through den entrance {"name":"returned through den entrance","frame":7858,"x":15,"y":0.002,"z":38.81,"attached":false}
+[P1 rope] { x: 15, y: 0.002, z: 38.81 }
+rope attached {"name":"rope attached","frame":8779,"x":-4,"y":0,"z":35.1,"attached":true}
+rope upper landing {"name":"rope upper landing","frame":9296,"x":-4,"y":14.081,"z":32.652,"attached":false}
+[P2 through cave, ascent and return] { x: -4, y: 14.081, z: 32.652 }
+through cave lower entrance {"name":"through cave lower entrance","frame":10561,"x":17.005,"y":14.03,"z":14.139,"attached":false}
+through cave upper exit {"name":"through cave upper exit","frame":11589,"x":17,"y":22.03,"z":-11.506,"attached":false}
+through cave lower return {"name":"through cave lower return","frame":12569,"x":17,"y":14.03,"z":15.818,"attached":false}
+[B suspension bridge] { x: 17, y: 14.03, z: 15.818 }
+main anchor {"name":"main anchor","frame":14922,"x":58.838,"y":14.108,"z":-0.005,"attached":false}
+bridge midpoint {"name":"bridge midpoint","frame":15482,"x":74.842,"y":12.386,"z":0,"attached":false}
+satellite anchor {"name":"satellite anchor","frame":16061,"x":90.88,"y":14.15,"z":0,"attached":false}
+satellite plateau {"name":"satellite plateau","frame":16224,"x":95.072,"y":14.03,"z":0,"attached":false}
+PASS /tmp/mountains-release-7 16224 ticks 444.435 m

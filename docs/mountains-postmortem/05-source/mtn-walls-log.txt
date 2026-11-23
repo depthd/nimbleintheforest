@@ -1,0 +1,22 @@
+original-0-42 2097636 1.6999999997206032
+rounded-0-42 2087612 0.8999999999068677
+rounded-1-42 2087960 1
+rounded-2-42 2088308 1.1000000000931323
+locator.screenshot: Element is not attached to the DOM
+Call log:
+[2m  - taking element screenshot[22m
+[2m  - waiting for fonts to load...[22m
+[2m  - fonts loaded[22m
+[2m  - attempting scroll into view action[22m
+[2m    - waiting for element to be stable[22m
+
+    at /workspace/work/mtn-run/I/docs/mountains-slice/integration/capture-walls.cjs:31:33 {
+  log: [
+    '  - taking element screenshot',
+    '  - waiting for fonts to load...',
+    '  - fonts loaded',
+    '  - attempting scroll into view action',
+    '    - waiting for element to be stable'
+  ],
+  name: 'Error'
+}
