@@ -204,7 +204,7 @@ export async function startGame(settings: Settings) {
   G.vm.update(0);
   // Explicit diagnostic A/B switch; normal play always warms the starting area.
   if (new URLSearchParams(location.search).get('warmup') !== '0')
-    await warmStartup(renderer, G.scene, G.camera, new THREE.Vector3(0.5, G.house.Y0 + 1.6, 0),
+    await warmStartup(renderer, G.scene, G.camera, settings.trailStop ? null : new THREE.Vector3(0.5, G.house.Y0 + 1.6, 0),
       text => { if (loadText) loadText.textContent = text; });
   last = performance.now();
   acc = 0;

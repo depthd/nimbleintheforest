@@ -35,12 +35,13 @@ export function trailPose(region: Region, stop: TrailStop) {
   } else if (stop === 'bridge') {
     const bridge = planMountainBridge(t);
     if (!bridge) throw new Error('В этом мире не нашлось места для переправы.');
-    const landing = bridge.point(-3);
+    const leavingMain = bridge.from.mountainId === 'main';
+    const landing = bridge.point(leavingMain ? -2 : bridge.span+2);
     feet = ground(landing.x, landing.z);
-    look = bridge.point(bridge.span*.8, 0, 1.2);
+    look = bridge.point(bridge.span*(leavingMain ? .8 : .2), 0, 1.2);
   } else if (stop === 'overview') {
-    feet = ground(-48, 94);
-    look = {x: 23, y: 13, z: -2};
+    feet = ground(65, -113);
+    look = {x: 63, y: 15, z: -.5};
   } else {
     const a = t.passageAnchors;
     const entry = stop === 'rope' ? a.ropeLower : stop === 'through' ? a.throughLower : a.denMouth;

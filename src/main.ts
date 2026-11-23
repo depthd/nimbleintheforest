@@ -140,7 +140,9 @@ async function go() {
     G.input.lock();
     // the browser may refuse pointer lock after a long load: then ask for a click
     setTimeout(() => {
-      if (!G.input.locked && !G.hud.modal) G.hud.showPause(true);
+      if (G.input.locked || G.hud.modal || picker?.dialog.open) return;
+      if (selected) G.hud.message('Клик — осмотреться · WASD — идти · F2 — места', 'info', 16);
+      else G.hud.showPause(true);
     }, 500);
   }
 }
