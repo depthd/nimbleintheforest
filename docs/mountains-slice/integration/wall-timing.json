@@ -1,0 +1,114 @@
+{
+  "seed": 42,
+  "viewport": [
+    800,
+    450
+  ],
+  "errors": [],
+  "rows": [
+    {
+      "family": "original",
+      "preset": 0,
+      "times": [
+        2642.5,
+        2642.4000000003725,
+        2576.800000000745
+      ],
+      "medianMs": 2642.4000000003725,
+      "triangles": 2097636,
+      "calls": 40,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    },
+    {
+      "family": "rounded",
+      "preset": 0,
+      "times": [
+        2642.2999999998137,
+        2635.399999999441,
+        2553.7999999998137
+      ],
+      "medianMs": 2635.399999999441,
+      "triangles": 2087612,
+      "calls": 42,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    },
+    {
+      "family": "angular",
+      "preset": 0,
+      "times": [
+        2534.899999999441,
+        2528.7000000001863,
+        2639.5
+      ],
+      "medianMs": 2534.899999999441,
+      "triangles": 2087436,
+      "calls": 42,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    },
+    {
+      "family": "rounded",
+      "preset": 1,
+      "times": [
+        2671.399999999441,
+        2608.600000000559,
+        2501
+      ],
+      "medianMs": 2608.600000000559,
+      "triangles": 2087960,
+      "calls": 42,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "times": [
+        2588.100000000559,
+        2516.2999999998137,
+        2524.4000000003725
+      ],
+      "medianMs": 2524.4000000003725,
+      "triangles": 2087521,
+      "calls": 42,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    },
+    {
+      "family": "rounded",
+      "preset": 2,
+      "times": [
+        2583.399999999441,
+        2506.5999999996275,
+        2536.7000000001863
+      ],
+      "medianMs": 2536.7000000001863,
+      "triangles": 2088308,
+      "calls": 42,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    },
+    {
+      "family": "angular",
+      "preset": 2,
+      "times": [
+        2611.5,
+        2634.300000000745,
+        2534.899999999441
+      ],
+      "medianMs": 2611.5,
+      "triangles": 2087606,
+      "calls": 42,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    },
+    {
+      "family": "original",
+      "preset": 0,
+      "times": [
+        2581.800000000745,
+        2620.2999999998137,
+        2580.4000000003725
+      ],
+      "medianMs": 2581.800000000745,
+      "triangles": 2097636,
+      "calls": 40,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    }
+  ]
+}

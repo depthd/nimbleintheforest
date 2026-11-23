@@ -1,6 +1,6 @@
 {
   "id": "MOUNTAINS-SLICE-001",
-  "status": "developing",
+  "status": "review",
   "owner": "coordinator",
   "base_sha": "f79fcb78595ee1d56df6854ccbe352d112a75649",
   "branch": "integration/mountains-1",
