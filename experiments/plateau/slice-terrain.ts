@@ -116,6 +116,32 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer, pas
       top.vertex(p);
     }
   const at = (ix: number, iz: number) => ix * (nz + 1) + iz;
+  const bankVertices = new Map<number, number>();
+  function face(i: number, j: number, k: number) {
+    const a = grid[i],
+      b = grid[j],
+      c = grid[k];
+    const ux = b.x - a.x,
+      uy = b.y - a.y,
+      uz = b.z - a.z;
+    const vx = c.x - a.x,
+      vy = c.y - a.y,
+      vz = c.z - a.z;
+    const normalY = uz * vx - ux * vz;
+    // The steep cut exposes bedrock. Keep its drivable floor on the snow mesh.
+    if (s.tier.entry === 'cut' && Math.hypot(uy * vz - uz * vy, ux * vy - uy * vx) > 1.45 * normalY) {
+      for (const index of [i, j, k]) {
+        let vertex = bankVertices.get(index);
+        if (vertex === undefined) {
+          vertex = rock.vertex(grid[index]);
+          bankVertices.set(index, vertex);
+        }
+        rock.indices.push(vertex);
+      }
+    } else {
+      top.indices.push(start + i, start + j, start + k);
+    }
+  }
   for (let ix = 0; ix < nx; ix++)
     for (let iz = 0; iz < nz; iz++) {
       const a = at(ix, iz),
@@ -123,7 +149,8 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer, pas
         c = at(ix + 1, iz + 1),
         d = at(ix + 1, iz);
       if (!roofHole(s, (grid[a].x + grid[c].x) / 2, (grid[a].z + grid[c].z) / 2, passages)) {
-        top.indices.push(start + a, start + b, start + c, start + a, start + c, start + d);
+        face(a, b, c);
+        face(a, c, d);
       }
     }
   function side(a: SlicePoint, b: SlicePoint, south = false) {
@@ -363,11 +390,10 @@ export function generateSliceTerrain(seed: number, options: { passages?: boolean
   for (const s of surfaces) {
     if (s.tier.kind === 'peak') continue;
     const n = Math.max(2, Math.round(((s.right - s.left) * (s.front - s.back)) / 320));
-    for (let i = 0, nPlaced = 0; i < n * 24 && nPlaced < n; i++) {
-      const x = rng.float(s.left + 2, s.right - 2),
-        z = rng.float(s.back + 2, s.front - 2);
+    let nPlaced = 0;
+    function tryTree(x: number, z: number, heights: Rng) {
       const h = sampleSurface(s, x, z, passages);
-      if (h === undefined || Math.abs(h - s.top) > 0.02 || Math.abs(sampleHeight(x, z) - h) > 0.02) continue;
+      if (h === undefined || Math.abs(h - s.top) > 0.02 || Math.abs(sampleHeight(x, z) - h) > 0.02) return;
       if (
         surfaces.some(
           (other) =>
@@ -379,14 +405,14 @@ export function generateSliceTerrain(seed: number, options: { passages?: boolean
             z < other.front + 3,
         )
       )
-        continue;
+        return;
       if (
         (Math.abs(z) < 4 && x > 46 && x < 111) ||
         (x > 9 && x < 25 && z > -14 && z < 38) ||
         (x > -9 && x < 2 && z > 27)
       )
-        continue;
-      if (routes.some((r) => r.points.some((p) => Math.hypot(x - p.x, z - p.z) < 4))) continue;
+        return;
+      if (routes.some((r) => r.points.some((p) => Math.hypot(x - p.x, z - p.z) < 4))) return;
       const connectors = routes.filter((r) => r.from === s.tier.id);
       const arrival = routes.find((r) => r.to === s.tier.id)?.points.at(-1) ?? bridgeAnchors[1];
       if (
@@ -398,11 +424,20 @@ export function generateSliceTerrain(seed: number, options: { passages?: boolean
           return Math.hypot(x - arrival.x - t * dx, z - arrival.z - t * dz) < 3;
         })
       )
-        continue;
+        return;
       const p = pt(x, h, z);
-      if (trees.some((t) => distance(t, p) < 3)) continue;
-      trees.push({ ...p, height: rng.float(2.4, 5.8), radius: 0.23 });
+      if (trees.some((t) => distance(t, p) < 3)) return;
+      trees.push({ ...p, height: heights.float(2.4, 5.8), radius: 0.23 });
       nPlaced++;
+    }
+    for (let i = 0; i < n * 24 && nPlaced < n; i++)
+      tryTree(rng.float(s.left + 2, s.right - 2), rng.float(s.back + 2, s.front - 2), rng);
+    // On a small shelf a random scatter can miss the remaining free strip.
+    // Fill from a deterministic grid using its own heights stream.
+    if (nPlaced < n) {
+      const fillRng = new Rng(seed ^ hashString(s.tier.id + '-forest'));
+      for (let x = s.left + 1.5; x < s.right - 1 && nPlaced < n; x += 1)
+        for (let z = s.back + 1.5; z < s.front - 1 && nPlaced < n; z += 1) tryTree(x, z, fillRng);
     }
   }
   // Use the accepted plateau's contour to choose the visible frontage; the wall
