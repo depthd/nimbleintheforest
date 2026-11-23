@@ -110,6 +110,60 @@ function capAboveSnowLine(snow: Buffer, face: Face, threshold: number) {
   for (let i = 1; i < patch.length - 1; i++) snow.indices.push(first, first + i, first + i + 1);
 }
 
+type Ridge = { a: number; b: number; neighbors: number[] };
+
+// On a sharp, completely snow-covered crest, multisample depth testing can
+// expose the stone in a single sample. Give the snow room only inside that
+// buried fold. The original boundary vertices and snow surface stay in place.
+function recessCoveredRidges(rock: Buffer, faces: Face[], ridges: Ridge[], masses: Mass[], line: number) {
+  const replacements = new Map<number, number[]>();
+  const point = (id: number) => new Vector3().fromArray(rock.positions, id * 3);
+  for (const ridge of ridges) {
+    const { a, b, neighbors } = ridge;
+    const panels = neighbors.map(t => {
+      const ids = rock.indices.slice(3 * t, 3 * t + 3);
+      const opposite = ids.find(id => id !== a && id !== b)!;
+      const q = faces[t].retention;
+      const qa = q?.[ids.indexOf(a)], qb = q?.[ids.indexOf(b)];
+      const guarded = q && qa !== undefined && qb !== undefined
+        && Math.min(qa, qb, 0.48 * (qa + qb) + 0.04 * q[ids.indexOf(opposite)]) >= line;
+      const normal = Triangle.getNormal(...(faces[t].vertices as [Vector3, Vector3, Vector3]), new Vector3());
+      return { t, ids, opposite, covered: guarded, normal };
+    });
+    if (!panels.every(face => face.covered) || panels[0].normal.dot(panels[1].normal) >= 0.5) continue;
+    const av = point(a), bv = point(b), middle = av.clone().lerp(bv, 0.5);
+    const tint = new Color().fromArray(rock.colors, a * 3);
+    const low = [0.075, 0.925].map(t => {
+      const p = av.clone().lerp(bv, t);
+      p.y -= 0.32;
+      return addPoint(rock, p, tint);
+    });
+    for (const { t, ids, opposite } of panels) {
+      const side = middle.clone().lerp(point(opposite), 0.04);
+      const guard = addPoint(rock, side, tint);
+      const forward = ids[(ids.indexOf(opposite) + 1) % 3] === a;
+      const [v0, l0, l1, v1] = forward ? [a, ...low, b] : [b, low[1], low[0], a];
+      replacements.set(t, [
+        v0, l0, guard, l0, l1, guard, l1, v1, guard,
+        v0, guard, opposite, guard, v1, opposite,
+      ]);
+    }
+  }
+
+  const original = rock.indices;
+  rock.indices = [];
+  for (const mass of masses) {
+    const start = mass.firstTriangle, end = start + mass.triangles;
+    mass.firstTriangle = rock.indices.length / 3;
+    for (let t = start; t < end; t++) {
+      const revised = replacements.get(t);
+      if (revised) rock.indices.push(...revised);
+      else rock.indices.push(original[3 * t], original[3 * t + 1], original[3 * t + 2]);
+    }
+    mass.triangles = rock.indices.length / 3 - mass.firstTriangle;
+  }
+}
+
 // A talus fan in three dimensions. The rear line carries the tall, tilted
 // blocks; successive courses occupy the pockets below them toward the toe.
 export function buildAngularWall(site: Site, count: number, seed: number) {
@@ -122,6 +176,7 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
   }
   const masses: Mass[] = [];
   const faces: Face[] = [];
+  const ridges: Ridge[] = [];
   // Each row has shared cell boundaries. Its fracture planes stay inside
   // those cells, including at the widest seam between adjacent boulders.
   const maxDepth = site.width * 0.84;
@@ -197,6 +252,7 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
         const exposure = Math.cos(wind) * (pu - u) / span + Math.sin(wind) * (pv - v) / depth;
         return (id >= 2 * n ? 0.82 : 0.38) + 0.34 * exposure + 0.20 * (p.y - base) / h;
       });
+      const ridge: Ridge = { a: offset + 2 * n, b: offset + 2 * n + 1, neighbors: [] };
       for (let i = 0; i < tris.length; i += 3) {
         const ids = tris.slice(i, i + 3);
         const vertices = ids.map(id => points[id]);
@@ -204,8 +260,10 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
         const normal = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
         const roofFace = i >= tris.length - roof.length;
         const canHoldSnow = roofFace && normal.y > 0.46;
+        if (ids.includes(2 * n) && ids.includes(2 * n + 1)) ridge.neighbors.push(faces.length);
         faces.push({ vertices, retention: canHoldSnow ? ids.map(id => retention[id]) : undefined });
       }
+      ridges.push(ridge);
       masses.push({
         firstTriangle: start, triangles: rock.indices.length / 3 - start,
         minU: u - span * 0.5, maxU: u + span * 0.5,
@@ -214,6 +272,7 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
     }
   }
   const threshold = snowLine(faces, site, tx, tz);
+  recessCoveredRidges(rock, faces, ridges, masses, threshold);
   for (const face of faces) capAboveSnowLine(snow, face, threshold);
   // A low snow bank fills the crevices at ground level. Radial ends dip
   // below the actual ground, so the bank has no open visible hem.
