@@ -14,21 +14,34 @@ fs.mkdirSync(outDir,{recursive:true});
   await page.waitForFunction(()=>window.__mountain?.ready,null,{timeout:300000});
   await page.addStyleTag({content:'aside,#status{display:none!important}'});
   await page.evaluate(()=>window.__mountain.view('wall'));
-  const options=mode==='baseline'?[['original',0,42]]:[['original',0,42],...['rounded','angular'].flatMap((family,i)=>[42,7,19,83021].flatMap(seed=>(seed===42?[0,1,2]:[1]).map(p=>[family,p,seed])))];
+  const options=mode==='baseline'?[['original',0,42]]:[['original',0,42],...['rounded','angular'].flatMap((family,i)=>[42,7,8191,23011].flatMap(seed=>(seed===42?[0,1,2]:[1]).map(p=>[family,p,seed])))];
   const report=[];
   for(const [family,preset,seed] of options){
    const name=family+'-'+preset+'-'+seed;
    if(mode!=='baseline') await page.evaluate(o=>window.__mountain.setWall(...o),[family,preset,seed]);
    const stats=await page.evaluate(async()=>{
     const m=window.__mountain,r=m.renderer,gl=r.getContext(),times=[];
+    const sample=new Uint8Array(4);
     for(let i=0;i<5;i++){
       await new Promise(requestAnimationFrame);
-      const begin=performance.now();r.render(m.scene,m.camera);gl.finish();
+      const begin=performance.now();r.render(m.scene,m.camera);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,sample);
       times.push(performance.now()-begin);
     }
-    return {triangles:r.info.render.triangles,calls:r.info.render.calls,drawMs:times,medianMs:times.slice(1).sort((a,b)=>a-b)[1],gpu:gl.getParameter(gl.RENDERER)};
+    const sorted=times.slice(1).sort((a,b)=>a-b);
+    return {triangles:r.info.render.triangles,calls:r.info.render.calls,drawMs:times,medianMs:(sorted[1]+sorted[2])/2,gpu:gl.getParameter(gl.RENDERER)};
    });
    await page.locator('canvas').screenshot({path:path.join(outDir,name+'.png')});
+   if(seed===42 && mode!=='baseline') {
+     const png=await page.evaluate(()=>{
+       const {scene,camera,renderer:r}=window.__mountain;
+       r.shadowMap.enabled=false;r.render(scene,camera);
+       const url=r.domElement.toDataURL('image/png');
+       r.shadowMap.enabled=true;r.shadowMap.needsUpdate=true;r.render(scene,camera);
+       return url.split(',')[1];
+     });
+     fs.mkdirSync(path.join(outDir,'no-shadow'),{recursive:true});
+     fs.writeFileSync(path.join(outDir,'no-shadow',name+'.png'),Buffer.from(png,'base64'));
+   }
    if(family!=='original')stats.mask=await page.evaluate(()=>window.__mountain.wallMask());
    report.push({family,preset,seed,...stats});
    fs.writeFileSync(path.join(outDir,'report.json'),JSON.stringify({viewport:[800,450],errors,report},null,2));
