@@ -86,7 +86,7 @@ function bakeSurface(s: Surface,rock: TriangleBuffer,snow: TriangleBuffer,passag
       (s.tier.id==='main-2' && mid>14 && mid<20));
     const base=s.bottom+(door?4:0);
     if(Math.max(a.y,b.y)<=base+.0001)return;
-    rock.quad(a,b,pt(b.x,base,b.z),pt(a.x,base,a.z));
+    rock.quad(b,a,pt(a.x,base,a.z),pt(b.x,base,b.z));
   }
   // Winding faces outward. Doorways retain their stone lintels.
   for(let ix=0;ix<nx;ix++){
@@ -134,9 +134,9 @@ export function generateSliceTerrain(seed:number,options:{passages?:boolean}={})
   const box=(left:number,right:number,back:number,front:number,bottom:number,top:number):Box=>({left,right,back,front,bottom,top});
   const entry:Entry=wide?'wide':'cut';
   add('main',1,box(-60,60,-34,34,0,14),entry,-15,rng.float(39,44),rng.float(5,8));
-  add('main',2,box(-4,44,-24,14,14,22),entry,-14,rng.float(22,25),rng.float(4.5,6.5));
+  add('main',2,box(-4,44,-24,14,14,22),entry,-14,rng.float(16,17.5),rng.float(4.5,6.5));
   if(mainCount>=3)add('main',3,box(22,42,-22,0,22,26.6),entry,-12,15,rng.float(3.5,5),mainCount===3&&rng.chance(.45));
-  if(mainCount===4)add('main',4,box(33,41,-20,-8,26.6,33),'none',-14,8,3,true);
+  if(mainCount===4)add('main',4,box(37,41,-8,-2,26.6,33),'none',-14,8,3,true);
   add('satellite',1,box(90,162,-30,30,0,14),'none',0,1,4);
   if(satelliteCount>=2)add('satellite',2,box(117,153,-19,17,14,20.6),entry,2,22,5,satelliteCount===2&&rng.chance(.4));
   if(satelliteCount===3)add('satellite',3,box(140,152,-15,-1,20.6,28),'none',-9,9,3,true);
