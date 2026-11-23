@@ -25,12 +25,13 @@ async function captureSeams() {
     const page = await browser.newPage({ viewport: {width: 800, height: 450}, deviceScaleFactor: 1 });
     await page.goto(origin + '/experiments/plateau/mountain.html', {waitUntil: 'domcontentloaded', timeout: 120000});
     await page.waitForFunction(() => window.__mountain?.ready, null, {timeout: 360000});
-    const families = mode === 'shadow-control' ? ['angular'] : ['rounded', 'angular'];
+    const families = ['shadow-control', 'angular-only'].includes(mode) ? ['angular'] : ['rounded', 'angular'];
     for (const family of families) {
       await page.evaluate(family => window.__mountain.setWall(family, 1, 42), family);
       const views = mode === 'shadow-control' ? [[3, -117]] : camera.azimuths.entries();
       for (const [i, azimuth] of views) {
-        const png = await page.evaluate(({config, azimuth, mode}) => {
+        const captureControl = mode === 'shadow-control' || (mode === 'angular-only' && i === 7);
+        const images = await page.evaluate(({config, azimuth, captureControl, mode}) => {
           const {camera, renderer, scene} = window.__mountain;
           const [x,y,z] = config.target;
           const a = azimuth * Math.PI / 180;
@@ -42,15 +43,25 @@ async function captureSeams() {
           camera.lookAt(x, y, z);
           camera.fov = config.fieldOfView;
           camera.updateProjectionMatrix();
-          if (mode === 'shadow-control') {
+          const encode = () => renderer.domElement.toDataURL('image/png').split(',')[1];
+          const result = {};
+          if (mode !== 'shadow-control') {
+            renderer.render(scene, camera);
+            result.normal = encode();
+          }
+          if (captureControl) {
             renderer.shadowMap.enabled = false;
             scene.traverse(o => { o.receiveShadow = false; });
+            renderer.render(scene, camera);
+            result.control = encode();
           }
-          renderer.render(scene, camera);
-          return renderer.domElement.toDataURL('image/png').split(',')[1];
-        }, {config: camera, azimuth, mode});
-        const filename = family + '-' + (mode === 'shadow-control' ? 'no-shadow' : i) + '.png';
-        fs.writeFileSync(path.join(output, filename), Buffer.from(png, 'base64'));
+          return result;
+        }, {config: camera, azimuth, captureControl, mode});
+        const filename = family + '-' + i + '.png';
+        if (images.normal) fs.writeFileSync(path.join(output, filename), Buffer.from(images.normal, 'base64'));
+        if (images.control) {
+          fs.writeFileSync(path.join(output, family + '-no-shadow.png'), Buffer.from(images.control, 'base64'));
+        }
         console.log(filename, azimuth);
       }
     }

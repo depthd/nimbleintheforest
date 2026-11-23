@@ -54,6 +54,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("frames", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--previous-frames", type=Path)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     camera = json.loads((args.frames / "camera.json").read_text())
@@ -78,8 +79,20 @@ def main():
     detail = (139, 256, 271, 313)
     y = 2 * FAMILY_HEIGHT
     zoom = 2
-    for x, frame, label in [(8, lit, "WB8 · −117° · штатный свет · 2×"),
-                            (376, control, "WB8 · −117° · без приёма теней · 2×")]:
+    details = [(8, lit, "WB8 · −117° · после · 2×"),
+               (395, control, "WB8 · −117° · после, без теней · 2×")]
+    comparison = None
+    if args.previous_frames:
+        previous = read_frame(args.previous_frames / "angular-3.png")
+        details = [(8, previous, "WB8 · −117° · до · 2×"),
+                   (395, lit, "WB8 · −117° · после · 2×"),
+                   (782, control, "WB8 · −117° · после, без теней · 2×")]
+        comparison = []
+        for i, azimuth in enumerate(camera["azimuths"][:7]):
+            old = read_frame(args.previous_frames / f"angular-{i}.png")
+            new = read_frame(args.frames / f"angular-{i}.png")
+            comparison.append({"azimuth": azimuth, "changedPixels": changed_count(old, new)})
+    for x, frame, label in details:
         draw.text((x, y + 3), label, font=font, fill="white")
         tile = frame.crop(detail)
         tile = tile.resize((tile.width * zoom, tile.height * zoom), Image.Resampling.NEAREST)
@@ -87,6 +100,8 @@ def main():
     sheet.save(args.output / "seams.jpg", quality=88, subsampling=1, optimize=True)
     report = {"seed": 42, "presetIndex": 1, "camera": camera, "results": results,
               "angularShadowControlChangedPixels": changed, "angularDetail": detail}
+    if comparison is not None:
+        report["angularBeforeAfter"] = comparison
     (args.output / "seams.json").write_text(json.dumps(report, indent=2) + "\n")
 
 
