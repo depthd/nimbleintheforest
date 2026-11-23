@@ -17,7 +17,8 @@ fs.mkdirSync(outDir,{recursive:true});
   const options=mode==='baseline'?[['original',0,42]]:[['original',0,42],...['rounded','angular'].flatMap((family,i)=>[42,7,8191,23011].flatMap(seed=>(seed===42?[0,1,2]:[1]).map(p=>[family,p,seed])))];
   const report=[];
   for(const [family,preset,seed] of options){
-   if(familyFilter && family!==familyFilter || seedFilter && seed!==Number(seedFilter))continue;
+   if(familyFilter && family!==familyFilter)continue;
+   if(seedFilter && (seedFilter==='extra'?seed===42:seed!==Number(seedFilter)))continue;
    const name=family+'-'+preset+'-'+seed;
    if(mode!=='baseline') await page.evaluate(o=>window.__mountain.setWall(...o),[family,preset,seed]);
    const stats=await page.evaluate(async(benchmark)=>{
@@ -28,6 +29,7 @@ fs.mkdirSync(outDir,{recursive:true});
       const begin=performance.now();r.render(m.scene,m.camera);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,sample);
       times.push(performance.now()-begin);
     }
+    if(!benchmark)r.render(m.scene,m.camera); // same camera pass as the timed presets, after the shadow update
     const sorted=times.slice(1).sort((a,b)=>a-b);
     return {triangles:r.info.render.triangles,calls:r.info.render.calls,drawMs:times,medianMs:sorted.length?(sorted[1]+sorted[2])/2:null,gpu:gl.getParameter(gl.RENDERER)};
    },seed===42);
