@@ -1,0 +1,136 @@
+{
+  "url": "http://127.0.0.1:5192/experiments/plateau/route.html?qa=1&seed=23011&wall=rounded",
+  "pass": true,
+  "stage": "complete",
+  "physicsHz": 60,
+  "input": "Playwright keyboard; look rotates camera; fixed Player ticks",
+  "frames": 16344,
+  "distanceMeters": 448.562,
+  "maxSampleSpeedMps": 2.307,
+  "checkpoints": [
+    {
+      "name": "spawn",
+      "frame": 0,
+      "x": -65,
+      "y": 0.04,
+      "z": -15,
+      "attached": false
+    },
+    {
+      "name": "wall exterior",
+      "frame": 3964,
+      "x": -32.133,
+      "y": -0.109,
+      "z": 57.997,
+      "attached": false
+    },
+    {
+      "name": "den entrance",
+      "frame": 6568,
+      "x": 14.986,
+      "y": 0.005,
+      "z": 34.19,
+      "attached": false
+    },
+    {
+      "name": "den back wall",
+      "frame": 7177,
+      "x": 14.999,
+      "y": 0.119,
+      "z": 20.33,
+      "attached": false
+    },
+    {
+      "name": "returned through den entrance",
+      "frame": 7860,
+      "x": 14.999,
+      "y": 0,
+      "z": 38.803,
+      "attached": false
+    },
+    {
+      "name": "rope attached",
+      "frame": 8781,
+      "x": -3.99,
+      "y": -0.008,
+      "z": 35.047,
+      "attached": true
+    },
+    {
+      "name": "rope upper landing",
+      "frame": 9301,
+      "x": -4,
+      "y": 14.03,
+      "z": 32.627,
+      "attached": false
+    },
+    {
+      "name": "through cave lower entrance",
+      "frame": 10563,
+      "x": 17.005,
+      "y": 14.03,
+      "z": 14.126,
+      "attached": false
+    },
+    {
+      "name": "through cave upper exit",
+      "frame": 11589,
+      "x": 17,
+      "y": 22.03,
+      "z": -11.519,
+      "attached": false
+    },
+    {
+      "name": "through cave lower return",
+      "frame": 12569,
+      "x": 17,
+      "y": 14.03,
+      "z": 15.81,
+      "attached": false
+    },
+    {
+      "name": "main anchor",
+      "frame": 15042,
+      "x": 58.853,
+      "y": 14.116,
+      "z": -0.005,
+      "attached": false
+    },
+    {
+      "name": "bridge midpoint",
+      "frame": 15602,
+      "x": 74.862,
+      "y": 12.385,
+      "z": 0,
+      "attached": false
+    },
+    {
+      "name": "satellite anchor",
+      "frame": 16177,
+      "x": 90.811,
+      "y": 14.15,
+      "z": 0,
+      "attached": false
+    },
+    {
+      "name": "satellite plateau",
+      "frame": 16344,
+      "x": 95.061,
+      "y": 14.03,
+      "z": 0,
+      "attached": false
+    }
+  ],
+  "pageErrors": [],
+  "documentVisits": 1,
+  "denBlockedMeters": 0,
+  "ropeGainMeters": 14.03,
+  "passageGainMeters": 8.03,
+  "bridgeMidpointHeightMeters": 12.385,
+  "lastPosition": {
+    "x": 95.061,
+    "y": 14.03,
+    "z": 0
+  },
+  "evidence": "Metrics-only archive for this seed; coordinates are feet in metres, frames at 60 Hz."
+}
