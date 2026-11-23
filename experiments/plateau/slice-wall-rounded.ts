@@ -62,8 +62,9 @@ export function buildRoundedWall(site: RoundedWallSite, count: 4 | 7 | 10, seed:
       const forward = site.width * (count === 4 ? rng.float(0.30, 0.34) : row ? 0.507 : 0.258);
       const depth = site.width * (count === 4 ? rng.float(0.39, 0.47) : row ? 0.232 : 0.255);
       const bottom = -3;
-      const height = site.height * (row ? rng.float(0.26, 0.44) :
-        ((i % 3 === 1) ? rng.float(0.58, 0.73) : rng.float(0.72, 0.89)));
+      const silhouette = [0.76, 0.83, 0.43, 0.64, 0.77, 0.52];
+      const height = site.height * (row ? rng.float(0.24, 0.44) :
+        silhouette[i % silhouette.length] * rng.float(0.88, 1.08));
       const dip = rng.float(0.24, 0.42);
       const skew = rng.float(-0.09, 0.09);
       const corners = outline.map(([u, v]) => ({
@@ -77,7 +78,7 @@ export function buildRoundedWall(site: RoundedWallSite, count: 4 | 7 | 10, seed:
       // therefore projects beyond the summit, especially on the camera side.
       for (const [scale, fraction, retreat] of [
         [0.93, 0, 0.01], [1.0, 0.40, 0.01], [0.91, 0.70, 0],
-        [0.74, 0.83, -0.045], [0.48, 1.0, -0.12],
+        [0.84, 0.83, -0.03], [0.48, 1.0, -0.12],
       ]) {
         const ring = corners.map(({ u, v }) => {
           const p = {
