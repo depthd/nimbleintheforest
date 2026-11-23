@@ -15,6 +15,7 @@ export class Mountains {
   private ropeState = createMountainRopeState();
   bridgeHandle?: number;
   snowHandle?: number;
+  readonly groundHandles = new Set<number>();
   readonly surfaces = new Map<number, string>();
 
   constructor(site: Site, terrain: MountainTerrain) {
@@ -55,13 +56,17 @@ export class Mountains {
       if (solid) return addSolid(data, label);
     };
 
-    addMesh(terrain.rock, rock, 'Скалы');
-    this.snowHandle = addMesh(terrain.snow, snow, 'Заснеженная терраса');
+    this.groundHandles.add(addMesh(terrain.rock, rock, 'Скалы')!);
+    this.snowHandle = addMesh(terrain.snow, snow, 'Заснеженная терраса')!;
+    this.groundHandles.add(this.snowHandle);
     const passages = buildMountainPassages(terrain.passageAnchors, terrain.seed);
     for (const surface of passages.surfaces) {
       if (surface.name === 'rope') addMesh(surface, cable, 'Канат', false);
       else if (surface.name === 'rope-anchor') addMesh(surface, anchor, 'Крепление каната', false);
-      else addMesh(surface, cave, 'Горный проход');
+      else {
+        const handle = addMesh(surface, cave, 'Горный проход')!;
+        if (surface.name === 'passage-floor') this.groundHandles.add(handle);
+      }
     }
     this.rope = createMountainRope(position(passages.rope.lower), position(passages.rope.upper));
     const bridge = buildMountainBridge(terrain);
@@ -85,6 +90,14 @@ export class Mountains {
       const rise = (throughLower.z - middle) / (throughLower.z - throughUpper.z - .5);
       addShelter('Горный проход', throughLower.x, middle, throughLower.y + (throughUpper.y - throughLower.y) * rise, 1, false);
     }
+  }
+
+  /** Find the surface at the player's level: the den may be directly under a plateau. */
+  floorAt(x: number, y: number, z: number) {
+    const ray = new G.R.Ray({ x, y: y + 1, z }, { x: 0, y: -1, z: 0 });
+    const hit = G.world.castRay(ray, 2, true, undefined, undefined, undefined, undefined,
+      collider => this.groundHandles.has(collider.handle));
+    return hit ? y + 1 - hit.timeOfImpact : y;
   }
 
   get onRope() { return this.ropeState.attached; }

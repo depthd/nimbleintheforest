@@ -74,7 +74,7 @@ export class Animals {
   private groundY(x: number, z: number) {
     const L = G.region.waterAt(x, z);
     if (!Number.isNaN(L) && G.region.iceAt(x, z) > 0) return L + 0.03;
-    return G.region.heightAt(x, z);
+    return G.region.outdoorHeightAt(x, z);
   }
 
   private walkable(x: number, z: number) {
@@ -82,7 +82,7 @@ export class Animals {
     if (!R.inside(x, z, 40)) return false;
     const L = R.waterAt(x, z);
     if (!Number.isNaN(L) && R.iceAt(x, z) < 0.15) return false;
-    if (R.slopeAt(x, z) > 0.75) return false;
+    if (R.outdoorSlopeAt(x, z) > 0.75) return false;
     const hb = G.house.bounds;
     if (x > hb.min.x - 0.6 && x < hb.max.x + 0.6 && z > hb.min.z - 0.6 && z < hb.max.z + 2.6) return false;
     if (G.structures.shelterAt(new THREE.Vector3(x, this.groundY(x, z) + 0.3, z))) return false;
@@ -452,7 +452,7 @@ export class Animals {
     if (!Number.isNaN(G.region.waterAt(a.pos.x, a.pos.z)) && G.region.iceAt(a.pos.x, a.pos.z) > 0.3) return;
     const side = new THREE.Vector3(Math.cos(a.yaw), 0, -Math.sin(a.yaw)).multiplyScalar(0.05 * a.stepSide);
     const p = a.pos.clone().add(side);
-    p.y = G.region.heightAt(p.x, p.z) + 0.015;
+    p.y = G.region.outdoorHeightAt(p.x, p.z) + 0.015;
     const m = new THREE.Matrix4().compose(p, new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a.yaw), new THREE.Vector3(1, 1, 1));
     this.tracks.setMatrixAt(this.trackIdx, m);
     this.trackIdx = (this.trackIdx + 1) % this.trackCount;

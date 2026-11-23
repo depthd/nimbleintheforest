@@ -25,6 +25,9 @@ async function check(seed, size) {
     assert.ok(Math.abs(region.heightAt(px, pz) - site.y) < .001);
     assert.ok(region.inside(px, pz, 30));
   }
+  const landing = terrain.bridgeAnchors[0], bank = world(landing);
+  assert.ok(Math.abs(region.outdoorHeightAt(bank.x, bank.z) - (site.y + landing.y)) < .01);
+  assert.equal(region.outdoorHeightAt(0, 0), region.heightAt(0, 0));
   const foot = world(terrain.spawn);
   for (let x = foot.x - 46; x < foot.x; x += 2) {
     assert.ok(Math.abs(region.heightAt(x, foot.z) - region.heightAt(x + 2, foot.z)) <= 1.4,

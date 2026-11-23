@@ -30,10 +30,10 @@ export function renderRegionMap(R: Region, px: number): HTMLCanvasElement {
   for (let py = 0; py < px; py++) {
     for (let qx = 0; qx < px; qx++) {
       const x = R.minX + (qx + 0.5) * m, z = R.minZ + (py + 0.5) * m;
-      const h = R.heightAt(x, z);
+      const h = R.outdoorHeightAt(x, z);
       const e = m;
-      const dx = (R.heightAt(x + e, z) - R.heightAt(x - e, z)) / (2 * e);
-      const dz = (R.heightAt(x, z + e) - R.heightAt(x, z - e)) / (2 * e);
+      const dx = (R.outdoorHeightAt(x + e, z) - R.outdoorHeightAt(x - e, z)) / (2 * e);
+      const dz = (R.outdoorHeightAt(x, z + e) - R.outdoorHeightAt(x, z - e)) / (2 * e);
       const nl = Math.hypot(dx, 1, dz);
       const shade = clamp((-dx * lx + ly - dz * lz) / (nl * ll), 0, 1);
       const w = R.waterAt(x, z);

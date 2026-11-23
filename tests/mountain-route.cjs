@@ -61,6 +61,34 @@ function check(seed) {
   }
   const trace={};
   physics.step();
+  // Follow the north shoulder both ways before taking the southern route.
+  const shelf = terrain.routes.find(r => r.kind === 'shelf');
+  assert.ok(shelf);
+  for (const x of [-45.5, -41.5, -36.5, -30.5]) {
+    const bounds = shelf.points.filter(p => Math.abs(p.x - x) < 2);
+    const t = (x - bounds[0].x) / (bounds[1].x - bounds[0].x);
+    const treadZ = bounds[0].z + t * (bounds[1].z - bounds[0].z);
+    const height = (z) => {
+      const hit = physics.castRay(new R.Ray(pt(x, 35, z),pt(0,-1,0)), 36, true,
+        undefined, undefined, undefined, undefined, c => names.get(c.handle) !== 'tree');
+      assert.ok(hit);
+      return 35 - hit.timeOfImpact;
+    };
+    const tread = height(treadZ);
+    assert.ok(tread > .25 && height(-42) < .05, 'outer drop missing at ' + [seed, x, tread, height(-42)]);
+    // Across the entire section, terrain and its physics collider must meet the shared core.
+    for (let z = treadZ; z <= -33; z += .18) {
+      const support = height(z);
+      assert.ok(support >= tread - .035, 'uphill gap at ' + [x, z, support, tread]);
+      assert.ok(Math.abs(terrain.sampleHeight(x, z) - support) < .035, 'terrain/collider disagree');
+    }
+    assert.ok(height(-33) > tread + .1, 'shelf floats off the rock');
+  }
+  const approach = [pt(-65,0,-38), ...shelf.points];
+  for (const waypoint of approach) walk(waypoint);
+  assert.ok(feet().y > 13.75);
+  for (const waypoint of approach.slice().reverse()) walk(waypoint);
+  walk(spawn);
   // The entire route starts at the world spawn. Never move the rigid body to a waypoint.
   for(const q of [pt(-66,0,40),pt(15,0,40),...passages.routes.den])walk(q);
   for(let i=0;i<200;i++)step(pt(0,-.04,-.1));
@@ -183,7 +211,7 @@ async function main() {
       assert.ok(trip.crossed && trip.midDeckSupport);
     }
     assert.equal(walk(terrain, bridge, false, false).crossed, false);
-    console.log('PASS seed', seed, ': den, rock tunnel, rope ascent and descent, both bridge directions in', passage.ticks, 'passage ticks');
+    console.log('PASS seed', seed, ': two-way attached contour shelf, den, rock tunnel, rope ascent and descent, both bridge directions in', passage.ticks, 'passage ticks');
   }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

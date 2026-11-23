@@ -92,17 +92,17 @@ export class Deer {
     for (const [front, side] of offsets) {
       const at = G.player.pos.clone().addScaledVector(forward, front).addScaledVector(right, side);
       if (this.walkable(at.x, at.z)) {
-        at.y = G.terrain.heightAt(at.x, at.z) + 0.02;
+        at.y = G.region.outdoorHeightAt(at.x, at.z) + 0.02;
         return at;
       }
     }
     const at = G.player.pos.clone().addScaledVector(forward, 7);
-    at.y = G.terrain.heightAt(at.x, at.z) + 0.02;
+    at.y = G.region.outdoorHeightAt(at.x, at.z) + 0.02;
     return at;
   }
 
   private walkable(x: number, z: number) {
-    if (!G.region.inside(x, z, 40) || G.region.slopeAt(x, z) > 0.65) return false;
+    if (!G.region.inside(x, z, 40) || G.region.outdoorSlopeAt(x, z) > 0.65) return false;
     const water = G.region.waterAt(x, z);
     if (!Number.isNaN(water) && G.region.iceAt(x, z) < 0.15) return false;
     const hb = G.house.bounds;
@@ -130,7 +130,7 @@ export class Deer {
       this.root.position.x = nx;
       this.root.position.z = nz;
     }
-    this.root.position.y = G.terrain.heightAt(this.root.position.x, this.root.position.z) + 0.02;
+    this.root.position.y = G.region.outdoorHeightAt(this.root.position.x, this.root.position.z) + 0.02;
     this.root.rotation.y = this.heading - Math.PI / 2;
   }
 

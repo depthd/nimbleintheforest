@@ -1,6 +1,7 @@
 // Two neighbouring mountain terraces and the ground routes that connect their different levels.
 import { Rng, hashString, smoothstep } from '../../core/rng';
 import type { MeshData } from './geometry';
+import { buildContourShelf, shelfOwnsNorthWall } from './contour-shelf';
 import { wallOutcrop } from './wall-outcrop';
 
 export type MountainPoint = { x: number; y: number; z: number };
@@ -15,7 +16,7 @@ export type MountainTier = {
   center: MountainPoint;
   entry: Entry;
 };
-export type MountainRoute = { from: string; to: string; kind: 'wide' | 'cut' | 'terrace'; points: MountainPoint[] };
+export type MountainRoute = { from: string; to: string; kind: 'wide' | 'cut' | 'terrace' | 'shelf'; points: MountainPoint[] };
 export type MountainTree = MountainPoint & { height: number; radius: number };
 export type BridgeAnchor = MountainPoint & { mountainId: MountainId; tierId: string; accessible: boolean };
 type Box = { left: number; right: number; front: number; back: number; bottom: number; top: number };
@@ -203,7 +204,8 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
   // Winding faces outward. Doorways retain their stone lintels.
   for (let ix = 0; ix < nx; ix++) {
     side(grid[at(ix, nz)], grid[at(ix + 1, nz)], true);
-    side(grid[at(ix + 1, 0)], grid[at(ix, 0)]);
+    const north = grid[at(ix, 0)], next = grid[at(ix + 1, 0)];
+    if (s.tier.id !== 'main-1' || !shelfOwnsNorthWall((north.x + next.x) / 2)) side(next, north);
   }
   for (let iz = 0; iz < nz; iz++) {
     side(grid[at(0, iz)], grid[at(0, iz + 1)]);
@@ -398,10 +400,15 @@ export function generateMountainTerrain(seed: number) {
     bakeSurface(s, rock, snow);
     dressBackWall(s, seed ^ ((i + 1) * 14591), rock, snow);
   });
+  const mainBase = surfaces[0];
+  const shelf = buildContourShelf(x => {
+    const z = mainBase.back + inset(mainBase, x);
+    return pt(x, surfaceY(mainBase, x, z), z);
+  }, mainBase.phase, rock, snow);
+  routes.push({ from: 'spawn', to: 'main-1', kind: 'shelf', points: shelf.points });
   const sampleHeight = (x: number, z: number) =>
-    surfaces.reduce((h, s) => Math.max(h, sampleSurface(s, x, z) ?? 0), 0);
-  const mainBase = surfaces[0],
-    satelliteBase = surfaces.find((s) => s.tier.id === 'satellite-1')!;
+    surfaces.reduce((h, s) => Math.max(h, sampleSurface(s, x, z) ?? 0), shelf.sample(x, z));
+  const satelliteBase = surfaces.find((s) => s.tier.id === 'satellite-1')!;
   const bridgeAnchors: [BridgeAnchor, BridgeAnchor] = [
     { ...pt(mainBase.right - 1, mainBase.top, 0), mountainId: 'main', tierId: 'main-1', accessible: true },
     {
