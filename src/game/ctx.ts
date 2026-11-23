@@ -31,6 +31,7 @@ import type { BuildSystem } from './build/build';
 import type { Cliffs } from '../world/cliffs';
 import type { CliffLab } from './cliff-lab';
 import type { Caves } from '../world/caves';
+import type { Mountains } from '../world/mountains/mountains';
 import type { Corpses } from './corpses';
 import type { Resting } from './resting';
 
@@ -94,6 +95,7 @@ export interface Ctx {
   cliffs?: Cliffs;
   cliffLab?: CliffLab;
   caves?: Caves;
+  mountains?: Mountains;
   recorder?: MotionRecorder;
   paused: boolean;
   sleeping: boolean;

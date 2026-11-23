@@ -36,6 +36,10 @@ function locate(rope: MountainRope, point: Point) {
   return { along, gap };
 }
 
+export function nearRope(rope: MountainRope, feet: Point) {
+  return locate(rope, feet).gap <= 1.45;
+}
+
 function ropePoint(rope: MountainRope, along: number) {
   const i = rope.distances.findIndex((d, j) => j > 0 && along <= d);
   if (i < 0) return rope.upper;

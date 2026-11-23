@@ -37,6 +37,7 @@ import { BuildSystem } from './build/build';
 import { Cliffs } from '../world/cliffs';
 import { CliffLab } from './cliff-lab';
 import { Caves } from '../world/caves';
+import { Mountains } from '../world/mountains/mountains';
 import { Corpses } from './corpses';
 import { Resting } from './resting';
 
@@ -118,6 +119,7 @@ export async function startGame(settings: Settings) {
   G.goal = { signalAt: 0, rescued: false, heliShown: false };
   G.structures = new Structures();
   G.structures.build(new Rng(settings.seed * 31 + 5));
+  G.mountains = region.mountainSite && region.mountainTerrain ? new Mountains(region.mountainSite, region.mountainTerrain) : undefined;
   // rock registers its shelters before the snow layout is uploaded
   if (region.cliffs.length || region.skin?.blocks.length) G.cliffs = new Cliffs(region.cliffs, region.skin);
   // cave mouths too (their throats are roofs for the snow)

@@ -244,6 +244,10 @@ export class HUD {
       c.fillText(text, p.x + 8, p.y + 4);
     };
     label(0, 0, 'Дом', '#e05a3a');
+    if (R.mountainSite && R.mountainTerrain) {
+      const trail = R.mountainTerrain.spawn;
+      label(R.mountainSite.x + trail.x, R.mountainSite.z + trail.z, 'Горная тропа', '#c6cbd5');
+    }
     const names: Record<string, string> = { hut: 'Заимка', station: 'Метеостанция «Кряж»', grotto: 'Грот', car: 'УАЗ', bridge: 'Мост', logging: 'Вырубка', cross: 'Крест', leanto: 'Навес', fishing: 'Рыбацкая избушка', cave: 'Пещера' };
     for (const p of R.places) if (G.structures.seen.has(p)) label(p.x, p.z, names[p.kind], '#f0c36a');
     const st = G.structures.station;
