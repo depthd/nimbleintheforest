@@ -1,0 +1,171 @@
+{
+  "baselineGeometry": "934a99e",
+  "candidateGeometry": "ed02069",
+  "renderer": "Chromium / SwiftShader, default WebGL 4×MSAA, 800×450",
+  "wall": "WB 8, seed 42",
+  "camera": {
+    "closeTarget": [
+      -430,
+      48,
+      -310
+    ],
+    "horizontalRadius": 245,
+    "elevationDegrees": 13,
+    "verticalFov": 27
+  },
+  "technique": "Paired full-scene color and unlit material ID renders. Cap=red, angular stone=green, bank=blue, other scene geometry=black. Geometry only changes between the pair. Seven azimuths plus the standard wall and overview cameras.",
+  "firstConstruction": "Screen-space polygon offset -2 eliminated the sampled crease but overrode other surface depth. On the central view the cap gained 72 pixels at another scene surface and the snow bank gained 675. It was removed.",
+  "checkedRegion": "The common ridge between cap triangles 29 and 31 of seed 42 was cropped to the middle 80% of its projected length, within one pixel on either side. Counts are pixels with one of four samples revealing the angular rock.",
+  "rows": [
+    {
+      "view": -129,
+      "edgeSingleMSAASample": [
+        19,
+        0
+      ],
+      "changedRGBPixels": 368,
+      "changedByMoreThan3Levels": 23,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 20,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 34
+    },
+    {
+      "view": -125,
+      "edgeSingleMSAASample": [
+        10,
+        0
+      ],
+      "changedRGBPixels": 275,
+      "changedByMoreThan3Levels": 13,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 11,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 34
+    },
+    {
+      "view": -121,
+      "edgeSingleMSAASample": [
+        2,
+        0
+      ],
+      "changedRGBPixels": 289,
+      "changedByMoreThan3Levels": 8,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 4,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 34
+    },
+    {
+      "view": -117,
+      "edgeSingleMSAASample": [
+        7,
+        0
+      ],
+      "changedRGBPixels": 297,
+      "changedByMoreThan3Levels": 12,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 8,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 34
+    },
+    {
+      "view": -113,
+      "edgeSingleMSAASample": [
+        4,
+        0
+      ],
+      "changedRGBPixels": 267,
+      "changedByMoreThan3Levels": 10,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 4,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 34
+    },
+    {
+      "view": -109,
+      "edgeSingleMSAASample": [
+        4,
+        0
+      ],
+      "changedRGBPixels": 203,
+      "changedByMoreThan3Levels": 11,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 5,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 34
+    },
+    {
+      "view": -105,
+      "edgeSingleMSAASample": [
+        6,
+        0
+      ],
+      "changedRGBPixels": 292,
+      "changedByMoreThan3Levels": 13,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 10,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 34
+    },
+    {
+      "view": "wall",
+      "edgeSingleMSAASample": [],
+      "changedRGBPixels": 70,
+      "changedByMoreThan3Levels": 3,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 2,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 33
+    },
+    {
+      "view": "overview",
+      "edgeSingleMSAASample": [],
+      "changedRGBPixels": 3,
+      "changedByMoreThan3Levels": 1,
+      "changedOnOtherObjectsOutsideBothWallMasks": 0,
+      "capGainOverAngularRockPixels": 0,
+      "capGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "bankGainAtExpenseOfOtherSceneGeometryPixels": 0,
+      "neighborCoverageChangeOfAtLeastOneSamplePixels": 0,
+      "largestRGBChannelDelta": 32
+    }
+  ],
+  "endpoint": {
+    "view": -117,
+    "xy": [
+      259,
+      315
+    ],
+    "beforeAndAfterRGB": [
+      191,
+      195,
+      202
+    ],
+    "semanticRGB": [
+      192,
+      64,
+      0
+    ],
+    "rockSamplesOutOfFour": 1,
+    "description": "Retained crest endpoint, outside middle 80% of measured edge."
+  },
+  "sourceCheck": "Source ed02069 was loaded through the integrated scene. Original rock buffers from 934a99e and the integrated rc geometry were swapped in the same renderer at the original offset factor -1 and units -1. Both color and material IDs were rendered once per geometry per camera.",
+  "reproduction": "On integration/mountains-1, run node docs/mountains-slice/wall-rounded/capture-seams.cjs http://127.0.0.1:5173 /tmp/wb-seam angular-only. Take the crop (135,255)-(266,322) of angular-3.png."
+}
