@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
  const out=process.argv[2]||'test-results/journal';fs.mkdirSync(out,{recursive:true});
  const {createServer}=await import('vite');const server=await createServer({server:{port:5193,strictPort:true,hmr:false,watch:null},logLevel:'error'});await server.listen();let browser;
  try{
- browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const page=await browser.newPage({viewport:{width:800,height:600}}),errors=[];
  page.setDefaultTimeout(180000);
  page.on('pageerror',e=>{errors.push(e.message);console.error('PAGEERROR',e.message)});

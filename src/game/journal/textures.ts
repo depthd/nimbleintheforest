@@ -217,9 +217,9 @@ export function createDiaryTextures(renderer) {
     drawArc(ctx,150,318,83,state.hunger);drawArc(ctx,384,318,83,state.thirst);drawArc(ctx,618,318,83,state.fatigue);
     drawTemperature(ctx,state.temperature);leftTexture.needsUpdate=true;
     const r=right.getContext('2d');r.clearRect(0,0,W,H);r.drawImage(rightBase,0,0);
-    [state.frost, state.wetness, state.condition/100, state.stamina].forEach((v,i)=>drawArc(r,646,[132,290,448,606][i],53,Math.max(0,Math.min(100,(v||0)*100))));
+    [state.frost, state.wetness, state.condition, state.stamina].forEach((v,i)=>drawArc(r,646,[132,290,448,606][i],53,v));
     text(r,'Мороз · сырость · здоровье · силы',384,54,29,'center');
-    for(let j=0;j<5;j++) if(state.frost>j/5) roughLine(r,431+j*48,740,461+j*48,740,5,INK);
+    for(let j=0;j<5;j++) if(state.frost>j*20) roughLine(r,431+j*48,740,461+j*48,740,5,INK);
     // Cuts, bruises and bleeding have no independent simulation in Body.
     [827,896,965].forEach(y=>text(r,'нет данных',560,y,26,'center'));
     rightTexture.needsUpdate=true;

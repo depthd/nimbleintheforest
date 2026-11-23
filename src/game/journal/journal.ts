@@ -4,6 +4,10 @@ import { Entity } from '../entities';
 import type { Grip } from '../hands';
 import { createJournalModel } from './model';
 
+function percent(fraction: number) {
+  return Math.round(100 * THREE.MathUtils.clamp(fraction, 0, 1));
+}
+
 /** Personal journal is a presentation item, never inserted into physics or inventory. */
 class Journal {
   readonly entity = new Entity('item');
@@ -11,13 +15,12 @@ class Journal {
   progress = 0;
   private art?: ReturnType<typeof createJournalModel>;
   private lastState = '';
-  private fontReady = false;
   private sprintLower = 0;
   constructor() { this.entity.defId = 'journal'; this.entity.name = 'Дневник'; }
   get active() { return this.open || this.progress > 0; }
   init() {
     const face = new FontFace('Neucha', `url(${(import.meta as any).env.BASE_URL}fonts/neucha.ttf)`);
-    face.load().then(font => { document.fonts.add(font); this.fontReady = true; this.art?.textures.refreshFonts(); this.lastState = ''; }).catch(() => msg('Шрифт дневника недоступен', 'warn'));
+    face.load().then(font => { document.fonts.add(font); this.art?.textures.refreshFonts(); this.lastState = ''; }).catch(() => msg('Шрифт дневника недоступен', 'warn'));
   }
   readonly grip: Grip = {
     right: new THREE.Vector3(.225, -.14, -.015),
@@ -62,14 +65,16 @@ class Journal {
     if (!this.active || !this.art) return;
     const b = G.body;
     const state = {
-      hunger: Math.round(100 * THREE.MathUtils.clamp(1 - b.kcal / 3000, 0, 1)),
-      thirst: Math.round(100 * THREE.MathUtils.clamp(1 - b.water / 3, 0, 1)),
-      fatigue: Math.round(100 * THREE.MathUtils.clamp(b.fatigue, 0, 1)),
+      hunger: percent(1 - b.kcal / 3000),
+      thirst: percent(1 - b.water / 3),
+      fatigue: percent(b.fatigue),
       temperature: Math.round(b.felt),
-      frost: Math.max(b.frostHands, b.frostFeet), wetness: b.wetness,
-      condition: b.condition, stamina: G.player.stamina,
+      frost: percent(Math.max(b.frostHands, b.frostFeet)),
+      wetness: percent(b.wetness),
+      condition: Math.round(b.condition),
+      stamina: percent(G.player.stamina),
     };
-    const key = JSON.stringify(state) + this.fontReady;
+    const key = JSON.stringify(state);
     if (key !== this.lastState) { this.art.textures.update(state); this.lastState = key; }
   }
 }
