@@ -1,11 +1,11 @@
 {
-  "url": "http://127.0.0.1:5192/experiments/plateau/route.html?qa=1&seed=23011&wall=rounded",
+  "url": "http://127.0.0.1:5196/experiments/plateau/route.html?qa=1&seed=23011&wall=rounded",
   "pass": true,
   "stage": "complete",
   "physicsHz": 60,
   "input": "Playwright keyboard; look rotates camera; fixed Player ticks",
-  "frames": 16344,
-  "distanceMeters": 448.562,
+  "frames": 16362,
+  "distanceMeters": 448.599,
   "maxSampleSpeedMps": 2.307,
   "checkpoints": [
     {
@@ -66,59 +66,96 @@
     },
     {
       "name": "through cave lower entrance",
-      "frame": 10563,
+      "frame": 10566,
       "x": 17.005,
       "y": 14.03,
-      "z": 14.126,
+      "z": 14.127,
       "attached": false
     },
     {
       "name": "through cave upper exit",
-      "frame": 11589,
+      "frame": 11593,
       "x": 17,
       "y": 22.03,
-      "z": -11.519,
+      "z": -11.517,
       "attached": false
     },
     {
       "name": "through cave lower return",
-      "frame": 12569,
+      "frame": 12576,
       "x": 17,
       "y": 14.03,
-      "z": 15.81,
+      "z": 15.836,
       "attached": false
     },
     {
       "name": "main anchor",
-      "frame": 15042,
-      "x": 58.853,
-      "y": 14.116,
-      "z": -0.005,
+      "frame": 15057,
+      "x": 58.801,
+      "y": 14.084,
+      "z": -0.011,
       "attached": false
     },
     {
       "name": "bridge midpoint",
-      "frame": 15602,
-      "x": 74.862,
-      "y": 12.385,
+      "frame": 15620,
+      "x": 74.841,
+      "y": 12.386,
       "z": 0,
       "attached": false
     },
     {
       "name": "satellite anchor",
-      "frame": 16177,
-      "x": 90.811,
+      "frame": 16196,
+      "x": 90.82,
       "y": 14.15,
       "z": 0,
       "attached": false
     },
     {
       "name": "satellite plateau",
-      "frame": 16344,
-      "x": 95.061,
+      "frame": 16362,
+      "x": 95.071,
       "y": 14.03,
       "z": 0,
       "attached": false
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "01-wall.jpg",
+      "frame": 3964,
+      "x": -32.133,
+      "y": -0.109,
+      "z": 57.997
+    },
+    {
+      "file": "02-den.jpg",
+      "frame": 7178,
+      "x": 14.999,
+      "y": 0.119,
+      "z": 20.33
+    },
+    {
+      "file": "03-rope.jpg",
+      "frame": 8782,
+      "x": -3.996,
+      "y": -0.003,
+      "z": 35.08
+    },
+    {
+      "file": "04-through.jpg",
+      "frame": 10727,
+      "x": 17,
+      "y": 15.367,
+      "z": 10.127
+    },
+    {
+      "file": "05-bridge.jpg",
+      "frame": 15621,
+      "x": 74.867,
+      "y": 12.385,
+      "z": 0
     }
   ],
   "pageErrors": [],
@@ -126,11 +163,10 @@
   "denBlockedMeters": 0,
   "ropeGainMeters": 14.03,
   "passageGainMeters": 8.03,
-  "bridgeMidpointHeightMeters": 12.385,
+  "bridgeMidpointHeightMeters": 12.386,
   "lastPosition": {
-    "x": 95.061,
+    "x": 95.071,
     "y": 14.03,
     "z": 0
-  },
-  "evidence": "Metrics-only archive for this seed; coordinates are feet in metres, frames at 60 Hz."
+  }
 }

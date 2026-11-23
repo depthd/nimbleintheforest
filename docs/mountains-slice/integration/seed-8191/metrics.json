@@ -1,5 +1,5 @@
 {
-  "url": "http://localhost:5184/experiments/plateau/route.html?qa=1&seed=8191&wall=original",
+  "url": "http://127.0.0.1:5196/experiments/plateau/route.html?qa=1&seed=8191&wall=original",
   "pass": true,
   "stage": "complete",
   "physicsHz": 60,
@@ -121,6 +121,43 @@
       "attached": false
     }
   ],
+  "screenshots": [
+    {
+      "file": "01-wall.jpg",
+      "frame": 3964,
+      "x": -32.133,
+      "y": -0.109,
+      "z": 57.997
+    },
+    {
+      "file": "02-den.jpg",
+      "frame": 7181,
+      "x": 14.998,
+      "y": 0.12,
+      "z": 20.33
+    },
+    {
+      "file": "03-rope.jpg",
+      "frame": 8801,
+      "x": -3.999,
+      "y": -0.001,
+      "z": 35.094
+    },
+    {
+      "file": "04-through.jpg",
+      "frame": 10747,
+      "x": 17,
+      "y": 15.368,
+      "z": 10.125
+    },
+    {
+      "file": "05-bridge.jpg",
+      "frame": 15921,
+      "x": 74.878,
+      "y": 12.385,
+      "z": 0
+    }
+  ],
   "pageErrors": [],
   "documentVisits": 1,
   "denBlockedMeters": 0.001,
@@ -131,6 +168,5 @@
     "x": 95.083,
     "y": 14.03,
     "z": 0
-  },
-  "evidence": "Metrics-only archive for this seed; coordinates are feet in metres, frames at 60 Hz."
+  }
 }
