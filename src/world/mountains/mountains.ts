@@ -1,7 +1,8 @@
+import { makeRockMaterial } from '../cliffs';
 import * as THREE from 'three';
 import { G, GROUPS_STATIC } from '../../game/ctx';
 import type { Site } from '../../gen/region';
-import { makeRockMaterial } from '../cliffs';
+import { mountainRockMaterial, mountainSnowMaterial } from './rock-material';
 import { buildMountainBridge } from './bridge';
 import type { MeshData, Point } from './geometry';
 import { buildMountainPassages } from './passages';
@@ -26,9 +27,8 @@ export class Mountains {
     group.position.set(site.x, site.y, site.z);
     G.scene.add(group);
 
-    const rock = makeRockMaterial();
-    rock.side = THREE.DoubleSide;
-    const snow = new THREE.MeshStandardMaterial({ color: 0xe4e8ef, roughness: 1, side: THREE.DoubleSide });
+    const rock = mountainRockMaterial();
+    const snow = mountainSnowMaterial();
     const cave = makeRockMaterial(0);
     cave.side = THREE.DoubleSide;
     const brow = makeRockMaterial(.58);
@@ -46,10 +46,8 @@ export class Mountains {
       geometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
       geometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
       if (material === rock) {
-        const colors = new Float32Array(data.positions.length);
-        const color = new THREE.Color(0x727681);
-        for (let i = 0; i < colors.length; i += 3) color.toArray(colors, i);
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const exposure = data.exposure ?? new Float32Array(data.positions.length / 3).fill(1);
+        geometry.setAttribute('exposure', new THREE.BufferAttribute(exposure, 1));
       }
       if (material === cave || material === brow) {
         const { denMouth, denBack, throughLower, throughSkylightStartZ } = terrain.passageAnchors;
