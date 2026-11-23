@@ -21,7 +21,7 @@ try {
   });
   const config = JSON.parse(readFileSync(values.config, 'utf8'));
   const candidate = commit(values.candidate);
-  const base = commit(values.base ?? `origin/${config.integration_branch}`);
+  const base = commit(values.base ?? 'origin/HEAD');
   for (const ref of [base, ...config.required_ancestors]) {
     const required = commit(ref);
     try {

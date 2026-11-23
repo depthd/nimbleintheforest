@@ -1,9 +1,8 @@
 name: Verify game
 on:
   pull_request:
-    branches: [main]
   push:
-    branches: [main]
+    branches: ['**']
 permissions:
   contents: read
 concurrency:
@@ -11,6 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    if: (github.event_name == 'pull_request' && github.base_ref == github.event.repository.default_branch) || (github.event_name == 'push' && !github.event.deleted && github.ref_name == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          # A newly created main has no previous push SHA.
+          # A newly created branch has no previous push SHA.
           if [[ "$BASE" == 0000000000000000000000000000000000000000 ]]; then BASE=HEAD; fi
           node scripts/repo-check.mjs --base "$BASE"
       - run: python3 tests/repo-guard.py

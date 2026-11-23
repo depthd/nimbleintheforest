@@ -25,9 +25,10 @@ with tempfile.TemporaryDirectory() as tmp:
     git('commit', '--allow-empty', '-m', 'gameplay')
     main = git('rev-parse', 'HEAD')
     git('update-ref', 'refs/remotes/origin/main', main)
+    git('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main')
     config = Path(tmp) / '.coord' / 'repository.json'
     config.parent.mkdir()
-    config.write_text(json.dumps({'integration_branch': 'main', 'required_ancestors': [main]}))
+    config.write_text(json.dumps({'required_ancestors': [main]}))
 
     check(True)
     check(False, '--candidate', base)
