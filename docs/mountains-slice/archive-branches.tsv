@@ -1,0 +1,13 @@
+Ветка	Коммит	Описание коммита
+archive/mountains-2026-11-10-failed	cdf4812573ebb939692549d6be763c43243affe0	Archive rejected mountain iteration and evidence for future analysis
+archive/mountains-2026-11-10-landmarks-deferred	32728a482cf763fc3c17203dacf61aa2dbded3a0	WIP: shelve landmark integration and review frames; resume terrain separately
+claude/sleepy-meitner-fy67ds	538933003c25f6efe216774a4a95853613fb57db	Merge mountains, cliffs and caves into wood and structures
+recovery/mountains-c8d49b4	c8d49b411f0dc31fa670f6b2695e1dc98a23bd6e	WIP: preserve expedition terrain and landmark drafts for chat handoff
+recovery/mountains-c8d49b4-materials	c1c8421fe2b16f03b1bc2e50c37d8e2f43bf418c	Preserve local mountain WIP screenshots and model checks for recovery
+task/MOUNTAINS-001-landform-lab	185989f95ec260455608bb1410eae2a54220b487	Attach contour shelf to its mountain massif
+task/MOUNTAINS-001-test-shelf	f6db29bab0b9bece765831301e76dee5f74b283c	Attach contour shelf to its mountain massif
+task/MOUNTAINS-002-terrain-frame	4002678027ae90ffeed93d61ac984e36aa74f407	Build connected valley and ridge frame for mountain art review
+task/MOUNTAINS-002-test-preview	49f2b3bec82d9903062f4c67200742f0289a9cd7	Preserve latest audio preview alongside mountains, journal and C1
+task/PLATEAU-001-camera	4d739f142d67455dda774770894c0f3080406175	Preserve full mountain context and next-chat continuation
+task/PLATEAU-001-rock-masses	f79fcb78595ee1d56df6854ccbe352d112a75649	Archive mountain experiments, reference boards and local render history
+wip/mountains-chat01	67a172e107c18db883ee812cae29fd9b7c0d7f1a	WIP: add mountain handoff, trial frames and portable archive
