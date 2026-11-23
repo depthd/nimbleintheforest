@@ -1,0 +1,148 @@
+{
+  "viewport": [
+    800,
+    450
+  ],
+  "camera": {
+    "position": [
+      -950,
+      160,
+      -580
+    ],
+    "target": [
+      -270,
+      66,
+      -126
+    ],
+    "fov": 27
+  },
+  "scope": "independent triangle raster of rock, rock snow and foot bank; no other scene objects, shadows or engine materials",
+  "rows": [
+    {
+      "seed": 7,
+      "count": 5,
+      "rockPixels": 21511,
+      "snowPixels": 7451,
+      "snowPercent": 25.73
+    },
+    {
+      "seed": 7,
+      "count": 8,
+      "rockPixels": 24038,
+      "snowPixels": 7933,
+      "snowPercent": 24.81
+    },
+    {
+      "seed": 7,
+      "count": 12,
+      "rockPixels": 24092,
+      "snowPixels": 8556,
+      "snowPercent": 26.21
+    },
+    {
+      "seed": 42,
+      "count": 5,
+      "rockPixels": 19467,
+      "snowPixels": 6742,
+      "snowPercent": 25.72
+    },
+    {
+      "seed": 42,
+      "count": 8,
+      "rockPixels": 21705,
+      "snowPixels": 7441,
+      "snowPercent": 25.53
+    },
+    {
+      "seed": 42,
+      "count": 12,
+      "rockPixels": 28388,
+      "snowPixels": 8680,
+      "snowPercent": 23.42
+    },
+    {
+      "seed": 8191,
+      "count": 5,
+      "rockPixels": 21132,
+      "snowPixels": 7524,
+      "snowPercent": 26.26
+    },
+    {
+      "seed": 8191,
+      "count": 8,
+      "rockPixels": 22913,
+      "snowPixels": 7950,
+      "snowPercent": 25.76
+    },
+    {
+      "seed": 8191,
+      "count": 12,
+      "rockPixels": 26342,
+      "snowPixels": 9468,
+      "snowPercent": 26.44
+    },
+    {
+      "seed": 13947,
+      "count": 5,
+      "rockPixels": 21520,
+      "snowPixels": 7451,
+      "snowPercent": 25.72
+    },
+    {
+      "seed": 13947,
+      "count": 8,
+      "rockPixels": 23193,
+      "snowPixels": 8005,
+      "snowPercent": 25.66
+    },
+    {
+      "seed": 13947,
+      "count": 12,
+      "rockPixels": 25796,
+      "snowPixels": 8653,
+      "snowPercent": 25.12
+    },
+    {
+      "seed": 23011,
+      "count": 5,
+      "rockPixels": 23951,
+      "snowPixels": 8204,
+      "snowPercent": 25.51
+    },
+    {
+      "seed": 23011,
+      "count": 8,
+      "rockPixels": 26053,
+      "snowPixels": 8634,
+      "snowPercent": 24.89
+    },
+    {
+      "seed": 23011,
+      "count": 12,
+      "rockPixels": 28387,
+      "snowPixels": 9668,
+      "snowPercent": 25.41
+    },
+    {
+      "seed": 818723,
+      "count": 5,
+      "rockPixels": 21742,
+      "snowPixels": 7541,
+      "snowPercent": 25.75
+    },
+    {
+      "seed": 818723,
+      "count": 8,
+      "rockPixels": 23257,
+      "snowPixels": 7997,
+      "snowPercent": 25.59
+    },
+    {
+      "seed": 818723,
+      "count": 12,
+      "rockPixels": 25185,
+      "snowPixels": 8985,
+      "snowPercent": 26.29
+    }
+  ]
+}
