@@ -1,10 +1,11 @@
 // Two neighbouring mountain terraces and the ground routes that connect their different levels.
 import { Rng, hashString, smoothstep } from '../../core/rng';
 import type { MeshData } from './geometry';
+import { mountainHeight } from './surface-height';
 import { buildContourShelf, shelfOwnsNorthWall } from './contour-shelf';
 import { planMountainLayout, type Box, type MountainId, type Entry, type EntrySide } from './layout';
 import type { PassageAnchors } from './passages';
-import { cliffLevels, cliffPoint, edgeInsets, peakHeight, rimRelief } from './rock-form';
+import { approachStone, cliffLevels, cliffPoint, edgeInsets, peakHeight, rimRelief } from './rock-form';
 
 export type MountainPoint = { x: number; y: number; z: number };
 export type { MountainId, Entry } from './layout';
@@ -75,7 +76,10 @@ function surfaceY(s: Surface, x: number, z: number) {
         ? 0
         : smoothstep(s.width * 0.5, s.width * 0.5 + 1.6, fromCut);
   const y = ramp + (s.top - ramp) * band;
-  const brokenRim = rimRelief(s, x, z);
+  const ripples = s.tier.entry === 'none' ? 0 : Math.sin(Math.PI*t) ** 2 *
+    ((s.tier.entry === 'wide' ? .54 : .12) * Math.sin(x*.21+z*.095+s.phase) +
+     .12*Math.cos(z*.37-x*.069+s.phase));
+  const brokenRim = rimRelief(s, x, z) + ripples + approachStone(s,x,z,t);
   if (s.tier.level !== 1) return y + brokenRim;
   // Soft terrain folds in the outer snowfield. Bridge, rope, cave and ascent
   // landings sit on their original datum; the upper tier has continuous support.
@@ -158,7 +162,9 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
     // Exposed ribs break through the snowy rim. The safe centre of the walking terrace stays snow.
     const slope = Math.hypot(uy * vz - uz * vy, ux * vy - uy * vx) / normalY;
     const relief = Math.max(a.y,b.y,c.y) - s.top;
-    const rib = top === snow && relief > .7 && (slope > .42 || relief > 2.0);
+    const cx=(a.x+b.x+c.x)/3, cz=(a.z+b.z+c.z)/3;
+    const rib = top === snow && ((relief > .7 && (slope > .42 || relief > 2.0)) ||
+      approachStone(s,cx,cz,rampFraction(s,cx)) > .8);
     // The steep cut exposes bedrock. Keep its drivable floor on the snow mesh.
     if (rib || (s.tier.entry === 'cut' && slope > 1.45)) {
       for (const index of [i, j, k]) {
@@ -343,8 +349,8 @@ export function generateMountainTerrain(seed: number) {
     return pt(x, surfaceY(mainBase, x, z), z);
   }, mainBase.phase, rock, snow);
   routes.push({ from: 'spawn', to: 'main-1', kind: 'shelf', points: shelf.points });
-  const sampleHeight = (x: number, z: number) =>
-    surfaces.reduce((h, s) => Math.max(h, sampleSurface(s, x, z) ?? 0), shelf.sample(x, z));
+  const rockMesh = rock.finish(), snowMesh = snow.finish();
+  const sampleHeight = mountainHeight([rockMesh,snowMesh]);
   const satelliteBase = surfaces.find((s) => s.tier.id === 'satellite-1')!;
   const bridgeAnchors: BridgeAnchor[] = [];
   for (const offset of [0, -10, 10]) for (const surface of [mainBase, satelliteBase, ...surfaces.filter(s => s.tier.level === 2)]) {
@@ -422,8 +428,8 @@ export function generateMountainTerrain(seed: number) {
     passageAnchors,
     sampleHeight,
     trees,
-    rock: rock.finish(),
-    snow: snow.finish(),
+    rock: rockMesh,
+    snow: snowMesh,
   };
 }
 export type MountainTerrain = ReturnType<typeof generateMountainTerrain>;

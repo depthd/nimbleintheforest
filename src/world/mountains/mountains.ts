@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { G, GROUPS_STATIC } from '../../game/ctx';
 import type { Site } from '../../gen/region';
-import { mountainRockMaterial } from './rock-material';
+import { mountainRockMaterial, mountainSnowMaterial } from './rock-material';
 import { buildMountainBridge } from './bridge';
 import type { MeshData, Point } from './geometry';
 import { buildMountainPassages } from './passages';
@@ -27,7 +27,7 @@ export class Mountains {
     G.scene.add(group);
 
     const rock = mountainRockMaterial();
-    const snow = new THREE.MeshStandardMaterial({ color: 0xe4e8ef, roughness: 1, side: THREE.DoubleSide });
+    const snow = mountainSnowMaterial();
     const cave = new THREE.MeshStandardMaterial({ color: 0x555963, roughness: 1, flatShading: true, side: THREE.DoubleSide });
     const cable = new THREE.MeshStandardMaterial({ color: 0x9f8153, roughness: 1 });
     const anchor = new THREE.MeshStandardMaterial({ color: 0x493d35, roughness: 1 });

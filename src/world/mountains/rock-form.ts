@@ -17,7 +17,7 @@ function taper(distance: number, inner: number, outer: number) {
 
 // The mouths, lip, northern footpath and bridge bearings have to meet fixed
 // geometry. Only soften the stone outside the protected piece of the seam.
-function clearance(s: Face, x: number, z: number) {
+function clearance(s: Face, x: number, z: number, protectTrail = true) {
   let k = 1;
   if ((s.tier.id === 'main-1' || s.tier.id === 'main-2') && z > (s.front + s.back) / 2) {
     const entrance = s.tier.level === 1 ? s.passages?.denMouth.x ?? 15 : s.passages?.throughLower.x ?? 17;
@@ -25,7 +25,7 @@ function clearance(s: Face, x: number, z: number) {
     if (s.tier.level === 1) {
       const rope = s.passages?.ropeLower.x ?? -4, exit = s.passages?.throughLower.x ?? 17;
       const distance = Math.max(Math.min(rope,exit)-x, x-Math.max(rope,exit), 0);
-      k *= smoothstep(3.5, 8, distance);
+      k *= protectTrail ? smoothstep(3.5, 8, distance) : taper(x-rope, 1.7, 4.6);
     }
   }
   if (s.tier.id === 'main-1' && z < s.back + 12 && x > -64 && x < -8) {
@@ -69,6 +69,16 @@ export function peakHeight(s: Face, x: number, z: number) {
     Math.max(.01, summit, shoulder);
 }
 
+export function approachStone(s: Face, x: number, z: number, t: number) {
+  if (s.tier.entry !== 'wide' || t >= 1 || t <= 0) return 0;
+  const across = (z - s.back) / (s.front - s.back);
+  const fold = (u: number,v: number,bend: number,length: number) =>
+    Math.max(0,1-Math.abs((t-u)*length)-Math.abs((across-v-(t-u)*bend)*5.5));
+  const shoulder = .76 + .045*Math.sin(s.phase);
+  const shield = Math.max(fold(.56,shoulder,-.33,2.7), .58*fold(.73,shoulder-.10,-.2,4.5));
+  return Math.min(1.75,(s.top-s.bottom)*.14) * shield;
+}
+
 export function rimRelief(s: Face, x: number, z: number) {
   const width = s.right - s.left, depth = s.front - s.back;
   const u = (x - s.left) / width, v = (z - s.back) / depth;
@@ -86,7 +96,7 @@ export function rimRelief(s: Face, x: number, z: number) {
   const uphill = s.tier.entry === 'none' ? 1 : smoothstep(.03,.56,approach);
   // Leave the level bearings and the established cornice profile intact.
   const onFlank = Math.min(x-s.left,s.right-x) < reach;
-  const bearing = onFlank ? taper(z - (s.front + s.back)*.5, 4.7, 13.5) : 1;
+  const bearing = onFlank ? taper(z - (s.front + s.back)*.5, 15, 22) : 1;
   const cornice = s.tier.id === 'main-1' && z > s.front - 5
     ? 1-smoothstep(-51,-46,x)*(1-smoothstep(-13,-8,x)) : 1;
   return span * .49 * mass * rim * clearance(s,x,z) * uphill * bearing * cornice;
@@ -106,16 +116,17 @@ export function cliffPoint(s: Face, edge: Point, level: number) {
   const ridge = .66*major + .34*crack;
   // Actual recesses between spurs sit behind a wider talus toe. The narrow
   // lips disappear in the recesses instead of forming horizontal rings.
-  const rows = [0, .18, .36, .43, .68, .76, .93, 1];
-  const i=rows.indexOf(level);
+  const i=cliffLevels.indexOf(level as typeof cliffLevels[number]);
   const shoulder = Math.max(0, (ridge-.27)/.73);
   const dip=Math.sin(station*.55 + s.phase)*.09 + (crack-.5)*.16;
   const relative = i === 0 ? 0 : level + dip * Math.sin(level * Math.PI);
   const amounts = [ .35+.50*ridge, .21+.48*ridge, .10+.39*shoulder, .08+.17*shoulder,
     .035+.31*shoulder, .05+.075*shoulder, .018+.10*shoulder, 0 ];
-  const atBearing = Math.abs(u) > .76 ? taper(edge.z - (s.back+s.front)*.5, 4, 11) : 1;
+  // Below the deck the stone can project into the gorge. The upper bearing is flush.
+  const atBearing = 1 - smoothstep(.72,.94,Math.abs(u)) *
+    (1-taper(edge.z-(s.back+s.front)*.5, 13,19)) * smoothstep(.5,.93,level);
   const extent = Math.min(h*.63,7,halfX*.35,halfZ*.48);
-  const reach = extent * amounts[i] * clearance(s,edge.x,edge.z) * atBearing;
+  const reach = extent * amounts[i] * clearance(s,edge.x,edge.z,false) * atBearing;
   return { x:edge.x+nx*reach, y:s.bottom+h*relative, z:edge.z+nz*reach };
 }
 
