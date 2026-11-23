@@ -9,8 +9,7 @@ git fetch origin main
 node scripts/repo-check.mjs
 npm ci
 npm run build
-npm run test:statics
-npm run test:resting
+npm test
 ```
 
 Если `main` продвинулась, обновите свою ветку и повторите проверки затронутых механик. Для фиксированной базы можно передать `--base <SHA>`. Проверка истории отклонит кандидата без базы или обязательного предка. Команды браузерных проверок приведены в [README](../README.md#проверки).

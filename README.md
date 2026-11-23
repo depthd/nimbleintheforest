@@ -82,8 +82,7 @@ npm run preview
 
 ```sh
 npm run build
-npm run test:statics
-npm run test:resting
+npm test
 npx playwright install chromium
 npm run test:e2e
 ```

@@ -33,7 +33,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npm run test:statics && npm run test:resting
+      - run: npm test
       - name: Record build identity
         env:
           RELEASE_SHA: ${{ inputs.sha }}

@@ -30,4 +30,4 @@ jobs:
       - run: python3 tests/repo-guard.py
       - run: npm ci
       - run: npm run build
-      - run: npm run test:statics && npm run test:resting
+      - run: npm test
