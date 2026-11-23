@@ -1,0 +1,61 @@
+'use strict';
+const assert = require('node:assert/strict');
+const { buildSync } = require('esbuild');
+const { Module } = require('node:module');
+const R = require('@dimforge/rapier3d-compat');
+const bundle = buildSync({ entryPoints: [require.resolve('./slice-passages-rope.ts')], platform: 'node', format: 'cjs', bundle: true, write: false });
+const compiled = new Module(__filename, module);
+compiled._compile(bundle.outputFiles[0].text, __filename);
+const { createSliceRope, createSliceRopeState, stepSliceRope, distance } = compiled.exports;
+
+async function main() {
+  await R.init();
+  const rope = createSliceRope({ x:-4,y:0,z:35.1 }, { x:-4,y:14,z:32.6 });
+  const world = new R.World({x:0,y:-9.81,z:0});
+  world.createCollider(R.ColliderDesc.cuboid(50,1,70).setTranslation(0,-1,0));
+  world.createCollider(R.ColliderDesc.cuboid(30,7,30).setTranslation(0,7,4));
+  const body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(-3.94,.94,35.35));
+  const capsule = world.createCollider(R.ColliderDesc.capsule(.6,.30), body);
+  const kcc = world.createCharacterController(.03);
+  kcc.enableSnapToGround(.35); kcc.enableAutostep(.32,.15,false);
+  let state = createSliceRopeState();
+  const feet = () => { const p = body.translation(); return {x:p.x,y:p.y-.9,z:p.z}; };
+  function tick(input,dt=1/60) {
+    const r = stepSliceRope(rope,state,feet(),input,dt);
+    state = r.state;
+    kcc.computeColliderMovement(capsule,r.attached?r.displacement:{x:0,y:-.03,z:0});
+    const d=kcc.computedMovement(), p=body.translation();
+    body.setNextKinematicTranslation({x:p.x+d.x,y:p.y+d.y,z:p.z+d.z}); world.step();
+    return r;
+  }
+  world.step();
+  assert.equal(stepSliceRope(rope,state,{x:1,y:0,z:35},{interact:true,climb:1},1/60).attached,false);
+  assert.equal(tick({interact:false,climb:1}).attached,false);
+  assert.equal(tick({interact:true,climb:0}).attached,true);
+  for(let i=0;i<90;i++) tick({interact:false,climb:1});
+  assert(feet().y>2);
+  assert.equal(tick({interact:true,climb:0}).attached,false);
+  assert.equal(tick({interact:true,climb:0}).attached,true);
+  const blocker=world.createCollider(R.ColliderDesc.cuboid(1,.25,1).setTranslation(-4,6,35));
+  world.step();
+  for(let i=0;i<300;i++) tick({interact:false,climb:1});
+  const blockedY=feet().y;
+  assert(blockedY<4.3 && state.attached, 'overhead collider must actually stop ascent');
+  world.removeCollider(blocker,true);
+  let up=0;
+  while(state.attached && up++<1800) tick({interact:false,climb:1});
+  assert(!state.attached && distance(feet(),rope.upper)<.2,JSON.stringify({feet:feet(),state,up}));
+  for(let i=0;i<45;i++) tick({interact:false,climb:0});
+  const high=feet();
+  assert(Math.abs(high.y-14)<.09);
+  tick({interact:true,climb:0});
+  let down=0;
+  while(state.attached && down++<1800) tick({interact:false,climb:-1});
+  assert(!state.attached && distance(feet(),rope.lower)<.2, JSON.stringify({feet:feet(),state,down}));
+  for(let i=0;i<45;i++) tick({interact:false,climb:0});
+  const low=feet();
+  assert(Math.abs(low.y)<.09);
+  console.log(JSON.stringify({blockedY,upTicks:up,upper:high,downTicks:down,lower:low,ropeTriangles:'visual only'},null,2));
+  world.free();
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});
