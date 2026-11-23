@@ -77,7 +77,7 @@ Instant inventory and snow effects retain their existing semantics.
 
 - `node tests/grip-solver.cjs`: 600 rigid two-hand fits and palm/wrist conversion,
   impossible socket spacing.
-- `NODE_PATH=/opt/codex/cua_node/lib/node_modules node tests/grip-browser.cjs`:
+- `node tests/grip-browser.cjs`:
   450 same-frame turn/pitch/stance/framerate samples, legacy and replaceable
   model/pose fixtures, actual skinned wrists, object visual transform, physical
   carried sockets and explicit loss of unreachable grasp.

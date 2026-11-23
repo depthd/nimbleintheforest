@@ -1,9 +1,9 @@
-name: Verify candidate
+name: Verify game
 on:
   pull_request:
-    branches: [claude/friendly-archimedes-onmybq]
+    branches: [main]
   push:
-    branches: [claude/friendly-archimedes-onmybq]
+    branches: [main]
 permissions:
   contents: read
 concurrency:
@@ -20,11 +20,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: git fetch origin claude/friendly-archimedes-onmybq
-      - run: node scripts/repo-check.mjs --base origin/claude/friendly-archimedes-onmybq
+      - name: Verify integration history
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # A newly created main has no previous push SHA.
+          if [[ "$BASE" == 0000000000000000000000000000000000000000 ]]; then BASE=HEAD; fi
+          node scripts/repo-check.mjs --base "$BASE"
       - run: python3 tests/repo-guard.py
       - run: npm ci
       - run: npm run build
       - run: npm run test:statics && npm run test:resting
-      # Add existing browser suites once their local/CI setup is verified.
-      # This workflow alone does not establish visual QA or performance acceptance.
