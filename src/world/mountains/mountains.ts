@@ -108,7 +108,10 @@ export class Mountains {
     const addShelter = (name: string, x: number, z: number, floor: number, hz: number, enclosed: boolean) => {
       const pos = position({ x, y: floor, z });
       const hx = halfWidth * .8;
-      G.snowCover.add({ name, kind: 'roof', x: pos.x, z: pos.z, y: pos.y + height, hx, hz });
+      // The chamber bellies out beyond the central walking strip. Snow on the
+      // outdoor heightfield must stop under its whole roof, including both shoulders.
+      const roofWidth = enclosed ? halfWidth * (passages.bearDen ? 1.75 : 1.48) : halfWidth+.65;
+      G.snowCover.add({ name, kind: 'roof', x: pos.x, z: pos.z, y: pos.y + height, hx: roofWidth, hz });
       G.structures.shelters.push({ cx: pos.x, cz: pos.z, yaw: 0, hx, hz, y0: pos.y - .2, y1: pos.y + height,
         shelter: { kind: 'grotto', name, wind: enclosed ? .12 : .35, warm: enclosed ? 2 : 1, enclosed, pos } });
     };
