@@ -326,7 +326,7 @@ async function start(){
   renderer.shadowMap.needsUpdate=true;view(stacked?'back':'front');status.textContent=stacked?'Три яруса · подъёмы и плато':'Гора · скалы, плато и подъём';
   const initial=wallParameters(new URLSearchParams(location.search));
   setWall(initial.family,initial.preset,initial.seed);
-  if(initial.family!=='original')view('wall');
+  if(initial.family!=='original' || new URLSearchParams(location.search).get('view')==='wall')view('wall');
   (window as any).__mountain={ready:true,setWall,wallMask:()=>measureWallSnow(scene,camera,renderer),renderer,scene,camera,controls,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:snow.stats})};
 }
 start().catch(e=>{status.textContent='Ошибка: '+e.message;console.error(e);});
