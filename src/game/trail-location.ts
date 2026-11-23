@@ -42,6 +42,10 @@ export function trailPose(region: Region, stop: TrailStop) {
   } else if (stop === 'overview') {
     feet = ground(65, -113);
     look = {x: 63, y: 15, z: -.5};
+  } else if (stop === 'bear') {
+    const {denBack} = t.passageAnchors;
+    feet = {x:denBack.x+.6, y:denBack.y+.09, z:denBack.z+6.8};
+    look = {x:denBack.x-.55, y:denBack.y+.32, z:denBack.z+2.9};
   } else {
     const a = t.passageAnchors;
     const entry = stop === 'rope' ? a.ropeLower : stop === 'through' ? a.throughLower : a.denMouth;

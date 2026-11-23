@@ -112,6 +112,8 @@ export class Mountains {
       // outdoor heightfield must stop under its whole roof, including both shoulders.
       const roofWidth = enclosed ? halfWidth * (passages.bearDen ? 1.75 : 1.48) : halfWidth+.65;
       G.snowCover.add({ name, kind: 'roof', x: pos.x, z: pos.z, y: pos.y + height, hx: roofWidth, hz });
+      if (enclosed) G.snowCover.add({ name, kind: 'floor', x: pos.x, z: pos.z,
+        y: pos.y+.09, hx: roofWidth, hz: hz-.04 });
       G.structures.shelters.push({ cx: pos.x, cz: pos.z, yaw: 0, hx, hz, y0: pos.y - .2, y1: pos.y + height,
         shelter: { kind: 'grotto', name, wind: enclosed ? .12 : .35, warm: enclosed ? 2 : 1, enclosed, pos } });
     };
