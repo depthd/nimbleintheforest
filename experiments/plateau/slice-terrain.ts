@@ -2,6 +2,7 @@
 import { Rng, smoothstep } from '../../src/core/rng';
 import { plateauOutline } from './plateau-profile';
 import type { MeshData } from './cavity';
+import { wallOutcrop } from './wall-outcrop';
 
 export type SlicePoint = { x: number; y: number; z: number };
 export type MountainId = 'main' | 'satellite';
@@ -113,6 +114,30 @@ function sampleSurface(s: Surface,x:number,z:number,passages:boolean):number|und
   return z>=diagonal ? a.y+tx*(c.y-a.y)+(z-diagonal)*(b.y-a.y)/(b.z-a.z) :
     a.y+tx*(c.y-a.y)+(z-diagonal)*(c.y-d.y)/(c.z-d.z);
 }
+// Use the same jointed cliff generator as the full art scene. Keep the
+// climb, cave ports, bridge landings and swappable wall frontage clear.
+function dressBackWall(s: Surface, seed: number, rock: TriangleBuffer, snow: TriangleBuffer) {
+  if (s.tier.kind === 'peak') return;
+  const rng = new Rng(seed);
+  const height = s.top - s.bottom;
+  const step = Math.max(4, height * 0.7);
+  for (let x = s.left + s.length + step; x < s.right - 3; x += step * rng.float(.85,1.25)) {
+    const z = s.back + inset(s, x);
+    const width = step * rng.float(.8,1.3);
+    const depth = Math.min(4, height * .45);
+    const corners = [[-.5,-.3],[.1,-.5],[.5,-.2],[.45,.3],[-.2,.5],[-.5,.2]]
+      .map(([u,v]) => [u*width,v*depth,rng.float(-.15,.15),rng.float(.95,1.05)]);
+    const shapes = wallOutcrop({x,z,angle:0,width,depth,height:height*rng.float(.65,.95),
+      base:s.bottom-.2,lean:.1,rake:.3,crown:.08,wear:.5},corners,rng.int(1,0x7fffffff));
+    for (const shape of shapes) {
+      for (const [shell, target] of [[shape.rock,rock],[shape.snow,snow]] as const) {
+        const start=target.xyz.length/3;
+        shell.points.forEach(p=>target.vertex(p));
+        shell.indices.forEach(id=>target.indices.push(id+start));
+      }
+    }
+  }
+}
 export function generateSliceTerrain(seed:number,options:{passages?:boolean}={}) {
   const rng=new Rng(seed), surfaces:Surface[]=[],routes:SliceRoute[]=[];
   const wide=rng.chance(.5);
@@ -141,7 +166,10 @@ export function generateSliceTerrain(seed:number,options:{passages?:boolean}={})
   if(satelliteCount>=2)add('satellite',2,box(117,153,-19,17,14,20.6),entry,2,22,5,satelliteCount===2&&rng.chance(.4));
   if(satelliteCount===3)add('satellite',3,box(140,152,-15,-1,20.6,28),'none',-9,9,3,true);
   const rock=new TriangleBuffer(),snow=new TriangleBuffer(), passages=options.passages??false;
-  surfaces.forEach(s=>bakeSurface(s,rock,snow,passages));
+  surfaces.forEach((s,i)=>{
+    bakeSurface(s,rock,snow,passages);
+    dressBackWall(s,seed ^ (i+1)*14591,rock,snow);
+  });
   const sampleHeight=(x:number,z:number)=>surfaces.reduce((h,s)=>Math.max(h,sampleSurface(s,x,z,passages)??0),0);
   const bridgeAnchors:[BridgeAnchor,BridgeAnchor]=[
     {...pt(59,14,0),mountainId:'main',tierId:'main-1',accessible:true},
