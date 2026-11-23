@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --test --test-concurrency=1 tests/statics.cjs tests/resting.cjs tests/locomotion.cjs tests/trails.cjs tests/snow-cover.cjs tests/thermal-equivalence.cjs tests/footstep-surface.cjs tests/mountain-site.cjs tests/mountain-route.cjs",
+    "test": "node --test --test-concurrency=1 tests/statics.cjs tests/resting.cjs tests/locomotion.cjs tests/trails.cjs tests/snow-cover.cjs tests/thermal-equivalence.cjs tests/footstep-surface.cjs tests/mountain-site.cjs tests/mountain-route.cjs tests/mountain-bridges.cjs",
     "test:journal": "node tests/journal-browser.cjs",
     "typecheck": "tsc --noEmit",
     "test:audio": "node tests/audio.cjs",

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { warmStartup } from './startup-warmup';
 import RAPIER from '@dimforge/rapier3d-compat';
+import { trailPose, trailStops, type TrailStop } from './trail-location';
 import { G, Settings, hourOf, msg } from './ctx';
 import { Rng } from '../core/rng';
 import { GameAudio } from '../core/audio';
@@ -135,8 +136,10 @@ export async function startGame(settings: Settings) {
     if (r) G.animals.noise(pos ?? G.player.pos, r);
   };
   G.player = new Player();
-  const { spawn, yaw } = settings.caveLab && region.caves.length ? caveSpawn() : findSpawn(rng);
+  const stop = settings.trailStop ? trailPose(region, settings.trailStop) : null;
+  const { spawn, yaw } = stop ?? (settings.caveLab && region.caves.length ? caveSpawn() : findSpawn(rng));
   G.player.init(spawn, yaw);
+  if (stop) G.player.pitch = stop.pitch;
   G.interact = new Interaction();
   G.vm = new ViewModel();
   G.hud = new HUD();
@@ -150,6 +153,11 @@ export async function startGame(settings: Settings) {
     G.player.worn.set(e.def!.wear!.slot, e);
   }
   G.player.addToInventory(G.entities.spawnItem('chocolate', new THREE.Vector3(0, -50, 0)));
+
+  if (settings.trailStop) {
+    G.player.addToInventory(G.entities.spawnItem('flashlight', new THREE.Vector3(0,-50,0)));
+    prepareTrailLight(settings.trailStop);
+  }
 
   // stream the world around the player, then let furniture and loot settle
   G.terrain.update(G.camera.position.copy(G.player.eyePos), 400);
@@ -201,7 +209,7 @@ export async function startGame(settings: Settings) {
   G.vm.update(0);
   // Explicit diagnostic A/B switch; normal play always warms the starting area.
   if (new URLSearchParams(location.search).get('warmup') !== '0')
-    await warmStartup(renderer, G.scene, G.camera, new THREE.Vector3(0.5, G.house.Y0 + 1.6, 0),
+    await warmStartup(renderer, G.scene, G.camera, settings.trailStop ? null : new THREE.Vector3(0.5, G.house.Y0 + 1.6, 0),
       text => { if (loadText) loadText.textContent = text; });
   last = performance.now();
   acc = 0;
@@ -210,7 +218,21 @@ export async function startGame(settings: Settings) {
   requestAnimationFrame(loop);
 }
 
+export function prepareTrailLight(stop: TrailStop) {
+  const flashlight = G.player.inventory.find(item => item.defId === 'flashlight');
+  if (!flashlight) return;
+  if (stop === 'bear') {
+    if (G.player.equipped !== flashlight) G.player.equip(flashlight);
+    flashlight.lit = true;
+  } else if (G.player.equipped === flashlight) G.player.equip(null);
+  updateLights(0);
+}
+
 function hud_intro() {
+  if (G.settings.trailStop) {
+    msg(trailStops[G.settings.trailStop].title + ' · F2 — выбрать место', 'info');
+    return;
+  }
   msg('Холодает. Впереди — дом. Внутри можно согреться.', 'info');
   setTimeout(() => msg('F1 — управление, Tab — инвентарь, F3 — параметры', 'info'), 2500);
 }

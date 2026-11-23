@@ -1,12 +1,15 @@
 // Two neighbouring mountain terraces and the ground routes that connect their different levels.
 import { Rng, hashString, smoothstep } from '../../core/rng';
 import type { MeshData } from './geometry';
+import { mountainHeight } from './surface-height';
 import { buildContourShelf, shelfOwnsNorthWall } from './contour-shelf';
-import { wallOutcrop } from './wall-outcrop';
+import { planMountainLayout, type Box, type MountainId, type Entry, type EntrySide } from './layout';
+import type { PassageAnchors } from './passages';
+import { talusFan } from './wall-outcrop';
+import { approachStone, cliffProfile, cliffPoint, edgeInsets, peakHeight, rimRelief, walkingCorridors } from './rock-form';
 
 export type MountainPoint = { x: number; y: number; z: number };
-export type MountainId = 'main' | 'satellite';
-export type Entry = 'wide' | 'cut' | 'none';
+export type { MountainId, Entry } from './layout';
 export type MountainTier = {
   id: string;
   mountainId: MountainId;
@@ -15,25 +18,35 @@ export type MountainTier = {
   kind: 'plateau' | 'peak';
   center: MountainPoint;
   entry: Entry;
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+  entrySide: EntrySide;
 };
 export type MountainRoute = { from: string; to: string; kind: 'wide' | 'cut' | 'terrace' | 'shelf'; points: MountainPoint[] };
-export type MountainTree = MountainPoint & { height: number; radius: number };
-export type BridgeAnchor = MountainPoint & { mountainId: MountainId; tierId: string; accessible: boolean };
-type Box = { left: number; right: number; front: number; back: number; bottom: number; top: number };
+export type MountainTree = MountainPoint & { height: number; radius: number; tierId: string };
+export type BridgeAnchor = MountainPoint & { mountainId: MountainId; tierId: string; accessible: boolean; outward: { x: number; z: number }; island: boolean };
 type Surface = Box & {
   tier: MountainTier;
+  entrySide: EntrySide;
+  passages: PassageAnchors;
+  reservations: ReturnType<typeof walkingCorridors>;
   length: number;
   width: number;
   bend: number;
   startZ: number;
+  secondCutZ?: number;
   phase: number;
 };
 const pt = (x: number, y: number, z: number): MountainPoint => ({ x, y, z });
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
 const distance = (a: MountainPoint, b: MountainPoint) => Math.hypot(a.x - b.x, a.z - b.z);
 
-function rampZ(s: Surface, x: number) {
-  return s.startZ + s.bend * Math.sin(Math.PI * clamp((x - s.left) / s.length));
+function rampFraction(s: Surface, x: number) {
+  return clamp((s.entrySide === 'west' ? x - s.left : s.right - x) / s.length);
+}
+
+function rampZ(s: Surface, x: number, startZ = s.startZ) {
+  const bend = startZ === s.startZ ? s.bend : -.7 * s.bend;
+  return startZ + bend * Math.sin(Math.PI * rampFraction(s, x));
 }
 
 // Round the short sides without cutting into reserved landings on the straight edges.
@@ -52,32 +65,31 @@ function corniceDepth(s: Surface, x: number) {
 
 function surfaceY(s: Surface, x: number, z: number) {
   const rise = s.top - s.bottom;
-  if (s.tier.kind === 'peak') {
-    const { center } = s.tier;
-    const radius = Math.max(
-      Math.abs((2 * (x - center.x)) / (s.right - s.left)),
-      Math.abs((2 * (z - center.z)) / (s.front - s.back)),
-    );
-    return s.top - (rise - 3) * Math.min(1, radius);
-  }
-  const t = clamp((x - s.left) / s.length);
+  if (s.tier.kind === 'peak') return peakHeight(s, x, z);
+  const t = rampFraction(s, x);
   // Continuous tangent at foot and crest. The entire west side blends in wide mode.
   const ramp = s.bottom + rise * smoothstep(0, 1, t);
+  const fromCut = Math.min(Math.abs(z - rampZ(s, x)),
+    s.secondCutZ === undefined ? Infinity : Math.abs(z - rampZ(s, x, s.secondCutZ)));
   const band =
     s.tier.entry === 'none'
       ? 1
       : s.tier.entry === 'wide'
         ? 0
-        : smoothstep(s.width * 0.5, s.width * 0.5 + 1.6, Math.abs(z - rampZ(s, x)));
+        : smoothstep(s.width * 0.5, s.width * 0.5 + 1.6, fromCut);
   const y = ramp + (s.top - ramp) * band;
-  if (s.tier.level !== 1) return y;
+  const ripples = s.tier.entry === 'none' ? 0 : Math.sin(Math.PI*t) ** 2 *
+    ((s.tier.entry === 'wide' ? .54 : .12) * Math.sin(x*.21+z*.095+s.phase) +
+     .12*Math.cos(z*.37-x*.069+s.phase));
+  const brokenRim = rimRelief(s, x, z) + ripples + approachStone(s,x,z,t);
+  if (s.tier.level !== 1) return y + brokenRim;
   // Soft terrain folds in the outer snowfield. Bridge, rope, cave and ascent
   // landings sit on their original datum; the upper tier has continuous support.
   const outer = smoothstep(0.72, 0.94, Math.abs((2 * z - s.front - s.back) / (s.front - s.back)));
   const side = smoothstep(27, 45, Math.abs(x - (s.left + s.right) * 0.5));
   const fold = 0.34 * (1 + Math.sin(0.21 * x + s.phase) * Math.cos(0.16 * z - s.phase));
   const drift = corniceDepth(s, x) * smoothstep(s.front - 4, s.front, z);
-  return y + outer * side * fold * smoothstep(0.84, 1, t) + drift;
+  return y + outer * side * fold * smoothstep(0.84, 1, t) + drift + brokenRim;
 }
 class TriangleBuffer {
   xyz: number[] = [];
@@ -93,24 +105,36 @@ class TriangleBuffer {
     this.vertex(d);
     this.indices.push(i, i + 1, i + 2, i, i + 2, i + 3);
   }
+  partialSnow: [number, number, number][] = [];
   finish(): MeshData {
-    return { positions: new Float32Array(this.xyz), indices: new Uint32Array(this.indices) };
+    const data: MeshData = { positions: new Float32Array(this.xyz), indices: new Uint32Array(this.indices) };
+    if (this.partialSnow.length) {
+      data.exposure = new Float32Array(this.xyz.length / 3).fill(1);
+      for (const [from, to, amount] of this.partialSnow) data.exposure.fill(amount, from, to);
+    }
+    return data;
   }
 }
 function gridShape(s: Surface) {
   if (s.tier.kind === 'peak') return { nx: 8, nz: 8 };
-  return { nx: Math.ceil((s.right - s.left) / 2), nz: Math.ceil((s.front - s.back) / 2) };
+  // Short upper gullies need enough samples across the tread and the bend
+  // for the physical triangle surface to follow the planned walking line.
+  const cell = s.tier.level >= 3 && s.tier.entry === 'cut' ? 1 : 2;
+  return { nx: Math.ceil((s.right - s.left) / cell), nz: Math.ceil((s.front - s.back) / cell) };
 }
 function node(s: Surface, ix: number, iz: number, nx: number, nz: number) {
   const x = s.left + ((s.right - s.left) * ix) / nx,
-    edge = inset(s, x);
+    edge = edgeInsets(s, x, inset(s, x));
   const z0 = s.back + ((s.front - s.back) * iz) / nz;
   const roundingBand = Math.min(13, (s.front - s.back) * 0.22, (s.right - s.left) * 0.2);
-  const z = z0 + edge * (clamp(1 - (z0 - s.back) / roundingBand) - clamp(1 - (s.front - z0) / roundingBand));
+  const z = z0 + edge.back * clamp(1 - (z0 - s.back) / roundingBand)
+    - edge.front * clamp(1 - (s.front - z0) / roundingBand);
   return pt(x, surfaceY(s, x, z), z);
 }
 function roofHole(s: Surface, x: number, z: number) {
-  return s.tier.id === 'main-2' && x > 14 && x < 20 && z > -10 && z < 0;
+  const a = s.passages;
+  return s.tier.id === 'main-2' && Math.abs(x - a.throughUpper.x) < a.halfWidth &&
+    z > a.throughUpper.z && z < a.throughSkylightStartZ;
 }
 function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
   const { nx, nz } = gridShape(s);
@@ -137,8 +161,14 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
       vy = c.y - a.y,
       vz = c.z - a.z;
     const normalY = uz * vx - ux * vz;
+    // Exposed ribs break through the snowy rim. The safe centre of the walking terrace stays snow.
+    const slope = Math.hypot(uy * vz - uz * vy, ux * vy - uy * vx) / normalY;
+    const relief = Math.max(a.y,b.y,c.y) - s.top;
+    const cx=(a.x+b.x+c.x)/3, cz=(a.z+b.z+c.z)/3;
+    const rib = top === snow && ((relief > .7 && (slope > .42 || relief > 2.0)) ||
+      approachStone(s,cx,cz,rampFraction(s,cx)) > .8);
     // The steep cut exposes bedrock. Keep its drivable floor on the snow mesh.
-    if (s.tier.entry === 'cut' && Math.hypot(uy * vz - uz * vy, ux * vy - uy * vx) > 1.45 * normalY) {
+    if (rib || (s.tier.entry === 'cut' && slope > 1.45)) {
       for (const index of [i, j, k]) {
         let vertex = bankVertices.get(index);
         if (vertex === undefined) {
@@ -166,10 +196,17 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
     const mid = (a.x + b.x) * 0.5;
     const door =
       south &&
-      ((s.tier.id === 'main-1' && mid > 12 && mid < 18) || (s.tier.id === 'main-2' && mid > 14 && mid < 20));
+      ((s.tier.id === 'main-1' && Math.abs(mid - s.passages.denMouth.x) < s.passages.halfWidth) ||
+        (s.tier.id === 'main-2' && Math.abs(mid - s.passages.throughLower.x) < s.passages.halfWidth));
     const base = s.bottom + (door ? 4 : 0);
     if (Math.max(a.y, b.y) <= base + 0.0001) return;
-    rock.quad(b, a, pt(a.x, base, a.z), pt(b.x, base, b.z));
+    let lowerA = pt(a.x, base, a.z), lowerB = pt(b.x, base, b.z);
+    for (const row of cliffProfile) {
+      const upperA = cliffPoint(s, a, row), upperB = cliffPoint(s, b, row);
+      if (upperA.y < base && upperB.y < base) continue;
+      if (row.height > 0) rock.quad(upperB, upperA, lowerA, lowerB);
+      lowerA=upperA; lowerB=upperB;
+    }
   }
   // A closed rounded lip with a tighter lower radius follows the actual snow
   // edge. The shared top vertices keep both the light and the collider continuous.
@@ -211,6 +248,32 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
     side(grid[at(0, iz)], grid[at(0, iz + 1)]);
     side(grid[at(nx, iz + 1)], grid[at(nx, iz)]);
   }
+  if (s.tier.level === 1) {
+    const debris = new Rng(hashString('rockfall:' + s.phase));
+    for (const south of [true, false]) {
+      // The main south forecourt and the northern shelf stay clear. Rockfall
+      // collects beneath chosen high scarps instead of lining the whole face.
+      const station = s.tier.mountainId === 'main'
+        ? (south ? .83 : .67) + debris.float(-.035, .055)
+        : .25 + debris.float(-.09, .15);
+      const rim = grid[at(Math.round(nx * station), south ? nz : 0)];
+      if (rim.y - s.bottom < 8) continue;
+      const toe = cliffPoint(s, rim, cliffProfile[0]);
+      const {gravel, slabs} = talusFan(toe, south, debris);
+      const start = rock.xyz.length / 3;
+      for (const p of gravel.points) rock.vertex(p);
+      for (const index of gravel.indices) rock.indices.push(start + index);
+      rock.partialSnow.push([start, rock.xyz.length / 3, .45]);
+      for (const stone of slabs) {
+        for (const [target, shell] of [[rock, stone.rock], [snow, stone.snow]] as const) {
+          const offset = target.xyz.length / 3;
+          for (const p of shell.points) target.vertex(p);
+          for (const index of shell.indices) target.indices.push(offset + index);
+        }
+      }
+    }
+  }
+  if (s.tier.kind === 'peak') rock.partialSnow.push([start, rock.xyz.length / 3, 0]);
 }
 // Locate the cell in the same rounded grid used for the triangle mesh, then
 // interpolate the actual triangle. This also reports open skylights to callers.
@@ -223,7 +286,8 @@ function sampleSurface(s: Surface, x: number, z: number): number | undefined {
     p0 = node(s, ix, 0, nx, nz),
     p1 = node(s, ix + 1, 0, nx, nz);
   const back = p0.z + (p1.z - p0.z) * tx,
-    front = s.front + s.back - back;
+    upper0 = node(s, ix, nz, nx, nz), upper1 = node(s, ix + 1, nz, nx, nz),
+    front = upper0.z + (upper1.z - upper0.z) * tx;
   if (z < back - 1e-7 || z > front + 1e-7) return;
   let lo = 0,
     hi = nz;
@@ -244,74 +308,17 @@ function sampleSurface(s: Surface, x: number, z: number): number | undefined {
     ? a.y + tx * (c.y - a.y) + ((z - diagonal) * (b.y - a.y)) / (b.z - a.z)
     : a.y + tx * (c.y - a.y) + ((z - diagonal) * (c.y - d.y)) / (c.z - d.z);
 }
-// Use the same jointed cliff generator as the full art scene. Keep the
-// climb, cave ports, bridge landings and swappable wall frontage clear.
-function dressBackWall(s: Surface, seed: number, rock: TriangleBuffer, snow: TriangleBuffer) {
-  if (s.tier.kind === 'peak') return;
-  const rng = new Rng(seed);
-  const height = s.top - s.bottom;
-  const step = Math.max(4, height * 0.7);
-  for (let x = s.left + s.length + step; x < s.right - 3; x += step * rng.float(0.85, 1.25)) {
-    const z = s.back + inset(s, x);
-    const width = step * rng.float(0.8, 1.3);
-    const depth = Math.min(4, height * 0.45);
-    const corners = [
-      [-0.5, -0.3],
-      [0.1, -0.5],
-      [0.5, -0.2],
-      [0.45, 0.3],
-      [-0.2, 0.5],
-      [-0.5, 0.2],
-    ].map(([u, v]) => [u * width, v * depth, rng.float(-0.15, 0.15), rng.float(0.95, 1.05)]);
-    const shapes = wallOutcrop(
-      {
-        x,
-        z,
-        angle: 0,
-        width,
-        depth,
-        height: height * rng.float(0.65, 0.95),
-        base: s.bottom - 0.2,
-        lean: 0.1,
-        rake: 0.3,
-        crown: 0.08,
-        wear: 0.5,
-      },
-      corners,
-      rng.int(1, 0x7fffffff),
-    );
-    for (const shape of shapes) {
-      for (const [shell, target] of [
-        [shape.rock, rock],
-        [shape.snow, snow],
-      ] as const) {
-        const start = target.xyz.length / 3;
-        shell.points.forEach((p) => target.vertex(p));
-        shell.indices.forEach((id) => target.indices.push(id + start));
-      }
-    }
-  }
-}
 export function generateMountainTerrain(seed: number) {
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff)
     throw new RangeError('terrain seed must be a uint32');
   const rng = new Rng(seed),
     surfaces: Surface[] = [],
     routes: MountainRoute[] = [];
-  const wide = rng.chance(0.5);
-  const mainCount = rng.int(2, 4),
-    satelliteCount = rng.int(1, 3);
-  const spawn = pt(-65, 0, -15);
-  function add(
-    id: MountainId,
-    level: number,
-    box: Box,
-    entry: Entry,
-    startZ: number,
-    length: number,
-    width: number,
-    peak = false,
-  ) {
+  const { tiers, passageAnchors, spawn, bridgeZ } = planMountainLayout(seed);
+  const reservations = walkingCorridors(tiers, passageAnchors);
+  for (const spec of tiers) {
+    const { mountain: id, level, entry, entrySide, startZ, length, width, peak } = spec;
+    let box: Box = spec;
     if (peak) {
       // A high narrow summit rises from the previous terrace. The three-metre
       // vertical toe precludes reaching its upper slopes from that terrace.
@@ -337,98 +344,53 @@ export function generateMountainTerrain(seed: number) {
       accessible: !peak,
       kind: peak ? 'peak' : 'plateau',
       center,
-      entry: peak ? 'none' : entry,
+      entry: peak ? 'none' : entry, entrySide,
+      bounds: { minX: box.left, maxX: box.right, minZ: box.back, maxZ: box.front },
     };
     const s: Surface = {
-      ...box,
-      tier,
+      ...box, reservations,
+      tier, entrySide, passages: passageAnchors, secondCutZ: spec.secondCutZ,
       startZ,
       length,
       width,
-      bend: entry === 'cut' ? rng.float(-3, 3) : 0,
+      bend: entry === 'cut' ? rng.float(-3, 3) * Math.min(1, length / 18) : 0,
       phase: rng.float(-Math.PI, Math.PI),
     };
     surfaces.push(s);
-    if (peak || entry === 'none') return;
-    const points: MountainPoint[] = [];
-    for (let i = 0; i <= 20; i++) {
-      const x = box.left + (s.length * i) / 20,
-        z = rampZ(s, x);
-      points.push(pt(x, surfaceY(s, x, z), z));
+    if (peak || entry === 'none') continue;
+    for (const centerZ of spec.secondCutZ === undefined ? [startZ] : [startZ, spec.secondCutZ]) {
+      const points: MountainPoint[] = [];
+      for (let i = 0; i <= 20; i++) {
+        const x = entrySide === 'west' ? box.left + (s.length * i) / 20 : box.right - (s.length * i) / 20;
+        const z = rampZ(s, x, centerZ);
+        points.push(pt(x, sampleSurface(s, x, z) ?? surfaceY(s, x, z), z));
+      }
+      routes.push({ from: level === 1 ? 'spawn' : id + '-' + (level - 1), to: tier.id, kind: entry, points });
     }
-    routes.push({ from: level === 1 ? 'spawn' : id + '-' + (level - 1), to: tier.id, kind: entry, points });
   }
-  const box = (
-    left: number,
-    right: number,
-    back: number,
-    front: number,
-    bottom: number,
-    top: number,
-  ): Box => ({ left, right, back, front, bottom, top });
-  const entry: Entry = wide ? 'wide' : 'cut';
-  add('main', 1, box(-60, 60, -34, 34, 0, 14), entry, -15, rng.float(39, 44), rng.float(5, 8));
-  add('main', 2, box(-4, 44, -24, 14, 14, 22), entry, -14, rng.float(16, 17.5), rng.float(4.5, 6.5));
-  if (mainCount >= 3)
-    add(
-      'main',
-      3,
-      box(22, 42, -22, 0, 22, 26.6),
-      entry,
-      -12,
-      15,
-      rng.float(3.5, 5),
-      mainCount === 3 && rng.chance(0.45),
-    );
-  if (mainCount === 4) add('main', 4, box(37, 41, -8, -2, 26.6, 33), 'none', -14, 8, 3, true);
-  add('satellite', 1, box(90, 162, -30, 30, 0, 14), 'none', 0, 1, 4);
-  if (satelliteCount >= 2)
-    add(
-      'satellite',
-      2,
-      box(117, 153, -19, 17, 14, 20.6),
-      new Rng(seed ^ hashString('satellite-entry')).chance(0.5) ? 'wide' : 'cut',
-      2,
-      rng.float(20, 24),
-      rng.float(4.5, 6),
-      satelliteCount === 2 && rng.chance(0.4),
-    );
-  if (satelliteCount === 3) add('satellite', 3, box(140, 152, -15, -1, 20.6, 28), 'none', -9, 9, 3, true);
   const rock = new TriangleBuffer(),
     snow = new TriangleBuffer();
-  surfaces.forEach((s, i) => {
-    bakeSurface(s, rock, snow);
-    dressBackWall(s, seed ^ ((i + 1) * 14591), rock, snow);
-  });
+  for (const s of surfaces) bakeSurface(s, rock, snow);
   const mainBase = surfaces[0];
   const shelf = buildContourShelf(x => {
-    const z = mainBase.back + inset(mainBase, x);
+    const z = mainBase.back + edgeInsets(mainBase, x, inset(mainBase,x)).back;
     return pt(x, surfaceY(mainBase, x, z), z);
   }, mainBase.phase, rock, snow);
   routes.push({ from: 'spawn', to: 'main-1', kind: 'shelf', points: shelf.points });
-  const sampleHeight = (x: number, z: number) =>
-    surfaces.reduce((h, s) => Math.max(h, sampleSurface(s, x, z) ?? 0), shelf.sample(x, z));
+  const rockMesh = rock.finish(), snowMesh = snow.finish();
+  const sampleHeight = mountainHeight([rockMesh,snowMesh]);
   const satelliteBase = surfaces.find((s) => s.tier.id === 'satellite-1')!;
-  const bridgeAnchors: [BridgeAnchor, BridgeAnchor] = [
-    { ...pt(mainBase.right - 1, mainBase.top, 0), mountainId: 'main', tierId: 'main-1', accessible: true },
-    {
-      ...pt(satelliteBase.left + 1, satelliteBase.top, 0),
-      mountainId: 'satellite',
-      tierId: 'satellite-1',
-      accessible: true,
-    },
-  ];
-  const passageAnchors = {
-    throughLower: pt(17, 14, 14),
-    throughUpper: pt(17, 22, -10),
-    denMouth: pt(15, 0, 34),
-    denBack: pt(15, 0, 20),
-    halfWidth: 3,
-    height: 4,
-    throughSkylightStartZ: 0,
-    ropeLower: pt(-4, 0, 35.1),
-    ropeUpper: pt(-4, 14, 32.6),
-  };
+  const bridgeAnchors: BridgeAnchor[] = [];
+  for (const offset of [0, -10, 10]) for (const surface of [mainBase, satelliteBase, ...surfaces.filter(s => s.tier.level === 2)]) {
+    if (!surface.tier.accessible) continue;
+    const main = surface.tier.mountainId === 'main';
+    if (surface.tier.level > 1 && (main ? surface.right !== mainBase.right : surface.left !== satelliteBase.left)) continue;
+    const x = main ? surface.right - 1 : surface.left + 1, z = bridgeZ + offset;
+    const y = sampleSurface(surface, x, z);
+    if (y === undefined || Math.abs(y - surface.top) > .1 || Math.abs(sampleHeight(x,z) - y) > .1) continue;
+    bridgeAnchors.push({ x, y, z, mountainId: surface.tier.mountainId, tierId: surface.tier.id, accessible: true,
+      outward: { x: main ? 1 : -1, z: 0 }, island: !main && satelliteBase.tier.entry === 'none' });
+  }
   const trees: MountainTree[] = [];
   for (const s of surfaces) {
     if (s.tier.kind === 'peak') continue;
@@ -436,7 +398,10 @@ export function generateMountainTerrain(seed: number) {
     let nPlaced = 0;
     function tryTree(x: number, z: number, heights: Rng) {
       const h = sampleSurface(s, x, z);
-      if (h === undefined || Math.abs(h - s.top) > 0.02 || Math.abs(sampleHeight(x, z) - h) > 0.02) return;
+      if (h === undefined || h < s.bottom + .75 * (s.top - s.bottom) || Math.abs(sampleHeight(x, z) - h) > .06) return;
+      const supports = [sampleSurface(s, x - .65, z), sampleSurface(s, x + .65, z),
+        sampleSurface(s, x, z - .65), sampleSurface(s, x, z + .65)];
+      if (supports.some(y => y === undefined || Math.abs(y - h) > .38)) return;
       if (
         surfaces.some(
           (other) =>
@@ -449,15 +414,14 @@ export function generateMountainTerrain(seed: number) {
         )
       )
         return;
-      if (
-        (Math.abs(z) < 4 && x > 46 && x < 111) ||
-        (x > 9 && x < 25 && z > -14 && z < 38) ||
-        (x > -9 && x < 2 && z > 27)
-      )
-        return;
+      const { ropeUpper, throughUpper, throughLower } = passageAnchors;
+      if ((Math.abs(x - throughUpper.x) < 5 && z >= throughUpper.z - 4 && z <= ropeUpper.z + 2) ||
+          (Math.abs(z - ropeUpper.z) < 3.5 && x >= Math.min(ropeUpper.x, throughLower.x) - 4 &&
+          x <= Math.max(ropeUpper.x, throughLower.x) + 4)) return;
+      if (bridgeAnchors.some(a => Math.abs(a.y - h) < 2 && Math.abs(x - a.x) < 7 && Math.abs(z - a.z) < 3.5)) return;
       if (routes.some((r) => r.points.some((p) => Math.hypot(x - p.x, z - p.z) < 4))) return;
       const connectors = routes.filter((r) => r.from === s.tier.id);
-      const arrival = routes.find((r) => r.to === s.tier.id)?.points.at(-1) ?? bridgeAnchors[1];
+      const arrival = routes.find((r) => r.to === s.tier.id)?.points.at(-1) ?? bridgeAnchors.find(a => a.tierId === s.tier.id) ?? s.tier.center;
       if (
         connectors.some((r) => {
           const start = r.points[0],
@@ -470,7 +434,7 @@ export function generateMountainTerrain(seed: number) {
         return;
       const p = pt(x, h, z);
       if (trees.some((t) => distance(t, p) < 3)) return;
-      trees.push({ ...p, height: heights.float(2.4, 5.8), radius: 0.23 });
+      trees.push({ ...p, height: heights.float(2.4, 5.8), radius: 0.23, tierId: s.tier.id });
       nPlaced++;
     }
     for (let i = 0; i < n * 24 && nPlaced < n; i++)
@@ -492,8 +456,8 @@ export function generateMountainTerrain(seed: number) {
     passageAnchors,
     sampleHeight,
     trees,
-    rock: rock.finish(),
-    snow: snow.finish(),
+    rock: rockMesh,
+    snow: snowMesh,
   };
 }
 export type MountainTerrain = ReturnType<typeof generateMountainTerrain>;

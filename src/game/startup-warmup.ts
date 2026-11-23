@@ -20,7 +20,7 @@ async function drain(renderer: THREE.WebGLRenderer) {
 
 /** Graphics only: never advance time, move the player or step the physical world. */
 export async function warmStartup(renderer: THREE.WebGLRenderer, scene: THREE.Scene,
-  camera: THREE.PerspectiveCamera, interior: THREE.Vector3,
+  camera: THREE.PerspectiveCamera, interior: THREE.Vector3 | null,
   progress: (text: string) => void) {
   const mark = 'startup-graphics';
   performance.mark(mark);
@@ -28,8 +28,10 @@ export async function warmStartup(renderer: THREE.WebGLRenderer, scene: THREE.Sc
   const views: { position: THREE.Vector3; quaternion: THREE.Quaternion }[] = [];
   for (let i = 0; i < 4; i++) views.push({ position: camera.position.clone(),
     quaternion: camera.quaternion.clone().premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), i * Math.PI / 2)) });
-  view.position.copy(interior); view.lookAt(interior.clone().add(new THREE.Vector3(0, 0, 1)));
-  views.push({ position: view.position.clone(), quaternion: view.quaternion.clone() });
+  if (interior) {
+    view.position.copy(interior); view.lookAt(interior.clone().add(new THREE.Vector3(0, 0, 1)));
+    views.push({ position: view.position.clone(), quaternion: view.quaternion.clone() });
+  }
   // Finish on the exact real viewpoint, including its camera-specific uniforms.
   views.push({ position: camera.position.clone(), quaternion: camera.quaternion.clone() });
   progress('Подготовка материалов…');

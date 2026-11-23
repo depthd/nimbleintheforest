@@ -91,12 +91,14 @@ function check(seed) {
   for (const waypoint of approach.slice().reverse()) walk(waypoint);
   walk(spawn);
   // The entire route starts at the world spawn. Never move the rigid body to a waypoint.
-  for(const q of [pt(-66,0,40),pt(15,0,40),...passages.routes.den])walk(q);
+  const {denMouth, denBack, throughLower: lo, throughUpper: high} = terrain.passageAnchors;
+  const approachZ = denMouth.z + 6;
+  for(const q of [pt(spawn.x-1,0,approachZ),pt(denMouth.x,0,approachZ),...passages.routes.den])walk(q);
   for(let i=0;i<200;i++)step(pt(0,-.04,-.1));
-  trace.denStop=feet();assert(trace.denStop.z>19.99 && trace.denStop.z<20.4);
+  trace.denStop=feet();assert(trace.denStop.z>denBack.z-.01 && trace.denStop.z<denBack.z+.4);
   for(const q of [...passages.routes.den].reverse())walk(q);
   const {rope}=passages;
-  for(const q of [pt(15,0,40),pt(rope.lower.x,0,40),rope.lower])walk(q);
+  for(const q of [pt(denMouth.x,0,approachZ),pt(rope.lower.x,0,approachZ),rope.lower])walk(q);
   function ride(sign) {
     let state=createMountainRopeState();
     for(let i=0;i<1600;i++){
@@ -109,26 +111,38 @@ function check(seed) {
   }
   ride(1);trace.ropeTop=feet();
   assert(distance(feet(),rope.upper)<.18);
-  const lo=terrain.passageAnchors.throughLower, high=terrain.passageAnchors.throughUpper;
-  for(const q of [pt(12,14,rope.upper.z),pt(17,14,23),...passages.routes.through])walk(q);
+  for(const q of [pt(lo.x,lo.y,rope.upper.z),pt(lo.x,lo.y,lo.z+5),...passages.routes.through])walk(q);
   trace.upperExit=feet();assert(Math.abs(trace.upperExit.y-high.y)<.15);
   for(const q of [...passages.routes.through].reverse())walk(q);
   trace.lowerExit=feet();assert(Math.abs(trace.lowerExit.y-lo.y)<.15);
-  for(const q of [pt(17,14,23),pt(12,14,rope.upper.z),rope.upper])walk(q);
+  for(const q of [pt(lo.x,lo.y,lo.z+5),pt(lo.x,lo.y,rope.upper.z),rope.upper])walk(q);
   ride(-1);trace.ropeBottom=feet();
   assert(distance(feet(),rope.lower)<.18);
   function ray(p,d,max) {
     const hit=physics.castRay(new R.Ray(p,d),max,true,undefined,undefined,body);
     return hit?{name:names.get(hit.collider.handle),distance:hit.timeOfImpact}:null;
   }
-  const den=ray(pt(15,1,25),pt(0,1,0),13);
-  const denTop=ray(pt(15,17,25),pt(0,-1,0),5);
-  const back=ray(pt(15,1,24),pt(0,0,-1),9);
-  const ex=ray(pt(17,25,-7),pt(0,-1,0),8);
-  assert(den?.name==='passage-rock'&&den.distance>1.7);
-  assert.equal(denTop?.name,'host-top');
+  const den=ray(pt(denBack.x,1,denBack.z+4),pt(0,1,0),13);
+  const denTop=ray(pt(denBack.x,17,denBack.z+4),pt(0,-1,0),5);
+  const back=ray(pt(denBack.x,1,denBack.z+4),pt(0,0,-1),9);
+  const ex=ray(pt(high.x,high.y+3,high.z+2),pt(0,-1,0),8);
+  const denFloor=ray(pt(denBack.x,1,denBack.z+4),pt(0,-1,0),2);
+  assert.ok(den?.name==='passage-rock' && denFloor && den.distance+denFloor.distance > 2.1,
+    'the den must clear the standing 1.8 m capsule with 30 cm above its head');
+  assert.ok(denTop?.name === 'host-top' || denTop?.name === 'host-rock', 'solid roof over the den');
   assert(back?.name==='passage-rock' && Math.abs(back.distance-4)<.03);
   assert.equal(ex?.name,'passage-floor');
+  // Exercise every advertised ordinary arrival on the actual triangles (including an
+  // east-side cut), together with the native trees. Each independent check starts
+  // at the parent terrace and walks to the child and back without jumping.
+  for (const route of terrain.routes.filter(r => r.kind === 'wide' || r.kind === 'cut')) {
+    const first = route.points[0];
+    b.setTranslation({x:first.x,y:first.y+1.0,z:first.z},true);
+    physics.step(); vY = 0;
+    try {
+      for(const q of [...route.points,...route.points.slice().reverse()])walk(q);
+    } catch (e) { throw Error(route.to+' '+route.kind+' '+e.message); }
+  }
   physics.free();
   return {seed,meshHash:hash(passages),ticks,trace,denCeiling:den,retainedRoof:denTop,deadEnd:back,throughOpening:ex,
     triangles:Object.fromEntries(passages.surfaces.map(s=>[s.name,s.indices.length/3]))};
@@ -144,9 +158,12 @@ function walk(terrain, bridge, enabled, reverse) {
   }
   const deck = enabled ? physics.createCollider(R.ColliderDesc.trimesh(bridge.collider.positions,bridge.collider.indices)) : null;
   const sign = reverse ? -1 : 1;
-  const start = (reverse ? bridge.to : bridge.from).x-sign*2;
-  const finish = (reverse ? bridge.from : bridge.to).x+sign*2;
-  const body = physics.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(start,14+.95,bridge.from.z));
+  const start = bridge.point(reverse ? bridge.span + 2 : -2);
+  const finish = bridge.point(reverse ? -2 : bridge.span + 2);
+  const along = { x:(bridge.to.x - bridge.from.x) / bridge.span, z:(bridge.to.z - bridge.from.z) / bridge.span };
+  const progress = p => (p.x - start.x) * along.x * sign + (p.z - start.z) * along.z * sign;
+  const body = physics.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(
+    start.x, terrain.sampleHeight(start.x, start.z) + .95, start.z));
   const actor = physics.createCollider(R.ColliderDesc.capsule(.6,.30),body);
   const ctrl = physics.createCharacterController(.03);
   ctrl.setMaxSlopeClimbAngle(48*Math.PI/180);
@@ -154,17 +171,29 @@ function walk(terrain, bridge, enabled, reverse) {
   ctrl.enableAutostep(.32,.15,false);
   ctrl.enableSnapToGround(.35);
   physics.step();
+  if (deck) {
+    const i = Math.floor(bridge.suspenderPositions.length / 2);
+    const left = bridge.point(bridge.suspenderPositions[i - 1], 0, 1.02);
+    const right = bridge.point(bridge.suspenderPositions[i], 0, 1.02);
+    const centre = pt((left.x + right.x) / 2, (left.y + right.y) / 2, (left.z + right.z) / 2);
+    for (const side of [-1, 1]) {
+      const ray = new R.Ray(centre, pt(-along.z * side, 0, along.x * side));
+      const hit = physics.castRay(ray, bridge.width, true, undefined, undefined, actor);
+      assert.ok(hit && hit.collider.handle === deck.handle && Math.abs(hit.timeOfImpact - bridge.width / 2) < .09,
+        'Visible handrail must have solid support at its rendered height');
+    }
+  }
   let vertical = 0, crossed = false, midDeckSupport = false, minEyeClearance = Infinity;
-  for (let t=0; t<1700; t++) {
+  for (let t=0; t<Math.ceil((bridge.span + 15) * 60 / 1.1); t++) {
     const prev = body.translation();
     vertical = Math.max(-30,vertical-9.81/60);
-    ctrl.computeColliderMovement(actor,{x:sign*1.72/60,y:vertical/60,z:0});
+    ctrl.computeColliderMovement(actor,{x:along.x*sign*1.72/60,y:vertical/60,z:along.z*sign*1.72/60});
     const move = ctrl.computedMovement();
     body.setNextKinematicTranslation({x:prev.x+move.x,y:prev.y+move.y,z:prev.z+move.z});
     physics.step();
     if (ctrl.computedGrounded()) vertical=-.5;
     const cur=body.translation();
-    if (Math.abs(cur.x-(bridge.from.x+bridge.to.x)/2)<.6 && deck) {
+    if (Math.abs(progress(cur) - (bridge.span / 2 + 2)) < .6 && deck) {
       const ray = new R.Ray({x:cur.x,y:cur.y+.80,z:cur.z},{x:0,y:-1,z:0});
       const hit = physics.castRay(ray,2.5,true,undefined,undefined,actor);
       if (hit && hit.collider.handle===deck.handle) {
@@ -172,13 +201,50 @@ function walk(terrain, bridge, enabled, reverse) {
         minEyeClearance=Math.min(minEyeClearance,hit.timeOfImpact);
       }
     }
-    if (sign*(cur.x-finish)>=0 && Math.abs(cur.y-.9-14)<.25) { crossed=true; break; }
+    if (progress(cur) >= progress(finish) && Math.abs(cur.y - .9 - terrain.sampleHeight(finish.x, finish.z)) < .25) { crossed=true; break; }
+    if (!enabled && cur.y < Math.min(start.y, finish.y) - 2) break;
   }
   const end = {...body.translation()};
   physics.free();
   return {crossed,midDeckSupport,minEyeClearance:Number.isFinite(minEyeClearance)?minEyeClearance:null,end};
 }
 
+// Verify distributions and geometric constraints independently of the two full walks.
+function checkLayouts() {
+  const counts = new Set(), entries = new Set(), entrances = new Set(), drySatellite = new Set();
+  let twinCuts = 0, highBank = 0;
+  for (let seed = 0; seed < 40; seed++) {
+    const terrain = generateMountainTerrain(seed);
+    const {ropeLower, denMouth} = terrain.passageAnchors;
+    assert.ok(Math.abs(ropeLower.x - denMouth.x) >= 9, 'clear vertical climb beside the den');
+    for (const kind of ['main', 'satellite']) {
+      const tiers = terrain.tiers.filter(t => t.mountainId === kind);
+      counts.add(tiers.length);
+      for (let i = 0; i < tiers.length; i++) {
+        const t = tiers[i], b = t.bounds, parent = tiers[i-1]?.bounds;
+        assert.equal(t.level,i+1);
+        if (parent) assert.ok(b.minX >= parent.minX && b.maxX <= parent.maxX && b.minZ >= parent.minZ && b.maxZ <= parent.maxZ);
+        const trees = terrain.trees.filter(tree => tree.tierId === t.id);
+        assert.equal(trees.length > 0, t.accessible, 'living terrace or bare summit ' + [seed,t.id]);
+        if (t.kind === 'peak') assert.equal(terrain.routes.some(r => r.to === t.id), false);
+      }
+    }
+    const first = terrain.tiers[0], x = first.bounds.minX + 6;
+    const floor = Array.from({length: 41}, (_, i) => terrain.sampleHeight(x, i - 20));
+    const low = floor.filter(y => y < 2).length;
+    if (first.entry === 'wide') assert.ok(low >= 39, 'whole short side must rise gently');
+    else assert.ok(low >= 2 && low < 28, 'a cut should have steep banks');
+    twinCuts += Number(terrain.routes.filter(r => r.to === first.id && r.kind === 'cut').length === 2);
+    entries.add(first.entry);
+    entrances.add(terrain.passageAnchors.throughLower.x + ',' + terrain.passageAnchors.denMouth.x);
+    drySatellite.add(terrain.routes.some(r => r.from === 'spawn' && r.to === 'satellite-1'));
+    highBank += Number(terrain.bridgeAnchors.some(a => a.tierId.endsWith('-2')));
+  }
+  assert.deepEqual([...counts].sort(), [1,2,3,4]);
+  assert.equal(entries.size,2);
+  assert.equal(drySatellite.size,2);
+  assert.ok(twinCuts > 0 && highBank > 0 && entrances.size > 10);
+}
 // At the windward approach the F profile has a continuous rounded upper face,
 // a curled underside and open air beyond the lip. Probe the collider the player walks on.
 function checkCornice(terrain) {
@@ -215,4 +281,5 @@ async function main() {
     console.log('PASS seed', seed, ': two-way attached contour shelf, den, rock tunnel, rope ascent and descent, both bridge directions in', passage.ticks, 'passage ticks');
   }
 }
+checkLayouts();
 main().catch(error => { console.error(error); process.exitCode = 1; });

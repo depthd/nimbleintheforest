@@ -1,6 +1,9 @@
-import { startGame } from './game/game';
+import { startGame, prepareTrailLight } from './game/game';
 import type { Settings } from './game/ctx';
 import { G } from './game/ctx';
+
+import { isTrailStop, trailPose, trailStops, type TrailStop } from './game/trail-location';
+import { makeTrailPicker } from './ui/trail-picker';
 
 const params = new URLSearchParams(location.search);
 // The old laboratory remains available for diagnostics. Ordinary play now uses
@@ -31,7 +34,71 @@ seedInput.value = params.get('seed') ?? String(Math.floor(Math.random() * 1e6));
 if (params.get('temp')) el('st-temp').value = params.get('temp')!;
 if (params.get('hour')) el('st-hour').value = params.get('hour')!;
 
+const initialSpot = params.get('spot');
+let selected: TrailStop | undefined = isTrailStop(initialSpot) ? initialSpot : undefined;
 let started = false;
+let ready = false;
+let picker: ReturnType<typeof makeTrailPicker> | undefined;
+const tourPage = /\/mountains\/?(?:index\.html)?$/.test(location.pathname) || params.get('trail') === '1';
+
+function resumeTrail() {
+  if (!ready) return;
+  G.paused = false;
+  G.input.enabled = true;
+  G.input.keys.clear();
+  G.input.endFrame();
+  G.hud.resume();
+}
+
+function chooseStop(stop: TrailStop) {
+  const next = new URL(location.href);
+  next.searchParams.set('trail','1');
+  next.searchParams.set('spot',stop);
+  const sameWorld = ready && G.settings.trailStop && G.settings.seed === trailStops[stop].seed;
+  if (ready && (!sameWorld || G.mountains?.onRope || G.player.water || G.player.carried || G.dead)) {
+    location.assign(next.href);
+    return;
+  }
+  selected = stop;
+  history.replaceState(null,'', next.href);
+  if (!ready) { void go(); return; }
+  const pose = trailPose(G.region, stop);
+  G.player.teleport(pose.spawn);
+  G.player.yaw = pose.yaw;
+  G.player.pitch = pose.pitch;
+  G.player.updateCamera(0);
+  G.terrain.update(G.camera.position,400);
+  G.forest.update(G.player.pos,true);
+  G.settings.trailStop = stop;
+  prepareTrailLight(stop);
+  G.hud.message(trailStops[stop].title + ' · F2 — выбрать место', 'info');
+  resumeTrail();
+}
+
+function showTrails() {
+  if (started && !ready) return;
+  picker ??= makeTrailPicker(chooseStop, resumeTrail);
+  picker.open();
+  if (ready) {
+    G.paused = true;
+    G.input.enabled = false;
+    G.input.unlock();
+    G.hud.showPause(false);
+  }
+}
+
+document.getElementById('st-trails')!.addEventListener('click', showTrails);
+document.getElementById('pause-trails')!.addEventListener('click', showTrails);
+window.addEventListener('keydown', e => {
+  if (picker?.dialog.open) {
+    e.stopImmediatePropagation();
+    if (e.code === 'F2') { e.preventDefault(); picker.dialog.close(); resumeTrail(); }
+  } else if (e.code === 'F2' && ready && G.settings.trailStop && !G.hud.modal && !G.sleeping) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    showTrails();
+  }
+}, true);
 
 async function go() {
   if (started) return;
@@ -49,6 +116,11 @@ async function go() {
     caveLab: params.get('cave') === '1',
     deerLab: params.get('deer') === '1',
   };
+  if (selected) Object.assign(settings, {
+    trailStop: selected, seed: trailStops[selected].seed, size: 1536,
+    startHour: 13, timeScale: 0, weatherLock: 'clear', horror: false, noCold: true,
+    caveLab: false, cliffLab: false, deerLab: false,
+  });
   document.getElementById('start')!.style.display = 'none';
   const loading = document.getElementById('loading')!;
   loading.style.display = 'flex';
@@ -62,12 +134,16 @@ async function go() {
     throw e;
   }
   loading.style.display = 'none';
+  ready = true;
+  document.getElementById('pause-trails')!.hidden = !selected;
   if (!(window as any).__test) {
     G.audio.start();
     G.input.lock();
     // the browser may refuse pointer lock after a long load: then ask for a click
     setTimeout(() => {
-      if (!G.input.locked && !G.hud.modal) G.hud.showPause(true);
+      if (G.input.locked || G.hud.modal || picker?.dialog.open) return;
+      if (selected) G.hud.message('Клик — осмотреться · WASD — идти · F2 — места', 'info', 16);
+      else G.hud.showPause(true);
     }, 500);
   }
 }
@@ -76,4 +152,6 @@ document.getElementById('st-go')!.addEventListener('click', go);
 if (params.get('preview') === 'map') import('./preview').then((m) => m.previewMap(params));
 else if (params.get('preview') === 'animals') import('./preview_animals').then((m) => m.previewAnimals(params));
 else if (params.get('preview') === 'wood') import('./preview_wood').then((m) => m.previewWood(params));
+else if (selected) go();
+else if (tourPage) showTrails();
 else if (params.get('autostart') === '1' || params.get('test') === '1' || params.get('snow') === '1' || params.get('cliffs') === '1' || params.get('cave') === '1' || params.get('deer') === '1') go();

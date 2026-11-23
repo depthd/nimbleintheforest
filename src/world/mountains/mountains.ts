@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { G, GROUPS_STATIC } from '../../game/ctx';
 import type { Site } from '../../gen/region';
-import { makeRockMaterial } from '../cliffs';
+import { mountainRockMaterial, mountainSnowMaterial } from './rock-material';
 import { buildMountainBridge } from './bridge';
 import type { MeshData, Point } from './geometry';
 import { buildMountainPassages } from './passages';
@@ -26,11 +26,25 @@ export class Mountains {
     group.position.set(site.x, site.y, site.z);
     G.scene.add(group);
 
-    const rock = makeRockMaterial();
-    rock.side = THREE.DoubleSide;
-    const snow = new THREE.MeshStandardMaterial({ color: 0xe4e8ef, roughness: 1, side: THREE.DoubleSide });
-    const cave = new THREE.MeshStandardMaterial({ color: 0x555963, roughness: 1, flatShading: true, side: THREE.DoubleSide });
-    const cable = new THREE.MeshStandardMaterial({ color: 0x9f8153, roughness: 1 });
+    const rock = mountainRockMaterial();
+    const snow = mountainSnowMaterial();
+    const cave = mountainRockMaterial(true);
+    const brow = mountainRockMaterial(true);
+    const litter = new THREE.MeshStandardMaterial({color: 0x9d7758, roughness: 1, side: THREE.DoubleSide});
+    const cable = new THREE.MeshStandardMaterial({ color: 0xe0a563, roughness: .94 });
+    cable.onBeforeCompile = shader => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vCord;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCord=position;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vCord;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+          float twist = dot(vCord,vec3(19.,11.,19.));
+          float thread = smoothstep(.23,.56,abs(sin(twist*3.14)));
+          float fade = 1.-smoothstep(.15,.42,fwidth(twist));
+          diffuseColor.rgb *= mix(1.,.62+.38*thread,fade);
+        `);
+    };
     const anchor = new THREE.MeshStandardMaterial({ color: 0x493d35, roughness: 1 });
     const addSolid = (data: MeshData, label: string) => {
       const collider = G.world.createCollider(G.R.ColliderDesc.trimesh(data.positions, data.indices, G.R.TriMeshFlags.FIX_INTERNAL_EDGES)
@@ -43,10 +57,24 @@ export class Mountains {
       geometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
       geometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
       if (material === rock) {
-        const colors = new Float32Array(data.positions.length);
-        const color = new THREE.Color(0x727681);
-        for (let i = 0; i < colors.length; i += 3) color.toArray(colors, i);
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const exposure = data.exposure ?? new Float32Array(data.positions.length / 3).fill(1);
+        geometry.setAttribute('exposure', new THREE.BufferAttribute(exposure, 1));
+      }
+      if (material === cave || material === brow) {
+        const a = terrain.passageAnchors;
+        const count = data.positions.length / 3;
+        const light = new Float32Array(count), frost = new Float32Array(count);
+        for (let i = 0; i < count; i++) {
+          const y = data.positions[i*3+1], z = data.positions[i*3+2];
+          const inDen = y < a.throughLower.y - 1;
+          const depth = inDen ? a.denMouth.z-z : Math.min(a.throughLower.z-z, z-a.throughSkylightStartZ);
+          const length = inDen ? a.denMouth.z-a.denBack.z : (a.throughLower.z-a.throughSkylightStartZ)*.5;
+          const openSky = 1-THREE.MathUtils.smoothstep(depth,0,Math.max(3,length));
+          light[i] = material === brow ? 1 : .28+.72*openSky;
+          frost[i] = material === brow ? .65 : Math.max(0, 1-depth/2)*.16;
+        }
+        geometry.setAttribute('skylight',new THREE.BufferAttribute(light,1));
+        geometry.setAttribute('exposure',new THREE.BufferAttribute(frost,1));
       }
       geometry.computeVertexNormals();
       const mesh = new THREE.Mesh(geometry, material);
@@ -61,10 +89,11 @@ export class Mountains {
     this.groundHandles.add(this.snowHandle);
     const passages = buildMountainPassages(terrain.passageAnchors, terrain.seed);
     for (const surface of passages.surfaces) {
-      if (surface.name === 'rope') addMesh(surface, cable, 'Канат', false);
+      if (surface.name === 'den-litter') addMesh(surface, litter, 'Сухая подстилка', false);
+      else if (surface.name === 'rope') addMesh(surface, cable, 'Канат', false);
       else if (surface.name === 'rope-anchor') addMesh(surface, anchor, 'Крепление каната', false);
       else {
-        const handle = addMesh(surface, cave, 'Горный проход')!;
+        const handle = addMesh(surface, surface.name === 'passage-portal' ? brow : cave, 'Горный проход')!;
         if (surface.name === 'passage-floor') this.groundHandles.add(handle);
       }
     }
@@ -79,11 +108,16 @@ export class Mountains {
     const addShelter = (name: string, x: number, z: number, floor: number, hz: number, enclosed: boolean) => {
       const pos = position({ x, y: floor, z });
       const hx = halfWidth * .8;
-      G.snowCover.add({ name, kind: 'roof', x: pos.x, z: pos.z, y: pos.y + height, hx, hz });
+      // The chamber bellies out beyond the central walking strip. Snow on the
+      // outdoor heightfield must stop under its whole roof, including both shoulders.
+      const roofWidth = enclosed ? halfWidth * (passages.bearDen ? 1.75 : 1.48) : halfWidth+.65;
+      G.snowCover.add({ name, kind: 'roof', x: pos.x, z: pos.z, y: pos.y + height, hx: roofWidth, hz });
+      if (enclosed) G.snowCover.add({ name, kind: 'floor', x: pos.x, z: pos.z,
+        y: pos.y+.09, hx: roofWidth, hz: hz-.04 });
       G.structures.shelters.push({ cx: pos.x, cz: pos.z, yaw: 0, hx, hz, y0: pos.y - .2, y1: pos.y + height,
         shelter: { kind: 'grotto', name, wind: enclosed ? .12 : .35, warm: enclosed ? 2 : 1, enclosed, pos } });
     };
-    addShelter('Скальное укрытие', denMouth.x, (denMouth.z + denBack.z) / 2, denMouth.y, (denMouth.z - denBack.z) / 2, true);
+    addShelter(passages.bearDen ? 'Старая берлога' : 'Скальное укрытие', denMouth.x, (denMouth.z + denBack.z) / 2, denMouth.y, (denMouth.z - denBack.z) / 2, true);
     // The upper half of the through passage opens to the sky. Roof only the enclosed sections.
     for (let z = throughSkylightStartZ; z < throughLower.z; z += 2) {
       const middle = z + 1;
