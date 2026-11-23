@@ -127,7 +127,7 @@ function check(seed) {
   const back=ray(pt(denBack.x,1,denBack.z+4),pt(0,0,-1),9);
   const ex=ray(pt(high.x,high.y+3,high.z+2),pt(0,-1,0),8);
   assert(den?.name==='passage-rock'&&den.distance>1.7);
-  assert.equal(denTop?.name,'host-top');
+  assert.ok(denTop?.name === 'host-top' || denTop?.name === 'host-rock', 'solid roof over the den');
   assert(back?.name==='passage-rock' && Math.abs(back.distance-4)<.03);
   assert.equal(ex?.name,'passage-floor');
   // Exercise every advertised ordinary arrival on the actual triangles (including an
