@@ -61,21 +61,51 @@
       "uniqueViews": 7,
       "repeatCentralViewChangedPixels": 0,
       "rgbSha256": [
-        "a6721e89a158f63bbb106ce8be42817c12fe6fdba39cee8ce5df61c3c71d38c0",
-        "7c9148e5f23ffac3af1a6e776678a5fe2a914ba0ea51b7b379b3d40f3f0b83d6",
-        "4dad9c46dae662ae0313bfd09f990d50f9a84dc0b4899ec83f320e409e3a5f87",
-        "f94dd2c6cfdd4ebdd43bc233c4e9792a30e36e4d7bf38fc4cdf69d50a324eccb",
-        "51c48970a8a1515b1b52ded76d1e3a02e783cda0026b1487be78cefd2192ab84",
-        "994e980a2407f7e8a4892587a8ce36e19039592db9973534993425e51f0cecb7",
-        "192c15d1f8359e91aeda42c0a59fe140cf83938de8a31f340cf5ad45c6830851"
+        "502e384dbc00cca77aaf2fd0a6e8a85d43ddfe8d2bd47855c53f7fc71c7193f1",
+        "10183613222ac28522908f7dd9f0205be2211e76d45a79ded630d2ff71734b8a",
+        "02bf2a9c57b652f0ca7ca6ecfe445ffc67e63fad51f51cea676136209475b617",
+        "bf18a16c483a2d5f6eb1b77343c888a8727b4df09d5bd6a82b1588ea7daf63a1",
+        "55bcf4d079e36704b103da3c0afa892803d01372cae5b193db7f58401932cfdf",
+        "3736d35f82fb9ced834cec7a8f6adf6c2bcb725e58fbadbf59303702ccfb06c4",
+        "208704769576906f38069f05e196acad7951f4f6f4fcc00db5f37752b92c843f"
       ]
     }
   ],
-  "angularShadowControlChangedPixels": 60804,
+  "angularShadowControlChangedPixels": 60807,
   "angularDetail": [
     139,
     256,
     271,
     313
+  ],
+  "angularBeforeAfter": [
+    {
+      "azimuth": -129,
+      "changedPixels": 368
+    },
+    {
+      "azimuth": -125,
+      "changedPixels": 275
+    },
+    {
+      "azimuth": -121,
+      "changedPixels": 289
+    },
+    {
+      "azimuth": -117,
+      "changedPixels": 297
+    },
+    {
+      "azimuth": -113,
+      "changedPixels": 267
+    },
+    {
+      "azimuth": -109,
+      "changedPixels": 203
+    },
+    {
+      "azimuth": -105,
+      "changedPixels": 292
+    }
   ]
 }

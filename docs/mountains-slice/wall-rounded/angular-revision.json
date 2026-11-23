@@ -1,0 +1,172 @@
+{
+  "previousSource": "d21ec2372fabfe10cc7f65a6c104e7aab3655751",
+  "previousFrames": "caaffff7ee62558106ee6e0b59dbe8c5cccabe9e",
+  "currentSource": "ed020699f6a6defa7eb55ddcac2fca71a83f8715",
+  "viewport": [
+    800,
+    450
+  ],
+  "records": [
+    {
+      "family": "original",
+      "preset": 0,
+      "seed": 42,
+      "filename": "original-0-42.png",
+      "withShadows": {
+        "changedPixels": 0,
+        "bbox": null,
+        "maxChannelDelta": 0
+      },
+      "noShadows": {
+        "changedPixels": 0,
+        "bbox": null,
+        "maxChannelDelta": 0
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 0,
+      "seed": 42,
+      "material": {
+        "factor": -1,
+        "units": -1
+      },
+      "filename": "angular-0-42.png",
+      "withShadows": {
+        "changedPixels": 83,
+        "bbox": [
+          200,
+          270,
+          393,
+          329
+        ],
+        "maxChannelDelta": 3
+      },
+      "noShadows": {
+        "changedPixels": 26,
+        "bbox": [
+          200,
+          294,
+          393,
+          329
+        ],
+        "maxChannelDelta": 1
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "seed": 42,
+      "material": {
+        "factor": -1,
+        "units": -1
+      },
+      "filename": "angular-1-42.png",
+      "withShadows": {
+        "changedPixels": 70,
+        "bbox": [
+          183,
+          309,
+          398,
+          402
+        ],
+        "maxChannelDelta": 33
+      },
+      "noShadows": {
+        "changedPixels": 39,
+        "bbox": [
+          183,
+          309,
+          398,
+          402
+        ],
+        "maxChannelDelta": 33
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 2,
+      "seed": 42,
+      "material": {
+        "factor": -1,
+        "units": -1
+      },
+      "filename": "angular-2-42.png",
+      "withShadows": {
+        "changedPixels": 7,
+        "bbox": [
+          332,
+          380,
+          336,
+          385
+        ],
+        "maxChannelDelta": 1
+      },
+      "noShadows": {
+        "changedPixels": 0,
+        "bbox": null,
+        "maxChannelDelta": 0
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "seed": 23011,
+      "material": {
+        "factor": -1,
+        "units": -1
+      },
+      "filename": "angular-1-23011.png",
+      "withShadows": {
+        "changedPixels": 2,
+        "bbox": [
+          241,
+          349,
+          244,
+          351
+        ],
+        "maxChannelDelta": 1
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "seed": 7,
+      "material": {
+        "factor": -1,
+        "units": -1
+      },
+      "filename": "angular-1-7.png",
+      "withShadows": {
+        "changedPixels": 53,
+        "bbox": [
+          193,
+          305,
+          307,
+          395
+        ],
+        "maxChannelDelta": 2
+      }
+    },
+    {
+      "family": "angular",
+      "preset": 1,
+      "seed": 8191,
+      "material": {
+        "factor": -1,
+        "units": -1
+      },
+      "filename": "angular-1-8191.png",
+      "withShadows": {
+        "changedPixels": 45,
+        "bbox": [
+          188,
+          292,
+          254,
+          339
+        ],
+        "maxChannelDelta": 2
+      }
+    }
+  ]
+}
