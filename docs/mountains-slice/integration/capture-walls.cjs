@@ -32,8 +32,9 @@ fs.mkdirSync(outDir,{recursive:true});
     if(!benchmark)r.render(m.scene,m.camera); // same camera pass as the timed presets, after the shadow update
     const sorted=times.slice(1).sort((a,b)=>a-b);
     return {triangles:r.info.render.triangles,calls:r.info.render.calls,drawMs:times,medianMs:sorted.length?(sorted[1]+sorted[2])/2:null,gpu:gl.getParameter(gl.RENDERER)};
-   },seed===42);
-   await page.locator('canvas').screenshot({path:path.join(outDir,name+'.png')});
+   },seed===42 && !process.env.MASK_ONLY);
+   const lit=await page.locator('canvas').evaluate(canvas=>canvas.toDataURL('image/png').split(',')[1]);
+   fs.writeFileSync(path.join(outDir,name+'.png'),Buffer.from(lit,'base64'));
    if(seed===42 && mode!=='baseline') {
      const png=await page.evaluate(()=>{
        const {scene,camera,renderer:r}=window.__mountain;

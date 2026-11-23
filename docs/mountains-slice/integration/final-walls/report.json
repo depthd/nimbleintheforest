@@ -163,62 +163,44 @@
       "family": "angular",
       "preset": 0,
       "seed": 42,
-      "triangles": 2087436,
+      "triangles": 2087452,
       "calls": 42,
-      "drawMs": [
-        41054.59999999963,
-        10526.900000000373,
-        8175.100000000559,
-        5525.0999999996275,
-        5670.9000000003725
-      ],
-      "medianMs": 6923.000000000466,
+      "drawMs": [],
+      "medianMs": null,
       "gpu": "WebKit WebGL",
       "mask": {
-        "rockPixels": 17559,
-        "snowPixels": 6051,
+        "rockPixels": 17564,
+        "snowPixels": 6046,
         "bankPixels": 7802,
-        "wholePercent": 44.100980516999876,
-        "percent": 25.628970775095297
+        "wholePercent": 44.085063033235706,
+        "percent": 25.60779330792037
       }
     },
     {
       "family": "angular",
       "preset": 1,
       "seed": 42,
-      "triangles": 2087521,
+      "triangles": 2087553,
       "calls": 42,
-      "drawMs": [
-        14963,
-        4626.199999999255,
-        5374.9000000003725,
-        4192.9000000003725,
-        2748.5
-      ],
-      "medianMs": 4409.549999999814,
+      "drawMs": [],
+      "medianMs": null,
       "gpu": "WebKit WebGL",
       "mask": {
-        "rockPixels": 17077,
-        "snowPixels": 6534,
+        "rockPixels": 17099,
+        "snowPixels": 6512,
         "bankPixels": 4799,
-        "wholePercent": 39.89088349172827,
-        "percent": 27.67354199313879
+        "wholePercent": 39.81344596972897,
+        "percent": 27.580365084070984
       }
     },
     {
       "family": "angular",
       "preset": 2,
       "seed": 42,
-      "triangles": 2087606,
+      "triangles": 2087622,
       "calls": 42,
-      "drawMs": [
-        6099.899999999441,
-        2653.4000000003725,
-        2727.2000000001863,
-        2588.0999999996275,
-        2739.2000000001863
-      ],
-      "medianMs": 2690.3000000002794,
+      "drawMs": [],
+      "medianMs": null,
       "gpu": "WebKit WebGL",
       "mask": {
         "rockPixels": 21858,
@@ -232,51 +214,51 @@
       "family": "angular",
       "preset": 1,
       "seed": 7,
-      "triangles": 2087525,
+      "triangles": 2087565,
       "calls": 42,
       "drawMs": [],
       "medianMs": null,
       "gpu": "WebKit WebGL",
       "mask": {
-        "rockPixels": 18265,
-        "snowPixels": 7298,
+        "rockPixels": 18416,
+        "snowPixels": 7147,
         "bankPixels": 4576,
-        "wholePercent": 39.39745844254952,
-        "percent": 28.54907483472206
+        "wholePercent": 38.89644646471349,
+        "percent": 27.958377342252476
       }
     },
     {
       "family": "angular",
       "preset": 1,
       "seed": 8191,
-      "triangles": 2087520,
+      "triangles": 2087544,
       "calls": 42,
       "drawMs": [],
       "medianMs": null,
       "gpu": "WebKit WebGL",
       "mask": {
-        "rockPixels": 19691,
-        "snowPixels": 6584,
+        "rockPixels": 19732,
+        "snowPixels": 6543,
         "bankPixels": 4773,
-        "wholePercent": 36.57884565833548,
-        "percent": 25.05803996194101
+        "wholePercent": 36.44679206390106,
+        "percent": 24.901998097050427
       }
     },
     {
       "family": "angular",
       "preset": 1,
       "seed": 23011,
-      "triangles": 2087521,
+      "triangles": 2087529,
       "calls": 42,
       "drawMs": [],
       "medianMs": null,
       "gpu": "WebKit WebGL",
       "mask": {
-        "rockPixels": 21201,
-        "snowPixels": 7785,
+        "rockPixels": 20975,
+        "snowPixels": 8011,
         "bankPixels": 4555,
-        "wholePercent": 36.7907933573835,
-        "percent": 26.857793417511903
+        "wholePercent": 37.464595569601386,
+        "percent": 27.63748016283723
       }
     }
   ]
