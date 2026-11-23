@@ -164,6 +164,26 @@ function flood(world, t) {
   }
   return results;
 }
+function measureEntry(t) {
+  const route = t.routes.find((r) => r.to === 'main-1'),
+    a = route.points[0],
+    b = route.points.at(-1);
+  const midpoint = route.points[10];
+  if (route.kind === 'wide') return { length: +(b.x - a.x).toFixed(2), side: 'whole west side' };
+  // At one quarter of the ramp, measure the contiguous floor no more than
+  // half a metre above the rounded mesh's actual centreline elevation.
+  const q = route.points[5],
+    limit = t.sampleHeight(q.x, q.z) + 0.5;
+  let lo = q.z,
+    hi = q.z;
+  while (t.sampleHeight(q.x, lo - 0.05) <= limit && lo > q.z - 20) lo -= 0.05;
+  while (t.sampleHeight(q.x, hi + 0.05) <= limit && hi < q.z + 20) hi += 0.05;
+  return {
+    length: +(b.x - a.x).toFixed(2),
+    floorWidthAtQuarter: +(hi - lo).toFixed(2),
+    midpointDeflection: +(midpoint.z - (a.z + b.z) / 2).toFixed(2),
+  };
+}
 (async () => {
   await R.init();
   const results = [],
@@ -211,6 +231,7 @@ function flood(world, t) {
       seed,
       counts,
       entry: t.routes[0].kind,
+      entryProfile: measureEntry(t),
       mountainEntries: Object.fromEntries(
         ['main', 'satellite'].map((id) => {
           const kinds = [...new Set(t.routes.filter((r) => r.to.startsWith(id + '-')).map((r) => r.kind))];
