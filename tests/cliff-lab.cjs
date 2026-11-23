@@ -69,6 +69,7 @@ function covers(region) {
     for (let j = 0; j < nf; j += 3) for (let i = 0; i < nf; i += 3) {
       const k = j * nf + i, x = i * 2 - lab.ox, z = j * 2 - lab.oz;
       if (Math.hypot(x - C.x, z - C.z) < 250) continue; // the stamped square reaches ~240 m
+      if (plain.inMountainSite(x, z, 34)) continue; // ordinary play also stamps a mountain approach
       if (pads.some((p) => Math.hypot(p.x - x, p.z - z) < 16)) continue;
       if (Math.abs(lab.h[k] - plain.h[k]) > 1e-4) far++;
     }
