@@ -1,4 +1,4 @@
-export interface MeshData { positions: Float32Array; indices: Uint32Array }
+export interface MeshData { positions: Float32Array; indices: Uint32Array; exposure?: Float32Array }
 export type Point = { x: number; y: number; z: number };
 
 export function append(polygon: Point[], positions: number[], indices: number[]) {
