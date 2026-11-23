@@ -29,7 +29,10 @@ export class Mountains {
     const rock = makeRockMaterial();
     rock.side = THREE.DoubleSide;
     const snow = new THREE.MeshStandardMaterial({ color: 0xe4e8ef, roughness: 1, side: THREE.DoubleSide });
-    const cave = new THREE.MeshStandardMaterial({ color: 0x555963, roughness: 1, flatShading: true, side: THREE.DoubleSide });
+    const cave = makeRockMaterial(0);
+    cave.side = THREE.DoubleSide;
+    const brow = makeRockMaterial(.58);
+    brow.side = THREE.DoubleSide;
     const cable = new THREE.MeshStandardMaterial({ color: 0x9f8153, roughness: 1 });
     const anchor = new THREE.MeshStandardMaterial({ color: 0x493d35, roughness: 1 });
     const addSolid = (data: MeshData, label: string) => {
@@ -48,6 +51,22 @@ export class Mountains {
         for (let i = 0; i < colors.length; i += 3) color.toArray(colors, i);
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       }
+      if (material === cave || material === brow) {
+        const { denMouth, denBack, throughLower, throughSkylightStartZ } = terrain.passageAnchors;
+        const colors = new Float32Array(data.positions.length);
+        const color = new THREE.Color();
+        for (let i = 0; i < colors.length; i += 3) {
+          const [x,y,z] = data.positions.subarray(i,i+3);
+          const inDen = Math.abs(x-denMouth.x) < Math.abs(x-throughLower.x);
+          const darkDistance = inDen ? denMouth.z-z : Math.min(throughLower.z-z,z-throughSkylightStartZ);
+          const daylight = material === brow ? 1 : 1-THREE.MathUtils.smoothstep(darkDistance,0,
+            inDen ? denMouth.z-denBack.z : Math.max(3,(throughLower.z-throughSkylightStartZ)*.48));
+          const band = Math.sin(x*.91+y*2.4-z*.32) * .014;
+          const value = .045 + daylight*.205 + band;
+          color.setRGB(value*1.03, value, value*(1.04 + daylight*.04)).toArray(colors,i);
+        }
+        geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
+      }
       geometry.computeVertexNormals();
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = label;
@@ -64,7 +83,7 @@ export class Mountains {
       if (surface.name === 'rope') addMesh(surface, cable, 'Канат', false);
       else if (surface.name === 'rope-anchor') addMesh(surface, anchor, 'Крепление каната', false);
       else {
-        const handle = addMesh(surface, cave, 'Горный проход')!;
+        const handle = addMesh(surface, surface.name === 'passage-portal' ? brow : cave, 'Горный проход')!;
         if (surface.name === 'passage-floor') this.groundHandles.add(handle);
       }
     }

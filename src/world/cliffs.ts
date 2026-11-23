@@ -22,17 +22,18 @@ const ROCK_FAR = 1050;
 const SNOW_FAR = 240;
 const COLLIDE = 70, RELEASE = 95, CELL = 16;
 
-export function makeRockMaterial() {
+export function makeRockMaterial(frostCoverage = .92) {
   // flat shading: the facet normal comes from screen derivatives, so meshes can share vertices
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93, metalness: 0, flatShading: true });
   m.onBeforeCompile = (sh) => {
+    sh.uniforms.uRockFrost = { value: frostCoverage };
     sh.uniforms.uRock = { value: Tex.rock() };
     sh.uniforms.uNoise = groundUniforms.uNoise;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvRockPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;\nuniform sampler2D uRock;\nuniform sampler2D uNoise;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;\nuniform sampler2D uRock;\nuniform sampler2D uNoise;\nuniform float uRockFrost;')
       .replace('#include <color_fragment>', /* glsl */ `#include <color_fragment>
   {
     vec3 N = normalize(cross(dFdx(vRockPos), dFdy(vRockPos)));
@@ -44,7 +45,7 @@ export function makeRockMaterial() {
     vec3 col = diffuseColor.rgb * (0.78 + 0.9 * tex) * (0.9 + 0.2 * nz.g);
     // faces turned up are snow, not dust: the white of a ledge reaches its edge
     float frost = smoothstep(0.5, 0.72, N.y + 0.14 * (nz.r - 0.5));
-    col = mix(col, vec3(0.9, 0.925, 0.955), frost * 0.92);
+    col = mix(col, vec3(0.9, 0.925, 0.955), frost * uRockFrost);
     col *= mix(1.0, 0.7, smoothstep(0.0, -0.75, N.y));
     diffuseColor.rgb = col;
   }`);
