@@ -1,0 +1,22 @@
+{
+  "id": "MOUNTAINS-SLICE-001",
+  "status": "developing",
+  "owner": "coordinator",
+  "base_sha": "f79fcb78595ee1d56df6854ccbe352d112a75649",
+  "branch": "integration/mountains-1",
+  "allowed_paths": [
+    "experiments/plateau/",
+    "docs/mountains-slice/",
+    ".coord/tasks/MOUNTAINS-SLICE-001.json",
+    "vite.config.ts"
+  ],
+  "tracks": {
+    "R": "track/references",
+    "WA": "track/wall-rounded",
+    "WB": "track/wall-angular",
+    "T": "track/tiers-entries",
+    "E": "track/tiers-entries",
+    "P": "track/passages",
+    "B": "track/bridges"
+  }
+}
