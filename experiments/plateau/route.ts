@@ -6,6 +6,7 @@ import { Player } from '../../src/game/player';
 import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
 import { noiseTexture } from '../../src/core/noisetex';
+import { buildTraversalGroves } from './mountain-groves';
 import { generateSliceTerrain } from './slice-terrain';
 import { buildSlicePassages } from './slice-passages';
 import { stepSliceRope, createSliceRopeState } from './slice-passages-rope';
@@ -45,7 +46,13 @@ async function start() {
   groundUniforms.uNoise.value=noiseTexture();
   rock.side=THREE.DoubleSide;
   const snow=new THREE.MeshStandardMaterial({color:0xd8e0e4,roughness:1,flatShading:true,side:THREE.DoubleSide});
-  const cave=new THREE.MeshStandardMaterial({color:0x535966,roughness:1,flatShading:true,side:THREE.DoubleSide});
+  const cave=makeRockMaterial(), shadeRock=cave.onBeforeCompile;
+  cave.side=THREE.DoubleSide;
+  cave.onBeforeCompile=function(shader,renderer){
+    shadeRock.call(this,shader,renderer);
+    shader.fragmentShader=shader.fragmentShader.replace('frost * 0.92','0.0');
+  };
+  cave.customProgramCacheKey=()=> 'sheltered-rock';
   const ropeMat=new THREE.MeshStandardMaterial({color:0x9f8153,roughness:1,flatShading:true});
   const pin=new THREE.MeshStandardMaterial({color:0x493d35,roughness:1});
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(760,650),snow);
@@ -57,8 +64,8 @@ async function start() {
   function mesh(d:MeshData,material:THREE.Material,name:string,solid=true) {
     const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.BufferAttribute(d.positions,3));g.setIndex(new THREE.BufferAttribute(d.indices,1));
-    if(material===rock) {
-      const colors=new Float32Array(d.positions.length), color=new THREE.Color('#616874');
+    if(material===rock || material===cave) {
+      const colors=new Float32Array(d.positions.length), color=new THREE.Color(material===rock?'#616874':name==='passage-floor'?'#5c6370':'#505867');
       for(let i=0;i<colors.length;i+=3)color.toArray(colors,i);
       g.setAttribute('color',new THREE.BufferAttribute(colors,3));
     }
@@ -86,25 +93,11 @@ async function start() {
       mesh({positions:Float32Array.from(part.points.flatMap(p=>[p.x,p.y,p.z])),indices:Uint32Array.from(part.indices)},mat,'archive-outcrop');
     }
   }
-  const treeCount=terrain.trees.length;
-  const trunk=new THREE.InstancedMesh(new THREE.CylinderGeometry(.8,1,1,6),pin,treeCount);
-  const fir=new THREE.InstancedMesh(new THREE.ConeGeometry(1,1,6),new THREE.MeshStandardMaterial({color:0x253f43,flatShading:true}),treeCount*2);
-  const foliageSnow=new THREE.InstancedMesh(new THREE.ConeGeometry(1,1,6),snow,treeCount*2);
-  const obj=new THREE.Object3D();
-  function inst(m:THREE.InstancedMesh,i:number,x:number,y:number,z:number,r:number,h:number){
-    obj.position.set(x,y,z);obj.scale.set(r,h,r);obj.updateMatrix();m.setMatrixAt(i,obj.matrix);
+  scene.add(await buildTraversalGroves(terrain.trees));
+  for(const t of terrain.trees){
+    world.createCollider(RAPIER.ColliderDesc.cylinder(t.height*.35,t.radius)
+      .setTranslation(t.x,t.y+t.height*.35,t.z).setCollisionGroups(GROUPS_TREE));
   }
-  terrain.trees.forEach((t,i)=>{
-    const h=t.height;
-    inst(trunk,i,t.x,t.y+h*.26,t.z,t.radius,h*.52);
-    [0,1].forEach(j=>{
-      const r=h*(.24-j*.07),ch=h*(.58-j*.12),cy=t.y+h*(.44+j*.33);
-      inst(fir,2*i+j,t.x,cy,t.z,r,ch);
-      inst(foliageSnow,2*i+j,t.x,cy+ch*.12,t.z,r*.77,ch*.77);
-    });
-    world.createCollider(RAPIER.ColliderDesc.cylinder(h*.35,t.radius).setTranslation(t.x,t.y+h*.35,t.z).setCollisionGroups(GROUPS_TREE));
-  });
-  scene.add(trunk,fir,foliageSnow);
   const hint=element('cue');
   Object.assign(G,{world,R:RAPIER,scene,camera,input,terrain:{handles},region:{minX:-335,maxX:410,minZ:-315,maxZ:315},
     lake:{onIce:()=>false,levelAt:()=>NaN,onThin:()=>false,handles:new Set()},house:{zoneAt:()=>null,woodenSupports:new Set()},

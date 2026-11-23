@@ -12,11 +12,16 @@ export interface GroveSite {
   rootAt: (x: number, z: number, outside: boolean) => { x: number; y: number; z: number } | undefined;
 }
 
-export async function buildMountainGroves(sites: GroveSite[]) {
+async function loadConifer(){
   const tree = (
     await new GLTFLoader().loadAsync(new URL('../../models/conifer_c1.glb', document.baseURI).href)
   ).scene;
   tree.updateMatrixWorld(true);
+  return tree;
+}
+
+export async function buildMountainGroves(sites: GroveSite[]) {
+  const tree=await loadConifer();
   const bounds = new Box3().setFromObject(tree),
     modelHeight = bounds.max.y - bounds.min.y;
   const poses: Matrix4[] = [],
@@ -69,6 +74,32 @@ export async function buildMountainGroves(sites: GroveSite[]) {
     }
     counts.push(poses.length - start);
   }
+  const group=instanceConifers(tree,poses);
+  group.userData.tierCounts=counts;
+  return group;
+}
+
+// Use the same conifer and crown material as the art scene. Keep every needle
+// inside the crown envelope used when testing paths and bridge clearance.
+export async function buildTraversalGroves(trees: {x:number;y:number;z:number;height:number}[]) {
+  const tree=await loadConifer();
+  const bounds=new Box3().setFromObject(tree);
+  const height=bounds.max.y-bounds.min.y;
+  const radius=Math.hypot(Math.max(Math.abs(bounds.min.x),Math.abs(bounds.max.x)),
+    Math.max(Math.abs(bounds.min.z),Math.abs(bounds.max.z)));
+  const transform=new Object3D();
+  const poses=trees.map(t=>{
+    const sy=t.height/height, sx=Math.min(sy,t.height*.24/radius);
+    transform.position.set(t.x,t.y-bounds.min.y*sy,t.z);
+    transform.rotation.y=t.x*.72+t.z*.39;
+    transform.scale.set(sx,sy,sx);
+    transform.updateMatrix();
+    return transform.matrix.clone();
+  });
+  return instanceConifers(tree,poses);
+}
+
+function instanceConifers(tree:Group, poses:Matrix4[]) {
   const group = new Group(),
     matrix = new Matrix4();
   tree.traverse((node) => {
@@ -99,6 +130,5 @@ export async function buildMountainGroves(sites: GroveSite[]) {
     group.add(instances);
   });
   group.userData.count = poses.length;
-  group.userData.tierCounts = counts;
   return group;
 }
