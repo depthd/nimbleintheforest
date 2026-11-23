@@ -1,0 +1,159 @@
+name: Publish mountain postmortem materials
+on:
+  push:
+    branches: [task/MOUNTAINS-AUDIT-001-publication]
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f79fcb78595ee1d56df6854ccbe352d112a75649
+          path: baseline
+      - uses: actions/checkout@v4
+        with:
+          ref: 46f3828c8ea9f0784b81e77614c0617ff2e706ca
+          path: downloads
+          persist-credentials: false
+      - name: Reconstruct the verified archive
+        run: python downloads/join-full-archive.py
+      - name: Extract postmortem evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.request import urlopen
+          from urllib.parse import quote
+          from zipfile import ZipFile
+          from io import BytesIO
+          import csv, re, subprocess
+
+          base = Path('baseline')
+          dest = base / 'docs/mountains-postmortem'
+          dest.mkdir(parents=True)
+          limit = 50_000_000
+          allowed_extensions = {
+              '.md', '.txt', '.tsv', '.json', '.ndjson', '.log',
+              '.jpg', '.jpeg', '.png', '.patch', '.cjs', '.py',
+          }
+          prefixes = (
+              '01-assignment/', '02-history/concept-01-24/',
+              '02-history/recent-frames/', '02-history/ARCHIVE.md',
+              '03-slice/', '04-iterations/', '05-source/',
+              '06-pages/evidence/', '06-pages/screens/',
+          )
+          with ZipFile('downloads/Nimble-mountains-audit-full.zip') as archive:
+              report = archive.read('REPORT.md').decode()
+              for entry in archive.infolist():
+                  relative = Path(entry.filename)
+                  if (entry.is_dir() or relative.is_absolute() or '..' in relative.parts or
+                      not entry.filename.startswith(prefixes) or
+                      relative.suffix.lower() not in allowed_extensions):
+                      continue
+                  if entry.file_size >= limit:
+                      raise ValueError(entry.filename)
+                  if relative.suffix == '.log':
+                      relative = relative.with_suffix('.txt')
+                  target = dest / relative
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(archive.read(entry))
+
+          audit_sha = 'b881f2e90a79c17ec7e9e05299252208b7ea3236'
+          audit_path = 'docs/mountains-slice/audit-2026-11-23'
+          for name in (
+              '01-wall-original.jpg', '02-wall-angular.jpg', '03-route-overview.jpg',
+              '04-den.jpg', '05-rope.jpg', '06-cave.jpg', '07-bridge.jpg', '08-gallery.jpg',
+          ):
+              url = f'https://raw.githubusercontent.com/depthd/nimbleintheforest/{audit_sha}/{audit_path}/{name}'
+              with urlopen(url,timeout=25) as response:
+                  (dest/'06-pages/screens'/name).write_bytes(response.read(limit))
+
+          report = report[:report.index('## 7. Как воспроизвести')] + '''## 7. Материалы для проверки
+
+          [Ветки с SHA](05-source/refs.txt) · [Журнал команд](JOURNAL.md) · [Кадры по этапам](FRAMES.md) · [Опись кадров](frames.tsv). До этой работы история уже зафиксирована в базовом `docs/qa/PLATEAU-001`. Код разработки и тесты лежат в исходных ветках из списка SHA. В выпуске материалов сохраняются только отчёт, кадры, протоколы и проверочные данные.
+          '''
+          report = re.sub(
+              r'(?<=\])\(((?:0[1-6]-|JOURNAL\.md|FRAMES\.md|frames\.tsv)[^)]+|JOURNAL\.md|FRAMES\.md|frames\.tsv)\)',
+              lambda m: '(docs/mountains-postmortem/'+m[1].replace('mtn-pages-live-browser.log','mtn-pages-live-browser.txt')+')',
+              report,
+          )
+          (base/'postmortem.md').write_text(report)
+          (dest/'JOURNAL.md').write_text('''# Журнал действий и команд
+
+          Хронология решений приведена в [postmortem.md](../../postmortem.md). Метки времени взяты из Git. Полная стенограмма сессии не сохранялась.
+
+          1. От `f79fcb7` выделены независимые ветки для шести агентов и общей интеграции. [Точные задания](03-slice/briefs/) · [Начальный кадр](03-slice/integration/baseline/)
+          2. По отдельности собраны генераторы боковин, сетка ярусов, проходы и мост. [Каждый коммит и его родители](05-source/commits.tsv) · [Пофайловый журнал](05-source/commits-files.txt)
+          3. Измерены видимые пиксели снега и тени, выполнен опыт со смещением глубины, откат и повторная съёмка. [Замеры и скрипты](03-slice/integration/) · [Промежуточные материалы](04-iterations/)
+          4. Из тестового адреса пройден маршрут на четырёх сидах, после правки гребня повторены 42 и 7. [Трассы и кадры](FRAMES.md)
+          5. Опубликован тест на GitHub Pages и заново пройдены четыре старта. [Git-патч](05-source/pages.patch) · [Результат Actions](06-pages/evidence/github-actions.json) · [Вывод браузера](06-pages/evidence/mtn-pages-live-browser.txt)
+
+          Команды сборки и проверок в интеграционной ветке:
+
+          ```sh
+          npm run build
+          npx tsc -p experiments/plateau/tsconfig.json
+          git diff --check f79fcb7 HEAD
+          node scripts/repo-check.mjs --base f79fcb7
+          node experiments/plateau/slice-wall-rounded.test.cjs
+          node experiments/plateau/slice-wall-angular.test.cjs
+          node experiments/plateau/slice-terrain.test.cjs
+          node experiments/plateau/slice-passages-rope.test.cjs
+          SLICE_TERRAIN="$PWD/experiments/plateau/slice-terrain.ts" node experiments/plateau/slice-passages.test.cjs
+          node experiments/plateau/slice-bridges.test.cjs
+          npm run dev -- --host 127.0.0.1 --port 5184
+          node docs/mountains-slice/integration/capture-walls.cjs variants /tmp/wall-captures http://127.0.0.1:5184
+          node docs/mountains-slice/integration/benchmark-walls.cjs http://127.0.0.1:5184 /tmp/wall-timing.json
+          node docs/mountains-slice/integration/walk-route.cjs 'http://127.0.0.1:5184/experiments/plateau/route.html?qa=1&seed=42&wall=rounded' /tmp/walk-42
+          ```
+
+          [Замеры и выводы локальных тестов](03-slice/local-tests/). Браузерный сценарий использовал реальный игровой ввод и диагностические фиксированные физические такты. Проверка в реальном времени находится рядом.
+          ''')
+          stages = [
+              ('До начала работ', '02-history/'),
+              ('Постановка задачи', '01-assignment/prepared-request/'),
+              ('Исходная камера', '03-slice/integration/baseline/'),
+              ('Первые пробы', '04-iterations/first-captures/'),
+              ('Кадр до правки гребня', '04-iterations/side-by-side-before-ridge.jpg'),
+              ('Пунктир на крупном плане', '04-iterations/initial-seam-sequence/'),
+              ('Отклонённая правка глубины', '04-iterations/rejected-depth-offset/'),
+              ('Гребень и финальные боковины', '03-slice/wall-angular/'),
+              ('Полная съёмка стенок и контроль теней', '03-slice/integration/final-walls/'),
+              ('Входы и ярусы', '03-slice/tiers-entries/'),
+              ('Порталы и канат', '03-slice/passages/browser/'),
+              ('Мост и берега', '03-slice/bridges/'),
+              ('Путь 42', '04-iterations/walk-42/'),
+              ('Путь 7', '04-iterations/walk-7/'),
+              ('Путь 8191', '04-iterations/walk-8191/'),
+              ('Путь 23011', '04-iterations/walk-23011/'),
+              ('Кадры опубликованной страницы', '06-pages/screens/'),
+          ]
+          heading = '# Кадры по этапам\n\nКоммиты кадров приведены в отчётах и метаданных. [Полная опись](frames.tsv).\n\n'
+          (dest/'FRAMES.md').write_text(heading+'\n'.join(f'- [{label}]({path})' for label,path in stages)+'\n')
+          pictures = [path for path in dest.rglob('*') if path.suffix.lower() in ('.jpg', '.jpeg', '.png')]
+          def order(path):
+              name=path.relative_to(dest).as_posix()
+              return next((i for i,(_,prefix) in enumerate(stages) if name.startswith(prefix)),len(stages))
+          with (dest/'frames.tsv').open('w') as file:
+              writer=csv.writer(file,delimiter='\t',lineterminator='\n')
+              writer.writerow(['Номер этапа','Путь','Байты'])
+              for path in sorted(pictures,key=lambda item:(order(item),item.as_posix())):
+                  writer.writerow([order(path)+1,path.relative_to(dest).as_posix(),path.stat().st_size])
+          for ref in re.findall(r'\]\((docs/[^)]+)\)',report):
+              from urllib.parse import unquote
+              if not (base/unquote(ref)).exists():
+                  raise RuntimeError(f'report link missing: {ref}')
+          print(len(pictures),'image files')
+          PY
+      - name: Commit only the postmortem materials to the review branch
+        working-directory: baseline
+        run: |
+          set -eu
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- postmortem.md docs/mountains-postmortem
+          git diff --cached --check -- postmortem.md
+          git commit -m 'Archive mountain postmortem evidence from the verified original package'
+          git push origin HEAD:refs/heads/postmortem/mountains-2026-11-23
+          git log -1 --format='%H %P'
