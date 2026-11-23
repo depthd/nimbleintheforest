@@ -5,7 +5,8 @@ import { mountainHeight } from './surface-height';
 import { buildContourShelf, shelfOwnsNorthWall } from './contour-shelf';
 import { planMountainLayout, type Box, type MountainId, type Entry, type EntrySide } from './layout';
 import type { PassageAnchors } from './passages';
-import { approachStone, cliffLevels, cliffPoint, edgeInsets, peakHeight, rimRelief, walkingCorridors } from './rock-form';
+import { talusFan } from './wall-outcrop';
+import { approachStone, cliffProfile, cliffPoint, edgeInsets, peakHeight, rimRelief, walkingCorridors } from './rock-form';
 
 export type MountainPoint = { x: number; y: number; z: number };
 export type { MountainId, Entry } from './layout';
@@ -104,12 +105,12 @@ class TriangleBuffer {
     this.vertex(d);
     this.indices.push(i, i + 1, i + 2, i, i + 2, i + 3);
   }
-  bareSummits: [number, number][] = [];
+  partialSnow: [number, number, number][] = [];
   finish(): MeshData {
     const data: MeshData = { positions: new Float32Array(this.xyz), indices: new Uint32Array(this.indices) };
-    if (this.bareSummits.length) {
+    if (this.partialSnow.length) {
       data.exposure = new Float32Array(this.xyz.length / 3).fill(1);
-      for (const [from, to] of this.bareSummits) data.exposure.fill(0, from, to);
+      for (const [from, to, amount] of this.partialSnow) data.exposure.fill(amount, from, to);
     }
     return data;
   }
@@ -200,10 +201,10 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
     const base = s.bottom + (door ? 4 : 0);
     if (Math.max(a.y, b.y) <= base + 0.0001) return;
     let lowerA = pt(a.x, base, a.z), lowerB = pt(b.x, base, b.z);
-    for (const level of cliffLevels) {
-      const upperA = cliffPoint(s,a,level), upperB = cliffPoint(s,b,level);
+    for (const row of cliffProfile) {
+      const upperA = cliffPoint(s, a, row), upperB = cliffPoint(s, b, row);
       if (upperA.y < base && upperB.y < base) continue;
-      if (level > 0) rock.quad(upperB, upperA, lowerA, lowerB);
+      if (row.height > 0) rock.quad(upperB, upperA, lowerA, lowerB);
       lowerA=upperA; lowerB=upperB;
     }
   }
@@ -247,7 +248,32 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
     side(grid[at(0, iz)], grid[at(0, iz + 1)]);
     side(grid[at(nx, iz + 1)], grid[at(nx, iz)]);
   }
-  if (s.tier.kind === 'peak') rock.bareSummits.push([start, rock.xyz.length / 3]);
+  if (s.tier.level === 1) {
+    const debris = new Rng(hashString('rockfall:' + s.phase));
+    for (const south of [true, false]) {
+      // The main south forecourt and the northern shelf stay clear. Rockfall
+      // collects beneath chosen high scarps instead of lining the whole face.
+      const station = s.tier.mountainId === 'main'
+        ? (south ? .83 : .67) + debris.float(-.035, .055)
+        : .25 + debris.float(-.09, .15);
+      const rim = grid[at(Math.round(nx * station), south ? nz : 0)];
+      if (rim.y - s.bottom < 8) continue;
+      const toe = cliffPoint(s, rim, cliffProfile[0]);
+      const {gravel, slabs} = talusFan(toe, south, debris);
+      const start = rock.xyz.length / 3;
+      for (const p of gravel.points) rock.vertex(p);
+      for (const index of gravel.indices) rock.indices.push(start + index);
+      rock.partialSnow.push([start, rock.xyz.length / 3, .45]);
+      for (const stone of slabs) {
+        for (const [target, shell] of [[rock, stone.rock], [snow, stone.snow]] as const) {
+          const offset = target.xyz.length / 3;
+          for (const p of shell.points) target.vertex(p);
+          for (const index of shell.indices) target.indices.push(offset + index);
+        }
+      }
+    }
+  }
+  if (s.tier.kind === 'peak') rock.partialSnow.push([start, rock.xyz.length / 3, 0]);
 }
 // Locate the cell in the same rounded grid used for the triangle mesh, then
 // interpolate the actual triangle. This also reports open skylights to callers.

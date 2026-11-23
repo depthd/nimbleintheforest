@@ -210,3 +210,76 @@ export function wallOutcrop(s: OutcropShape, corners: number[][], seed: number) 
     return { rock, clearance, snow: snowPatch(rock, s.crown, wind, exposure) };
   });
 }
+
+/** Rockfall below one joint. The biggest slab is embedded in the toe, with
+ * sub-metre chips farther down the fan. The crown collects windblown snow. */
+export function talusFan(toe: { x: number; y: number; z: number }, south: boolean, rng: Rng) {
+  const outward = south ? 1 : -1;
+  const blocks = [
+    [0, 0, 4.8, 2.4],
+    [-2.1, 1.5, 2.6, 1.2],
+    [2.0, 2.4, 2.1, 1.25],
+    [-0.6, 3.1, 1.25, 0.65],
+    [2.8, 4.5, 0.85, 0.46],
+    [-3.7, 3.0, 0.72, 0.34],
+    [1.3, 4.3, 0.43, 0.27],
+  ];
+  const strike = rng.float(-0.5, 0.5),
+    size = rng.float(0.82, 1.16),
+    mirror = rng.chance(0.5) ? -1 : 1;
+  // Debris spreads as the drop loses energy, with a scalloped edge against the
+  // snow. Bury the outer edge; there is no vertical step at the foot of the fan.
+  const points: Vector3[] = [],
+    indices: number[] = [];
+  function deposit(along: number, out: number) {
+    const breadth = (5.6 + 0.26 * out) * size;
+    const spread = along / breadth;
+    const crest = Math.max(0, 1 - Math.pow(Math.abs(spread), 1.8));
+    const extent = 7.1 * size * (1 + 0.07 * Math.sin(along * 2.9 + strike) + 0.06 * spread);
+    return Math.max(-0.08, 1.2 * size * Math.max(0, 1 - out / extent) * crest - 0.08);
+  }
+  for (let row = 0; row <= 5; row++)
+    for (let col = 0; col <= 8; col++) {
+      const out = (-2 + row * 2) * size;
+      const along = (col / 4 - 1) * (5.6 + 0.26 * out) * size;
+      points.push(
+        new Vector3(toe.x + along + out * strike, toe.y + deposit(along, out), toe.z + out * outward),
+      );
+      if (!row || !col) continue;
+      const i = row * 9 + col;
+      const cell = [i - 10, i - 1, i, i - 10, i, i - 9];
+      indices.push(...(south ? cell : cell.reverse()));
+    }
+  const gravel = { points, indices };
+  const slabs = blocks.flatMap(([along, out, span, rise]) => {
+    const width = span * size * rng.float(0.84, 1.14),
+      depth = width * rng.float(0.48, 0.86);
+    const height = rise * size;
+    const corners = [
+      [-0.5, -0.26],
+      [0.04, -0.51],
+      [0.47, -0.28],
+      [0.53, 0.11],
+      [-0.06, 0.48],
+      [-0.42, 0.35],
+    ].map(([x, z]) => [x * width, z * depth, rng.float(-0.17, 0.2), rng.float(0.8, 1.2)]);
+    return wallOutcrop(
+      {
+        x: toe.x + (along * mirror + out * strike + rng.float(-0.3, 0.3)) * size,
+        z: toe.z + (out + rng.float(-0.25, 0.25)) * size * outward,
+        base: toe.y + deposit(along * mirror * size, out * size) - height * 0.21,
+        width,
+        depth,
+        height,
+        angle: strike + rng.float(-0.4, 0.4),
+        lean: height * 0.19,
+        rake: width * 0.09,
+        crown: Math.min(0.13, height * 0.085),
+        wear: 0.38,
+      },
+      corners,
+      rng.int(1, 0x7fffffff),
+    );
+  });
+  return { gravel, slabs };
+}
