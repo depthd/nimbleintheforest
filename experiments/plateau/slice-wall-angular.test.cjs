@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const ts = require('typescript');
-const { Vector3 } = require('three');
+const { Ray, Vector3 } = require('three');
 
 require.extensions['.ts'] = (module, file) => module._compile(
   ts.transpileModule(fs.readFileSync(file, 'utf8'), {
@@ -29,20 +29,25 @@ for (const seed of [13947, 42, 7, newSeed]) for (const count of [5, 8, 12]) {
   const wall = buildAngularWall(site, count, seed);
   assert.deepEqual(wall, buildAngularWall(site, count, seed), 'seed must be reproducible');
   assert.equal(wall.masses.length, count);
-  const boxes = [];
+  const boxes = [], rockFaces = [];
   let maxWidth = 0, minRouteClearance = Infinity;
   for (const mass of wall.masses) {
     const verts = new Set();
-    const edges = new Map();
+    const edges = new Map(), orientation = new Map();
     for (let t = mass.firstTriangle; t < mass.firstTriangle + mass.triangles; t++) {
       const tri = Array.from(wall.rock.indices.slice(3*t, 3*t+3));
+      const vertices = tri.map(id => meshPoint(wall.rock, id));
+      rockFaces.push(vertices);
+      assert.ok(vertices[1].clone().sub(vertices[0]).cross(vertices[2].clone().sub(vertices[0])).lengthSq() > 1e-6);
       for (let k = 0; k < 3; k++) {
         const a = tri[k], b = tri[(k+1)%3], edge = [a,b].sort((a,b)=>a-b).join(',');
         verts.add(a);
         edges.set(edge, (edges.get(edge) || 0) + 1);
+        orientation.set(edge, (orientation.get(edge) || 0) + (a < b ? 1 : -1));
       }
     }
     assert.ok([...edges.values()].every(v=>v===2), 'each rock is closed');
+    assert.ok([...orientation.values()].every(v=>v===0), 'outward winding is consistent');
     const pts = [...verts].map(id=>meshPoint(wall.rock, id));
     const u = pts.map(p=>p.dot(along)), v = pts.map(p=>p.dot(across));
     assert.ok(pts.some(p=>p.y<site.groundAt(p.x,p.z)), 'rock sits into ground');
@@ -61,15 +66,26 @@ for (const seed of [13947, 42, 7, newSeed]) for (const count of [5, 8, 12]) {
     const A=boxes[a],B=boxes[b];
     assert.ok(A[1]<=B[0]||B[1]<=A[0]||A[3]<=B[2]||B[3]<=A[2], 'boulders have disjoint plan envelopes');
   }
-  let minSnowNormalY=Infinity;
+  let minSnowNormalY=Infinity, maxSnowSupportGap=0;
+  const downward=new Vector3(0,-1,0), intersection=new Vector3();
   for(let k=0;k<wall.snow.indices.length;k+=3) {
     const [a,b,c]=Array.from(wall.snow.indices.slice(k,k+3),id=>meshPoint(wall.snow,id));
+    const center=a.clone().add(b).add(c).multiplyScalar(1/3);
+    if(k<wall.snowWallIndexCount) {
+      const ray=new Ray(center,downward);
+      let gap=Infinity;
+      for(const [r0,r1,r2] of rockFaces) {
+        if(ray.intersectTriangle(r0,r1,r2,true,intersection)) gap=Math.min(gap,center.y-intersection.y);
+      }
+      assert.ok(gap>=0 && gap<0.6, 'snow sits immediately over an upward rock face');
+      maxSnowSupportGap=Math.max(maxSnowSupportGap,gap);
+    }
     const normal=b.sub(a).cross(c.sub(a)).normalize();
     assert.ok(Number.isFinite(normal.y) && normal.y>0, 'snow triangles face up');
     minSnowNormalY=Math.min(minSnowNormalY,normal.y);
   }
   rows.push({seed,count,rockTriangles:wall.rock.indices.length/3,snowTriangles:wall.snow.indices.length/3,
-    maxWidth,minRouteClearance,minSnowNormalY});
+    maxWidth,minRouteClearance,minSnowNormalY,maxSnowSupportGap});
 }
 assert.notDeepEqual(buildAngularWall(site, 8,7).rock.positions,buildAngularWall(site,8,42).rock.positions);
 assert.throws(()=>buildAngularWall(site,9,7),RangeError);
