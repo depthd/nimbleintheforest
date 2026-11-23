@@ -18,7 +18,7 @@ m._compile(
   __filename,
 );
 const { generateSliceTerrain } = m.exports;
-const seeds = [42, 7, 8191, 23011];
+const seeds = [42, 7, 8191, 3, 23011];
 
 function geometryHash(t) {
   const hash = createHash('sha256');
@@ -194,6 +194,13 @@ function flood(world, t) {
       seed,
       counts,
       entry: t.routes[0].kind,
+      mountainEntries: Object.fromEntries(
+        ['main', 'satellite'].map((id) => {
+          const kinds = [...new Set(t.routes.filter((r) => r.to.startsWith(id + '-')).map((r) => r.kind))];
+          assert.ok(kinds.length <= 1, 'mixed entries within one mountain');
+          return [id, kinds[0] ?? 'none'];
+        }),
+      ),
       graph,
       physical,
       trees: t.trees.length,
@@ -206,6 +213,12 @@ function flood(world, t) {
   }
   assert.deepEqual([...allCounts].sort(), [1, 2, 3, 4]);
   assert.deepEqual([...entries].sort(), ['cut', 'wide']);
+  assert.ok(
+    results.some(
+      (r) => r.mountainEntries.satellite !== 'none' && r.mountainEntries.satellite !== r.mountainEntries.main,
+    ),
+    'no region with different mountain-specific entrances',
+  );
   console.log(JSON.stringify(results, null, 2));
 })().catch((e) => {
   console.error(e);

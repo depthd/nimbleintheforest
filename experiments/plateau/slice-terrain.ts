@@ -1,5 +1,5 @@
 // Compact, metre-scale traversal lab. The legacy art scene retains its original scale.
-import { Rng, smoothstep } from '../../src/core/rng';
+import { Rng, hashString, smoothstep } from '../../src/core/rng';
 import { plateauOutline } from './plateau-profile';
 import type { MeshData } from './cavity';
 import { wallOutcrop } from './wall-outcrop';
@@ -321,10 +321,10 @@ export function generateSliceTerrain(seed: number, options: { passages?: boolean
       'satellite',
       2,
       box(117, 153, -19, 17, 14, 20.6),
-      entry,
+      new Rng(seed ^ hashString('satellite-entry')).chance(0.5) ? 'wide' : 'cut',
       2,
-      22,
-      5,
+      rng.float(20, 24),
+      rng.float(4.5, 6),
       satelliteCount === 2 && rng.chance(0.4),
     );
   if (satelliteCount === 3) add('satellite', 3, box(140, 152, -15, -1, 20.6, 28), 'none', -9, 9, 3, true);
