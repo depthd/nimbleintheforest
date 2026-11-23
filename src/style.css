@@ -77,7 +77,7 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 .box .row, .overlay .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
 .box label { display: block; margin: 8px 0; }
 .box input[type='range'] { width: 100%; }
-#help { width: min(860px, calc(100vw - 32px)); }
+#help { width: min(860px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
 #help .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 #help p { margin: 6px 0; }
 
