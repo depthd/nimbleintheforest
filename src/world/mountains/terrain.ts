@@ -1,0 +1,455 @@
+// Two neighbouring mountain terraces and the ground routes that connect their different levels.
+import { Rng, hashString, smoothstep } from '../../core/rng';
+import type { MeshData } from './geometry';
+import { wallOutcrop } from './wall-outcrop';
+
+export type MountainPoint = { x: number; y: number; z: number };
+export type MountainId = 'main' | 'satellite';
+export type Entry = 'wide' | 'cut' | 'none';
+export type MountainTier = {
+  id: string;
+  mountainId: MountainId;
+  level: number;
+  accessible: boolean;
+  kind: 'plateau' | 'peak';
+  center: MountainPoint;
+  entry: Entry;
+};
+export type MountainRoute = { from: string; to: string; kind: 'wide' | 'cut' | 'terrace'; points: MountainPoint[] };
+export type MountainTree = MountainPoint & { height: number; radius: number };
+export type BridgeAnchor = MountainPoint & { mountainId: MountainId; tierId: string; accessible: boolean };
+type Box = { left: number; right: number; front: number; back: number; bottom: number; top: number };
+type Surface = Box & {
+  tier: MountainTier;
+  length: number;
+  width: number;
+  bend: number;
+  startZ: number;
+  phase: number;
+};
+const pt = (x: number, y: number, z: number): MountainPoint => ({ x, y, z });
+const clamp = (x: number) => Math.max(0, Math.min(1, x));
+const distance = (a: MountainPoint, b: MountainPoint) => Math.hypot(a.x - b.x, a.z - b.z);
+
+function rampZ(s: Surface, x: number) {
+  return s.startZ + s.bend * Math.sin(Math.PI * clamp((x - s.left) / s.length));
+}
+
+// Round the short sides without cutting into reserved landings on the straight edges.
+function inset(s: Box, x: number) {
+  const r = Math.min(12, (s.front - s.back) * 0.19, (s.right - s.left) * 0.16);
+  const dx = Math.max(0, r - Math.min(x - s.left, s.right - x));
+  return r - Math.sqrt(Math.max(0, r * r - dx * dx));
+}
+function surfaceY(s: Surface, x: number, z: number) {
+  const rise = s.top - s.bottom;
+  if (s.tier.kind === 'peak') {
+    const { center } = s.tier;
+    const radius = Math.max(
+      Math.abs((2 * (x - center.x)) / (s.right - s.left)),
+      Math.abs((2 * (z - center.z)) / (s.front - s.back)),
+    );
+    return s.top - (rise - 3) * Math.min(1, radius);
+  }
+  const t = clamp((x - s.left) / s.length);
+  // Continuous tangent at foot and crest. The entire west side blends in wide mode.
+  const ramp = s.bottom + rise * smoothstep(0, 1, t);
+  const band =
+    s.tier.entry === 'none'
+      ? 1
+      : s.tier.entry === 'wide'
+        ? 0
+        : smoothstep(s.width * 0.5, s.width * 0.5 + 1.6, Math.abs(z - rampZ(s, x)));
+  const y = ramp + (s.top - ramp) * band;
+  if (s.tier.level !== 1) return y;
+  // Soft terrain folds in the outer snowfield. Bridge, rope, cave and ascent
+  // landings sit on their original datum; the upper tier has continuous support.
+  const outer = smoothstep(0.72, 0.94, Math.abs((2 * z - s.front - s.back) / (s.front - s.back)));
+  const side = smoothstep(27, 45, Math.abs(x - (s.left + s.right) * 0.5));
+  const fold = 0.34 * (1 + Math.sin(0.21 * x + s.phase) * Math.cos(0.16 * z - s.phase));
+  return y + outer * side * fold * smoothstep(0.84, 1, t);
+}
+class TriangleBuffer {
+  xyz: number[] = [];
+  indices: number[] = [];
+  vertex(p: MountainPoint) {
+    this.xyz.push(p.x, p.y, p.z);
+    return this.xyz.length / 3 - 1;
+  }
+  quad(a: MountainPoint, b: MountainPoint, c: MountainPoint, d: MountainPoint) {
+    const i = this.vertex(a);
+    this.vertex(b);
+    this.vertex(c);
+    this.vertex(d);
+    this.indices.push(i, i + 1, i + 2, i, i + 2, i + 3);
+  }
+  finish(): MeshData {
+    return { positions: new Float32Array(this.xyz), indices: new Uint32Array(this.indices) };
+  }
+}
+function gridShape(s: Surface) {
+  if (s.tier.kind === 'peak') return { nx: 8, nz: 8 };
+  return { nx: Math.ceil((s.right - s.left) / 2), nz: Math.ceil((s.front - s.back) / 2) };
+}
+function node(s: Surface, ix: number, iz: number, nx: number, nz: number) {
+  const x = s.left + ((s.right - s.left) * ix) / nx,
+    edge = inset(s, x);
+  const z0 = s.back + ((s.front - s.back) * iz) / nz;
+  const roundingBand = Math.min(13, (s.front - s.back) * 0.22, (s.right - s.left) * 0.2);
+  const z = z0 + edge * (clamp(1 - (z0 - s.back) / roundingBand) - clamp(1 - (s.front - z0) / roundingBand));
+  return pt(x, surfaceY(s, x, z), z);
+}
+function roofHole(s: Surface, x: number, z: number, passages: boolean) {
+  return passages && s.tier.id === 'main-2' && x > 14 && x < 20 && z > -10 && z < 0;
+}
+function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer, passages: boolean) {
+  const { nx, nz } = gridShape(s);
+  const top = s.tier.kind === 'peak' ? rock : snow;
+  const start = top.xyz.length / 3;
+  // Indexed tops share edges with the boundary wall and have upward-facing winding.
+  const grid: MountainPoint[] = [];
+  for (let ix = 0; ix <= nx; ix++)
+    for (let iz = 0; iz <= nz; iz++) {
+      const p = node(s, ix, iz, nx, nz);
+      grid.push(p);
+      top.vertex(p);
+    }
+  const at = (ix: number, iz: number) => ix * (nz + 1) + iz;
+  const bankVertices = new Map<number, number>();
+  function face(i: number, j: number, k: number) {
+    const a = grid[i],
+      b = grid[j],
+      c = grid[k];
+    const ux = b.x - a.x,
+      uy = b.y - a.y,
+      uz = b.z - a.z;
+    const vx = c.x - a.x,
+      vy = c.y - a.y,
+      vz = c.z - a.z;
+    const normalY = uz * vx - ux * vz;
+    // The steep cut exposes bedrock. Keep its drivable floor on the snow mesh.
+    if (s.tier.entry === 'cut' && Math.hypot(uy * vz - uz * vy, ux * vy - uy * vx) > 1.45 * normalY) {
+      for (const index of [i, j, k]) {
+        let vertex = bankVertices.get(index);
+        if (vertex === undefined) {
+          vertex = rock.vertex(grid[index]);
+          bankVertices.set(index, vertex);
+        }
+        rock.indices.push(vertex);
+      }
+    } else {
+      top.indices.push(start + i, start + j, start + k);
+    }
+  }
+  for (let ix = 0; ix < nx; ix++)
+    for (let iz = 0; iz < nz; iz++) {
+      const a = at(ix, iz),
+        b = at(ix, iz + 1),
+        c = at(ix + 1, iz + 1),
+        d = at(ix + 1, iz);
+      if (!roofHole(s, (grid[a].x + grid[c].x) / 2, (grid[a].z + grid[c].z) / 2, passages)) {
+        face(a, b, c);
+        face(a, c, d);
+      }
+    }
+  function side(a: MountainPoint, b: MountainPoint, south = false) {
+    const mid = (a.x + b.x) * 0.5;
+    const door =
+      south &&
+      passages &&
+      ((s.tier.id === 'main-1' && mid > 12 && mid < 18) || (s.tier.id === 'main-2' && mid > 14 && mid < 20));
+    const base = s.bottom + (door ? 4 : 0);
+    if (Math.max(a.y, b.y) <= base + 0.0001) return;
+    rock.quad(b, a, pt(a.x, base, a.z), pt(b.x, base, b.z));
+  }
+  // Winding faces outward. Doorways retain their stone lintels.
+  for (let ix = 0; ix < nx; ix++) {
+    side(grid[at(ix, nz)], grid[at(ix + 1, nz)], true);
+    side(grid[at(ix + 1, 0)], grid[at(ix, 0)]);
+  }
+  for (let iz = 0; iz < nz; iz++) {
+    side(grid[at(0, iz)], grid[at(0, iz + 1)]);
+    side(grid[at(nx, iz + 1)], grid[at(nx, iz)]);
+  }
+}
+// Locate the cell in the same rounded grid used for the triangle mesh, then
+// interpolate the actual triangle. This also reports open skylights to callers.
+function sampleSurface(s: Surface, x: number, z: number, passages: boolean): number | undefined {
+  if (x < s.left || x > s.right || z < s.back || z > s.front || roofHole(s, x, z, passages)) return;
+  const { nx, nz } = gridShape(s),
+    fx = ((x - s.left) / (s.right - s.left)) * nx,
+    ix = Math.min(nx - 1, Math.floor(fx));
+  const tx = fx - ix,
+    p0 = node(s, ix, 0, nx, nz),
+    p1 = node(s, ix + 1, 0, nx, nz);
+  const back = p0.z + (p1.z - p0.z) * tx,
+    front = s.front + s.back - back;
+  if (z < back - 1e-7 || z > front + 1e-7) return;
+  let lo = 0,
+    hi = nz;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1,
+      left = node(s, ix, mid, nx, nz).z,
+      right = node(s, ix + 1, mid, nx, nz).z;
+    if (left + (right - left) * tx <= z) lo = mid;
+    else hi = mid;
+  }
+  const iz = lo;
+  const a = node(s, ix, iz, nx, nz),
+    b = node(s, ix, iz + 1, nx, nz);
+  const c = node(s, ix + 1, iz + 1, nx, nz),
+    d = node(s, ix + 1, iz, nx, nz);
+  const diagonal = a.z + tx * (c.z - a.z);
+  return z >= diagonal
+    ? a.y + tx * (c.y - a.y) + ((z - diagonal) * (b.y - a.y)) / (b.z - a.z)
+    : a.y + tx * (c.y - a.y) + ((z - diagonal) * (c.y - d.y)) / (c.z - d.z);
+}
+// Use the same jointed cliff generator as the full art scene. Keep the
+// climb, cave ports, bridge landings and swappable wall frontage clear.
+function dressBackWall(s: Surface, seed: number, rock: TriangleBuffer, snow: TriangleBuffer) {
+  if (s.tier.kind === 'peak') return;
+  const rng = new Rng(seed);
+  const height = s.top - s.bottom;
+  const step = Math.max(4, height * 0.7);
+  for (let x = s.left + s.length + step; x < s.right - 3; x += step * rng.float(0.85, 1.25)) {
+    const z = s.back + inset(s, x);
+    const width = step * rng.float(0.8, 1.3);
+    const depth = Math.min(4, height * 0.45);
+    const corners = [
+      [-0.5, -0.3],
+      [0.1, -0.5],
+      [0.5, -0.2],
+      [0.45, 0.3],
+      [-0.2, 0.5],
+      [-0.5, 0.2],
+    ].map(([u, v]) => [u * width, v * depth, rng.float(-0.15, 0.15), rng.float(0.95, 1.05)]);
+    const shapes = wallOutcrop(
+      {
+        x,
+        z,
+        angle: 0,
+        width,
+        depth,
+        height: height * rng.float(0.65, 0.95),
+        base: s.bottom - 0.2,
+        lean: 0.1,
+        rake: 0.3,
+        crown: 0.08,
+        wear: 0.5,
+      },
+      corners,
+      rng.int(1, 0x7fffffff),
+    );
+    for (const shape of shapes) {
+      for (const [shell, target] of [
+        [shape.rock, rock],
+        [shape.snow, snow],
+      ] as const) {
+        const start = target.xyz.length / 3;
+        shell.points.forEach((p) => target.vertex(p));
+        shell.indices.forEach((id) => target.indices.push(id + start));
+      }
+    }
+  }
+}
+export function generateMountainTerrain(seed: number) {
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff)
+    throw new RangeError('terrain seed must be a uint32');
+  const rng = new Rng(seed),
+    surfaces: Surface[] = [],
+    routes: MountainRoute[] = [];
+  const wide = rng.chance(0.5);
+  const mainCount = rng.int(2, 4),
+    satelliteCount = rng.int(1, 3);
+  const spawn = pt(-65, 0, -15);
+  function add(
+    id: MountainId,
+    level: number,
+    box: Box,
+    entry: Entry,
+    startZ: number,
+    length: number,
+    width: number,
+    peak = false,
+  ) {
+    if (peak) {
+      // A high narrow summit rises from the previous terrace. The three-metre
+      // vertical toe precludes reaching its upper slopes from that terrace.
+      const cx = (box.left + box.right) / 2,
+        cz = (box.front + box.back) / 2;
+      const h = box.top - box.bottom,
+        halfX = Math.min((box.right - box.left) / 2, h * 0.57),
+        halfZ = Math.min((box.front - box.back) / 2, h * 0.54);
+      box = {
+        ...box,
+        left: cx - halfX,
+        right: cx + halfX,
+        back: cz - halfZ,
+        front: cz + halfZ,
+        top: box.top + h * 0.46,
+      };
+    }
+    const center = pt((box.left + box.right) / 2, box.top, (box.front + box.back) / 2);
+    const tier: MountainTier = {
+      id: id + '-' + level,
+      mountainId: id,
+      level,
+      accessible: !peak,
+      kind: peak ? 'peak' : 'plateau',
+      center,
+      entry: peak ? 'none' : entry,
+    };
+    const s: Surface = {
+      ...box,
+      tier,
+      startZ,
+      length,
+      width,
+      bend: entry === 'cut' ? rng.float(-3, 3) : 0,
+      phase: rng.float(-Math.PI, Math.PI),
+    };
+    surfaces.push(s);
+    if (peak || entry === 'none') return;
+    const points: MountainPoint[] = [];
+    for (let i = 0; i <= 20; i++) {
+      const x = box.left + (s.length * i) / 20,
+        z = rampZ(s, x);
+      points.push(pt(x, surfaceY(s, x, z), z));
+    }
+    routes.push({ from: level === 1 ? 'spawn' : id + '-' + (level - 1), to: tier.id, kind: entry, points });
+  }
+  const box = (
+    left: number,
+    right: number,
+    back: number,
+    front: number,
+    bottom: number,
+    top: number,
+  ): Box => ({ left, right, back, front, bottom, top });
+  const entry: Entry = wide ? 'wide' : 'cut';
+  add('main', 1, box(-60, 60, -34, 34, 0, 14), entry, -15, rng.float(39, 44), rng.float(5, 8));
+  add('main', 2, box(-4, 44, -24, 14, 14, 22), entry, -14, rng.float(16, 17.5), rng.float(4.5, 6.5));
+  if (mainCount >= 3)
+    add(
+      'main',
+      3,
+      box(22, 42, -22, 0, 22, 26.6),
+      entry,
+      -12,
+      15,
+      rng.float(3.5, 5),
+      mainCount === 3 && rng.chance(0.45),
+    );
+  if (mainCount === 4) add('main', 4, box(37, 41, -8, -2, 26.6, 33), 'none', -14, 8, 3, true);
+  add('satellite', 1, box(90, 162, -30, 30, 0, 14), 'none', 0, 1, 4);
+  if (satelliteCount >= 2)
+    add(
+      'satellite',
+      2,
+      box(117, 153, -19, 17, 14, 20.6),
+      new Rng(seed ^ hashString('satellite-entry')).chance(0.5) ? 'wide' : 'cut',
+      2,
+      rng.float(20, 24),
+      rng.float(4.5, 6),
+      satelliteCount === 2 && rng.chance(0.4),
+    );
+  if (satelliteCount === 3) add('satellite', 3, box(140, 152, -15, -1, 20.6, 28), 'none', -9, 9, 3, true);
+  const rock = new TriangleBuffer(),
+    snow = new TriangleBuffer(),
+    passages = true;
+  surfaces.forEach((s, i) => {
+    bakeSurface(s, rock, snow, passages);
+    dressBackWall(s, seed ^ ((i + 1) * 14591), rock, snow);
+  });
+  const sampleHeight = (x: number, z: number) =>
+    surfaces.reduce((h, s) => Math.max(h, sampleSurface(s, x, z, passages) ?? 0), 0);
+  const mainBase = surfaces[0],
+    satelliteBase = surfaces.find((s) => s.tier.id === 'satellite-1')!;
+  const bridgeAnchors: [BridgeAnchor, BridgeAnchor] = [
+    { ...pt(mainBase.right - 1, mainBase.top, 0), mountainId: 'main', tierId: 'main-1', accessible: true },
+    {
+      ...pt(satelliteBase.left + 1, satelliteBase.top, 0),
+      mountainId: 'satellite',
+      tierId: 'satellite-1',
+      accessible: true,
+    },
+  ];
+  const passageAnchors = {
+    throughLower: pt(17, 14, 14),
+    throughUpper: pt(17, 22, -10),
+    denMouth: pt(15, 0, 34),
+    denBack: pt(15, 0, 20),
+    halfWidth: 3,
+    height: 4,
+    throughSkylightStartZ: 0,
+    ropeLower: pt(-4, 0, 35.1),
+    ropeUpper: pt(-4, 14, 32.6),
+  };
+  const trees: MountainTree[] = [];
+  for (const s of surfaces) {
+    if (s.tier.kind === 'peak') continue;
+    const n = Math.max(2, Math.round(((s.right - s.left) * (s.front - s.back)) / 320));
+    let nPlaced = 0;
+    function tryTree(x: number, z: number, heights: Rng) {
+      const h = sampleSurface(s, x, z, passages);
+      if (h === undefined || Math.abs(h - s.top) > 0.02 || Math.abs(sampleHeight(x, z) - h) > 0.02) return;
+      if (
+        surfaces.some(
+          (other) =>
+            other.tier.mountainId === s.tier.mountainId &&
+            other.tier.level > s.tier.level &&
+            x > other.left - 3 &&
+            x < other.right + 3 &&
+            z > other.back - 3 &&
+            z < other.front + 3,
+        )
+      )
+        return;
+      if (
+        (Math.abs(z) < 4 && x > 46 && x < 111) ||
+        (x > 9 && x < 25 && z > -14 && z < 38) ||
+        (x > -9 && x < 2 && z > 27)
+      )
+        return;
+      if (routes.some((r) => r.points.some((p) => Math.hypot(x - p.x, z - p.z) < 4))) return;
+      const connectors = routes.filter((r) => r.from === s.tier.id);
+      const arrival = routes.find((r) => r.to === s.tier.id)?.points.at(-1) ?? bridgeAnchors[1];
+      if (
+        connectors.some((r) => {
+          const start = r.points[0],
+            dx = start.x - arrival.x,
+            dz = start.z - arrival.z;
+          const t = clamp(((x - arrival.x) * dx + (z - arrival.z) * dz) / (dx * dx + dz * dz || 1));
+          return Math.hypot(x - arrival.x - t * dx, z - arrival.z - t * dz) < 3;
+        })
+      )
+        return;
+      const p = pt(x, h, z);
+      if (trees.some((t) => distance(t, p) < 3)) return;
+      trees.push({ ...p, height: heights.float(2.4, 5.8), radius: 0.23 });
+      nPlaced++;
+    }
+    for (let i = 0; i < n * 24 && nPlaced < n; i++)
+      tryTree(rng.float(s.left + 2, s.right - 2), rng.float(s.back + 2, s.front - 2), rng);
+    // On a small shelf a random scatter can miss the remaining free strip.
+    // Fill from a deterministic grid using its own heights stream.
+    if (nPlaced < n) {
+      const fillRng = new Rng(seed ^ hashString(s.tier.id + '-forest'));
+      for (let x = s.left + 1.5; x < s.right - 1 && nPlaced < n; x += 1)
+        for (let z = s.back + 1.5; z < s.front - 1 && nPlaced < n; z += 1) tryTree(x, z, fillRng);
+    }
+  }
+  return {
+    seed,
+    spawn,
+    tiers: surfaces.map((s) => s.tier),
+    routes,
+    bridgeAnchors,
+    passageAnchors,
+    sampleHeight,
+    trees,
+    rock: rock.finish(),
+    snow: snow.finish(),
+  };
+}
+export type MountainTerrain = ReturnType<typeof generateMountainTerrain>;

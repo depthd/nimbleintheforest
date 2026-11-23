@@ -196,6 +196,12 @@ export class Interaction {
     const tg = tags(eq);
     const carried = P.carried;
     this.info = '';
+    const mountains = G.mountains;
+    if (mountains && (mountains.onRope || (!carried && !P.wrapped && mountains.canReachRope(P.pos)))) {
+      this.info = mountains.onRope ? 'Канат · W — вверх, S — вниз' : 'Закреплённый канат';
+      return [{ key: 'E', label: mountains.onRope ? 'Отпустить канат' : 'Взяться за канат', run: () => mountains.toggleRope(P.pos) }];
+    }
+    if (t.kind === 'static' && t.collider !== undefined) this.info = mountains?.surfaces.get(t.collider) ?? '';
     const fire = G.fires.fireOf(e);
 
     if (e) this.info = this.describe(e);

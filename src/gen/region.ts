@@ -11,6 +11,8 @@ import type { CliffBuild } from './cliffs';
 import { RockSkin } from './rock-skin';
 import type { CaveHill } from './cave';
 import { buildCliffLab } from './cliff-lab';
+import { findMountainSite, onMountainSite, foundationHeight, stampMountainSite, MOUNTAIN_BLEND } from './mountain-site';
+import { generateMountainTerrain, type MountainTerrain } from '../world/mountains/terrain';
 import type { CliffLabInfo } from './cliff-lab';
 
 export interface RegionOptions {
@@ -158,6 +160,8 @@ export class Region {
   /** cave mouths; the interiors are separate places (gen/cave.ts) */
   caves: CaveSite[] = [];
   cliffLab: CliffLabInfo | null = null;
+  mountainSite: Site | null = null;
+  mountainTerrain: MountainTerrain | null = null;
   seaSide = 0;
   treeline = 165;
   timings: Record<string, number> = {};
@@ -199,6 +203,11 @@ export class Region {
     const v = j * (n + 1) + i;
     const a = H[v], b = H[v + 1], c = H[v + n + 1], d = H[v + n + 2];
     return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
+  }
+
+  /** Flat footprint in world coordinates, optionally enlarged to include its border. */
+  inMountainSite(x: number, z: number, margin = 0) {
+    return !!this.mountainSite && onMountainSite(this.mountainSite, x, z, margin);
   }
 
   private nearest(x: number, z: number) {
@@ -792,14 +801,24 @@ export class Region {
     });
     mark('rock', t);
 
+    // Choose the route after the original landmarks are fixed. Seed streams for rock and
+    // vegetation are independent; defer the foundation until both have sampled the original ground.
+    await progress?.('Камни', 0.72);
+    t = performance.now();
+    const rocks = this.placeRocks(sub(40));
+    mark('rocks', t);
+    if (!this.options.cliffLab) {
+      this.mountainSite = findMountainSite(this);
+      if (this.mountainSite) this.mountainTerrain = generateMountainTerrain(this.seed >>> 0);
+    }
+
     // ---------- vegetation ----------
-    await progress?.('Лес', 0.72);
+    await progress?.('Лес', 0.78);
     t = performance.now();
+    this.rocks = this.makeProps(this.groundProps(rocks));
     this.placeVegetation(sub(30), clearAt, noise(31));
-    mark('vegetation', t);
-    await progress?.('Камни', 0.88);
-    t = performance.now();
-    this.placeRocks(sub(40));
+    for (const p of this.pillars) this.forEachProp(this.trees, p.x, p.z, p.r + 2.5, (i) => (this.trees.flags[i] |= 1));
+    if (this.mountainSite) stampMountainSite(this, this.mountainSite);
     this.clearLogging(sub(51));
     // nothing grows or lies on the rock skin; hiding afterwards keeps the forest elsewhere as it was
     if (this.skin) for (const P of [this.trees, this.shrubs, this.rocks]) {
@@ -809,7 +828,7 @@ export class Region {
     for (const c of this.caves) for (const P of [this.trees, this.shrubs, this.rocks]) {
       this.forEachProp(P, c.x, c.z, 22, (i) => { if (this.inMouth(c, P.x[i], P.z[i], 12.5, 16, -11)) P.flags[i] |= 1; });
     }
-    mark('rocks', t);
+    mark('vegetation', t);
     this.timings.total = Math.round(performance.now() - t0);
     await yieldFrame();
   }
@@ -931,6 +950,17 @@ export class Region {
   }
 
   // ---------- vegetation ----------
+
+  /** Keep the original random draws, then clear only the mountain and seat props in its blend. */
+  private groundProps(list: number[][]) {
+    const site = this.mountainSite;
+    if (!site) return list;
+    return list.filter(p => {
+      if (onMountainSite(site, p[0], p[1])) return false;
+      if (onMountainSite(site, p[0], p[1], MOUNTAIN_BLEND)) p[2] = foundationHeight(site, p[0], p[1], p[2]);
+      return true;
+    });
+  }
 
   private makeProps(list: number[][]): Props {
     const cells = Math.ceil(this.size / PROP_CELL);
@@ -1370,8 +1400,17 @@ export class Region {
       if (!shore || this.blocked(x, z)) continue;
       shrubs.push([x, z, w, rng.float(0.7, 1.2), rng.float(0, 6.28), 1, rng.int(0, 2)]);
     }
-    this.trees = this.makeProps(trees);
-    this.shrubs = this.makeProps(shrubs);
+    const planted = this.groundProps(trees);
+    if (this.mountainSite && this.mountainTerrain) {
+      const site = this.mountainSite;
+      const spruce = new Rng(this.seed ^ 0x62a34e1);
+      for (const t of this.mountainTerrain.trees) {
+        planted.push([site.x + t.x, site.z + t.z, site.y + t.y, t.height / 10,
+          spruce.float(0, 2 * Math.PI), Sp.Spruce, spruce.int(0, 2)]);
+      }
+    }
+    this.trees = this.makeProps(planted);
+    this.shrubs = this.makeProps(this.groundProps(shrubs));
   }
 
   private placeRocks(rng: Rng) {
@@ -1410,8 +1449,6 @@ export class Region {
         }
       }
     }
-    this.rocks = this.makeProps(rocks);
-
     // rock pillars in the stone fields, and at least one group as a landmark
     const cands: { x: number; z: number }[] = [];
     for (let k = 0; k < 4000; k++) {
@@ -1438,8 +1475,7 @@ export class Region {
         this.pillars.push({ x, z, y: this.heightAt(x, z), h, r: rng.float(2.6, 5.2) * (0.6 + h / 50), seed: rng.int(0, 1e6) });
       }
     }
-    // no trees right at the pillars
-    for (const p of this.pillars) this.forEachProp(this.trees, p.x, p.z, p.r + 2.5, (i) => (this.trees.flags[i] |= 1));
+    return rocks;
   }
 
   /** stats for the debug panel */
