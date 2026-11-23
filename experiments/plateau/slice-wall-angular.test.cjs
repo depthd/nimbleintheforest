@@ -25,7 +25,7 @@ const along = new Vector3(Math.cos(site.angle), 0, Math.sin(site.angle));
 const across = new Vector3(along.z, 0, -along.x);
 const newSeed = Number(process.argv[2] || 818723);
 const rows = [];
-for (const seed of [13947, 42, 7, newSeed]) for (const count of [5, 8, 12]) {
+for (const seed of [13947, 42, 7, 8191, 23011, newSeed]) for (const count of [5, 8, 12]) {
   const wall = buildAngularWall(site, count, seed);
   assert.deepEqual(wall, buildAngularWall(site, count, seed), 'seed must be reproducible');
   assert.equal(wall.masses.length, count);

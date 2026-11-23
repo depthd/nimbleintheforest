@@ -1,4 +1,4 @@
-import { Color, Vector3 } from 'three';
+import { Color, Ray, Triangle, Vector3 } from 'three';
 import { Rng } from '../../src/core/rng';
 
 type Site = {
@@ -43,6 +43,73 @@ function pack(mesh: Buffer) {
 const palette = ['#565e6e', '#677182', '#666a78', '#747782', '#5c626e'];
 const white = new Color(1, 1, 1);
 
+type Face = { vertices: Vector3[]; retention?: number[] };
+
+// Sample the pile once from the fixed entrance-side direction. Hidden backs
+// and buried courses must not increase the amount of snow on the front.
+// This runs when a preset is built and has no dependency on the current camera.
+function snowLine(faces: Face[], site: Site, tx: number, tz: number) {
+  const u = -site.width * 0.91, v = site.width * 3.38;
+  const eye = new Vector3(site.x + tx * u + tz * v, 1.50 * site.height, site.z + tz * u - tx * v);
+  const outward = new Vector3(tz - 0.19 * tx, 0.07, -tx - 0.19 * tz).normalize();
+  const right = new Vector3(outward.z, 0, -outward.x).normalize();
+  const up = outward.clone().cross(right);
+  const points = faces.flatMap(face => face.vertices).map(p => p.clone().sub(eye));
+  const x = points.map(p => p.dot(right) / -p.dot(outward));
+  const y = points.map(p => p.dot(up) / -p.dot(outward));
+  const left = Math.min(...x), bottom = Math.min(...y);
+  const width = Math.max(...x) - left, height = Math.max(...y) - bottom;
+  const ray = new Ray(eye);
+  const hit = new Vector3(), weights = new Vector3(), retention: number[] = [];
+  const columns = 40, rows = 32;
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < columns; j++) {
+      ray.direction.copy(outward).negate()
+        .addScaledVector(right, left + width * (j + 0.5) / columns)
+        .addScaledVector(up, bottom + height * (i + 0.5) / rows).normalize();
+      let closest = Infinity, deposit = -1;
+      for (const face of faces) {
+        const [a, b, c] = face.vertices;
+        if (!ray.intersectTriangle(a, b, c, true, hit)) continue;
+        const d = ray.origin.distanceToSquared(hit);
+        if (d >= closest) continue;
+        closest = d;
+        deposit = -1;
+        if (face.retention) {
+          Triangle.getBarycoord(hit, a, b, c, weights);
+          const [qa, qb, qc] = face.retention;
+          deposit = weights.x * qa + weights.y * qb + weights.z * qc;
+        }
+      }
+      if (closest < Infinity) retention.push(deposit);
+    }
+  }
+  retention.sort((a, b) => b - a);
+  return retention[Math.floor(retention.length * 0.25)] ?? 0;
+}
+
+function capAboveSnowLine(snow: Buffer, face: Face, threshold: number) {
+  if (!face.retention) return;
+  const patch: Vector3[] = [];
+  for (let i = 0; i < 3; i++) {
+    const j = (i + 1) % 3, a = face.vertices[i], b = face.vertices[j];
+    const qa = face.retention[i], qb = face.retention[j];
+    if (qa >= threshold) patch.push(a.clone());
+    if ((qa > threshold && qb < threshold) || (qa < threshold && qb > threshold)) {
+      patch.push(a.clone().lerp(b, (threshold - qa) / (qb - qa)));
+    }
+  }
+  if (patch.length < 3) return;
+  const first = snow.positions.length / 3;
+  for (const p of patch) {
+    p.y += 0.055;
+    addPoint(snow, p, white);
+  }
+  // All vertices have the same vertical offset from their supporting plane,
+  // including the ends of every shared edge between two snow-bearing planes.
+  for (let i = 1; i < patch.length - 1; i++) snow.indices.push(first, first + i, first + i + 1);
+}
+
 // A talus fan in three dimensions. The rear line carries the tall, tilted
 // blocks; successive courses occupy the pockets below them toward the toe.
 export function buildAngularWall(site: Site, count: number, seed: number) {
@@ -54,6 +121,7 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
     return new Vector3(site.x + tx * u + tz * v, y, site.z + tz * u - tx * v);
   }
   const masses: Mass[] = [];
+  const faces: Face[] = [];
   // Each row has shared cell boundaries. Its fracture planes stay inside
   // those cells, including at the widest seam between adjacent boulders.
   const maxDepth = site.width * 0.84;
@@ -120,46 +188,23 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
       for (const p of points) addPoint(rock, p, tint);
       for (const index of tris) rock.indices.push(offset + index);
 
-      // Snow accumulates across neighboring upward planes. Keep their inner
-      // edges welded; only the exposed margin retreats toward the face.
-      const planes: { ids: number[]; mid: Vector3; altitude: number }[] = [];
-      const edgeOwners = new Map<string, number>();
-      const edgeKey = (a: number, b: number) => a < b ? a + ',' + b : b + ',' + a;
-      for (let i = 0; i < roof.length; i += 3) {
-        const ids = roof.slice(i, i + 3);
-        const [a, b, c] = ids.map(id => points[n + id]);
-        const normal = b.clone().sub(a).cross(c.clone().sub(a));
-        const altitude = normal.length() / Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a));
-        if (altitude < 0.35 || normal.normalize().y < 0.54) continue;
-        planes.push({ ids, mid: a.clone().add(b).add(c).multiplyScalar(1 / 3), altitude });
-        for (let k = 0; k < 3; k++) {
-          const key = edgeKey(ids[k], ids[(k + 1) % 3]);
-          edgeOwners.set(key, (edgeOwners.get(key) || 0) + 1);
-        }
-      }
-      for (const { ids, mid, altitude } of planes) {
-        const center = mid.clone();
-        center.y += Math.min(0.39, altitude * 0.045);
-        const first = addPoint(snow, center, white);
-        const loop: number[] = [];
-        for (let k = 0; k < 3; k++) {
-          const id = ids[k], next = ids[(k + 1) % 3];
-          const a = points[n + id], b = points[n + next];
-          const corner = a.clone();
-          corner.y += 0.06;
-          loop.push(addPoint(snow, corner, white));
-          const margin = a.clone().lerp(b, 0.5);
-          if (edgeOwners.get(edgeKey(id, next)) === 1) {
-            margin.lerp(mid, rng.float(0.23, 0.52));
-            margin.y += 0.015;
-          } else {
-            margin.y += 0.11;
-          }
-          loop.push(addPoint(snow, margin, white));
-        }
-        for (let k = 0; k < loop.length; k++) {
-          snow.indices.push(first, loop[k], loop[(k + 1) % loop.length]);
-        }
+      // Both ends of the ridge retain snow. Wind exposure varies around its
+      // broken edge; the same vertex has the same value on adjoining planes.
+      const wind = rng.float(-Math.PI, Math.PI);
+      const retention = points.map((p, id) => {
+        const pu = (p.x - site.x) * tx + (p.z - site.z) * tz;
+        const pv = (p.x - site.x) * tz - (p.z - site.z) * tx;
+        const exposure = Math.cos(wind) * (pu - u) / span + Math.sin(wind) * (pv - v) / depth;
+        return (id >= 2 * n ? 0.82 : 0.38) + 0.34 * exposure + 0.20 * (p.y - base) / h;
+      });
+      for (let i = 0; i < tris.length; i += 3) {
+        const ids = tris.slice(i, i + 3);
+        const vertices = ids.map(id => points[id]);
+        const [a, b, c] = vertices;
+        const normal = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
+        const roofFace = i >= tris.length - roof.length;
+        const canHoldSnow = roofFace && normal.y > 0.46;
+        faces.push({ vertices, retention: canHoldSnow ? ids.map(id => retention[id]) : undefined });
       }
       masses.push({
         firstTriangle: start, triangles: rock.indices.length / 3 - start,
@@ -168,6 +213,8 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
       });
     }
   }
+  const threshold = snowLine(faces, site, tx, tz);
+  for (const face of faces) capAboveSnowLine(snow, face, threshold);
   // A low snow bank fills the crevices at ground level. Radial ends dip
   // below the actual ground, so the bank has no open visible hem.
   const snowWallIndexCount = snow.indices.length;
