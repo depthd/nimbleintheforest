@@ -12,6 +12,7 @@ export interface TierPlan extends Box {
   entry: Entry;
   entrySide: EntrySide;
   startZ: number;
+  secondCutZ?: number;
   length: number;
   width: number;
   peak: boolean;
@@ -29,20 +30,22 @@ export function planMountainLayout(seed: number) {
   const entrance = (): Entry => rng.chance(.5) ? 'wide' : 'cut';
   const add = (mountain: MountainId, level: number, b: Box, entry: Entry, entrySide: EntrySide,
     startZ: number, length: number, width: number, peak = false) => {
-    const tier = { ...b, mountain, level, entry: peak ? 'none' as const : entry, entrySide, startZ, length, width, peak };
+    const tier: TierPlan = { ...b, mountain, level, entry: peak ? 'none' as const : entry, entrySide, startZ, length, width, peak };
     tiers.push(tier);
     return tier;
   };
 
   const mainCount = rng.int(2, 4), satelliteCount = rng.int(1, 4);
-  const mainEntry = entrance(), firstZ = even(-22, -8);
+  const mainEntry = entrance(), firstZ = even(-16, 4);
   const main = add('main', 1, box(-60, 60, -34, 34, 0, 14), mainEntry, 'west',
-    firstZ, even(38, 44), rng.float(5.2, 7.8));
+    firstZ, even(38, 44), rng.float(6.2, 8));
+  if (mainEntry === 'cut' && new Rng(seed ^ hashString('twin-gullies')).chance(.55))
+    main.secondCutZ = firstZ <= -4 ? 14 : -16;
   const highBank = rng.int(0, 2); // a stepped bank on either shore, or two low banks
   const left = even(-8, -4), right = highBank === 1 ? main.right : even(42, 50);
   const side: EntrySide = highBank === 1 || rng.chance(.58) ? 'west' : 'east';
   const second = add('main', 2, box(left, right, even(-26, -22), even(12, 18), main.top, main.top + even(6, 10)),
-    entrance(), side, even(-18, -10), 20, rng.float(4.2, 6.0));
+    entrance(), side, even(-10, -2), 20, rng.float(5.8, 7.0));
   // This x column is clear of the ascending side, leaving a solid roof over
   // the mouth and full-height shoulders on both sides of the upper opening.
   const throughX = side === 'west' ? even(20, 26) + 1 : even(4, 10) + 1;
@@ -76,11 +79,11 @@ export function planMountainLayout(seed: number) {
   const satellite = add('satellite', 1,
     box(shoreX, even(154, 164), offset - 28, offset + 28, 0, even(12, 16)),
     rng.chance(.45) ? (mainEntry === 'wide' ? 'cut' : 'wide') : 'none', 'east',
-    offset + even(-8, 10), 32, 5.5);
+    offset + even(-8, 8), 32, 6.5);
   if (satelliteCount >= 2) {
     const high = highBank === 2;
     const l = high ? shoreX : shoreX + even(8, 14);
-    const r = Math.min(satellite.right - (satellite.entry === 'none' ? 6 : 32), l + 42);
+    const r = Math.min(satellite.right - (satellite.entry === 'none' ? 6 : 36), l + 42);
     const width = r - l;
     const side: EntrySide = high ? 'east' : 'west';
     const u = add('satellite', 2,

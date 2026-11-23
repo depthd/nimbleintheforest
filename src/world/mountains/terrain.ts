@@ -20,7 +20,7 @@ export type MountainTier = {
   entrySide: EntrySide;
 };
 export type MountainRoute = { from: string; to: string; kind: 'wide' | 'cut' | 'terrace' | 'shelf'; points: MountainPoint[] };
-export type MountainTree = MountainPoint & { height: number; radius: number };
+export type MountainTree = MountainPoint & { height: number; radius: number; tierId: string };
 export type BridgeAnchor = MountainPoint & { mountainId: MountainId; tierId: string; accessible: boolean; outward: { x: number; z: number }; island: boolean };
 type Surface = Box & {
   tier: MountainTier;
@@ -30,6 +30,7 @@ type Surface = Box & {
   width: number;
   bend: number;
   startZ: number;
+  secondCutZ?: number;
   phase: number;
 };
 const pt = (x: number, y: number, z: number): MountainPoint => ({ x, y, z });
@@ -40,8 +41,9 @@ function rampFraction(s: Surface, x: number) {
   return clamp((s.entrySide === 'west' ? x - s.left : s.right - x) / s.length);
 }
 
-function rampZ(s: Surface, x: number) {
-  return s.startZ + s.bend * Math.sin(Math.PI * rampFraction(s, x));
+function rampZ(s: Surface, x: number, startZ = s.startZ) {
+  const bend = startZ === s.startZ ? s.bend : -.7 * s.bend;
+  return startZ + bend * Math.sin(Math.PI * rampFraction(s, x));
 }
 
 // Round the short sides without cutting into reserved landings on the straight edges.
@@ -71,12 +73,14 @@ function surfaceY(s: Surface, x: number, z: number) {
   const t = rampFraction(s, x);
   // Continuous tangent at foot and crest. The entire west side blends in wide mode.
   const ramp = s.bottom + rise * smoothstep(0, 1, t);
+  const fromCut = Math.min(Math.abs(z - rampZ(s, x)),
+    s.secondCutZ === undefined ? Infinity : Math.abs(z - rampZ(s, x, s.secondCutZ)));
   const band =
     s.tier.entry === 'none'
       ? 1
       : s.tier.entry === 'wide'
         ? 0
-        : smoothstep(s.width * 0.5, s.width * 0.5 + 1.6, Math.abs(z - rampZ(s, x)));
+        : smoothstep(s.width * 0.5, s.width * 0.5 + 1.6, fromCut);
   const y = ramp + (s.top - ramp) * band;
   if (s.tier.level !== 1) return y;
   // Soft terrain folds in the outer snowfield. Bridge, rope, cave and ascent
@@ -107,7 +111,10 @@ class TriangleBuffer {
 }
 function gridShape(s: Surface) {
   if (s.tier.kind === 'peak') return { nx: 8, nz: 8 };
-  return { nx: Math.ceil((s.right - s.left) / 2), nz: Math.ceil((s.front - s.back) / 2) };
+  // Short upper gullies need enough samples across the tread and the bend
+  // for the physical triangle surface to follow the planned walking line.
+  const cell = s.tier.level >= 3 && s.tier.entry === 'cut' ? 1 : 2;
+  return { nx: Math.ceil((s.right - s.left) / cell), nz: Math.ceil((s.front - s.back) / cell) };
 }
 function node(s: Surface, ix: number, iz: number, nx: number, nz: number) {
   const x = s.left + ((s.right - s.left) * ix) / nx,
@@ -343,22 +350,24 @@ export function generateMountainTerrain(seed: number) {
     };
     const s: Surface = {
       ...box,
-      tier, entrySide, passages: passageAnchors,
+      tier, entrySide, passages: passageAnchors, secondCutZ: spec.secondCutZ,
       startZ,
       length,
       width,
-      bend: entry === 'cut' ? rng.float(-3, 3) : 0,
+      bend: entry === 'cut' ? rng.float(-3, 3) * Math.min(1, length / 18) : 0,
       phase: rng.float(-Math.PI, Math.PI),
     };
     surfaces.push(s);
     if (peak || entry === 'none') continue;
-    const points: MountainPoint[] = [];
-    for (let i = 0; i <= 20; i++) {
-      const x = entrySide === 'west' ? box.left + (s.length * i) / 20 : box.right - (s.length * i) / 20,
-        z = rampZ(s, x);
-      points.push(pt(x, surfaceY(s, x, z), z));
+    for (const centerZ of spec.secondCutZ === undefined ? [startZ] : [startZ, spec.secondCutZ]) {
+      const points: MountainPoint[] = [];
+      for (let i = 0; i <= 20; i++) {
+        const x = entrySide === 'west' ? box.left + (s.length * i) / 20 : box.right - (s.length * i) / 20;
+        const z = rampZ(s, x, centerZ);
+        points.push(pt(x, sampleSurface(s, x, z) ?? surfaceY(s, x, z), z));
+      }
+      routes.push({ from: level === 1 ? 'spawn' : id + '-' + (level - 1), to: tier.id, kind: entry, points });
     }
-    routes.push({ from: level === 1 ? 'spawn' : id + '-' + (level - 1), to: tier.id, kind: entry, points });
   }
   const rock = new TriangleBuffer(),
     snow = new TriangleBuffer();
@@ -393,7 +402,10 @@ export function generateMountainTerrain(seed: number) {
     let nPlaced = 0;
     function tryTree(x: number, z: number, heights: Rng) {
       const h = sampleSurface(s, x, z);
-      if (h === undefined || Math.abs(h - s.top) > 0.02 || Math.abs(sampleHeight(x, z) - h) > 0.02) return;
+      if (h === undefined || h < s.bottom + .75 * (s.top - s.bottom) || Math.abs(sampleHeight(x, z) - h) > .06) return;
+      const supports = [sampleSurface(s, x - .65, z), sampleSurface(s, x + .65, z),
+        sampleSurface(s, x, z - .65), sampleSurface(s, x, z + .65)];
+      if (supports.some(y => y === undefined || Math.abs(y - h) > .38)) return;
       if (
         surfaces.some(
           (other) =>
@@ -426,7 +438,7 @@ export function generateMountainTerrain(seed: number) {
         return;
       const p = pt(x, h, z);
       if (trees.some((t) => distance(t, p) < 3)) return;
-      trees.push({ ...p, height: heights.float(2.4, 5.8), radius: 0.23 });
+      trees.push({ ...p, height: heights.float(2.4, 5.8), radius: 0.23, tierId: s.tier.id });
       nPlaced++;
     }
     for (let i = 0; i < n * 24 && nPlaced < n; i++)
