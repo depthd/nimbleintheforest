@@ -65,7 +65,7 @@ export function buildRoundedWall(site: RoundedWallSite, count: 4 | 7 | 10, seed:
       const silhouette = [0.76, 0.83, 0.43, 0.64, 0.77, 0.52];
       const height = site.height * (row ? rng.float(0.24, 0.44) :
         silhouette[i % silhouette.length] * rng.float(0.88, 1.08));
-      const dip = rng.float(0.24, 0.42);
+      const dip = rng.float(0.43, 0.58);
       const skew = rng.float(-0.09, 0.09);
       const corners = outline.map(([u, v]) => ({
         u: u * width * rng.float(0.93, 1.0),
@@ -78,7 +78,7 @@ export function buildRoundedWall(site: RoundedWallSite, count: 4 | 7 | 10, seed:
       // therefore projects beyond the summit, especially on the camera side.
       for (const [scale, fraction, retreat] of [
         [0.93, 0, 0.01], [1.0, 0.40, 0.01], [0.91, 0.70, 0],
-        [0.84, 0.83, -0.03], [0.48, 1.0, -0.12],
+        [0.84, 0.85, -0.03], [0.48, 1.0, -0.17],
       ]) {
         const ring = corners.map(({ u, v }) => {
           const p = {
@@ -96,7 +96,7 @@ export function buildRoundedWall(site: RoundedWallSite, count: 4 | 7 | 10, seed:
         rings.push(ring);
       }
       const base = { u: middle, v: forward + depth * 0.01, y: bottom };
-      const crown = { u: middle + width * skew * 0.52, v: forward - depth * 0.12, y: height + depth * 0.035 };
+      const crown = { u: middle + width * skew * 0.52, v: forward - depth * 0.17, y: height + depth * 0.035 };
       ranges.maxY = Math.max(ranges.maxY, crown.y);
       masses.push(ranges);
       for (let j = 0; j < corners.length; j++) {
