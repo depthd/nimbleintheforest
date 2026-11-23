@@ -2,14 +2,52 @@
 // All dimensions here are metres in the mountain's local coordinate system.
 import { smoothstep } from '../../core/rng';
 import type { Point } from './geometry';
+import type { PassageAnchors } from './passages';
+import type { TierPlan } from './layout';
 
 type Face = {
   left: number; right: number; back: number; front: number; bottom: number; top: number;
   tier: { id: string; level: number; kind: string; entry: string; mountainId: string };
   phase: number;
-  entrySide?: 'west' | 'east';
-  passages?: { denMouth: Point; throughLower: Point; ropeLower: Point; ropeUpper: Point };
+  entrySide: 'west' | 'east';
+  passages: PassageAnchors;
+  reservations: WalkCorridor[];
 };
+
+type WalkCorridor = {left: number; right: number; back: number; front: number};
+
+/** Keep the underlying rock clear of all neighbouring approaches. This also
+ * reserves the opposite side of a rim that another tier's player uses. */
+export function walkingCorridors(tiers: TierPlan[], a: PassageAnchors): WalkCorridor[] {
+  const corridors: WalkCorridor[] = [];
+  const rect = (x0: number,x1: number,z0: number,z1: number) =>
+    corridors.push({left:Math.min(x0,x1),right:Math.max(x0,x1),back:Math.min(z0,z1),front:Math.max(z0,z1)});
+  for (const t of tiers) {
+    if (t.peak || t.entry === 'none') continue;
+    const west = t.entrySide === 'west';
+    const foot = west ? t.left : t.right;
+    const crest = foot + (west ? t.length : -t.length);
+    for (const z of t.secondCutZ === undefined ? [t.startZ] : [t.startZ,t.secondCutZ]) {
+      const curve = t.entry === 'cut' ? 3 * Math.min(1,t.length/18) : 0;
+      rect(foot, crest, z-curve, z+curve);
+    }
+  }
+  rect(a.ropeLower.x,a.ropeUpper.x,a.ropeLower.z,a.ropeUpper.z);
+  rect(a.ropeUpper.x,a.throughLower.x,a.ropeUpper.z,a.ropeUpper.z);
+  rect(a.throughLower.x,a.throughLower.x,a.throughUpper.z-2,a.ropeUpper.z);
+  rect(a.denMouth.x,a.denMouth.x,a.denMouth.z,a.denMouth.z+3);
+  return corridors;
+}
+
+function trailClearance(s: Face, x: number, z: number) {
+  let nearest = Infinity;
+  for (const c of s.reservations) {
+    const dx = Math.max(c.left-x,x-c.right,0);
+    const dz = Math.max(c.back-z,z-c.front,0);
+    nearest = Math.min(nearest,Math.max(dx,dz));
+  }
+  return smoothstep(3.6,8,nearest);
+}
 
 function taper(distance: number, inner: number, outer: number) {
   return smoothstep(inner, outer, Math.abs(distance));
@@ -17,16 +55,16 @@ function taper(distance: number, inner: number, outer: number) {
 
 // The mouths, lip, northern footpath and bridge bearings have to meet fixed
 // geometry. Only soften the stone outside the protected piece of the seam.
-function clearance(s: Face, x: number, z: number, protectTrail = true) {
-  let k = 1;
-  if ((s.tier.id === 'main-1' || s.tier.id === 'main-2') && z > (s.front + s.back) / 2) {
-    const entrance = s.tier.level === 1 ? s.passages?.denMouth.x ?? 15 : s.passages?.throughLower.x ?? 17;
-    k *= taper(x - entrance, 3.1, 8);
-    if (s.tier.level === 1) {
-      const rope = s.passages?.ropeLower.x ?? -4, exit = s.passages?.throughLower.x ?? 17;
-      const distance = Math.max(Math.min(rope,exit)-x, x-Math.max(rope,exit), 0);
-      k *= protectTrail ? smoothstep(3.5, 8, distance) : taper(x-rope, 1.7, 4.6);
-    }
+function clearance(s: Face, x: number, z: number) {
+  let k = trailClearance(s,x,z);
+  if (s.tier.id === 'main-1' && z > (s.front+s.back)/2) {
+    k *= taper(x-s.passages.denMouth.x,4.5,8);
+    k *= taper(x-s.passages.ropeLower.x,3.5,7);
+  }
+  if (s.tier.id === 'main-2') {
+    // Both ends of the tunnel follow an unwarped grid column. Its open roof
+    // has to meet the separate tunnel lining exactly, even near a rounded corner.
+    k *= taper(x-s.passages.throughLower.x,5,8);
   }
   if (s.tier.id === 'main-1' && z < s.back + 12 && x > -64 && x < -8) {
     const shelf = smoothstep(-64,-56,x) * (1 - smoothstep(-14,-8,x));
@@ -50,9 +88,13 @@ export function edgeInsets(s: Face, x: number, rounding: number) {
   const north = scale * (end * (2.2 + 2.0 * Math.sin(p)) + 4 * joint(u * 2.2 + .18 * p) + 1.55 * Math.sin(u * 11 + p));
   const south = scale * (end * (3.4 - 1.6 * Math.cos(p)) + 5 * joint(u * 2.8 + .26 * p) + 2 * Math.cos(u * 9 - p));
   const cornice = s.tier.id === 'main-1' ? 1 - smoothstep(-52,-48,x) * (1 - smoothstep(-10,-6,x)) : 1;
+  // Keep each grid column monotone. A large offset on a short axis would
+  // otherwise invert the triangles of a cut, leaving a physical lip at its foot.
+  const band = Math.min(13, depth*.22,width*.2);
+  const maxInset = Math.max(rounding,band*.72);
   return {
-    back: rounding + north * clearance(s,x,s.back),
-    front: rounding + south * clearance(s,x,s.front) * cornice,
+    back: Math.min(maxInset,rounding + north * clearance(s,x,s.back)),
+    front: Math.min(maxInset,rounding + south * clearance(s,x,s.front) * cornice),
   };
 }
 
@@ -126,7 +168,7 @@ export function cliffPoint(s: Face, edge: Point, level: number) {
   const atBearing = 1 - smoothstep(.72,.94,Math.abs(u)) *
     (1-taper(edge.z-(s.back+s.front)*.5, 13,19)) * smoothstep(.5,.93,level);
   const extent = Math.min(h*.63,7,halfX*.35,halfZ*.48);
-  const reach = extent * amounts[i] * clearance(s,edge.x,edge.z,false) * atBearing;
+  const reach = extent * amounts[i] * clearance(s,edge.x,edge.z) * atBearing;
   return { x:edge.x+nx*reach, y:s.bottom+h*relative, z:edge.z+nz*reach };
 }
 

@@ -5,7 +5,7 @@ import { mountainHeight } from './surface-height';
 import { buildContourShelf, shelfOwnsNorthWall } from './contour-shelf';
 import { planMountainLayout, type Box, type MountainId, type Entry, type EntrySide } from './layout';
 import type { PassageAnchors } from './passages';
-import { approachStone, cliffLevels, cliffPoint, edgeInsets, peakHeight, rimRelief } from './rock-form';
+import { approachStone, cliffLevels, cliffPoint, edgeInsets, peakHeight, rimRelief, walkingCorridors } from './rock-form';
 
 export type MountainPoint = { x: number; y: number; z: number };
 export type { MountainId, Entry } from './layout';
@@ -27,6 +27,7 @@ type Surface = Box & {
   tier: MountainTier;
   entrySide: EntrySide;
   passages: PassageAnchors;
+  reservations: ReturnType<typeof walkingCorridors>;
   length: number;
   width: number;
   bend: number;
@@ -288,6 +289,7 @@ export function generateMountainTerrain(seed: number) {
     surfaces: Surface[] = [],
     routes: MountainRoute[] = [];
   const { tiers, passageAnchors, spawn, bridgeZ } = planMountainLayout(seed);
+  const reservations = walkingCorridors(tiers, passageAnchors);
   for (const spec of tiers) {
     const { mountain: id, level, entry, entrySide, startZ, length, width, peak } = spec;
     let box: Box = spec;
@@ -320,7 +322,7 @@ export function generateMountainTerrain(seed: number) {
       bounds: { minX: box.left, maxX: box.right, minZ: box.back, maxZ: box.front },
     };
     const s: Surface = {
-      ...box,
+      ...box, reservations,
       tier, entrySide, passages: passageAnchors, secondCutZ: spec.secondCutZ,
       startZ,
       length,
