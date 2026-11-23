@@ -27,6 +27,7 @@ export default defineConfig({
       plateauWedgeAscent: 'experiments/plateau/wedge-ascent.html',
       plateauSnow: 'experiments/plateau/wedge-snow.html',
       plateauMountain: 'experiments/plateau/mountain.html',
+      plateauRoute: 'experiments/plateau/route.html',
     } },
     chunkSizeWarningLimit: 6000,
   },

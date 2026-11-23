@@ -574,6 +574,9 @@ export function buildMountainMasses(
   const groups = new Rng(seed ^ 0x609c3);
   // Start on the broad shoulder to the left of the route mouth. An upper
   // edge intersects the plateau there; smaller members step out toward the toe.
+  // Preserve all original draws/RNG and vegetation footprints. An optional wall
+  // can replace just these index ranges on the lower tier at display time.
+  let entrance = {x:0,z:0,height:0,angle:0,rockStart:0,rockEnd:0,snowStart:0,snowEnd:0};
   const entranceShoulder = Math.PI + 0.78;
   for (let angle = entranceShoulder; angle < entranceShoulder + tau; ) {
     const atEntrance = angle === entranceShoulder;
@@ -634,6 +637,7 @@ export function buildMountainMasses(
         site,
       );
     }
+    if (atEntrance) entrance = {x:p.x,z:p.z,height:p.y,angle:strike,rockStart:stone.indices.length,rockEnd:0,snowStart:snow.indices.length,snowEnd:0};
     block(
       0,
       atEntrance ? 19 : site.float(8, 22),
@@ -665,6 +669,10 @@ export function buildMountainMasses(
         hand * width * 0.15,
         0.31,
       );
+    }
+    if (atEntrance) {
+      entrance.rockEnd = stone.indices.length;
+      entrance.snowEnd = snow.indices.length;
     }
   }
   for (const side of [-1, 1]) {
@@ -746,5 +754,6 @@ export function buildMountainMasses(
     snow: pack(snow),
     stats,
     stoneFootprints,
+    entrance,
   };
 }

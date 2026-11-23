@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeWallGroup, measureWallSnow, wallParameters, type WallFamily } from './slice-wall';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { makeRockMaterial } from '../../src/world/cliffs';
 import { groundUniforms } from '../../src/world/terrain';
@@ -233,6 +234,47 @@ async function start(){
   groups.trees.add(groves);
   groups.trees.userData.count = groves.userData.count;
   const dressing = dressings[0];
+  const entrance = dressing.entrance;
+  const lowerRocks = groups.rocks.children[0] as THREE.Group;
+  const originalParts = lowerRocks.children.slice(0,2) as THREE.Mesh[];
+  const originals = originalParts.map(part => part.geometry.getIndex()!);
+  const cuts = [[entrance.rockStart,entrance.rockEnd],[entrance.snowStart,entrance.snowEnd]];
+  const remainder = originals.map((attr,i)=>{
+    const [start,end] = cuts[i];
+    const a = new Uint32Array(attr.count - (end-start));
+    a.set(attr.array.slice(0,start));
+    a.set(attr.array.slice(end),start);
+    return new THREE.BufferAttribute(a,1);
+  });
+  const localWallMaterial = rockWithFrost(0);
+  let activeWall: THREE.Group | undefined;
+  const wallInput = document.querySelector<HTMLSelectElement>('#wall-family')!;
+  const presetInput = document.querySelector<HTMLSelectElement>('#wall-preset')!;
+  const seedInput = document.querySelector<HTMLInputElement>('#wall-seed')!;
+  function setWall(family: WallFamily, preset: number, seed: number) {
+    if (activeWall) {
+      lowerRocks.remove(activeWall);
+      activeWall.children.forEach(o=>(o as THREE.Mesh).geometry.dispose());
+      activeWall = undefined;
+    }
+    originalParts.forEach((part,i)=>part.geometry.setIndex(family==='original'?originals[i]:remainder[i]));
+    if (family !== 'original') {
+      activeWall = makeWallGroup({...entrance,width:100,groundAt:(x,z)=>sampleGrid(source,x,z).y},family,preset,seed,localWallMaterial,snowTopMaterial);
+      lowerRocks.add(activeWall);
+    }
+    wallInput.value=family; presetInput.value=String(preset); seedInput.value=String(seed);
+    presetInput.disabled=seedInput.disabled=family==='original';
+    renderer.shadowMap.needsUpdate = true;
+    draw();
+  }
+  function updateWall(){
+    const params=new URLSearchParams(location.search);
+    params.set('wall',wallInput.value);params.set('preset',presetInput.value);params.set('seed',seedInput.value);
+    const {family,preset,seed}=wallParameters(params);
+    history.replaceState(null,'','?'+params);
+    setWall(family,preset,seed);view('wall');
+  }
+  [wallInput,presetInput,seedInput].forEach(el=>el.addEventListener('change',updateWall));
   let activeView='overview';
   const views:Record<string,{eye:number[];target:number[];fov?:number}>={
     wall:{eye:[-510,160,-314],target:[-146,66,-68],fov:27},
@@ -282,6 +324,9 @@ async function start(){
   let previous=performance.now();function tick(now:number){const dt=Math.min(.05,(now-previous)/1000);previous=now;if(keys.size){const forward=new THREE.Vector3();camera.getWorldDirection(forward);const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize(),move=new THREE.Vector3();if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;move.multiplyScalar(dt*(keys.has('ShiftLeft')?100:25));camera.position.add(move);controls.target.add(move);controls.update();draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
   window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();draw();});
   renderer.shadowMap.needsUpdate=true;view(stacked?'back':'front');status.textContent=stacked?'Три яруса · подъёмы и плато':'Гора · скалы, плато и подъём';
-  (window as any).__mountain={ready:true,renderer,scene,camera,controls,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:snow.stats})};
+  const initial=wallParameters(new URLSearchParams(location.search));
+  setWall(initial.family,initial.preset,initial.seed);
+  if(initial.family!=='original')view('wall');
+  (window as any).__mountain={ready:true,setWall,wallMask:()=>measureWallSnow(scene,camera,renderer),renderer,scene,camera,controls,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:snow.stats})};
 }
 start().catch(e=>{status.textContent='Ошибка: '+e.message;console.error(e);});
