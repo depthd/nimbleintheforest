@@ -88,7 +88,7 @@ export class Deer {
     forward.y = 0;
     forward.normalize();
     const right = new THREE.Vector3(-forward.z, 0, forward.x);
-    const offsets = manual ? [[7, 0]] : [[10, 5], [10, -5], [13, 7], [13, -7], [9, 0]];
+    const offsets = G.settings.trailStop ? [[-16, 14], [-16, -14], [-25, 0]] : manual ? [[7, 0]] : [[10, 5], [10, -5], [13, 7], [13, -7], [9, 0]];
     for (const [front, side] of offsets) {
       const at = G.player.pos.clone().addScaledVector(forward, front).addScaledVector(right, side);
       if (this.walkable(at.x, at.z)) {
@@ -96,7 +96,7 @@ export class Deer {
         return at;
       }
     }
-    const at = G.player.pos.clone().addScaledVector(forward, 7);
+    const at = G.player.pos.clone().addScaledVector(forward, G.settings.trailStop ? -20 : 7);
     at.y = G.region.outdoorHeightAt(at.x, at.z) + 0.02;
     return at;
   }

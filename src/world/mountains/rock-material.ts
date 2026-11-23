@@ -3,18 +3,20 @@ import { Tex } from '../../core/textures';
 import { groundUniforms } from '../terrain';
 
 /** Local coordinates keep the fracture planes and snow pockets attached to the stone on every map. */
-export function mountainRockMaterial() {
+export function mountainRockMaterial(sheltered = false) {
   const material = new THREE.MeshStandardMaterial({
     roughness: .96, flatShading: false, side: THREE.DoubleSide,
   });
   material.onBeforeCompile = shader => {
+    const shelterAttributes = sheltered ? 'attribute float skylight; varying float vSkylight;' : '';
     shader.uniforms.uCliffStone = { value: Tex.rock() };
     shader.uniforms.uCliffNoise = groundUniforms.uNoise;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float exposure; varying float vCatch; varying vec3 vCliff; varying vec3 vFacet;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCatch=exposure; vCliff=position; vFacet=normal;');
+      .replace('#include <common>', '#include <common>\nattribute float exposure; varying float vCatch; varying vec3 vCliff; varying vec3 vFacet;' + shelterAttributes)
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCatch=exposure; vCliff=position; vFacet=normal;' + (sheltered ? 'vSkylight=skylight;' : ''));
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
+${sheltered ? 'varying float vSkylight;' : ''}
 varying vec3 vCliff;
 varying float vCatch;
 varying vec3 vFacet;
@@ -39,18 +41,19 @@ float fissure(float plane, float width) {
   // Two widely spaced joint families: long oblique seams terminating at shorter transverse fractures.
   float dip=p.y*.23+lateral*.048+.22*broad.r;
   float strike=(p.x*.71-p.z*.72)*.135-p.y*.047+.18*broad.g;
-  float jointA=fissure(dip+.13*floor(strike+.4),.011)*smoothstep(.28,.7,mineral);
-  float jointB=fissure(strike+.07*floor(dip),.018)*smoothstep(.3,.72,broad.g);
+  float jointA=fissure(dip+.13*floor(strike+.4),.008)*smoothstep(.28,.7,mineral);
+  float jointB=fissure(strike+.07*floor(dip),.012)*smoothstep(.3,.72,broad.g);
   float ledge=fract(dip);
   float oxide=smoothstep(.37,.76,broad.g+.12*mineral)*smoothstep(.08,.65,ledge);
   vec3 stone=mix(vec3(.156,.188,.218),vec3(.236,.202,.175),oxide);
-  stone *= (.67+.47*grain.g+.32*mineral) * (1.-.41*max(jointA,jointB));
+  stone *= (.67+.47*grain.g+.32*mineral) * (1.-.25*max(jointA,jointB));
   // Sheltered facets retain a discontinuous patch. Bare summit rock carries no cap, even on an upward face.
   float snow=smoothstep(.54,.88,n.y+(broad.r-.5)*.29+(mineral-.5)*.13)*vCatch;
   diffuseColor.rgb=mix(stone,vec3(.72,.80,.88),snow*.94);
+  ${sheltered ? 'diffuseColor.rgb *= vSkylight;' : ''}
 `);
   };
-  material.customProgramCacheKey = () => 'mountain-fracture-v1';
+  material.customProgramCacheKey = () => sheltered ? 'mountain-cave-v1' : 'mountain-fracture-v1';
   return material;
 }
 

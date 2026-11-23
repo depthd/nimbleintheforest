@@ -9,7 +9,7 @@
 #trail-picker .trail-small {border:1px solid #728581;background:#182624dd;border-radius:4px;padding:6px 11px;font-size:13px}
 #trail-picker .trail-small:hover,#trail-picker .trail-small[aria-pressed=true] {background:#49625b}
 .trail-hero {position:relative;isolation:isolate;border-radius:5px;overflow:hidden;background:#384c53}
-.trail-hero>img {display:block;width:100%;height:clamp(145px,31vh,310px);object-fit:cover;object-position:center}
+.trail-hero>img {display:block;width:100%;height:auto;aspect-ratio:2.56;object-fit:contain;object-position:center}
 .trail-hero-footer {position:absolute;inset:auto 0 0;padding:22px 15px 12px;background:linear-gradient(transparent,#0a141cbd)}
 #trail-picker #trail-overview {font-weight:600;font-size:16px;padding:8px 14px;border:0;border-radius:4px;background:#e3e9df;color:#192824}
 .trail-key {justify-content:flex-start;flex-wrap:wrap;color:#efefdf;font-size:13px;margin:9px 0 0}
@@ -18,7 +18,8 @@
 .trail-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
 #trail-picker .trail-card {display:block;position:relative;text-align:left;padding:0;border:1px solid #52605d;border-radius:4px;background:#253332;overflow:hidden}
 .trail-card img {display:block;width:100%;height:clamp(56px,11vh,120px);object-fit:cover}
+.trail-hollows{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .trail-card span {display:block;padding:7px 10px;font-size:14px;font-weight:550}
 #trail-picker .trail-card:hover {border-color:#dae6d9;background:#354740}
 #st-trails {margin-top:8px}
-@media(max-width:620px){.trail-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.trail-card span{font-size:13px}.trail-card img{height:65px}#trail-picker{max-height:96dvh}.trail-hero>img{height:145px}}
+@media(max-width:620px){.trail-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.trail-card span{font-size:13px}.trail-card img{height:65px}#trail-picker{max-height:96dvh}.trail-hero>img{height:auto;min-height:130px}.trail-hollows .trail-card span{padding-inline:5px}}

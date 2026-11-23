@@ -9,7 +9,8 @@ export const trailStops = {
   cut: { title: 'Узкие проходы', seed: 6 },
   rope: { title: 'Подъём по канату', seed: 42 },
   through: { title: 'Сквозная пещера', seed: 42 },
-  den: { title: 'Скальное укрытие', seed: 42 },
+  den: { title: 'Укрытие', seed: 42 },
+  bear: { title: 'Старая берлога', seed: 6 },
   bridge: { title: 'Подвесной мост', seed: 42 },
 } as const;
 
