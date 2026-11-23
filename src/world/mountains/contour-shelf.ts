@@ -60,7 +60,7 @@ export function buildContourShelf(northEdge: (x: number) => Point, phase: number
   /** Height of the same triangles used by Rapier. Outside the shelf the unchanged region takes over. */
   function sample(x: number, z: number) {
     if (x < START || x >= END || z < -42 || z > -24) return 0;
-    const i = Math.floor((x - START) / STEP);
+    const i = Math.min(rows.length - 2, Math.floor((x - START) / STEP));
     const a = rows[i], b = rows[i + 1], t = (x - a[0].x) / STEP;
     for (let col = 0; col < 3; col++) {
       const outer = a[col], inner = a[col + 1], nextOuter = b[col], nextInner = b[col + 1];
@@ -69,7 +69,8 @@ export function buildContourShelf(northEdge: (x: number) => Point, phase: number
       if (z < lo || z > hi) continue;
       const diagonal = outer.z + t * (nextInner.z - outer.z);
       const along = outer.y + t * (nextInner.y - outer.y);
-      if (z >= diagonal) return along + (z - diagonal) * (inner.y - outer.y) / (inner.z - outer.z);
+      if (z === diagonal) return along;
+      if (z > diagonal) return along + (z - diagonal) * (inner.y - outer.y) / (inner.z - outer.z);
       return along + (z - diagonal) * (nextInner.y - nextOuter.y) / (nextInner.z - nextOuter.z);
     }
     return 0;

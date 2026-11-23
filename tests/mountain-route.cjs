@@ -64,6 +64,7 @@ function check(seed) {
   // Follow the north shoulder both ways before taking the southern route.
   const shelf = terrain.routes.find(r => r.kind === 'shelf');
   assert.ok(shelf);
+  assert.ok(Number.isFinite(terrain.sampleHeight(-14 - 2e-15, -34)), 'collapsed end of the shelf');
   for (const x of [-45.5, -41.5, -36.5, -30.5]) {
     const bounds = shelf.points.filter(p => Math.abs(p.x - x) < 2);
     const t = (x - bounds[0].x) / (bounds[1].x - bounds[0].x);
