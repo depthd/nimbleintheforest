@@ -14,7 +14,10 @@ const buildInfo = `<p class="hint build-info" title="${sha}" style="text-align:c
 
 export default defineConfig({
   base: './',
-  plugins: [{ name: 'build-info', transformIndexHtml: html => html.replaceAll('<!-- build-info -->', buildInfo) }],
+  plugins: [{ name: 'build-info', transformIndexHtml: html => html.replaceAll('<!-- build-info -->', buildInfo)
+    .replace('<!-- mountain-review -->', process.env.BUILD_CHANNEL === 'test'
+      ? '<a class="snow-start" href="./experiments/plateau/review.html">Горы · интерактивный тест</a>'
+      : '') }],
   build: {
     target: 'es2022',
     rollupOptions: { input: {
@@ -28,6 +31,7 @@ export default defineConfig({
       plateauSnow: 'experiments/plateau/wedge-snow.html',
       plateauMountain: 'experiments/plateau/mountain.html',
       plateauRoute: 'experiments/plateau/route.html',
+      plateauReview: 'experiments/plateau/review.html',
     } },
     chunkSizeWarningLimit: 6000,
   },

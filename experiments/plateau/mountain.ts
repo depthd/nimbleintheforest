@@ -324,9 +324,34 @@ async function start(){
   let previous=performance.now();function tick(now:number){const dt=Math.min(.05,(now-previous)/1000);previous=now;if(keys.size){const forward=new THREE.Vector3();camera.getWorldDirection(forward);const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize(),move=new THREE.Vector3();if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;move.multiplyScalar(dt*(keys.has('ShiftLeft')?100:25));camera.position.add(move);controls.target.add(move);controls.update();draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
   window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();draw();});
   renderer.shadowMap.needsUpdate=true;view(stacked?'back':'front');status.textContent=stacked?'Три яруса · подъёмы и плато':'Гора · скалы, плато и подъём';
-  const initial=wallParameters(new URLSearchParams(location.search));
-  setWall(initial.family,initial.preset,initial.seed);
-  if(initial.family!=='original' || new URLSearchParams(location.search).get('view')==='wall')view('wall');
+  const query = new URLSearchParams(location.search);
+  const initial = wallParameters(query);
+  setWall(initial.family, initial.preset, initial.seed);
+  const initialView = query.get('view') ?? '';
+  if (Object.hasOwn(views, initialView)) view(initialView);
+  else if (initial.family !== 'original') view('wall');
+  if (query.get('embedded') === '1') {
+    document.querySelector('aside')!.hidden = true;
+    status.hidden = true;
+    window.addEventListener('message', event => {
+      if (event.origin !== location.origin || event.source !== window.parent) return;
+      const message = event.data;
+      if (message?.type !== 'mountain-review:view' ||
+          !['wall', 'overview', 'top'].includes(message.camera)) return;
+      if (message.changed) {
+        const {family, preset, seed} = wallParameters(new URLSearchParams({
+          wall: String(message.family), preset: String(message.preset), seed: String(message.seed),
+        }));
+        setWall(family, preset, seed);
+      }
+      view(message.camera);
+    });
+    window.parent.postMessage({type: 'mountain-review:ready'}, location.origin);
+  }
   (window as any).__mountain={ready:true,setWall,wallMask:()=>measureWallSnow(scene,camera,renderer),renderer,scene,camera,controls,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:snow.stats})};
 }
-start().catch(e=>{status.textContent='Ошибка: '+e.message;console.error(e);});
+start().catch(e=>{
+  status.textContent='Ошибка: '+e.message;
+  if (window.parent !== window) window.parent.postMessage({type:'mountain-review:error'}, location.origin);
+  console.error(e);
+});

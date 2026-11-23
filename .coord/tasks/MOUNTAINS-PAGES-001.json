@@ -1,0 +1,23 @@
+{
+  "id": "MOUNTAINS-PAGES-001",
+  "status": "review",
+  "owner": "codex-coordinator",
+  "base_sha": "3910d955d353e824513b2fcf77a15707e6a18c27",
+  "branch": "task/MOUNTAINS-PAGES-001-preview",
+  "allowed_paths": [
+    ".coord/tasks/MOUNTAINS-PAGES-001.json",
+    "experiments/plateau/mountain.ts",
+    "experiments/plateau/review.html",
+    "experiments/plateau/review.css",
+    "experiments/plateau/review.ts",
+    "experiments/plateau/route.html",
+    "experiments/plateau/route.ts",
+    "index.html",
+    "vite.config.ts"
+  ],
+  "acceptance": [
+    "Live wall and route previews in one dashboard, with browser links to each check",
+    "Publish the checked SHA through the repository test Pages workflow",
+    "Verify the deployed test URL and exact production root before and after"
+  ]
+}

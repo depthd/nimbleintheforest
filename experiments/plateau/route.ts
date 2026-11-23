@@ -18,6 +18,8 @@ import type { MeshData } from './cavity';
 const element = <T extends HTMLElement>(id:string) => document.getElementById(id) as T;
 const params = new URLSearchParams(location.search);
 const {seed,family,preset} = wallParameters(params);
+const embedded = params.get('embedded') === '1';
+if (embedded) document.body.classList.add('embedded');
 element<HTMLInputElement>('seed').value = String(seed);
 element<HTMLSelectElement>('family').value = family;
 element('rebuild').onclick = () => {
@@ -105,10 +107,38 @@ async function start() {
   world.step();
   // The production avatar resolves model URLs from the game root. This entry is two levels below it.
   THREE.DefaultLoadingManager.setURLModifier(url=>url.startsWith('models/')?new URL('../../'+url,location.href).href:url);
-  const p=new Player();
-  p.init(new THREE.Vector3(terrain.spawn.x,terrain.spawn.y+.04,terrain.spawn.z),-Math.PI/2);
+  const p = new Player();
+  const {denMouth, ropeLower, throughLower} = terrain.passageAnchors;
+  const {spawn, wallAnchor} = terrain;
+  let start = spawn, yaw = -Math.PI / 2;
+  switch (params.get('start')) {
+    case 'wall':
+      start = {...wallAnchor, z: wallAnchor.z + wallAnchor.width * 1.06};
+      start.y = terrain.sampleHeight(start.x, start.z);
+      yaw = 0;
+      break;
+    case 'den':
+      start = {...denMouth, z: denMouth.z + 3};
+      yaw = 0;
+      break;
+    case 'rope':
+      start = {...ropeLower, z: ropeLower.z + .7};
+      yaw = 0;
+      break;
+    case 'cave':
+      start = {...throughLower, z: throughLower.z + 2.7};
+      yaw = 0;
+      break;
+    case 'bridge':
+      if (bridge) {
+        yaw = Math.atan2(bridge.from.x - bridge.to.x, bridge.from.z - bridge.to.z);
+        start = {...bridge.from, x: bridge.from.x + 3.2 * Math.sin(yaw), z: bridge.from.z + 3.2 * Math.cos(yaw)};
+      }
+      break;
+  }
+  p.init(new THREE.Vector3(start.x, start.y + .04, start.z), yaw);
   p.avatar.root.visible=false;
-  let overview=false, ropeState=createSliceRopeState();
+  let overview=params.get('start') === 'overview', ropeState=createSliceRopeState();
   const dt=1/60;
   function step() {
     p.look();
@@ -136,6 +166,8 @@ async function start() {
   input.onLockChange=v=>document.body.classList.toggle('locked',v);
   const resize=()=>{renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();draw();};
   window.addEventListener('resize',resize);resize();
+  if (overview) element('view').textContent = 'От первого лица';
+  if (embedded) window.parent.postMessage({type: 'mountain-review:ready'}, location.origin);
   element('status').textContent='WASD · идти   Мышь / ← → · обзор   Пробел · прыгнуть   E · канат   Esc · меню';
   const qa=params.get('qa')==='1';
   if(qa){
@@ -148,4 +180,8 @@ async function start() {
       while(pending>=dt){step();pending-=dt;} draw();});
   }
 }
-start().catch(e=>{element('status').textContent=String(e);console.error(e);});
+start().catch(e=>{
+  element('status').textContent=String(e);
+  if (embedded) window.parent.postMessage({type: 'mountain-review:error'}, location.origin);
+  console.error(e);
+});
