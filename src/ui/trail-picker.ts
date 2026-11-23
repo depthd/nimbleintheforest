@@ -15,6 +15,10 @@ export function makeTrailPicker(choose: (stop: TrailStop) => void, back: () => v
     hero.src = file(simplified ? 'form' : 'overview');
     form.textContent = simplified ? 'Вернуть игровой вид' : 'Показать форму';
     hero.alt = simplified ? 'Ярусы, стены и мост той же горы с обозначением границ' : 'Вид на горные ярусы из игры';
+    for (const stop of ['wide','cut']) {
+      const thumbnail = grid.querySelector<HTMLImageElement>(`[data-stop="${stop}"] img`)!;
+      thumbnail.src = file(simplified ? stop+'-form' : stop);
+    }
     legend.hidden = !simplified;
   });
   const visit = (stop: TrailStop) => { dialog.close(); choose(stop); };
