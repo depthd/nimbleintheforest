@@ -3,11 +3,36 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const Module = require('node:module');
 const { buildSync } = require('esbuild');
-const bundle = buildSync({ entryPoints: [path.join(__dirname, '../src/gen/region.ts')],
+const bundle = buildSync({ stdin: { resolveDir: path.join(__dirname, '..'),
+  contents: "export { Region } from './src/gen/region'; export { stampMountainSite } from './src/gen/mountain-site';" },
   bundle: true, platform: 'node', format: 'cjs', write: false });
 const compiled = new Module(__filename);
 compiled._compile(bundle.outputFiles[0].text, __filename);
-const { Region } = compiled.exports;
+const { Region, stampMountainSite } = compiled.exports;
+
+function checkGroundColours() {
+  const region = new Region(42, 512);
+  region.ox = region.oz = 200;
+  region.h = new Float32Array((region.n + 1) ** 2);
+  region.tex = new Uint8Array((region.cn + 1) ** 2 * 4);
+  const source = [150, 255, 23, 65];
+  for (let i = 0; i < region.tex.length; i += 4) region.tex.set(source, i);
+  const site = { x: 0, y: 0, z: 0, apron: [32, 32, 32, 32] };
+  stampMountainSite(region, site);
+
+  for (let j = 0; j <= region.cn; j++) for (let i = 0; i <= region.cn; i++) {
+    const x = i * region.cc - region.ox, z = j * region.cc - region.oz;
+    const k = 4 * (j * (region.cn + 1) + i);
+    const pixel = [...region.tex.subarray(k, k + 4)];
+    assert.deepEqual(pixel.slice(2), source.slice(2), 'bog and shore colours changed');
+    if (x < -105 || x > 202 || z < -74 || z > 76) assert.deepEqual(pixel, source);
+    if (x >= -73 && x <= 170 && z >= -42 && z <= 44) assert.deepEqual(pixel, [30, 15, 23, 65]);
+  }
+  const row = Math.round(region.oz / region.cc);
+  const ash = x => region.tex[4 * (row * (region.cn + 1) + (x + region.ox) / region.cc) + 1];
+  for (const x of [176, 184, 192, 200]) assert.ok(ash(x) > ash(x - 8));
+  console.log('PASS open snow blends back into the original burned forest');
+}
 
 async function check(seed, size) {
   const region = new Region(seed, size);
@@ -65,5 +90,6 @@ async function check(seed, size) {
 }
 
 (async () => {
+  checkGroundColours();
   for (const [seed, size] of [[42, 3072], [42, 1536], [7, 1536], [7, 3072], [8191, 2048], [23011, 1536]]) await check(seed, size);
 })().catch(error => { console.error(error); process.exitCode = 1; });

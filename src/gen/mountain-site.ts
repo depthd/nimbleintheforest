@@ -13,12 +13,16 @@ export function onMountainSite(site: Site, x: number, z: number, margin = 0) {
     z >= site.z + BACK - margin && z <= site.z + FRONT + margin;
 }
 
-export function foundationHeight(site: Foundation, x: number, z: number, original: number) {
+function naturalGroundWeight(site: Foundation, x: number, z: number) {
   const dx = x - site.x, dz = z - site.z;
   const apron = site.apron;
   const u = Math.max(LEFT - dx, dx - RIGHT, 0) / (apron?.[dx < LEFT ? 0 : 1] ?? MOUNTAIN_BLEND);
   const v = Math.max(BACK - dz, dz - FRONT, 0) / (apron?.[dz < BACK ? 2 : 3] ?? MOUNTAIN_BLEND);
-  return lerp(site.y, original, smoothstep(0, 1, Math.hypot(u, v)));
+  return smoothstep(0, 1, Math.hypot(u, v));
+}
+
+export function foundationHeight(site: Foundation, x: number, z: number, original: number) {
+  return lerp(site.y, original, naturalGroundWeight(site, x, z));
 }
 
 // Score the amount of fill/cut and the grade needed to join each natural slope.
@@ -165,5 +169,15 @@ export function stampMountainSite(r: Region, site: Foundation) {
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     const k = j * (r.n + 1) + i;
     r.h[k] = foundationHeight(site, i * r.cell - r.ox, j * r.cell - r.oz, r.h[k]);
+  }
+  // The cleared pass accumulates open snow. Keep a little windblown litter and ash,
+  // then fade back into the surrounding forest's existing ground colours.
+  const ci0 = Math.floor(i0 * r.cell / r.cc), ci1 = Math.ceil(i1 * r.cell / r.cc);
+  const cj0 = Math.floor(j0 * r.cell / r.cc), cj1 = Math.ceil(j1 * r.cell / r.cc);
+  for (let j = cj0; j <= cj1; j++) for (let i = ci0; i <= ci1; i++) {
+    const natural = naturalGroundWeight(site, i * r.cc - r.ox, j * r.cc - r.oz);
+    const k = 4 * (j * (r.cn + 1) + i);
+    r.tex[k] = Math.round(r.tex[k] * lerp(.20, 1, natural));     // canopy litter
+    r.tex[k + 1] = Math.round(r.tex[k + 1] * lerp(.06, 1, natural)); // ash in snow
   }
 }
