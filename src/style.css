@@ -77,7 +77,7 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 .box .row, .overlay .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
 .box label { display: block; margin: 8px 0; }
 .box input[type='range'] { width: 100%; }
-#help { width: min(860px, calc(100vw - 32px)); }
+#help { width: min(860px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
 #help .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 #help p { margin: 6px 0; }
 
@@ -101,6 +101,7 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 .inv-col .close { margin-top: auto; }
 
 #debug { display: none; position: fixed; z-index: 15; right: 14px; top: 120px; bottom: 120px; width: 380px; overflow-y: auto; padding: 12px; background: rgba(8, 12, 18, 0.9); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
+body.debug-open #debug { display: block; }
 #debug label { display: block; margin: 6px 0; }
 #debug label.chk { display: flex; gap: 6px; align-items: center; }
 #debug input[type='range'] { width: 100%; }
@@ -225,7 +226,6 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 #mapview { inset: 0; background: rgba(6, 9, 14, 0.88); align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
 #map-canvas { width: min(90vh, 92vw); height: min(90vh, 92vw); border-radius: 8px; box-shadow: 0 0 30px #000; }
 #mapview .maplegend { color: var(--dim); font-size: 13px; }
-.snow-start { color: #d5e7ee; margin-top: 14px; text-underline-offset: 4px; }
 .snow-panel { position: fixed; top: 12px; left: 12px; z-index: 210; max-width: min(470px, calc(100vw - 24px)); padding: 12px 16px; border: 1px solid #a6c6d744; border-radius: 10px; background: #172832df; color: #edf5fa; font: 13px/1.5 system-ui, sans-serif; }
 .snow-panel strong { display: block; font-size: 16px; }
 .snow-status { display: block; color: #c6e1ec; margin: 3px 0; }
@@ -233,7 +233,8 @@ h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 600; }
 .snow-panel > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .snow-panel button { font: inherit; padding: 5px 9px; margin: 0; }
 .snow-panel a { color: #c6e1ec; }
-.motion-recorder { position: fixed; z-index: 230; right: 12px; bottom: 12px; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; padding: 10px 12px; border: 1px solid #8ea7b655; border-radius: 10px; background: #17252ff2; color: #edf4f8; font: 13px/1.4 system-ui, sans-serif; box-sizing: border-box; }
+.motion-recorder { display: none; position: fixed; z-index: 230; right: 12px; bottom: 12px; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; padding: 10px 12px; border: 1px solid #8ea7b655; border-radius: 10px; background: #17252ff2; color: #edf4f8; font: 13px/1.4 system-ui, sans-serif; box-sizing: border-box; }
+body.debug-open .motion-recorder, .motion-recorder.is-recording, body.motion-reviewing .motion-recorder { display: block; }
 .motion-title { font-weight: 600; margin-bottom: 7px; }
 .motion-title span { float: right; font-size: 11px; font-weight: 400; color: #b5cedb; }
 .motion-recorder.is-recording { border-color: #ee8476; }

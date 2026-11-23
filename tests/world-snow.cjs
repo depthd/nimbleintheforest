@@ -39,13 +39,19 @@ let checks=0;function check(name,ok,data){assert.ok(ok,`${name}: ${JSON.stringif
   await ev(()=>{const {G}=window.__game;G.player.avatar.inspectionView=0;G.player.pitch=-.8;G.player.updateCamera(0)});
   const loot=await ev(()=>{
    const g=window.__game,{G,THREE:T}=g,s=G.snow,p=G.player.pos.clone().add(G.player.forward().setY(0).normalize().multiplyScalar(1.3));
-   p.y=s.terrain.heightAt(p.x,p.z)+.045;const e=G.entities.spawnItem('knife',p);g.steps(90);
-   g.lookAt(p.x,p.y,p.z);let a=g.actions();const before={target:G.interact.target.kind,actions:a.actions};
+   p.y=s.terrain.heightAt(p.x,p.z)+.045;const e=G.entities.spawnItem('knife',p);
+   G.input.keys.add('KeyC');g.steps(90);p.copy(e.position());
+   // Manual stepping leaves the camera at its last rendered pose. Converge the
+   // moving eye pivot as in the release smoke test before aiming at the knife.
+   G.player.renderAlpha=1;G.player.updateCamera(0);
+   for(let i=0;i<4;i++)g.lookAt(p.x,p.y,p.z);
+   let a=g.actions();const before={target:G.interact.target.kind,actions:a.actions};
    for(let i=0;i<12;i++){g.act('LMB','снег');s.update(.31)}
    a=g.actions();const exposed=G.interact.target.entity===e&&a.actions.some(s=>s.startsWith('E:'));
    if(exposed)g.act('E');
    g.lookAt(p.x,p.y,p.z);a=g.actions();const fill=a.actions.some(s=>s.startsWith('RMB:'));const carried=s.carriedSnow;
    if(fill)g.act('RMB');
+   G.input.keys.delete('KeyC');
    return {before,exposed,fill,carried,after:s.carriedSnow,picked:G.player.inventory.includes(e)};
   });check('buried real loot is revealed by digging and can then be picked up',loot.before.target==='ground'&&loot.exposed&&loot.picked,loot);
   check('digging keeps survival actions and returns a finite quantity of snow',loot.before.actions.some(s=>s.startsWith('F:'))&&loot.before.actions.some(s=>s.startsWith('G:'))&&loot.fill&&loot.after<loot.carried,loot);

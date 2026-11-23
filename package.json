@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "test": "node --test --test-concurrency=1 tests/statics.cjs tests/resting.cjs tests/locomotion.cjs tests/trails.cjs tests/snow-cover.cjs tests/thermal-equivalence.cjs tests/footstep-surface.cjs tests/mountain-site.cjs tests/mountain-route.cjs",
+    "test:journal": "node tests/journal-browser.cjs",
     "typecheck": "tsc --noEmit",
+    "test:audio": "node tests/audio.cjs",
+    "test:footstep-surface": "node tests/footstep-surface.cjs",
     "test:locomotion": "node tests/locomotion.cjs",
     "test:movement": "node tests/movement.cjs",
     "test:snow": "node tests/snow.cjs",
@@ -45,6 +49,7 @@
   },
   "devDependencies": {
     "@types/three": "0.186.0",
+    "playwright": "1.62.1",
     "typescript": "5.9.3",
     "vite": "7.3.7"
   }

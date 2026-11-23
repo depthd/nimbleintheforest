@@ -1,9 +1,8 @@
-name: Verify candidate
+name: Verify game
 on:
   pull_request:
-    branches: [claude/friendly-archimedes-onmybq]
   push:
-    branches: [claude/friendly-archimedes-onmybq]
+    branches: ['**']
 permissions:
   contents: read
 concurrency:
@@ -11,6 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    if: (github.event_name == 'pull_request' && github.base_ref == github.event.repository.default_branch) || (github.event_name == 'push' && !github.event.deleted && github.ref_name == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,11 +20,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: git fetch origin claude/friendly-archimedes-onmybq
-      - run: node scripts/repo-check.mjs --base origin/claude/friendly-archimedes-onmybq
+      - name: Verify integration history
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # A newly created branch has no previous push SHA.
+          if [[ "$BASE" == 0000000000000000000000000000000000000000 ]]; then BASE=HEAD; fi
+          node scripts/repo-check.mjs --base "$BASE"
       - run: python3 tests/repo-guard.py
       - run: npm ci
       - run: npm run build
-      - run: npm run test:statics && npm run test:resting
-      # Add existing browser suites once their local/CI setup is verified.
-      # This workflow alone does not establish visual QA or performance acceptance.
+      - run: npm test

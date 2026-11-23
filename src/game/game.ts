@@ -24,6 +24,8 @@ import { Thermal } from './thermal';
 import { Fires } from './fire';
 import { Interaction } from './interact';
 import { ViewModel } from './viewmodel';
+import { journal } from './journal/journal';
+import './journal/journal.css';
 import { Effects } from './effects';
 import { HUD } from '../ui/hud';
 import { Horror } from './horror';
@@ -37,6 +39,7 @@ import { BuildSystem } from './build/build';
 import { Cliffs } from '../world/cliffs';
 import { CliffLab } from './cliff-lab';
 import { Caves } from '../world/caves';
+import { Mountains } from '../world/mountains/mountains';
 import { Corpses } from './corpses';
 import { Resting } from './resting';
 
@@ -118,6 +121,7 @@ export async function startGame(settings: Settings) {
   G.goal = { signalAt: 0, rescued: false, heliShown: false };
   G.structures = new Structures();
   G.structures.build(new Rng(settings.seed * 31 + 5));
+  G.mountains = region.mountainSite && region.mountainTerrain ? new Mountains(region.mountainSite, region.mountainTerrain) : undefined;
   // rock registers its shelters before the snow layout is uploaded
   if (region.cliffs.length || region.skin?.blocks.length) G.cliffs = new Cliffs(region.cliffs, region.skin);
   // cave mouths too (their throats are roofs for the snow)
@@ -265,6 +269,7 @@ function handleGlobalKeys() {
     if (hud.mapOpen) hud.toggleMap(false);
     if (hud.helpOpen) hud.toggleHelp(false);
   }
+  if (journal.active) { P.handsWarming = false; return; }
   if (!inp.enabled || G.sleeping || G.dead) return;
   P.handsWarming = inp.down('KeyH') && !P.carried && !G.interact.swinging;
   if (inp.hit('KeyX') && G.body.snow > 0.02) {
@@ -523,6 +528,7 @@ function loop(now: number) {
   last = now;
   if (dt > 0.1) dt = 0.1;
   const inp = G.input;
+  journal.update(dt);
   if (!G.recorder?.reviewing) handleGlobalKeys();
   const paused = G.recorder?.reviewing || G.paused || (!inp.locked && !G.hud.modal && !(window as any).__test);
 

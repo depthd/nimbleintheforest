@@ -383,6 +383,22 @@ export class Player {
     }
     const inp = G.input;
     const busy = G.sleeping || G.dead || !inp.enabled;
+    const climb = busy ? 0 : Number(inp.down('KeyW')) - Number(inp.down('KeyS'));
+    const displacement = G.mountains?.climb(this.pos, climb, dt);
+    if (displacement) {
+      this.kcc.computeColliderMovement(this.collider, displacement, G.R.QueryFilterFlags.EXCLUDE_SENSORS, GROUPS_PLAYER);
+      const d = this.kcc.computedMovement(), t = this.body.translation();
+      const next = { x: t.x + d.x, y: t.y + d.y, z: t.z + d.z };
+      this.body.setNextKinematicTranslation(next);
+      this.pos.set(next.x, next.y - HALF - RADIUS, next.z);
+      this.fallStartY = next.y;
+      this.vy = this.hvx = this.hvz = 0;
+      this.grounded = this.sprinting = this.crouch = false;
+      this.moving = climb !== 0;
+      this.lastActivity = this.moving ? 'walk' : 'idle';
+      if (this.moving) this.workT = .3;
+      return;
+    }
     let fx = 0, fz = 0;
     if (!busy) {
       if (inp.down('KeyW')) fz -= 1;

@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),path=require('node:path'),Module=require('node:module'),THREE=require('three');
 const {buildSync}=require('esbuild'),m=new Module(__filename);
 m._compile(buildSync({entryPoints:[path.join(__dirname,'../src/world/snow-field.ts')],bundle:true,platform:'node',format:'cjs',write:false,external:['three']}).outputFiles[0].text,__filename);
-const {SnowField,BOOT_SHAPE}=m.exports,make=()=>new SnowField({thickness:.28,densityRatio:2.6});
+const {SnowField,BOOT_SHAPE,TILE_CELLS}=m.exports,make=()=>new SnowField({thickness:.28,densityRatio:2.6});
 const pose=(x=0,z=0)=>({position:new THREE.Vector3(x,.12,z),rotation:new THREE.Quaternion()});
 const press=(f,x=0)=>f.sweepBoot(pose(x),pose(x));const storm={snow:1,wind:15};let count=0;
 function test(name,f){f();count++;console.log('PASS',name)}
@@ -20,6 +20,24 @@ test('archived offscreen tracks have exactly the same weather history',()=>{
  for(let i=0;i<900;i++){a.advanceWeather(1,storm);a.sample(0,0)}b.advanceWeather(900,storm);
  for(const k of ['height','mass','compaction','surfaceCompaction'])assert.ok(Math.abs(a.sample(0,0)[k]-b.sample(0,0)[k])<1e-12);
  assert.ok(b.stats().hotTiles<=32);
+});
+test('scanline reads match isolated reads on either side of a tile boundary after archiving', () => {
+  const f = make();
+  for (let tile = -18; tile <= 18; tile++) {
+    for (const offset of [0, 1, TILE_CELLS - 1]) {
+      f.applyRecordedCell(tile * TILE_CELLS + offset, -1, -.07, 170, .001);
+    }
+  }
+  const { tiles, hotTiles } = f.stats();
+  assert.ok(tiles > hotTiles);
+  f.advanceWeather(90, storm);
+  const scan = f.gridReader();
+  for (const z of [-2, -1, 0]) {
+    for (let x = -19 * TILE_CELLS; x <= 19 * TILE_CELLS; x++) {
+      const initial = x < 0 ? .26 : .28;
+      assert.deepEqual(scan(x, z, initial), f.gridState(x, z, initial));
+    }
+  }
 });
 test('fully covered storage can be reclaimed only after the last visible relief is gone',()=>{
  const f=make();press(f);assert.equal(f.forgetWeatheredTile(0,0),false);const revision=f.changeRevision;
