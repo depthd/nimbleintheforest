@@ -1,0 +1,81 @@
+{
+  "seed": 42,
+  "presetIndex": 1,
+  "camera": {
+    "target": [
+      -430,
+      48,
+      -310
+    ],
+    "horizontalRadius": 245,
+    "elevation": 13,
+    "fieldOfView": 27,
+    "azimuths": [
+      -129,
+      -125,
+      -121,
+      -117,
+      -113,
+      -109,
+      -105,
+      -117
+    ]
+  },
+  "results": [
+    {
+      "family": "rounded",
+      "crop": [
+        249,
+        230,
+        553,
+        414
+      ],
+      "viewport": [
+        800,
+        450
+      ],
+      "uniqueViews": 7,
+      "repeatCentralViewChangedPixels": 0,
+      "rgbSha256": [
+        "a6a512064338e356c9d758154c44d0d70d16fd7c168cecf745e42f0c69cc3dbd",
+        "77eca8270df16132cb1ddd98c7f29d1b8a9a21c799ca6771d01a005733292fe6",
+        "634a3cbcd16e223e82fa496b32908e9ec1d326f08ac3feb51caa6f2eac0081ae",
+        "195e52b4e3b036e90865f1e74f5e3cda71b9acb347ecf00070a0ca1e4261baeb",
+        "4e5412342c43eecb0102419b63b0e39beaa9cefcb4179909f0564132efea7f63",
+        "f3e2f97a4df4c4f86e1e5211d4eef638911edb29625b04404f08fe7654340792",
+        "d30fefd76c677c87be70a394eb881d49f3b30e682124f72a20c1fe091c488b27"
+      ]
+    },
+    {
+      "family": "angular",
+      "crop": [
+        120,
+        196,
+        424,
+        380
+      ],
+      "viewport": [
+        800,
+        450
+      ],
+      "uniqueViews": 7,
+      "repeatCentralViewChangedPixels": 0,
+      "rgbSha256": [
+        "a6721e89a158f63bbb106ce8be42817c12fe6fdba39cee8ce5df61c3c71d38c0",
+        "7c9148e5f23ffac3af1a6e776678a5fe2a914ba0ea51b7b379b3d40f3f0b83d6",
+        "4dad9c46dae662ae0313bfd09f990d50f9a84dc0b4899ec83f320e409e3a5f87",
+        "f94dd2c6cfdd4ebdd43bc233c4e9792a30e36e4d7bf38fc4cdf69d50a324eccb",
+        "51c48970a8a1515b1b52ded76d1e3a02e783cda0026b1487be78cefd2192ab84",
+        "994e980a2407f7e8a4892587a8ce36e19039592db9973534993425e51f0cecb7",
+        "192c15d1f8359e91aeda42c0a59fe140cf83938de8a31f340cf5ad45c6830851"
+      ]
+    }
+  ],
+  "angularShadowControlChangedPixels": 60804,
+  "angularDetail": [
+    139,
+    256,
+    271,
+    313
+  ]
+}
