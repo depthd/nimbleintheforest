@@ -1,0 +1,172 @@
+{
+  "url": "http://localhost:5184/experiments/plateau/route.html?qa=1&seed=42&wall=rounded",
+  "pass": true,
+  "stage": "complete",
+  "physicsHz": 60,
+  "input": "Playwright keyboard; look rotates camera; fixed Player ticks",
+  "frames": 16199,
+  "distanceMeters": 442.658,
+  "maxSampleSpeedMps": 2.278,
+  "checkpoints": [
+    {
+      "name": "spawn",
+      "frame": 0,
+      "x": -65,
+      "y": 0.04,
+      "z": -15,
+      "attached": false
+    },
+    {
+      "name": "wall exterior",
+      "frame": 3964,
+      "x": -32.133,
+      "y": -0.109,
+      "z": 57.997,
+      "attached": false
+    },
+    {
+      "name": "den entrance",
+      "frame": 6568,
+      "x": 14.992,
+      "y": 0.005,
+      "z": 34.195,
+      "attached": false
+    },
+    {
+      "name": "den back wall",
+      "frame": 7177,
+      "x": 14.997,
+      "y": 0.12,
+      "z": 20.33,
+      "attached": false
+    },
+    {
+      "name": "returned through den entrance",
+      "frame": 7850,
+      "x": 15,
+      "y": 0.002,
+      "z": 38.821,
+      "attached": false
+    },
+    {
+      "name": "rope attached",
+      "frame": 8813,
+      "x": -3.993,
+      "y": -0.006,
+      "z": 35.064,
+      "attached": true
+    },
+    {
+      "name": "rope upper landing",
+      "frame": 9333,
+      "x": -4,
+      "y": 14.03,
+      "z": 32.624,
+      "attached": false
+    },
+    {
+      "name": "through cave lower entrance",
+      "frame": 10605,
+      "x": 17.005,
+      "y": 14.03,
+      "z": 14.123,
+      "attached": false
+    },
+    {
+      "name": "through cave upper exit",
+      "frame": 11631,
+      "x": 17,
+      "y": 22.03,
+      "z": -11.521,
+      "attached": false
+    },
+    {
+      "name": "through cave lower return",
+      "frame": 12616,
+      "x": 17,
+      "y": 14.03,
+      "z": 15.882,
+      "attached": false
+    },
+    {
+      "name": "main anchor",
+      "frame": 14896,
+      "x": 58.814,
+      "y": 14.093,
+      "z": -0.005,
+      "attached": false
+    },
+    {
+      "name": "bridge midpoint",
+      "frame": 15458,
+      "x": 74.862,
+      "y": 12.385,
+      "z": 0,
+      "attached": false
+    },
+    {
+      "name": "satellite anchor",
+      "frame": 16034,
+      "x": 90.815,
+      "y": 14.15,
+      "z": 0,
+      "attached": false
+    },
+    {
+      "name": "satellite plateau",
+      "frame": 16199,
+      "x": 95.048,
+      "y": 14.03,
+      "z": 0,
+      "attached": false
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "01-wall.jpg",
+      "frame": 3964,
+      "x": -32.133,
+      "y": -0.109,
+      "z": 57.997
+    },
+    {
+      "file": "02-den.jpg",
+      "frame": 7178,
+      "x": 14.997,
+      "y": 0.12,
+      "z": 20.33
+    },
+    {
+      "file": "03-rope.jpg",
+      "frame": 8814,
+      "x": -3.999,
+      "y": -0.001,
+      "z": 35.096
+    },
+    {
+      "file": "04-through.jpg",
+      "frame": 10766,
+      "x": 17,
+      "y": 15.368,
+      "z": 10.124
+    },
+    {
+      "file": "05-bridge.jpg",
+      "frame": 15459,
+      "x": 74.888,
+      "y": 12.386,
+      "z": 0
+    }
+  ],
+  "pageErrors": [],
+  "documentVisits": 1,
+  "denBlockedMeters": 0.002,
+  "ropeGainMeters": 14.03,
+  "passageGainMeters": 8.03,
+  "bridgeMidpointHeightMeters": 12.385,
+  "lastPosition": {
+    "x": 95.048,
+    "y": 14.03,
+    "z": 0
+  }
+}
