@@ -41,6 +41,26 @@ const {chromium}=require('playwright');
  await page.keyboard.press('j');await page.waitForFunction(()=>window.__journal.progress===1);await page.keyboard.press('Escape');await page.waitForFunction(()=>!window.__journal.active);
  assert.equal(await page.evaluate(()=>window.__game.G.input.enabled),true);
  await page.setViewportSize({width:700,height:900});await page.keyboard.press('j');await page.waitForFunction(()=>window.__journal.progress===1);await page.screenshot({path:path.join(out,'portrait.png')});
+ await page.evaluate(()=>{
+   const g=window.__game, G=g.G, site=G.region.mountainSite, lower=G.region.mountainTerrain.passageAnchors.ropeLower;
+   g.teleport(site.x+lower.x,site.y+lower.y+.02,site.z+lower.z);
+ });
+ await page.waitForFunction(()=>window.__game.G.mountains.canReachRope(window.__game.G.player.pos));
+ const ropeWhileReading=await page.evaluate(()=>{
+   const G=window.__game.G;
+   G.input.pressed.add('KeyE');G.interact.update(1/60);G.input.pressed.delete('KeyE');
+   return G.mountains.onRope;
+ });
+ assert.equal(ropeWhileReading,false);
+ await page.keyboard.press('j');await page.waitForFunction(()=>!window.__journal.active);
+ await page.keyboard.press('e');await page.waitForFunction(()=>window.__game.G.mountains.onRope);
+ const readingWhileClimbing=await page.evaluate(()=>{
+   const G=window.__game.G;
+   G.input.pressed.add('KeyJ');window.__journal.update(1/60);G.input.pressed.delete('KeyJ');
+   return window.__journal.active;
+ });
+ assert.equal(readingWhileClimbing,false);
+ await page.keyboard.press('e');await page.waitForFunction(()=>!window.__game.G.mountains.onRope);
  assert.deepEqual(errors,[]);console.log('PASS journal walk/look, sprint lowering/return, both grips, lifecycle, pitch extremes; screenshots saved');
  }finally{await browser?.close();await server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

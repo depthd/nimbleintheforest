@@ -171,15 +171,16 @@ export class PlayerAvatar {
     const handle = result.support;
     const owner = handle === undefined ? undefined : G.entities?.byCollider.get(handle);
     const terrainSupport = handle !== undefined && G.terrain.handles.has(handle);
+    const mountainSnow = handle !== undefined && handle === G.mountains?.snowHandle;
     const snow = G.snow;
     const state = result.snowDepth !== undefined ? snow?.field.sample(x, z) : undefined;
     const acoustic = footstepSurface({
       support: handle,
-      woodenSupport: handle !== undefined && (G.house?.woodenSupports.has(handle) || isWoodenFootstepOwner(owner)),
+      woodenSupport: handle !== undefined && (handle === G.mountains?.bridgeHandle || G.house?.woodenSupports.has(handle) || isWoodenFootstepOwner(owner)),
       iceSupport: handle !== undefined && G.lake?.handles.has(handle),
-      terrainSupport,
+      terrainSupport: terrainSupport || mountainSnow,
       snowDepth: result.snowDepth,
-      packedSnow: terrainSupport && !!snow && !snow.isExperiment && snow.packedBase(x, z),
+      packedSnow: mountainSnow || (terrainSupport && !!snow && !snow.isExperiment && snow.packedBase(x, z)),
       compaction: state?.surfaceCompaction,
     });
     result.material = acoustic.material;

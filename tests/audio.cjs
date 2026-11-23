@@ -240,11 +240,27 @@ function wav(file, channels, rate) {
         found.plankOverIce = overIce && { material: overIce.material, exactSupport: overIce.support === plank.handle };
       }
       found.shoes = G.player.worn.get('feet')?.defId;
+      // Probe actual triangle centres so this also checks that sound and physics use the same deck and snow cap.
+      function probeMountain(handle) {
+        const collider = G.world.getCollider(handle);
+        const vertices = collider.vertices(), indices = collider.indices(), origin = collider.translation();
+        for (let i = 0; i < indices.length; i += 3) {
+          const a = indices[i] * 3, b = indices[i + 1] * 3, c = indices[i + 2] * 3;
+          const x = origin.x + (vertices[a] + vertices[b] + vertices[c]) / 3;
+          const y = origin.y + (vertices[a + 1] + vertices[b + 1] + vertices[c + 1]) / 3;
+          const z = origin.z + (vertices[a + 2] + vertices[b + 2] + vertices[c + 2]) / 3;
+          const hit = probe(x, z, y);
+          if (hit?.support === handle) return hit.material;
+        }
+      }
+      found.bridge = probeMountain(G.mountains.bridgeHandle);
+      found.terrace = probeMountain(G.mountains.snowHandle);
       return found;
     });
     check('real game probes distinguish forest snow, cabin wood and registered lake ice', supports.snow?.material === 'snow' && supports.wood?.material === 'wood' && supports.ice?.material === 'ice' && supports.ice.registered, supports);
     check('a real plank collider overrides lake coordinates and the character starts in sneakers', supports.plankOverIce?.material === 'wood' && supports.plankOverIce.exactSupport && supports.shoes === 'sneakers', supports.plankOverIce);
     check('game integration reports no runtime errors', errors.length === 0, errors);
+    check('the mountain bridge sounds wooden and the terrace sounds snowy', supports.bridge === 'wood' && supports.terrace === 'snow', supports);
 
   } finally {
     await browser?.close(); await server.close();

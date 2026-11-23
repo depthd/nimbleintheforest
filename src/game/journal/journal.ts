@@ -49,16 +49,17 @@ class Journal {
   };
   update(dt: number) {
     const inp = G.input;
+    const unavailable = G.hud.modal || G.sleeping || G.dead || G.player.carried || G.mountains?.onRope || G.recorder?.reviewing;
     if (inp.pressed.has('KeyJ')) {
       if (this.active) this.open = !this.open;
-      else if (!G.hud.modal && inp.locked && !G.sleeping && !G.dead && !G.player.carried && !G.interact.swinging && !G.interact.timed && !G.recorder?.reviewing) {
+      else if (!unavailable && inp.locked && !G.interact.swinging && !G.interact.timed) {
         this.open = true;
         G.player.handsWarming = false;
         msg('Дневник · J / О — убрать', 'info', 3);
       }
     }
     if (inp.pressed.has('Escape')) this.open = false;
-    if (G.hud.modal || G.sleeping || G.dead || G.player.carried || G.recorder?.reviewing) { this.open = false; this.progress = 0; }
+    if (unavailable) { this.open = false; this.progress = 0; }
     this.progress = THREE.MathUtils.clamp(this.progress + (this.open ? 1 : -1) * dt / .65, 0, 1);
     document.body.classList.toggle('journal-reading', this.active);
     this.sprintLower = THREE.MathUtils.damp(this.sprintLower, this.active && G.player.sprinting ? 1 : 0, 10, dt);
