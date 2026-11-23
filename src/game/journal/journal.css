@@ -1,0 +1,6 @@
+body.journal-reading #status,
+body.journal-reading #hands,
+body.journal-reading #prompt,
+body.journal-reading #target-info,
+body.journal-reading #cross,
+body.journal-reading .motion-recorder { visibility: hidden; }
