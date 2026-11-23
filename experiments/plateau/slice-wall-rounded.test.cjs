@@ -34,7 +34,7 @@ const site = {
 const seen = new Set();
 const rows = [];
 for (const count of [4, 7, 10]) {
-  for (const seed of [42, 7, 2026, Number(process.env.NEW_SEED || 117379)]) {
+  for (const seed of [42, 7, 8191, Number(process.env.NEW_SEED || 23011)]) {
     const wall = buildRoundedWall(site, count, seed);
     const repeated = buildRoundedWall(site, count, seed);
     assert.deepEqual(wall, repeated);
@@ -64,12 +64,12 @@ for (const count of [4, 7, 10]) {
           minSnowNormal = Math.min(minSnowNormal, normal[1] / length);
           assert.ok(normal[1] / length > 0.58, 'Snow on a vertical or downward rock face');
         }
+        const roofClearance = roof.triangleClearance(triangle.map(([x,y,z]) => ({x,y,z})));
+        maxRoofIntrusion = Math.max(maxRoofIntrusion, -roofClearance);
         for (const [x,y,z] of [...triangle, a.map((v,i) => (v+b[i]+c[i])/3)]) {
           assert.ok([x,y,z].every(Number.isFinite));
           const ramp = ascentSample(x);
           if (x >= -300 && x <= 20) minPassClearance = Math.min(minPassClearance, Math.abs(z-ramp.z) - ramp.w);
-          const roofY = roof(x,z);
-          if (roofY !== undefined) maxRoofIntrusion = Math.max(maxRoofIntrusion, y-roofY);
         }
         if (material === 'rock' || k < 3 * wall.capTriangleCount) {
           for (let j = 0; j < 3; j++) {
@@ -83,7 +83,7 @@ for (const count of [4, 7, 10]) {
     }
     for (const [uses, direction] of edges.values()) assert.deepEqual([uses, direction], [2, 0]);
     assert.ok(minPassClearance > 2, 'Entrance piece intrudes into the existing passage');
-    assert.equal(maxRoofIntrusion, 0, 'A vertex or triangle centre emerges through the plateau');
+    assert.equal(maxRoofIntrusion, 0, 'A triangle emerges through the plateau');
     for (const [i, bounds] of wall.masses.entries()) {
       maxWidth = Math.max(maxWidth, bounds.maxU - bounds.minU);
       for (const other of wall.masses.slice(i + 1)) {
