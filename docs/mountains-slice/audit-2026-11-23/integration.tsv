@@ -1,0 +1,58 @@
+bd95225ed73cfbee3d05c8ceba8ffff0f3e7e65f	2026-11-23T11:46:37+04:00	f79fcb78595ee1d56df6854ccbe352d112a75649	Record seven mountain briefs, shared rules and unmodified wall baseline
+cef0ff0fc24cc7336bfc3f4bd4a9f731b5b49ef0	2026-11-23T11:46:37+04:00	bd95225ed73cfbee3d05c8ceba8ffff0f3e7e65f 2e4f0a819f15c670d54ec0cc424abaa532c802da	Merge branch 'track/wall-angular' into integration/mountains-1
+eb0083ddefa96df8f97f9d1770e55f931d2917d9	2026-11-23T11:47:26+04:00	cef0ff0fc24cc7336bfc3f4bd4a9f731b5b49ef0 3ac859fd474526fd653ed295b1f723fab087405b	Merge branch 'track/wall-rounded' into integration/mountains-1
+a0e46b5478d29fa0219884a6c079eac0eb3d9523	2026-11-23T11:47:54+04:00	eb0083ddefa96df8f97f9d1770e55f931d2917d9 49d52eda392eda32bd86725bed26dd08bfca953e	Merge branch 'track/tiers-entries' into integration/mountains-1
+ec6bfd79d61d7df934bb95daae4aa98e56eca1f0	2026-11-23T11:51:00+04:00	a0e46b5478d29fa0219884a6c079eac0eb3d9523 bb3daf98fa65740a5995f8bb662e34237776ee3a	Merge branch 'track/passages' into integration/mountains-1
+65ca9ddf57b854af67fbcda5fd3f2e0b2605a506	2026-11-23T11:51:00+04:00	ec6bfd79d61d7df934bb95daae4aa98e56eca1f0 24d7b6e5098c9fd58122a2fe67a74688ed7b9c91	Merge branch 'track/bridges' into integration/mountains-1
+87ba4a0ab39077b252339fd84e14113a23610167	2026-11-23T11:51:01+04:00	65ca9ddf57b854af67fbcda5fd3f2e0b2605a506 b0112c969e314ffe061b957bd8b99a0dfbd3a96e	Merge branch 'track/tiers-entries' into integration/mountains-1
+64a2c3c9b721e7baee152eec9aaa3641da3a31f7	2026-11-23T11:51:01+04:00	87ba4a0ab39077b252339fd84e14113a23610167 3c12120f73ca75ea6de3ce872286146ab33eb891	Merge commit '3c12120' into integration/mountains-1
+93ef93330595b7f4bd8a8750d7c2070c2fb67ed6	2026-11-23T11:53:19+04:00	64a2c3c9b721e7baee152eec9aaa3641da3a31f7 c9b50bf701f4059720911df31d3f4ec23e03d6a7	Merge commit 'c9b50bf' into integration/mountains-1
+dd112d3423d7ae84b955b4f144226968b47f1dcc	2026-11-23T11:53:19+04:00	93ef93330595b7f4bd8a8750d7c2070c2fb67ed6 e19968743684f02a941e5bbdd6e2c7ce0c4532eb	Merge commit 'e199687' into integration/mountains-1
+ad48bda589b7af2abded192c48fbb313370b31db	2026-11-23T11:55:00+04:00	dd112d3423d7ae84b955b4f144226968b47f1dcc	Integrate the wall comparator and play the metric mountain route with the game controller
+12470c4b61b84f2c683fd3812cf4dc88f11295cc	2026-11-23T11:55:32+04:00	ad48bda589b7af2abded192c48fbb313370b31db b6357fe835d568c5ddf1a3a629780202bc77231d	Merge commit 'b6357fe' into integration/mountains-1
+fe643491003bcfb757f60c01a62e438f794b9742	2026-11-23T11:55:33+04:00	12470c4b61b84f2c683fd3812cf4dc88f11295cc	Synchronize frame sampling and capture a shadow-free comparison control
+89347e49d92703e3c1685499cf03c4dd19304abd	2026-11-23T11:55:48+04:00	fe643491003bcfb757f60c01a62e438f794b9742 e5f23d1935b2df50778f3ec1ddf286a30f272ff5	Merge commit 'e5f23d1' into integration/mountains-1
+3ddb845d4ca31dad354078622b59e036c8101522	2026-11-23T11:56:40+04:00	89347e49d92703e3c1685499cf03c4dd19304abd a709afaff106ce1dd4364b377b54305f881a7a06	Merge commit 'a709afa' into integration/mountains-1
+3b99a6168d76a75c3e9fe020f99e8d8420c81ed9	2026-11-23T11:56:40+04:00	3ddb845d4ca31dad354078622b59e036c8101522 bf560725e7a88a51d9c9574751e293f4b02b5339	Merge commit 'bf56072' into integration/mountains-1
+7b6e2d9d379c958c21268f76dc1950bbaf39c056	2026-11-23T11:56:40+04:00	3b99a6168d76a75c3e9fe020f99e8d8420c81ed9 b3addccc8dedd2081ab6b23f74cefe2d40958f82	Merge commit 'b3addcc' into integration/mountains-1
+8cf21d9e2246abd84e1b03ee82347f5d58ada821	2026-11-23T11:57:16+04:00	7b6e2d9d379c958c21268f76dc1950bbaf39c056 3574572fc472e9f004276351bfa1d169490674e2	Merge commit '3574572' into integration/mountains-1
+0bdb2b2df6bf1580b321763dfca961af53128aa8	2026-11-23T11:57:16+04:00	8cf21d9e2246abd84e1b03ee82347f5d58ada821 5e321f7628c970c9947be0f2e5026956ef08e4cb	Merge commit '5e321f7' into integration/mountains-1
+5267c892ca64853a6ed585ba629237a6c0384c96	2026-11-23T11:57:16+04:00	0bdb2b2df6bf1580b321763dfca961af53128aa8	Measure snow on the cliff face separately from the foot of the cliff
+b21364d1a747988b4948adfa4ad7b72392e4faa5	2026-11-23T11:59:33+04:00	5267c892ca64853a6ed585ba629237a6c0384c96 424aa56b7c9f3c90363dad79cd04166513aca8b0	Merge commit '424aa56' into integration/mountains-1
+28d62b831bed9a3bfda49cc5f448bb5fd407f2c2	2026-11-23T11:59:33+04:00	b21364d1a747988b4948adfa4ad7b72392e4faa5	Open the original cliff at the same review camera from a direct link
+e22a22f33deec32a291c2a77d5e97636b762cbbe	2026-11-23T12:01:50+04:00	28d62b831bed9a3bfda49cc5f448bb5fd407f2c2	Render traversal with the established conifers and sheltered rock material
+4ef48be93c987db98c900d491392d4789499e05c	2026-11-23T12:02:08+04:00	e22a22f33deec32a291c2a77d5e97636b762cbbe a34804f606fef615c9d13580b79543128fa1e227	Merge commit 'a34804f' into integration/mountains-1
+a2007019ca986945b1ac13e5642483844e205c19	2026-11-23T12:02:08+04:00	4ef48be93c987db98c900d491392d4789499e05c 88c8e1073b3c01ac56b6fbbaf373bf1800e6b9f2	Merge commit '88c8e10' into integration/mountains-1
+77cc0499c226b5476b916df6f80997fbbb304260	2026-11-23T12:02:09+04:00	a2007019ca986945b1ac13e5642483844e205c19 7e59e46d929aa0b8b3f8a5f916ac17059f0fb1d6	Merge commit '7e59e46' into integration/mountains-1
+5e6e43d0b939e0651f0f2cc472c40c6796fe7bc7	2026-11-23T12:03:06+04:00	77cc0499c226b5476b916df6f80997fbbb304260 0a4efcc057e648c6fcffdd0d9be200ed18cdda98	Merge commit '0a4efcc' into integration/mountains-1
+c75ee7c1f11c08718679c4d191548eddf69dc0ff	2026-11-23T12:03:13+04:00	5e6e43d0b939e0651f0f2cc472c40c6796fe7bc7 57b821054c4fbf31f42c6c7eaeaf57add2986793	Merge commit '57b8210' into integration/mountains-1
+1edaa03eb56ebbd7fd6ca68ba78a8c404b0f1e05	2026-11-23T12:04:18+04:00	c75ee7c1f11c08718679c4d191548eddf69dc0ff	Avoid a missing icon request on the standalone route
+f898819486222e87e73573f2a198eb7bb6b9ba2c	2026-11-23T12:07:39+04:00	1edaa03eb56ebbd7fd6ca68ba78a8c404b0f1e05	Document the archive, ownership, traversal state and review scope
+22094c95e8ed399bc29a43782f3eccaa948aa99b	2026-11-23T12:08:50+04:00	f898819486222e87e73573f2a198eb7bb6b9ba2c a5c85c6cf407cf34a4bb8e96bffcf2b8e6156ae0	Merge commit 'a5c85c6' into integration/mountains-1
+827c58d8108666e2076928e72c7c8ab3eb0a04f3	2026-11-23T12:08:50+04:00	22094c95e8ed399bc29a43782f3eccaa948aa99b 72074f24512f25bf25305add4bdf7df152d01bcc	Merge commit '72074f2' into integration/mountains-1
+ce66744d01d85d7fd585fd5b0a088bf52efd7d20	2026-11-23T12:09:29+04:00	827c58d8108666e2076928e72c7c8ab3eb0a04f3 e202a41a1233d6b75a8b55b28d3d8797caf35c44	Merge commit 'e202a41' into integration/mountains-1
+29d426d695d93e99737bb25e4709a74ea16e3b2c	2026-11-23T12:09:46+04:00	ce66744d01d85d7fd585fd5b0a088bf52efd7d20	Repeat individual comparisons and isolate received shadows explicitly
+1bdd46192d64caff0d577547ca054db61e129830	2026-11-23T12:11:05+04:00	29d426d695d93e99737bb25e4709a74ea16e3b2c	Record continuous walks through the release geometry on four seeds
+0f2d846ca62ffcf30c270a0aeba2cc574de88cf0	2026-11-23T12:11:26+04:00	1bdd46192d64caff0d577547ca054db61e129830	Index historical mountain branches and file revisions for lookup
+d21ec2372fabfe10cc7f65a6c104e7aab3655751	2026-11-23T12:11:33+04:00	0f2d846ca62ffcf30c270a0aeba2cc574de88cf0 dcbeb9624a466274824fc2b9cb4a0b113031ef8f	Merge commit 'dcbeb96' into integration/mountains-1
+cd5c3b4fdc13dafbe783e42d8722eab65bcd5041	2026-11-23T12:13:12+04:00	d21ec2372fabfe10cc7f65a6c104e7aab3655751 e71f2a26eace42677eccbfd634c96f276c36a3b3	Merge commit 'e71f2a2' into integration/mountains-1
+30a9bfad28b1a8f8b34b492cc06ed1ee3a56c82c	2026-11-23T12:13:12+04:00	cd5c3b4fdc13dafbe783e42d8722eab65bcd5041 88c34f3f8914e84b27d7e0f7e46cc7e105f7f9fa	Merge commit '88c34f3' into integration/mountains-1
+4412cbd3b629f1cc3da774c027faaaf6973b6b97	2026-11-23T12:13:13+04:00	30a9bfad28b1a8f8b34b492cc06ed1ee3a56c82c	Collect playable route and tier views for the owner review
+8927c05c9d345db84f686ca0389c0c6639a465a7	2026-11-23T12:13:55+04:00	4412cbd3b629f1cc3da774c027faaaf6973b6b97 934a99e6f35f1a3b34535f525c0f17d5031ca2d4	Merge commit '934a99e' into integration/mountains-1
+c0d09b9e695fe2cf8188c5f6c4b24aff0118ecb3	2026-11-23T12:14:21+04:00	8927c05c9d345db84f686ca0389c0c6639a465a7	Photograph the release geometry and repeat the angular-wall walk
+f912db65a1eae94391683197747251c42895a405	2026-11-23T12:15:34+04:00	c0d09b9e695fe2cf8188c5f6c4b24aff0118ecb3 07252c895a1744271784917b31a0f241311e745d	Merge commit '07252c8' into integration/mountains-1
+caaffff7ee62558106ee6e0b59dbe8c5cccabe9e	2026-11-23T12:17:12+04:00	f912db65a1eae94391683197747251c42895a405	Save thirteen full-scene wall captures with masks and shadow controls
+d76840ae525b2d3b2f61e5082d7f1c78756f3c09	2026-11-23T12:17:42+04:00	caaffff7ee62558106ee6e0b59dbe8c5cccabe9e	Place both middle presets on the new seed side by side
+a5604c174aaae23599321ad18e6c4bb30061f4df	2026-11-23T12:19:12+04:00	d76840ae525b2d3b2f61e5082d7f1c78756f3c09	Report acceptance evidence, workload and open decisions by direction
+5552fc72772317fb3ed6de0893df780035160bb5	2026-11-23T12:22:52+04:00	a5604c174aaae23599321ad18e6c4bb30061f4df 5a0ef9508e3804f541991167166e1689e2e76fa9	Merge commit '5a0ef95' into integration/mountains-1
+670fe76ccc42f61eda74fda1403ae9d19f951d5c	2026-11-23T12:22:52+04:00	5552fc72772317fb3ed6de0893df780035160bb5	Record the localized angular snow seam visible during the camera sweep
+dbe4a8120c70ec5e7d5ea83f507aa0f2ced01c05	2026-11-23T12:26:39+04:00	670fe76ccc42f61eda74fda1403ae9d19f951d5c	Keep the angular snow cap above its support at multisampled seams
+0f1672454a587ccbf68c801c45f41fec185ff8a1	2026-11-23T12:29:27+04:00	dbe4a8120c70ec5e7d5ea83f507aa0f2ced01c05	Revert "Keep the angular snow cap above its support at multisampled seams"
+143da4b703ec56c61e392aeac47b432a78249cfd	2026-11-23T12:33:16+04:00	0f1672454a587ccbf68c801c45f41fec185ff8a1	Verify the wall options, direct URL, reload and original reset through the UI
+cb4e6f41e07992b8008a3d1452880e6f2788f473	2026-11-23T12:38:18+04:00	143da4b703ec56c61e392aeac47b432a78249cfd ed020699f6a6defa7eb55ddcac2fca71a83f8715	Merge commit 'ed02069' into integration/mountains-1
+9e483aa1d01bd165652b6ee528301f261880143a	2026-11-23T12:39:43+04:00	cb4e6f41e07992b8008a3d1452880e6f2788f473 64dedb06d53eb46d0523a635000967ef16c3dc95	Merge commit '64dedb0' into integration/mountains-1
+59e3c49a809379efa6168c3b1837f07a8af24048	2026-11-23T12:45:40+04:00	9e483aa1d01bd165652b6ee528301f261880143a e0e66ef60686e9ad9832d4511765408e7b28ec73	Merge commit 'e0e66ef' into integration/mountains-1
+99703e73d4c524d3ec162e5c2ef2401d9cf9e7fd	2026-11-23T12:46:30+04:00	59e3c49a809379efa6168c3b1837f07a8af24048 ae0bfe8df29cc288a78b3b84e0276ec7a9bceb5b	Merge commit 'ae0bfe8' into integration/mountains-1
+b61374b1caac24bbbec00751c3db51dd53d2f885	2026-11-23T12:46:31+04:00	99703e73d4c524d3ec162e5c2ef2401d9cf9e7fd	Save final angular-wall masks, shadows and release UI and walking checks
+3910d955d353e824513b2fcf77a15707e6a18c27	2026-11-23T12:48:20+04:00	b61374b1caac24bbbec00751c3db51dd53d2f885	Sign off the tested mountain slice and document the separated snow ridge
+fe4277c96426aeaa09c0ddbd208ade1d7b33f2ab	2026-11-23T16:01:32+04:00	3910d955d353e824513b2fcf77a15707e6a18c27	Add an interactive Pages review for the mountain slice

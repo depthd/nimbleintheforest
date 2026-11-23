@@ -1,0 +1,551 @@
+diff --git a/.coord/tasks/MOUNTAINS-PAGES-001.json b/.coord/tasks/MOUNTAINS-PAGES-001.json
+new file mode 100644
+index 0000000..1d32360
+--- /dev/null
++++ b/.coord/tasks/MOUNTAINS-PAGES-001.json
+@@ -0,0 +1,23 @@
++{
++  "id": "MOUNTAINS-PAGES-001",
++  "status": "review",
++  "owner": "codex-coordinator",
++  "base_sha": "3910d955d353e824513b2fcf77a15707e6a18c27",
++  "branch": "task/MOUNTAINS-PAGES-001-preview",
++  "allowed_paths": [
++    ".coord/tasks/MOUNTAINS-PAGES-001.json",
++    "experiments/plateau/mountain.ts",
++    "experiments/plateau/review.html",
++    "experiments/plateau/review.css",
++    "experiments/plateau/review.ts",
++    "experiments/plateau/route.html",
++    "experiments/plateau/route.ts",
++    "index.html",
++    "vite.config.ts"
++  ],
++  "acceptance": [
++    "Live wall and route previews in one dashboard, with browser links to each check",
++    "Publish the checked SHA through the repository test Pages workflow",
++    "Verify the deployed test URL and exact production root before and after"
++  ]
++}
+diff --git a/experiments/plateau/mountain.ts b/experiments/plateau/mountain.ts
+index cf3e755..150980e 100644
+--- a/experiments/plateau/mountain.ts
++++ b/experiments/plateau/mountain.ts
+@@ -324,9 +324,34 @@ async function start(){
+   let previous=performance.now();function tick(now:number){const dt=Math.min(.05,(now-previous)/1000);previous=now;if(keys.size){const forward=new THREE.Vector3();camera.getWorldDirection(forward);const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize(),move=new THREE.Vector3();if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;move.multiplyScalar(dt*(keys.has('ShiftLeft')?100:25));camera.position.add(move);controls.target.add(move);controls.update();draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
+   window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();draw();});
+   renderer.shadowMap.needsUpdate=true;view(stacked?'back':'front');status.textContent=stacked?'Три яруса · подъёмы и плато':'Гора · скалы, плато и подъём';
+-  const initial=wallParameters(new URLSearchParams(location.search));
+-  setWall(initial.family,initial.preset,initial.seed);
+-  if(initial.family!=='original' || new URLSearchParams(location.search).get('view')==='wall')view('wall');
++  const query = new URLSearchParams(location.search);
++  const initial = wallParameters(query);
++  setWall(initial.family, initial.preset, initial.seed);
++  const initialView = query.get('view') ?? '';
++  if (Object.hasOwn(views, initialView)) view(initialView);
++  else if (initial.family !== 'original') view('wall');
++  if (query.get('embedded') === '1') {
++    document.querySelector('aside')!.hidden = true;
++    status.hidden = true;
++    window.addEventListener('message', event => {
++      if (event.origin !== location.origin || event.source !== window.parent) return;
++      const message = event.data;
++      if (message?.type !== 'mountain-review:view' ||
++          !['wall', 'overview', 'top'].includes(message.camera)) return;
++      if (message.changed) {
++        const {family, preset, seed} = wallParameters(new URLSearchParams({
++          wall: String(message.family), preset: String(message.preset), seed: String(message.seed),
++        }));
++        setWall(family, preset, seed);
++      }
++      view(message.camera);
++    });
++    window.parent.postMessage({type: 'mountain-review:ready'}, location.origin);
++  }
+   (window as any).__mountain={ready:true,setWall,wallMask:()=>measureWallSnow(scene,camera,renderer),renderer,scene,camera,controls,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:snow.stats})};
+ }
+-start().catch(e=>{status.textContent='Ошибка: '+e.message;console.error(e);});
++start().catch(e=>{
++  status.textContent='Ошибка: '+e.message;
++  if (window.parent !== window) window.parent.postMessage({type:'mountain-review:error'}, location.origin);
++  console.error(e);
++});
+diff --git a/experiments/plateau/review.css b/experiments/plateau/review.css
+new file mode 100644
+index 0000000..d0abba3
+--- /dev/null
++++ b/experiments/plateau/review.css
+@@ -0,0 +1,57 @@
++:root {
++  color-scheme: dark;
++  --bg: #11191d;
++  --panel: #1b272e;
++  --line: #3b4e57;
++  --fg: #f3f6f6;
++  --muted: #b7c6ce;
++  --accent: #c9e3ed;
++  font: 16px/1.45 Arial, sans-serif;
++}
++* { box-sizing: border-box; }
++[hidden] { display: none !important; }
++body { margin: 0; background: var(--bg); color: var(--fg); }
++.site-header, main { max-width: 1800px; margin: auto; padding-inline: clamp(14px, 3vw, 48px); }
++.site-header { display: flex; justify-content: space-between; align-items: end; gap: 12px; padding-top: 18px; padding-bottom: 14px; }
++.brand { margin: 0 0 4px; color: var(--accent); font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; }
++h1 { margin: 0; font-size: clamp(32px, 4vw, 54px); line-height: 1; letter-spacing: -.045em; }
++h2 { margin: 0; font-size: 1.17rem; }
++.site-header .build-info { margin: 0; color: var(--muted); font-size: .72rem; }
++nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
++button, select { font: inherit; color: inherit; border: 1px solid var(--line); background: var(--panel); padding: .48rem .65rem; border-radius: 4px; cursor: pointer; }
++button:hover, button:focus-visible, select:focus-visible, a:focus-visible { border-color: var(--accent); outline-color: var(--accent); }
++button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #192c35; font-weight: bold; }
++a { color: var(--accent); text-underline-offset: .2em; }
++.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 270px); gap: 12px; padding-bottom: 14px; align-items: start; }
++.stage { position: sticky; top: 8px; height: clamp(440px, 76vh, 1040px); overflow: hidden; isolation: isolate; background: #aebcc7; border: 1px solid var(--line); border-radius: 5px; }
++.stage:fullscreen { height: 100%; border: 0; border-radius: 0; }
++#scene, iframe { width: 100%; height: 100%; }
++iframe { display: block; border: 0; }
++#load-state { position: absolute; left: 14px; bottom: 14px; max-width: calc(100% - 28px); padding: 7px 12px; margin: 0; border-radius: 4px; background: #16252e; color: white; pointer-events: none; }
++aside { background: #172229; border: 1px solid var(--line); border-radius: 5px; padding: 14px; }
++.notes { color: var(--muted); font-size: .85rem; margin: .55rem 0 .8rem; }
++.base-wall, select { width: 100%; text-align: left; }
++.family { margin: .65rem 0; padding-bottom: .55rem; border-bottom: 1px solid var(--line); font-size: .92rem; }
++.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: .35rem; }
++.cameras { margin-top: 10px; }
++.cameras button { font-size: .76rem; padding-inline: 4px; }
++.field { display: block; margin: .8rem 0 .35rem; font-size: .82rem; color: var(--muted); }
++.checkpoints { display: grid; gap: 3px; }
++.checkpoints button { text-align: left; font-size: .86rem; padding: .37rem .5rem; }
++.scene-links { border-top: 1px solid var(--line); margin-top: .85rem; padding-top: .75rem; display: flex; gap: .55rem; flex-direction: column; align-items: start; font-size: .82rem; }
++#reference-panel > p { display: flex; flex-wrap: wrap; gap: 8px 24px; }
++.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 12px; padding-bottom: 20px; }
++.gallery button { display: flex; flex-direction: column; text-align: left; padding: 0; overflow: hidden; }
++.gallery img { display: block; width: 100%; height: auto; aspect-ratio: 1.9; object-fit: cover; object-position: center; }
++.gallery span { padding: .6rem; }
++dialog { max-width: 96vw; max-height: 96vh; background: var(--bg); border: 1px solid var(--line); padding: 8px; }
++dialog::backdrop { background: #050a0edb; }
++dialog form { display: flex; justify-content: end; padding-bottom: 8px; }
++dialog img { display: block; max-width: 90vw; max-height: 83vh; object-fit: contain; }
++@media (max-width: 740px) {
++  .layout { display: flex; flex-direction: column; }
++  .stage { position: relative; top: 0; width: 100%; height: max(340px, 57vh); }
++  aside { width: 100%; }
++  .site-header .build-info { max-width: 42vw !important; }
++  nav button { flex: 1 1 auto; font-size: .84rem; }
++}
+diff --git a/experiments/plateau/review.html b/experiments/plateau/review.html
+new file mode 100644
+index 0000000..6e24dc3
+--- /dev/null
++++ b/experiments/plateau/review.html
+@@ -0,0 +1,94 @@
++<!doctype html>
++<html lang="ru">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
++  <meta name="theme-color" content="#11191d">
++  <link rel="icon" href="data:,">
++  <link rel="stylesheet" href="./review.css">
++  <title>Горы · Nimble in the Forest</title>
++</head>
++<body>
++  <header class="site-header">
++    <div><p class="brand">Nimble in the Forest</p><h1>Горы</h1></div>
++    <!-- build-info -->
++  </header>
++  <main>
++    <nav aria-label="Раздел теста">
++      <button type="button" data-tab="wall" aria-pressed="true">Боковины</button>
++      <button type="button" data-tab="route" aria-pressed="false">Ярусы и маршруты</button>
++      <button type="button" data-tab="refs" aria-pressed="false">Кадры и референсы</button>
++    </nav>
++    <div id="interactive" class="layout">
++      <section class="stage" aria-label="Трёхмерная сцена">
++        <div id="scene"></div>
++        <p id="load-state" role="status">Загрузка сцены…</p>
++      </section>
++      <aside>
++        <div id="wall-panel">
++          <h2>Боковина у подъёма</h2>
++          <p class="notes">Выберите форму. Камера вернётся к ракурсу сравнения.</p>
++          <button type="button" class="base-wall" data-wall="original" aria-pressed="true">Исходная стенка</button>
++          <div class="family">Округлые блоки<div class="choices">
++            <button type="button" data-wall="rounded" data-preset="0" aria-pressed="false" aria-label="4 округлых блока">4</button>
++            <button type="button" data-wall="rounded" data-preset="1" aria-pressed="false" aria-label="7 округлых блоков">7</button>
++            <button type="button" data-wall="rounded" data-preset="2" aria-pressed="false" aria-label="10 округлых блоков">10</button>
++          </div></div>
++          <div class="family">Угловатые глыбы<div class="choices">
++            <button type="button" data-wall="angular" data-preset="0" aria-pressed="false" aria-label="5 угловатых глыб">5</button>
++            <button type="button" data-wall="angular" data-preset="1" aria-pressed="false" aria-label="8 угловатых глыб">8</button>
++            <button type="button" data-wall="angular" data-preset="2" aria-pressed="false" aria-label="12 угловатых глыб">12</button>
++          </div></div>
++          <label class="field" for="wall-seed">Сид боковины</label>
++          <select id="wall-seed" data-seed>
++            <option value="42">42 · сравнение пресетов</option><option value="7">7</option><option value="8191">8191</option><option value="23011">23011 · новый сид</option>
++          </select>
++          <div class="choices cameras">
++            <button type="button" data-camera="wall" aria-pressed="true">У подъёма</button>
++            <button type="button" data-camera="overview" aria-pressed="false">Вся гора</button>
++            <button type="button" data-camera="top" aria-pressed="false">Сверху</button>
++          </div>
++          <p class="notes">Перетащите сцену для поворота. Колесо мыши приближает камеру.</p>
++        </div>
++        <div id="route-panel" hidden>
++          <h2>Пеший маршрут</h2>
++          <label class="field" for="route-seed">Сид рельефа</label>
++          <select id="route-seed" data-seed>
++            <option value="42">42 · узкий вырез, 3 / 3</option><option value="7">7 · широкий подъём, 2 / 3</option><option value="8191">8191 · четыре яруса, 4 / 1</option><option value="23011">23011 · новый сид, 2 / 1</option>
++          </select>
++          <label class="field" for="route-wall">Стенка на маршруте</label>
++          <select id="route-wall">
++            <option value="original:1">Исходная</option>
++            <option value="rounded:0">4 округлых блока</option><option value="rounded:1">7 округлых блоков</option><option value="rounded:2">10 округлых блоков</option>
++            <option value="angular:0">5 угловатых глыб</option><option value="angular:1">8 угловатых глыб</option><option value="angular:2">12 угловатых глыб</option>
++          </select>
++          <p class="field">Место старта</p>
++          <div class="checkpoints">
++            <button type="button" data-start="overview" aria-pressed="true">Обзор обеих гор</button>
++            <button type="button" data-start="spawn" aria-pressed="false">У подножия · весь маршрут</button>
++            <button type="button" data-start="wall" aria-pressed="false">У боковины</button>
++            <button type="button" data-start="den" aria-pressed="false">У входа в логово</button>
++            <button type="button" data-start="rope" aria-pressed="false">У каната</button>
++            <button type="button" data-start="cave" aria-pressed="false">У сквозной пещеры</button>
++            <button type="button" data-start="bridge" aria-pressed="false">Перед мостом</button>
++          </div>
++          <p class="notes" id="route-hint"></p>
++        </div>
++        <div class="scene-links">
++          <a id="open-scene" href="./mountain.html?view=wall" target="_blank" rel="noopener">Сцена в отдельной вкладке ↗</a>
++          <button type="button" id="fullscreen">На весь экран</button>
++        </div>
++      </aside>
++    </div>
++    <section id="reference-panel" hidden aria-label="Кадры и референсы">
++      <p><a href="https://github.com/depthd/nimbleintheforest/blob/f79fcb78595ee1d56df6854ccbe352d112a75649/docs/qa/PLATEAU-001/ARCHIVE.md">Журнал прежних вариантов ↗</a><a id="report-link" hidden>Отчёт и проверки ↗</a></p>
++      <div class="gallery" id="gallery"></div>
++    </section>
++  </main>
++  <dialog id="photo">
++    <form method="dialog"><button aria-label="Закрыть кадр">Закрыть ×</button></form>
++    <img alt="">
++  </dialog>
++  <script type="module" src="./review.ts"></script>
++</body>
++</html>
+diff --git a/experiments/plateau/review.ts b/experiments/plateau/review.ts
+new file mode 100644
+index 0000000..bb41f5b
+--- /dev/null
++++ b/experiments/plateau/review.ts
+@@ -0,0 +1,189 @@
++import type { WallFamily } from './slice-wall';
++
++const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
++const buttons = (selector: string) => [...document.querySelectorAll<HTMLButtonElement>(selector)];
++const stage = element('scene');
++const status = element('load-state');
++const openScene = element<HTMLAnchorElement>('open-scene');
++const params = new URLSearchParams(location.search);
++const seeds = [42, 7, 8191, 23011];
++
++const starts = {
++  overview: 'Обе горы с высоты. Нажмите «Идти», чтобы начать у подножия.',
++  spawn: 'Из этой точки начнётся полный маршрут. Взгляд направлен на подъём.',
++  wall: 'Перед вами выбранная боковина. К канату и пещерам можно пройти вдоль подножия.',
++  den: 'Идите прямо до задней стены. Выход находится за спиной.',
++  rope: 'Нажмите E, чтобы взяться за канат. W — вверх, S — вниз.',
++  cave: 'Идите прямо через пещеру. Выход ведёт на второй ярус.',
++  bridge: 'Идите прямо по настилу. На дальнем берегу начинается соседнее плато.',
++};
++type Tab = 'wall' | 'route' | 'refs';
++type Start = keyof typeof starts;
++type Camera = 'wall' | 'overview' | 'top';
++const tabFromUrl = params.get('tab');
++let tab: Tab = tabFromUrl === 'route' || tabFromUrl === 'refs' ? tabFromUrl : 'wall';
++const startFromUrl = params.get('start') ?? '';
++let start: Start = Object.hasOwn(starts, startFromUrl) ? startFromUrl as Start : 'overview';
++const cameraFromUrl = params.get('camera');
++let camera: Camera = cameraFromUrl === 'overview' || cameraFromUrl === 'top' ? cameraFromUrl : 'wall';
++const wallFromUrl = params.get('wall');
++let family: WallFamily = wallFromUrl === 'rounded' || wallFromUrl === 'angular' ? wallFromUrl : 'original';
++const presetFromUrl = Number(params.get('preset') ?? 1);
++let preset = [0, 1, 2].includes(presetFromUrl) ? presetFromUrl : 1;
++const seedFromUrl = Number(params.get('seed'));
++let seed = seeds.includes(seedFromUrl) ? seedFromUrl : 42;
++let frame: HTMLIFrameElement | undefined;
++let ready = false;
++let queuedWall = false;
++let pending: number | undefined;
++const seedInputs = [...document.querySelectorAll<HTMLSelectElement>('[data-seed]')];
++const routeWall = element<HTMLSelectElement>('route-wall');
++
++const artworks = [
++  ['Шесть боковин с одной камеры', new URL('../../docs/mountains-slice/wall-rounded/walls-seed42.png', import.meta.url).href],
++  ['Оба семейства на сиде 23011', new URL('../../docs/mountains-slice/integration/new-seed.jpg', import.meta.url).href],
++  ['Узкий и широкий подъёмы, верхний пик', new URL('../../docs/mountains-slice/integration/tiers-entries.jpg', import.meta.url).href],
++  ['Кадры пройденного маршрута', new URL('../../docs/mountains-slice/integration/journey.jpg', import.meta.url).href],
++  ['Снежный гребень угловатой боковины', new URL('../../docs/mountains-slice/wall-angular/snow-ridge-before-after.jpg', import.meta.url).href],
++  ['Канат · референсы', new URL('../../docs/mountains-slice/references/rope.jpg', import.meta.url).href],
++  ['Сквозная пещера · референсы', new URL('../../docs/mountains-slice/references/through.jpg', import.meta.url).href],
++  ['Логово · референсы', new URL('../../docs/mountains-slice/references/den.jpg', import.meta.url).href],
++  ['Подвесной мост · референсы', new URL('../../docs/mountains-slice/references/bridge.jpg', import.meta.url).href],
++];
++const dialog = element<HTMLDialogElement>('photo');
++const detail = dialog.querySelector('img')!;
++for (const [label, src] of artworks) {
++  const button = document.createElement('button');
++  button.type = 'button';
++  const preview = document.createElement('img');
++  preview.loading = 'lazy';
++  preview.src = src;
++  preview.alt = '';
++  const caption = document.createElement('span');
++  caption.textContent = label;
++  button.append(preview, caption);
++  button.onclick = () => {
++    detail.src = src;
++    detail.alt = label;
++    dialog.showModal();
++  };
++  element('gallery').append(button);
++}
++
++const build = document.querySelector<HTMLElement>('.build-info[title]')?.title;
++if (build && /^[a-f0-9]{40}$/.test(build)) {
++  const report = element<HTMLAnchorElement>('report-link');
++  report.href = 'https://github.com/depthd/nimbleintheforest/blob/' + build + '/docs/mountains-slice/README.md';
++  report.hidden = false;
++}
++
++function selected(items: HTMLButtonElement[], match: (button: HTMLButtonElement) => boolean) {
++  for (const button of items) button.setAttribute('aria-pressed', String(match(button)));
++}
++
++function sceneUrl() {
++  const search = new URLSearchParams({wall: family, preset: String(preset), seed: String(seed)});
++  if (tab === 'wall') search.set('view', camera);
++  else search.set('start', start);
++  return (tab === 'wall' ? './mountain.html?' : './route.html?') + search;
++}
++
++function paintControls() {
++  selected(buttons('[data-tab]'), button => button.dataset.tab === tab);
++  selected(buttons('[data-wall]'), button => button.dataset.wall === family &&
++    (family === 'original' || Number(button.dataset.preset) === preset));
++  selected(buttons('[data-camera]'), button => button.dataset.camera === camera);
++  selected(buttons('[data-start]'), button => button.dataset.start === start);
++  for (const input of seedInputs) input.value = String(seed);
++  routeWall.value = family + ':' + (family === 'original' ? 1 : preset);
++  element('route-hint').textContent = starts[start];
++  element('interactive').hidden = tab === 'refs';
++  element('wall-panel').hidden = tab !== 'wall';
++  element('route-panel').hidden = tab !== 'route';
++  element('reference-panel').hidden = tab !== 'refs';
++  const search = new URLSearchParams({
++    tab, wall: family, preset: String(preset), seed: String(seed), start, camera,
++  });
++  history.replaceState(null, '', '?' + search);
++  if (tab !== 'refs') openScene.href = sceneUrl();
++}
++
++function openView() {
++  paintControls();
++  clearTimeout(pending);
++  frame?.remove();
++  frame = undefined;
++  ready = false;
++  queuedWall = false;
++  if (tab === 'refs') return;
++  const next = document.createElement('iframe');
++  next.title = tab === 'wall' ? 'Интерактивная боковина горы' : 'Игровой маршрут по горам';
++  next.allowFullscreen = true;
++  next.src = sceneUrl() + '&embedded=1';
++  status.hidden = false;
++  status.textContent = tab === 'wall' ? 'Загрузка полноразмерной горы…' : 'Загрузка маршрута…';
++  frame = next;
++  stage.append(next);
++  pending = window.setTimeout(() => {
++    status.textContent = 'Сцена ещё загружается. Её также можно открыть в отдельной вкладке.';
++  }, 30000);
++}
++
++function showWall(changed: boolean) {
++  paintControls();
++  if (!ready) { queuedWall = true; return; }
++  frame?.contentWindow?.postMessage({type: 'mountain-review:view', family, preset, seed, camera, changed}, location.origin);
++}
++window.addEventListener('message', event => {
++  if (event.origin !== location.origin || !frame || event.source !== frame.contentWindow) return;
++  if (event.data?.type === 'mountain-review:ready') {
++    clearTimeout(pending);
++    ready = true;
++    status.hidden = true;
++    if (queuedWall && tab === 'wall') { queuedWall = false; showWall(true); }
++  }
++  if (event.data?.type === 'mountain-review:error') {
++    clearTimeout(pending);
++    status.hidden = false;
++    status.textContent = 'Не удалось загрузить 3D. Откройте сцену в отдельной вкладке или посмотрите кадры.';
++  }
++});
++
++for (const button of buttons('[data-tab]')) button.onclick = () => {
++  const next = button.dataset.tab as Tab;
++  if (next === tab) return;
++  tab = next;
++  openView();
++};
++for (const button of buttons('[data-wall]')) button.onclick = () => {
++  family = button.dataset.wall as typeof family;
++  preset = Number(button.dataset.preset ?? 1);
++  camera = 'wall';
++  showWall(true);
++};
++for (const button of buttons('[data-camera]')) button.onclick = () => {
++  camera = button.dataset.camera as Camera;
++  showWall(false);
++};
++for (const button of buttons('[data-start]')) button.onclick = () => {
++  start = button.dataset.start as Start;
++  openView();
++};
++for (const input of seedInputs) input.onchange = () => {
++  seed = Number(input.value);
++  if (tab === 'wall') showWall(true);
++  else openView();
++};
++routeWall.onchange = () => {
++  const [shape, density] = routeWall.value.split(':');
++  family = shape as typeof family;
++  preset = Number(density);
++  openView();
++};
++const fullscreen = element<HTMLButtonElement>('fullscreen');
++fullscreen.hidden = !document.fullscreenEnabled;
++fullscreen.onclick = () => stage.parentElement?.requestFullscreen().catch(() => {
++  status.hidden = false;
++  status.textContent = 'Полноэкранный режим недоступен. Откройте сцену в отдельной вкладке.';
++});
++openView();
+diff --git a/experiments/plateau/route.html b/experiments/plateau/route.html
+index 9732bee..ee20682 100644
+--- a/experiments/plateau/route.html
++++ b/experiments/plateau/route.html
+@@ -2,4 +2,6 @@
+ <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Горы · игровой срез</title>
+ <style>
+ *{box-sizing:border-box}body{margin:0;background:#c2cbd1;color:#f3f4f1;font:15px/1.4 system-ui,sans-serif}canvas{width:100vw;height:100vh;display:block}header,footer{position:fixed;left:1rem;background:#17242ce8;padding:.65rem .85rem;border:1px solid #76848a;max-width:calc(100% - 2rem)}header{top:1rem;display:flex;gap:.65rem;flex-wrap:wrap;align-items:center}button,select,input{background:#283a43;color:inherit;border:1px solid #82939a;padding:.3rem .45rem;font:inherit}input{width:6rem}a{color:inherit}footer{bottom:1rem}#cue:empty{display:none}#cue{font-weight:bold;color:#fff4bc;margin-left:1em}body.locked header{display:none}button,a,select{cursor:pointer}
++body.embedded header { left: auto; right: 1rem; }
++body.embedded header > :not(#view):not(#walk) { display: none; }
+ </style></head><body><canvas id="scene"></canvas><header><a href="./mountain.html">Боковина</a><label>Сид <input type="number" id="seed" step="1"></label><label>Стенка <select id="family"><option value="original">Исходная</option><option value="rounded">Округлые блоки</option><option value="angular">Угловатые глыбы</option></select></label><button id="rebuild">Открыть срез</button><button id="view">Обзор гор</button><button id="walk">Идти</button></header><footer><span id="status" role="status">Загрузка гор и физики…</span><span id="cue"></span></footer><script type="module" src="./route.ts"></script></body></html>
+diff --git a/experiments/plateau/route.ts b/experiments/plateau/route.ts
+index 91ecaf6..b422438 100644
+--- a/experiments/plateau/route.ts
++++ b/experiments/plateau/route.ts
+@@ -18,6 +18,8 @@ import type { MeshData } from './cavity';
+ const element = <T extends HTMLElement>(id:string) => document.getElementById(id) as T;
+ const params = new URLSearchParams(location.search);
+ const {seed,family,preset} = wallParameters(params);
++const embedded = params.get('embedded') === '1';
++if (embedded) document.body.classList.add('embedded');
+ element<HTMLInputElement>('seed').value = String(seed);
+ element<HTMLSelectElement>('family').value = family;
+ element('rebuild').onclick = () => {
+@@ -105,10 +107,38 @@ async function start() {
+   world.step();
+   // The production avatar resolves model URLs from the game root. This entry is two levels below it.
+   THREE.DefaultLoadingManager.setURLModifier(url=>url.startsWith('models/')?new URL('../../'+url,location.href).href:url);
+-  const p=new Player();
+-  p.init(new THREE.Vector3(terrain.spawn.x,terrain.spawn.y+.04,terrain.spawn.z),-Math.PI/2);
++  const p = new Player();
++  const {denMouth, ropeLower, throughLower} = terrain.passageAnchors;
++  const {spawn, wallAnchor} = terrain;
++  let start = spawn, yaw = -Math.PI / 2;
++  switch (params.get('start')) {
++    case 'wall':
++      start = {...wallAnchor, z: wallAnchor.z + wallAnchor.width * 1.06};
++      start.y = terrain.sampleHeight(start.x, start.z);
++      yaw = 0;
++      break;
++    case 'den':
++      start = {...denMouth, z: denMouth.z + 3};
++      yaw = 0;
++      break;
++    case 'rope':
++      start = {...ropeLower, z: ropeLower.z + .7};
++      yaw = 0;
++      break;
++    case 'cave':
++      start = {...throughLower, z: throughLower.z + 2.7};
++      yaw = 0;
++      break;
++    case 'bridge':
++      if (bridge) {
++        yaw = Math.atan2(bridge.from.x - bridge.to.x, bridge.from.z - bridge.to.z);
++        start = {...bridge.from, x: bridge.from.x + 3.2 * Math.sin(yaw), z: bridge.from.z + 3.2 * Math.cos(yaw)};
++      }
++      break;
++  }
++  p.init(new THREE.Vector3(start.x, start.y + .04, start.z), yaw);
+   p.avatar.root.visible=false;
+-  let overview=false, ropeState=createSliceRopeState();
++  let overview=params.get('start') === 'overview', ropeState=createSliceRopeState();
+   const dt=1/60;
+   function step() {
+     p.look();
+@@ -136,6 +166,8 @@ async function start() {
+   input.onLockChange=v=>document.body.classList.toggle('locked',v);
+   const resize=()=>{renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();draw();};
+   window.addEventListener('resize',resize);resize();
++  if (overview) element('view').textContent = 'От первого лица';
++  if (embedded) window.parent.postMessage({type: 'mountain-review:ready'}, location.origin);
+   element('status').textContent='WASD · идти   Мышь / ← → · обзор   Пробел · прыгнуть   E · канат   Esc · меню';
+   const qa=params.get('qa')==='1';
+   if(qa){
+@@ -148,4 +180,8 @@ async function start() {
+       while(pending>=dt){step();pending-=dt;} draw();});
+   }
+ }
+-start().catch(e=>{element('status').textContent=String(e);console.error(e);});
++start().catch(e=>{
++  element('status').textContent=String(e);
++  if (embedded) window.parent.postMessage({type: 'mountain-review:error'}, location.origin);
++  console.error(e);
++});
+diff --git a/index.html b/index.html
+index 1eb1238..ce356d4 100644
+--- a/index.html
++++ b/index.html
+@@ -112,6 +112,7 @@
+         <label class="chk"><input id="st-horror" type="checkbox" checked /> Жуть по ночам</label>
+       </div>
+       <button id="st-go">Начать</button>
++      <!-- mountain-review -->
+       <a class="snow-start" href="./experiments/mountains/?seed=42" style="font-size:18px;font-weight:600">Исследовать новые горы</a>
+       <a class="snow-start" href="?snow=1">Испытать изменяемый снег</a>
+       <a class="snow-start" href="?cliffs=1">Испытать скалы</a>
+diff --git a/vite.config.ts b/vite.config.ts
+index 76b8cef..a033782 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -14,7 +14,10 @@ const buildInfo = `<p class="hint build-info" title="${sha}" style="text-align:c
+ 
+ export default defineConfig({
+   base: './',
+-  plugins: [{ name: 'build-info', transformIndexHtml: html => html.replaceAll('<!-- build-info -->', buildInfo) }],
++  plugins: [{ name: 'build-info', transformIndexHtml: html => html.replaceAll('<!-- build-info -->', buildInfo)
++    .replace('<!-- mountain-review -->', process.env.BUILD_CHANNEL === 'test'
++      ? '<a class="snow-start" href="./experiments/plateau/review.html">Горы · интерактивный тест</a>'
++      : '') }],
+   build: {
+     target: 'es2022',
+     rollupOptions: { input: {
+@@ -28,6 +31,7 @@ export default defineConfig({
+       plateauSnow: 'experiments/plateau/wedge-snow.html',
+       plateauMountain: 'experiments/plateau/mountain.html',
+       plateauRoute: 'experiments/plateau/route.html',
++      plateauReview: 'experiments/plateau/review.html',
+     } },
+     chunkSizeWarningLimit: 6000,
+   },
