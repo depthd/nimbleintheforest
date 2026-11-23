@@ -170,7 +170,7 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
   }
   // A low snow bank fills the crevices at ground level. Radial ends dip
   // below the actual ground, so the bank has no open visible hem.
-  const wallSnowIndexCount = snow.indices.length;
+  const snowWallIndexCount = snow.indices.length;
   const footV = maxDepth * 0.93;
   const bankOffset = snow.positions.length / 3;
   const bankProfile = [
@@ -193,5 +193,5 @@ export function buildAngularWall(site: Site, count: number, seed: number) {
       snow.indices.push(a, b, b + 1, a, b + 1, a + 1);
     }
   }
-  return { rock: pack(rock), snow: pack(snow), masses, wallSnowIndexCount };
+  return { rock: pack(rock), snow: pack(snow), masses, snowWallIndexCount };
 }
