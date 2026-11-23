@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { warmStartup } from './startup-warmup';
 import RAPIER from '@dimforge/rapier3d-compat';
+import { trailPose, trailStops } from './trail-location';
 import { G, Settings, hourOf, msg } from './ctx';
 import { Rng } from '../core/rng';
 import { GameAudio } from '../core/audio';
@@ -135,8 +136,10 @@ export async function startGame(settings: Settings) {
     if (r) G.animals.noise(pos ?? G.player.pos, r);
   };
   G.player = new Player();
-  const { spawn, yaw } = settings.caveLab && region.caves.length ? caveSpawn() : findSpawn(rng);
+  const stop = settings.trailStop ? trailPose(region, settings.trailStop) : null;
+  const { spawn, yaw } = stop ?? (settings.caveLab && region.caves.length ? caveSpawn() : findSpawn(rng));
   G.player.init(spawn, yaw);
+  if (stop) G.player.pitch = stop.pitch;
   G.interact = new Interaction();
   G.vm = new ViewModel();
   G.hud = new HUD();
@@ -211,6 +214,10 @@ export async function startGame(settings: Settings) {
 }
 
 function hud_intro() {
+  if (G.settings.trailStop) {
+    msg(trailStops[G.settings.trailStop].title + ' · F2 — выбрать место', 'info');
+    return;
+  }
   msg('Холодает. Впереди — дом. Внутри можно согреться.', 'info');
   setTimeout(() => msg('F1 — управление, Tab — инвентарь, F3 — параметры', 'info'), 2500);
 }

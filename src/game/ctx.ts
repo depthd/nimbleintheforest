@@ -36,6 +36,7 @@ import type { Corpses } from './corpses';
 import type { Resting } from './resting';
 
 export interface Settings {
+  trailStop?: import('./trail-location').TrailStop;
   seed: number;
   baseTemp: number; // average outdoor temperature, °C
   timeScale: number; // game seconds per real second

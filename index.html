@@ -77,7 +77,7 @@
       <!-- build-info -->
       <h1>Пауза</h1>
       <p>Кликните, чтобы продолжить</p>
-      <div class="row"><button id="pause-continue">Продолжить</button><button id="pause-help">Управление</button><button id="pause-new">Новый мир</button></div>
+      <div class="row"><button id="pause-continue">Продолжить</button><button id="pause-help">Управление</button><button id="pause-trails" hidden>Места в горах · F2</button><button id="pause-new">Новый мир</button></div>
     </div>
 
     <div id="death" class="overlay">
@@ -111,9 +111,19 @@
         </label>
         <label class="chk"><input id="st-horror" type="checkbox" checked /> Жуть по ночам</label>
       </div>
-      <button id="st-go">Начать</button>
+      <button id="st-go">Начать</button><button id="st-trails">Горные маршруты</button>
       <p class="hint">Лучше в наушниках. Мышь — осмотреться, клик — захватить курсор.</p>
     </div>
+    <dialog id="trail-picker" aria-labelledby="trail-title">
+      <section class="trail-panel">
+        <header class="trail-header"><h1 id="trail-title">Горные маршруты</h1><button class="trail-small" id="trail-back">Назад</button></header>
+        <div class="trail-hero"><img alt="Вид на горные ярусы из игры" />
+          <div class="trail-hero-footer"><button id="trail-overview">К подножию →</button><button class="trail-small" id="trail-form" aria-pressed="false">Показать форму</button></div>
+        </div>
+        <div class="trail-key" hidden><span><i style="background:#77848a"></i>Скала</span><span><i style="background:#d2e0da"></i>Снежные ярусы</span><span><i style="background:#ae703e"></i>Мост</span></div>
+        <div class="trail-grid"></div>
+      </section>
+    </dialog>
     <div id="loading" class="overlay"><h2>Генерация мира…</h2></div>
 
     <script type="module" src="/src/main.ts"></script>
