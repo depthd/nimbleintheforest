@@ -51,7 +51,8 @@ export function planMountainLayout(seed: number) {
   const throughX = side === 'west' ? even(20, 26) + 1 : even(4, 10) + 1;
   const skylight = second.front - even(10, 14), upperZ = skylight - even(8, 10);
   const denX = even(6, 30) + 1, denDepth = even(10, 18);
-  const ropeX = denX < 18 ? even(20, 26) : even(-6, 6);
+  // Leave room for the den's projecting brow and for the player to climb past it.
+  const ropeX = denX < 18 ? Math.max(denX + 9, even(20, 26)) : even(-6, 6);
   const passageAnchors: PassageAnchors = {
     throughLower: point(throughX, second.bottom, second.front),
     throughUpper: point(throughX, second.top, upperZ),

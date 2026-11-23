@@ -213,6 +213,8 @@ function checkLayouts() {
   let twinCuts = 0, highBank = 0;
   for (let seed = 0; seed < 40; seed++) {
     const terrain = generateMountainTerrain(seed);
+    const {ropeLower, denMouth} = terrain.passageAnchors;
+    assert.ok(Math.abs(ropeLower.x - denMouth.x) >= 9, 'clear vertical climb beside the den');
     for (const kind of ['main', 'satellite']) {
       const tiers = terrain.tiers.filter(t => t.mountainId === kind);
       counts.add(tiers.length);
