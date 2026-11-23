@@ -14,29 +14,29 @@
     "seed": 13947,
     "count": 8,
     "snowPercent": 25.658696070260913,
-    "rockTriangles": 192,
+    "rockTriangles": 224,
     "snowTriangles": 181,
     "maxWidth": 32.385640293966546,
     "minRouteClearance": 39.95400135767215,
     "minSnowNormalY": 0.4615138803267354,
-    "maxSnowSupportGap": 0.05500462362672209
+    "maxSnowSupportGap": 0.055011415212792514
   },
   {
     "seed": 13947,
     "count": 12,
     "snowPercent": 25.118290806699758,
-    "rockTriangles": 288,
+    "rockTriangles": 304,
     "snowTriangles": 196,
     "maxWidth": 23.636253910937427,
     "minRouteClearance": 38.93688877212302,
     "minSnowNormalY": 0.4630188802882263,
-    "maxSnowSupportGap": 0.055008764647134
+    "maxSnowSupportGap": 0.05501335242570349
   },
   {
     "seed": 42,
     "count": 5,
     "snowPercent": 25.72398794307299,
-    "rockTriangles": 120,
+    "rockTriangles": 136,
     "snowTriangles": 168,
     "maxWidth": 31.801815693373882,
     "minRouteClearance": 42.62285636716262,
@@ -47,29 +47,29 @@
     "seed": 42,
     "count": 8,
     "snowPercent": 25.53008989226652,
-    "rockTriangles": 192,
+    "rockTriangles": 224,
     "snowTriangles": 181,
     "maxWidth": 31.906246089709995,
     "minRouteClearance": 40.671694640022366,
     "minSnowNormalY": 0.49237639924846877,
-    "maxSnowSupportGap": 0.05500699579680557
+    "maxSnowSupportGap": 0.05501567082843195
   },
   {
     "seed": 42,
     "count": 12,
     "snowPercent": 23.416423869644976,
-    "rockTriangles": 288,
+    "rockTriangles": 304,
     "snowTriangles": 170,
     "maxWidth": 23.296982340172747,
     "minRouteClearance": 39.22899831618057,
     "minSnowNormalY": 0.4783865865140747,
-    "maxSnowSupportGap": 0.055000305175813224
+    "maxSnowSupportGap": 0.05500393109149471
   },
   {
     "seed": 7,
     "count": 5,
     "snowPercent": 25.726814446516123,
-    "rockTriangles": 120,
+    "rockTriangles": 128,
     "snowTriangles": 161,
     "maxWidth": 32.071895952054334,
     "minRouteClearance": 42.69583064750139,
@@ -80,40 +80,40 @@
     "seed": 7,
     "count": 8,
     "snowPercent": 24.813111882643646,
-    "rockTriangles": 192,
+    "rockTriangles": 232,
     "snowTriangles": 185,
     "maxWidth": 31.669445077304076,
     "minRouteClearance": 40.54846334912373,
     "minSnowNormalY": 0.4696417855214157,
-    "maxSnowSupportGap": 0.055009206896638574
+    "maxSnowSupportGap": 0.055014400470348335
   },
   {
     "seed": 7,
     "count": 12,
     "snowPercent": 26.20681205586866,
-    "rockTriangles": 288,
+    "rockTriangles": 320,
     "snowTriangles": 198,
     "maxWidth": 24.362906664424926,
     "minRouteClearance": 38.88978184003385,
     "minSnowNormalY": 0.47865555476132193,
-    "maxSnowSupportGap": 0.05500884505410042
+    "maxSnowSupportGap": 0.0550086556857039
   },
   {
     "seed": 8191,
     "count": 5,
     "snowPercent": 26.256281407035175,
-    "rockTriangles": 120,
+    "rockTriangles": 128,
     "snowTriangles": 165,
     "maxWidth": 32.27162754628837,
     "minRouteClearance": 42.071506588792154,
     "minSnowNormalY": 0.5146570081536531,
-    "maxSnowSupportGap": 0.055003501192635085
+    "maxSnowSupportGap": 0.05500414475292814
   },
   {
     "seed": 8191,
     "count": 8,
     "snowPercent": 25.758999449178628,
-    "rockTriangles": 192,
+    "rockTriangles": 216,
     "snowTriangles": 180,
     "maxWidth": 32.127444267980536,
     "minRouteClearance": 40.18032175534734,
@@ -124,12 +124,12 @@
     "seed": 8191,
     "count": 12,
     "snowPercent": 26.439542027366656,
-    "rockTriangles": 288,
+    "rockTriangles": 296,
     "snowTriangles": 174,
     "maxWidth": 23.740468017260497,
     "minRouteClearance": 38.94455039798595,
     "minSnowNormalY": 0.46966561061191064,
-    "maxSnowSupportGap": 0.05500030517583454
+    "maxSnowSupportGap": 0.055000665567519036
   },
   {
     "seed": 23011,
@@ -146,7 +146,7 @@
     "seed": 23011,
     "count": 8,
     "snowPercent": 24.89116960244472,
-    "rockTriangles": 192,
+    "rockTriangles": 200,
     "snowTriangles": 181,
     "maxWidth": 32.357754302943334,
     "minRouteClearance": 39.311532406969654,
@@ -157,29 +157,29 @@
     "seed": 23011,
     "count": 12,
     "snowPercent": 25.40533438444357,
-    "rockTriangles": 288,
+    "rockTriangles": 312,
     "snowTriangles": 187,
     "maxWidth": 24.003382948428836,
     "minRouteClearance": 38.84747000099085,
     "minSnowNormalY": 0.4624748745552056,
-    "maxSnowSupportGap": 0.05500907853995329
+    "maxSnowSupportGap": 0.05501207689591325
   },
   {
     "seed": 818723,
     "count": 5,
     "snowPercent": 25.752142881535363,
-    "rockTriangles": 120,
+    "rockTriangles": 136,
     "snowTriangles": 160,
     "maxWidth": 32.25550407437407,
     "minRouteClearance": 41.14762865505159,
     "minSnowNormalY": 0.47243523140995125,
-    "maxSnowSupportGap": 0.055009639462397786
+    "maxSnowSupportGap": 0.05501460762026511
   },
   {
     "seed": 818723,
     "count": 8,
     "snowPercent": 25.587124848019453,
-    "rockTriangles": 192,
+    "rockTriangles": 208,
     "snowTriangles": 170,
     "maxWidth": 31.84762509688437,
     "minRouteClearance": 39.63142269482319,
@@ -190,7 +190,7 @@
     "seed": 818723,
     "count": 12,
     "snowPercent": 26.294995610184372,
-    "rockTriangles": 288,
+    "rockTriangles": 312,
     "snowTriangles": 196,
     "maxWidth": 23.79510164575271,
     "minRouteClearance": 40.429669024551075,
