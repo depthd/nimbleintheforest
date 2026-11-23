@@ -22,20 +22,24 @@ const heldOut = 23011;
 // This spatial graph is built from sampled supports, independently of the
 // plan's declared reachability. Keys retain height: canyon and deck coexist.
 function supportPath(terrain, bridge) {
-  const queue = [{ x: -64, z: -15, y: 0 }];
+  const queue = [terrain.spawn];
   const seen = new Set();
   for (let i = 0; i < queue.length; i++) {
     const cur = queue[i];
     if (cur.x > 94 && cur.y >= 13.9) return true;
-    for (const [dx,dz] of [[2,0],[-2,0],[0,2],[0,-2]]) {
+    for (const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
       const x = cur.x+dx, z = cur.z+dz;
       if (x < -68 || x > 166 || z < -40 || z > 40) continue;
       const heights = [terrain.sampleHeight(x,z)];
-      if (bridge && x >= bridge.from.x && x <= bridge.to.x && Math.abs(z-bridge.from.z) <= bridge.width/2) {
-        heights.push(bridge.point(x-bridge.from.x).y);
+      if (bridge) {
+        const dx = (bridge.to.x-bridge.from.x)/bridge.span, dz = (bridge.to.z-bridge.from.z)/bridge.span;
+        const ox = x-bridge.from.x, oz = z-bridge.from.z;
+        const along = ox*dx+oz*dz, across = Math.abs(oz*dx-ox*dz);
+        if (along>=0 && along<=bridge.span && across <=bridge.width/2-.30) heights.push(bridge.point(along).y);
       }
       for (const y of heights) {
-        if (Math.abs(cur.y-y) > 2*Math.tan(48*Math.PI/180)) continue;
+        if (Math.abs(cur.y-y) > Math.tan(48*Math.PI/180)) continue;
+        if (terrain.trees.some(t => t.y<y+1.8 && t.y+t.height>y && Math.hypot(t.x-x,t.z-z)<t.radius+.30)) continue;
         const key = [x, z, Math.round(y*100)].join('/');
         if (seen.has(key)) continue;
         seen.add(key);
