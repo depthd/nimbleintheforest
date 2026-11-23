@@ -150,10 +150,31 @@ function walk(terrain, bridge, enabled, reverse) {
   return {crossed,midDeckSupport,minEyeClearance:Number.isFinite(minEyeClearance)?minEyeClearance:null,end};
 }
 
+// At the windward approach the F profile has a continuous rounded upper face,
+// a curled underside and open air beyond the lip. Probe the collider the player walks on.
+function checkCornice(terrain) {
+  const physics = new R.World({x:0,y:-9.81,z:0});
+  const {positions, indices} = terrain.snow;
+  physics.createCollider(R.ColliderDesc.trimesh(positions,indices));
+  physics.step();
+  const x = -30;
+  function height(z) {
+    const ray = new R.Ray({x,y:40,z}, {x:0,y:-1,z:0});
+    const hit = physics.castRay(ray, 39, true);
+    return hit ? 40 - hit.timeOfImpact : undefined;
+  }
+  const inner = height(34.03), middle = height(34.17), outer = height(34.33);
+  assert.ok(inner > middle && middle > outer);
+  assert.ok(Math.abs(inner - terrain.sampleHeight(x, 34)) < .05);
+  assert.equal(height(34.7), undefined);
+  physics.free();
+}
+
 async function main() {
   await R.init();
   for (const seed of seeds) {
     const terrain = generateMountainTerrain(seed);
+    checkCornice(terrain);
     const passage = check(seed);
     const bridge = planMountainBridge(terrain);
     assert.ok(bridge);

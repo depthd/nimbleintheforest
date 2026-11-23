@@ -27,7 +27,7 @@ export class Mountains {
 
     const rock = makeRockMaterial();
     rock.side = THREE.DoubleSide;
-    const snow = new THREE.MeshStandardMaterial({ color: 0xe4e8ef, roughness: 1, flatShading: true, side: THREE.DoubleSide });
+    const snow = new THREE.MeshStandardMaterial({ color: 0xe4e8ef, roughness: 1, side: THREE.DoubleSide });
     const cave = new THREE.MeshStandardMaterial({ color: 0x555963, roughness: 1, flatShading: true, side: THREE.DoubleSide });
     const cable = new THREE.MeshStandardMaterial({ color: 0x9f8153, roughness: 1 });
     const anchor = new THREE.MeshStandardMaterial({ color: 0x493d35, roughness: 1 });

@@ -41,6 +41,14 @@ function inset(s: Box, x: number) {
   const dx = Math.max(0, r - Math.min(x - s.left, s.right - x));
   return r - Math.sqrt(Math.max(0, r * r - dx * dx));
 }
+// On the windward shoulder the deposit thickens into a rounded cornice. It
+// tapers out before the rope and cave, leaving their original landings open.
+function corniceDepth(s: Surface, x: number) {
+  if (s.tier.id !== 'main-1' || x <= -48 || x >= -10) return 0;
+  const ends = smoothstep(-48, -40, x) * (1 - smoothstep(-19, -10, x));
+  return ends * (.62 + .17 * Math.cos(x * .21 + s.phase));
+}
+
 function surfaceY(s: Surface, x: number, z: number) {
   const rise = s.top - s.bottom;
   if (s.tier.kind === 'peak') {
@@ -67,7 +75,8 @@ function surfaceY(s: Surface, x: number, z: number) {
   const outer = smoothstep(0.72, 0.94, Math.abs((2 * z - s.front - s.back) / (s.front - s.back)));
   const side = smoothstep(27, 45, Math.abs(x - (s.left + s.right) * 0.5));
   const fold = 0.34 * (1 + Math.sin(0.21 * x + s.phase) * Math.cos(0.16 * z - s.phase));
-  return y + outer * side * fold * smoothstep(0.84, 1, t);
+  const drift = corniceDepth(s, x) * smoothstep(s.front - 4, s.front, z);
+  return y + outer * side * fold * smoothstep(0.84, 1, t) + drift;
 }
 class TriangleBuffer {
   xyz: number[] = [];
@@ -99,10 +108,10 @@ function node(s: Surface, ix: number, iz: number, nx: number, nz: number) {
   const z = z0 + edge * (clamp(1 - (z0 - s.back) / roundingBand) - clamp(1 - (s.front - z0) / roundingBand));
   return pt(x, surfaceY(s, x, z), z);
 }
-function roofHole(s: Surface, x: number, z: number, passages: boolean) {
-  return passages && s.tier.id === 'main-2' && x > 14 && x < 20 && z > -10 && z < 0;
+function roofHole(s: Surface, x: number, z: number) {
+  return s.tier.id === 'main-2' && x > 14 && x < 20 && z > -10 && z < 0;
 }
-function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer, passages: boolean) {
+function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer) {
   const { nx, nz } = gridShape(s);
   const top = s.tier.kind === 'peak' ? rock : snow;
   const start = top.xyz.length / 3;
@@ -147,7 +156,7 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer, pas
         b = at(ix, iz + 1),
         c = at(ix + 1, iz + 1),
         d = at(ix + 1, iz);
-      if (!roofHole(s, (grid[a].x + grid[c].x) / 2, (grid[a].z + grid[c].z) / 2, passages)) {
+      if (!roofHole(s, (grid[a].x + grid[c].x) / 2, (grid[a].z + grid[c].z) / 2)) {
         face(a, b, c);
         face(a, c, d);
       }
@@ -156,11 +165,40 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer, pas
     const mid = (a.x + b.x) * 0.5;
     const door =
       south &&
-      passages &&
       ((s.tier.id === 'main-1' && mid > 12 && mid < 18) || (s.tier.id === 'main-2' && mid > 14 && mid < 20));
     const base = s.bottom + (door ? 4 : 0);
     if (Math.max(a.y, b.y) <= base + 0.0001) return;
     rock.quad(b, a, pt(a.x, base, a.z), pt(b.x, base, b.z));
+  }
+  // A closed rounded lip with a tighter lower radius follows the actual snow
+  // edge. The shared top vertices keep both the light and the collider continuous.
+  // This is the F snow profile reduced to walking scale.
+  if (s.tier.id === 'main-1') {
+    let previous: number[] | undefined;
+    for (let ix = 0; ix <= nx; ix++) {
+      const id = at(ix, nz), edge = grid[id], h = corniceDepth(s, edge.x);
+      if (edge.x < -48 || edge.x > -10) continue;
+      const row = [start + id];
+      const tip = h * .8, lower = h * .2;
+      function add(out: number, down: number) {
+        row.push(h === 0 ? start + id : top.vertex(pt(edge.x, edge.y - down, edge.z + out)));
+      }
+      for (let i = 1; i <= 5; i++) {
+        const angle = i * Math.PI / 10;
+        add(tip * Math.sin(angle), tip * (1 - Math.cos(angle)));
+      }
+      for (let i = 1; i <= 3; i++) {
+        const angle = i * Math.PI / 6;
+        add(tip - lower + lower * Math.cos(angle), tip + lower * Math.sin(angle));
+      }
+      add(0, h + .02);
+      if (previous) for (let j = 1; j < row.length; j++) {
+        const a = previous[j - 1], b = previous[j], c = row[j], d = row[j - 1];
+        if (a !== b) top.indices.push(a, b, c);
+        if (c !== d) top.indices.push(a, c, d);
+      }
+      previous = row;
+    }
   }
   // Winding faces outward. Doorways retain their stone lintels.
   for (let ix = 0; ix < nx; ix++) {
@@ -174,8 +212,8 @@ function bakeSurface(s: Surface, rock: TriangleBuffer, snow: TriangleBuffer, pas
 }
 // Locate the cell in the same rounded grid used for the triangle mesh, then
 // interpolate the actual triangle. This also reports open skylights to callers.
-function sampleSurface(s: Surface, x: number, z: number, passages: boolean): number | undefined {
-  if (x < s.left || x > s.right || z < s.back || z > s.front || roofHole(s, x, z, passages)) return;
+function sampleSurface(s: Surface, x: number, z: number): number | undefined {
+  if (x < s.left || x > s.right || z < s.back || z > s.front || roofHole(s, x, z)) return;
   const { nx, nz } = gridShape(s),
     fx = ((x - s.left) / (s.right - s.left)) * nx,
     ix = Math.min(nx - 1, Math.floor(fx));
@@ -355,14 +393,13 @@ export function generateMountainTerrain(seed: number) {
     );
   if (satelliteCount === 3) add('satellite', 3, box(140, 152, -15, -1, 20.6, 28), 'none', -9, 9, 3, true);
   const rock = new TriangleBuffer(),
-    snow = new TriangleBuffer(),
-    passages = true;
+    snow = new TriangleBuffer();
   surfaces.forEach((s, i) => {
-    bakeSurface(s, rock, snow, passages);
+    bakeSurface(s, rock, snow);
     dressBackWall(s, seed ^ ((i + 1) * 14591), rock, snow);
   });
   const sampleHeight = (x: number, z: number) =>
-    surfaces.reduce((h, s) => Math.max(h, sampleSurface(s, x, z, passages) ?? 0), 0);
+    surfaces.reduce((h, s) => Math.max(h, sampleSurface(s, x, z) ?? 0), 0);
   const mainBase = surfaces[0],
     satelliteBase = surfaces.find((s) => s.tier.id === 'satellite-1')!;
   const bridgeAnchors: [BridgeAnchor, BridgeAnchor] = [
@@ -391,7 +428,7 @@ export function generateMountainTerrain(seed: number) {
     const n = Math.max(2, Math.round(((s.right - s.left) * (s.front - s.back)) / 320));
     let nPlaced = 0;
     function tryTree(x: number, z: number, heights: Rng) {
-      const h = sampleSurface(s, x, z, passages);
+      const h = sampleSurface(s, x, z);
       if (h === undefined || Math.abs(h - s.top) > 0.02 || Math.abs(sampleHeight(x, z) - h) > 0.02) return;
       if (
         surfaces.some(
