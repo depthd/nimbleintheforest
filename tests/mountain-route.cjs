@@ -156,9 +156,12 @@ function walk(terrain, bridge, enabled, reverse) {
   }
   const deck = enabled ? physics.createCollider(R.ColliderDesc.trimesh(bridge.collider.positions,bridge.collider.indices)) : null;
   const sign = reverse ? -1 : 1;
-  const start = (reverse ? bridge.to : bridge.from).x-sign*2;
-  const finish = (reverse ? bridge.from : bridge.to).x+sign*2;
-  const body = physics.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(start,14+.95,bridge.from.z));
+  const start = bridge.point(reverse ? bridge.span + 2 : -2);
+  const finish = bridge.point(reverse ? -2 : bridge.span + 2);
+  const along = { x:(bridge.to.x - bridge.from.x) / bridge.span, z:(bridge.to.z - bridge.from.z) / bridge.span };
+  const progress = p => (p.x - start.x) * along.x * sign + (p.z - start.z) * along.z * sign;
+  const body = physics.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(
+    start.x, terrain.sampleHeight(start.x, start.z) + .95, start.z));
   const actor = physics.createCollider(R.ColliderDesc.capsule(.6,.30),body);
   const ctrl = physics.createCharacterController(.03);
   ctrl.setMaxSlopeClimbAngle(48*Math.PI/180);
@@ -166,17 +169,29 @@ function walk(terrain, bridge, enabled, reverse) {
   ctrl.enableAutostep(.32,.15,false);
   ctrl.enableSnapToGround(.35);
   physics.step();
+  if (deck) {
+    const i = Math.floor(bridge.suspenderPositions.length / 2);
+    const left = bridge.point(bridge.suspenderPositions[i - 1], 0, 1.02);
+    const right = bridge.point(bridge.suspenderPositions[i], 0, 1.02);
+    const centre = pt((left.x + right.x) / 2, (left.y + right.y) / 2, (left.z + right.z) / 2);
+    for (const side of [-1, 1]) {
+      const ray = new R.Ray(centre, pt(-along.z * side, 0, along.x * side));
+      const hit = physics.castRay(ray, bridge.width, true, undefined, undefined, actor);
+      assert.ok(hit && hit.collider.handle === deck.handle && Math.abs(hit.timeOfImpact - bridge.width / 2) < .09,
+        'Visible handrail must have solid support at its rendered height');
+    }
+  }
   let vertical = 0, crossed = false, midDeckSupport = false, minEyeClearance = Infinity;
-  for (let t=0; t<1700; t++) {
+  for (let t=0; t<Math.ceil((bridge.span + 15) * 60 / 1.1); t++) {
     const prev = body.translation();
     vertical = Math.max(-30,vertical-9.81/60);
-    ctrl.computeColliderMovement(actor,{x:sign*1.72/60,y:vertical/60,z:0});
+    ctrl.computeColliderMovement(actor,{x:along.x*sign*1.72/60,y:vertical/60,z:along.z*sign*1.72/60});
     const move = ctrl.computedMovement();
     body.setNextKinematicTranslation({x:prev.x+move.x,y:prev.y+move.y,z:prev.z+move.z});
     physics.step();
     if (ctrl.computedGrounded()) vertical=-.5;
     const cur=body.translation();
-    if (Math.abs(cur.x-(bridge.from.x+bridge.to.x)/2)<.6 && deck) {
+    if (Math.abs(progress(cur) - (bridge.span / 2 + 2)) < .6 && deck) {
       const ray = new R.Ray({x:cur.x,y:cur.y+.80,z:cur.z},{x:0,y:-1,z:0});
       const hit = physics.castRay(ray,2.5,true,undefined,undefined,actor);
       if (hit && hit.collider.handle===deck.handle) {
@@ -184,7 +199,8 @@ function walk(terrain, bridge, enabled, reverse) {
         minEyeClearance=Math.min(minEyeClearance,hit.timeOfImpact);
       }
     }
-    if (sign*(cur.x-finish)>=0 && Math.abs(cur.y-.9-14)<.25) { crossed=true; break; }
+    if (progress(cur) >= progress(finish) && Math.abs(cur.y - .9 - terrain.sampleHeight(finish.x, finish.z)) < .25) { crossed=true; break; }
+    if (!enabled && cur.y < Math.min(start.y, finish.y) - 2) break;
   }
   const end = {...body.translation()};
   physics.free();
