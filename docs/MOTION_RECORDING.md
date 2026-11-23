@@ -1,9 +1,8 @@
 # Recording an animation problem
 
-The demo has a small **Запись движения** panel. Recording is opt-in; it does no
-pose/probe/snow logging until started. It is diagnostic data, not screen video.
+Use **F7** and **F8** directly during play to record and review motion. Open **F3** to show the **Запись движения** panel and its **Открыть файл** control. Recording starts on demand and captures pose, input and snow data.
 
-1. Press **F7** while playing, or click **Запись** with the cursor released.
+1. Press **F7** while playing.
 2. Reproduce the problem. Press **F8** as soon as it happens. Up to the last
    20 seconds / 1800 rendered frames are retained, so recording may be started
    before the exact trigger is known.
@@ -14,7 +13,7 @@ pose/probe/snow logging until started. It is diagnostic data, not screen video.
    gzip compression). Attach that file in chat. Download also marks the current
    frame and saves its note.
 
-**Открыть файл** imports that same recording. It opens on the selected frame,
+Choose **F3** → **Открыть файл** to import a recording. It opens on the selected frame,
 including notes. Use the same seed, map size and snow-demo/ordinary-game mode.
 **Вернуться в игру** restores the live pose/snow rendering and releases the pause.
 F8 can reopen the retained recording before it is replaced or the page is closed.
@@ -57,7 +56,7 @@ snow journals and gzip/JSON round trips.
 `npm run test:motion-recorder-browser` uses Playwright/Chromium on port 5206 to test
 F7/F8, fractional-frame pose preservation, camera views, stepping without changing
 live physics, marked download/import and returning to the original game state.
-Use `CHROMIUM_PATH` and `NODE_PATH` as for the other browser suites.
+See the [browser setup](../README.md#проверки).
 
 ## Пакет диагностики мира (DIAG-001)
 

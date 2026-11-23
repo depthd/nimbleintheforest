@@ -61,7 +61,7 @@ use this same material, lifetime and renderer. Animal movement is not changed he
 
 ## Laboratory
 
-Open `?snow=1` (also linked from the start screen). This is a separate test
+Open `?snow=1`. This is a separate test
 bed with flat ground and three small hills, using the actual player controller, gait, IK,
 rendering and interaction. The laboratory remains separate from ordinary survival
 settings and is no longer required to play with deformable snow.
@@ -187,7 +187,7 @@ Run the same comparison on target hardware before choosing world-scale defaults.
 To run only the comparison in an otherwise idle browser:
 
 ```bash
-SNOW_BENCH_ONLY=1 NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium npm run test:snow-browser
+SNOW_BENCH_ONLY=1 CHROMIUM_PATH=/usr/bin/chromium npm run test:snow-browser
 ```
 
 Use one browser at a time for performance comparisons. The harness closes its

@@ -1,5 +1,7 @@
 # Производительность рельефа, леса и следов
 
+Отдельные замеры стоимости обновления леса, тепловой сетки и снежных следов доступны в [сравнении CPU](FRAME_COSTS.md).
+
 ## Что изменилось
 
 Новые геометрии рельефа строятся в отдельном module Worker. Начальная загрузка
@@ -103,10 +105,10 @@ npm run test:statics
 npm run test:resting
 
 # После сборки, с установленными Playwright и Chromium:
-NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium npm run test:terrain-streaming-browser
-NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium npm run test:world-snow
-NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium npm run test:wood-browser
-CORPSE_SCREENSHOTS=0 NODE_PATH=/opt/codex/cua_node/lib/node_modules CHROMIUM_PATH=/usr/bin/chromium npm run test:corpses-browser
+CHROMIUM_PATH=/usr/bin/chromium npm run test:terrain-streaming-browser
+CHROMIUM_PATH=/usr/bin/chromium npm run test:world-snow
+CHROMIUM_PATH=/usr/bin/chromium npm run test:wood-browser
+CORPSE_SCREENSHOTS=0 CHROMIUM_PATH=/usr/bin/chromium npm run test:corpses-browser
 ```
 
 Проверка геометрии сравнивает Worker и порционный fallback с синхронным результатом,

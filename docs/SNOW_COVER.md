@@ -76,5 +76,4 @@ material grid. Ground colliders are unchanged and no rigid bodies are added.
 overlaps, floor elevations, spatial bins and continuous shore coverage.
 `test:snow-cover-browser` compares the actual GPU rules against CPU queries,
 checks every registered roof, walks into all low shelters, and saves cabin,
-wooden-floor, canopy, excavation, shore and movement images. Run it with the same
-`NODE_PATH`/`CHROMIUM_PATH` settings as the other browser suites.
+wooden-floor, canopy, excavation, shore and movement images. See the [browser setup](../README.md#проверки).
