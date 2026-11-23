@@ -28,9 +28,16 @@ function check(name, ok, detail) { assert.ok(ok, `${name}: ${JSON.stringify(deta
       await ev(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
       await page.screenshot({ path: path.join(OUT, `${name}.png`), timeout: 120000 });
     };
+    const panel = page.locator('.motion-recorder');
+    check('idle recorder leaves the game view clear', await panel.isHidden());
+    await page.keyboard.press('F3');
+    await panel.waitFor({ state: 'visible' });
+    check('F3 exposes the recording file opener', await page.locator('[data-rec="open"]').isVisible());
+    await page.keyboard.press('F3');
+    await panel.waitFor({ state: 'hidden' });
     await ev(() => { const g = window.__game; g.setManualStepping(true); g.G.input.enabled = true; g.G.renderer.setPixelRatio(0.35); g.G.renderer.shadowMap.enabled = false; g.steps(120); });
     await page.keyboard.press('F7');
-    check('F7 starts opt-in capture', await ev(() => window.__game.G.recorder.recording));
+    check('F7 shows active capture without opening F3', await panel.isVisible() && await ev(() => window.__game.G.recorder.recording));
     await page.keyboard.down('KeyW'); await page.keyboard.down('ShiftLeft');
     for (let i = 0; i < 3; i++) {
       await ev(i => { const g = window.__game; g.G.player.yaw = i * 0.5; g.G.input.mouseDX = 100 + i; g.steps(12); }, i);
@@ -97,6 +104,7 @@ function check(name, ok, detail) { assert.ok(ok, `${name}: ${JSON.stringify(deta
         pose: JSON.stringify(pose) === JSON.stringify(window.__livePose), differences: pose.map((x,i) => x === window.__livePose[i] ? null : [i,x,window.__livePose[i]]).filter(Boolean).slice(0,10) };
     });
     check('leaving review restores original live pose, snow and pause state', !restored.reviewing && restored.paused && restored.enabled && restored.snow && restored.pose, restored);
+    check('leaving review returns to the unobstructed game view', await panel.isHidden());
     await page.evaluate(() => window.__game.G.input.unlock());
     await page.locator('[data-rec="file"]').setInputFiles(file);
     await page.waitForFunction(() => window.__game.G.recorder.reviewing);

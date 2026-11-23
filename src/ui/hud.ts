@@ -176,7 +176,7 @@ export class HUD {
 
   toggleDebug() {
     this.debugOpen = !this.debugOpen;
-    this.debug.style.display = this.debugOpen ? 'block' : 'none';
+    document.body.classList.toggle('debug-open', this.debugOpen);
     if (this.debugOpen) this.renderDebug(true);
   }
 
