@@ -34,7 +34,7 @@ export function makeTrailPicker(choose: (stop: TrailStop) => void, back: () => v
     img.alt = '';
     img.src = file(stop);
     const name = document.createElement('span');
-    name.textContent = trailStops[stop].title;
+    name.textContent = stop === 'bear' ? 'Берлога' : trailStops[stop].title;
     card.append(img,name);
     card.addEventListener('click', () => visit(stop));
     if (stop === 'den') grid.append(hollows);

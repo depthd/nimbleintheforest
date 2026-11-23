@@ -1,4 +1,4 @@
-import { startGame } from './game/game';
+import { startGame, prepareTrailLight } from './game/game';
 import type { Settings } from './game/ctx';
 import { G } from './game/ctx';
 
@@ -70,6 +70,7 @@ function chooseStop(stop: TrailStop) {
   G.terrain.update(G.camera.position,400);
   G.forest.update(G.player.pos,true);
   G.settings.trailStop = stop;
+  prepareTrailLight(stop);
   G.hud.message(trailStops[stop].title + ' · F2 — выбрать место', 'info');
   resumeTrail();
 }

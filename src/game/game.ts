@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { warmStartup } from './startup-warmup';
 import RAPIER from '@dimforge/rapier3d-compat';
-import { trailPose, trailStops } from './trail-location';
+import { trailPose, trailStops, type TrailStop } from './trail-location';
 import { G, Settings, hourOf, msg } from './ctx';
 import { Rng } from '../core/rng';
 import { GameAudio } from '../core/audio';
@@ -154,6 +154,11 @@ export async function startGame(settings: Settings) {
   }
   G.player.addToInventory(G.entities.spawnItem('chocolate', new THREE.Vector3(0, -50, 0)));
 
+  if (settings.trailStop) {
+    G.player.addToInventory(G.entities.spawnItem('flashlight', new THREE.Vector3(0,-50,0)));
+    prepareTrailLight(settings.trailStop);
+  }
+
   // stream the world around the player, then let furniture and loot settle
   G.terrain.update(G.camera.position.copy(G.player.eyePos), 400);
   G.cliffs?.update(G.player.pos, G.player.pos, Infinity);
@@ -211,6 +216,16 @@ export async function startGame(settings: Settings) {
   (window as any).__game = testApi();
   hud_intro();
   requestAnimationFrame(loop);
+}
+
+export function prepareTrailLight(stop: TrailStop) {
+  const flashlight = G.player.inventory.find(item => item.defId === 'flashlight');
+  if (!flashlight) return;
+  if (stop === 'bear') {
+    if (G.player.equipped !== flashlight) G.player.equip(flashlight);
+    flashlight.lit = true;
+  } else if (G.player.equipped === flashlight) G.player.equip(null);
+  updateLights(0);
 }
 
 function hud_intro() {
