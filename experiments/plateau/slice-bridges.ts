@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { Tex } from '../../src/core/textures';
+import { Rng, hashString } from '../../src/core/rng';
 import type { Point, MeshData } from './cavity';
 
 type Anchor = Point & { mountainId: string; tierId: string; accessible: boolean };
 type Tree = Point & { radius: number; height: number };
 interface Terrain {
+  seed: number;
   bridgeAnchors: readonly Anchor[];
   trees: readonly Tree[];
   sampleHeight(x: number, z: number): number;
@@ -35,7 +37,6 @@ function planPair(terrain: Terrain, from: Anchor, to: Anchor) {
   const count = Math.ceil(span / .30);
   const sections = [0, ...Array.from({length:count + 1}, (_, i) => LANDING + openSpan * i / count), span];
   const route = sections.map(d => point(d));
-  let dropAtCenter = 0;
   for (let i = 0; i < sections.length; i++) {
     const along = sections[i];
     const onBank = along <= LANDING || along >= span - LANDING;
@@ -47,7 +48,7 @@ function planPair(terrain: Terrain, from: Anchor, to: Anchor) {
     if (i > 0 && Math.abs(route[i].y - route[i-1].y) > Math.tan(Math.PI * 48/180) * (along - sections[i-1])) return null;
   }
   const center = point(span/2);
-  dropAtCenter = center.y - THICKNESS - terrain.sampleHeight(center.x, center.z);
+  const dropAtCenter = center.y - THICKNESS - terrain.sampleHeight(center.x, center.z);
   if (!(dropAtCenter > 1.8)) return null;
   for (const tree of terrain.trees) {
     const along = Math.max(0, Math.min(span, (tree.x-from.x)*forwardX + (tree.z-from.z)*forwardZ));
@@ -77,8 +78,20 @@ export function planSliceBridge(terrain: Terrain) {
   let shortest: ReturnType<typeof planPair> = null;
   for (let a=0; a<terrain.bridgeAnchors.length; a++) {
     for (let b=a+1; b<terrain.bridgeAnchors.length; b++) {
-      const candidate = planPair(terrain,terrain.bridgeAnchors[a],terrain.bridgeAnchors[b]);
-      if (candidate && (!shortest || candidate.span < shortest.span)) shortest = candidate;
+      const left = terrain.bridgeAnchors[a], right = terrain.bridgeAnchors[b];
+      const length = Math.hypot(right.x-left.x, right.z-left.z);
+      if (!length || length > SLICE_SPAN + 1e-5) continue;
+      const nx = -(right.z-left.z)/length, nz = (right.x-left.x)/length;
+      const rng = new Rng(terrain.seed ^ hashString(left.tierId+'|'+right.tierId));
+      // Try a reproducible offset in the reserved 8 m corridor. If a tree or a
+      // rock blocks it, retry the centre and both sides before dropping the link.
+      for (const offset of [rng.float(-1.2,1.2),0,-1.2,1.2]) {
+        const shift = (anchor: Anchor) => ({...anchor,x:anchor.x+nx*offset,z:anchor.z+nz*offset});
+        const candidate = planPair(terrain,shift(left),shift(right));
+        if (!candidate) continue;
+        if (!shortest || candidate.span < shortest.span) shortest = candidate;
+        break;
+      }
     }
   }
   return shortest;
