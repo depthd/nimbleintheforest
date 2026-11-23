@@ -169,6 +169,23 @@ function flood(world, t) {
   const results = [],
     allCounts = new Set(),
     entries = new Set();
+  function verifyForest(t) {
+    return Object.fromEntries(
+      t.tiers.map((tier) => {
+        const count = t.trees.filter((tree) => {
+          const nearMassif = Math.abs(tree.x - tier.center.x) < 67;
+          return nearMassif && Math.abs(tree.y - tier.center.y) < 0.03;
+        }).length;
+        assert.ok(
+          tier.accessible ? count >= 2 : count === 0,
+          'forest coverage ' + t.seed + '/' + tier.id + ': ' + count,
+        );
+        return [tier.id, count];
+      }),
+    );
+  }
+  // These thin third plateaus formerly missed all their random scatter attempts.
+  for (const seed of [46, 53, 55]) verifyForest(generateSliceTerrain(seed, { passages: true }));
   for (const seed of seeds) {
     const t = generateSliceTerrain(seed, { passages: true });
     const control = generateSliceTerrain(seed, { passages: false });
@@ -204,6 +221,7 @@ function flood(world, t) {
       graph,
       physical,
       trees: t.trees.length,
+      treesPerTier: verifyForest(t),
       rockTriangles: t.rock.indices.length / 3,
       snowTriangles: t.snow.indices.length / 3,
       sha256: geometryHash(t),
