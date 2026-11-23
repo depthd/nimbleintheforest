@@ -247,10 +247,6 @@ async function start(){
     return new THREE.BufferAttribute(a,1);
   });
   const localWallMaterial = rockWithFrost(0);
-  // Snow lies just above a sloping support. The extra depth bias keeps individual
-  // multisamples at shared cap edges from picking the underlying rock.
-  const angularWallSnow = snowTopMaterial.clone();
-  angularWallSnow.polygonOffsetFactor = -2;
   let activeWall: THREE.Group | undefined;
   const wallInput = document.querySelector<HTMLSelectElement>('#wall-family')!;
   const presetInput = document.querySelector<HTMLSelectElement>('#wall-preset')!;
@@ -263,7 +259,7 @@ async function start(){
     }
     originalParts.forEach((part,i)=>part.geometry.setIndex(family==='original'?originals[i]:remainder[i]));
     if (family !== 'original') {
-      activeWall = makeWallGroup({...entrance,width:100,groundAt:(x,z)=>sampleGrid(source,x,z).y},family,preset,seed,localWallMaterial,family==='angular'?angularWallSnow:snowTopMaterial);
+      activeWall = makeWallGroup({...entrance,width:100,groundAt:(x,z)=>sampleGrid(source,x,z).y},family,preset,seed,localWallMaterial,snowTopMaterial);
       lowerRocks.add(activeWall);
     }
     wallInput.value=family; presetInput.value=String(preset); seedInput.value=String(seed);
