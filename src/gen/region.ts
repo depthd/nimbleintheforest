@@ -205,6 +205,21 @@ export class Region {
     return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
   }
 
+  /** The upper, exposed surface seen on the paper map and used by wandering animals. */
+  outdoorHeightAt(x: number, z: number) {
+    const site = this.mountainSite;
+    if (site && this.mountainTerrain && onMountainSite(site, x, z))
+      return site.y + this.mountainTerrain.sampleHeight(x - site.x, z - site.z);
+    return this.heightAt(x, z);
+  }
+
+  outdoorSlopeAt(x: number, z: number) {
+    if (!this.inMountainSite(x, z, 2)) return this.slopeAt(x, z);
+    const dx = this.outdoorHeightAt(x + 2, z) - this.outdoorHeightAt(x - 2, z);
+    const dz = this.outdoorHeightAt(x, z + 2) - this.outdoorHeightAt(x, z - 2);
+    return Math.hypot(dx, dz) / 4;
+  }
+
   /** Flat footprint in world coordinates, optionally enlarged to include its border. */
   inMountainSite(x: number, z: number, margin = 0) {
     return !!this.mountainSite && onMountainSite(this.mountainSite, x, z, margin);

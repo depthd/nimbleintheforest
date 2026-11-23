@@ -25,7 +25,7 @@ export interface Action {
 }
 
 export interface Target {
-  kind: 'entity' | 'tree' | 'ground' | 'ice' | 'static' | 'none';
+  kind: 'entity' | 'tree' | 'ground' | 'mountain' | 'ice' | 'static' | 'none';
   entity?: Entity;
   tree?: Tree;
   /** the collider that was hit (a branch whorl of a trunk, a part of a structure) */
@@ -54,6 +54,7 @@ export class Interaction {
   private ray = new THREE.Vector3();
 
   private hasSnow(point: THREE.Vector3) {
+    if (this.target.kind === 'mountain') return this.target.collider === G.mountains?.snowHandle;
     const s = G.snow;
     return !s || s.isExperiment || (s.contains(point.x, point.z) && s.field.sample(point.x, point.z).height > 0.004);
   }
@@ -100,6 +101,7 @@ export class Interaction {
       t.kind = 'tree';
       t.tree = tree;
     } else if (G.terrain.handles.has(h)) t.kind = 'ground';
+    else if (G.mountains?.groundHandles.has(h) && t.normal.y > .68) t.kind = 'mountain';
     else if (G.lake.handles.has(h)) t.kind = 'ice';
     else t.kind = 'static';
   }
@@ -200,7 +202,7 @@ export class Interaction {
       this.info = mountains.onRope ? 'Канат · W — вверх, S — вниз' : 'Закреплённый канат';
       return [{ key: 'E', label: mountains.onRope ? 'Отпустить канат' : 'Взяться за канат', run: () => mountains.toggleRope(P.pos) }];
     }
-    if (t.kind === 'static' && t.collider !== undefined) this.info = mountains?.surfaces.get(t.collider) ?? '';
+    if ((t.kind === 'static' || t.kind === 'mountain') && t.collider !== undefined) this.info = mountains?.surfaces.get(t.collider) ?? '';
     const fire = G.fires.fireOf(e);
 
     if (e) this.info = this.describe(e);
@@ -252,9 +254,10 @@ export class Interaction {
     // --- context actions (E/F/G) ---
     if (e) this.entityActions(A, e, fire);
     else if (t.kind === 'tree') this.treeActions(A, t.tree!);
-    else if (t.kind === 'ground' && !G.house.zoneAt(t.point)) {
+    else if ((t.kind === 'ground' || t.kind === 'mountain') && !G.house.zoneAt(t.point)) {
       if (!tg.includes('pot') && this.hasSnow(t.point)) A.push({ key: 'F', label: 'Съесть снег', time: 1.5, run: () => this.eatSnow() });
-      A.push({ key: 'G', label: 'Сложить кострище здесь', time: 2, run: () => this.makeCampfire(t.point) });
+      const spot = t.point.clone(), onMountain = t.kind === 'mountain';
+      A.push({ key: 'G', label: 'Сложить кострище здесь', time: 2, run: () => this.makeCampfire(spot, onMountain) });
     } else if (t.kind === 'ice') {
       A.push({ key: 'G', label: 'Сложить кострище на льду', time: 2, run: () => this.makeCampfire(t.point) });
     }
@@ -292,7 +295,7 @@ export class Interaction {
       if (e?.kind === 'icehole') {
         if (e.data.frozen > 0.6) this.info = 'Лунка замёрзла — нужен топор или ледобур';
         else if (!full) A.push({ key: 'LMB', label: 'Набрать воды', time: 1.2, run: () => this.fillWater(eq) });
-      } else if ((t.kind === 'ground' && !G.house.zoneAt(t.point) && this.hasSnow(t.point)) || t.kind === 'ice') {
+      } else if (((t.kind === 'ground' || t.kind === 'mountain') && !G.house.zoneAt(t.point) && this.hasSnow(t.point)) || t.kind === 'ice') {
         if (!full) A.push({ key: 'LMB', label: 'Набрать снега', time: 1, run: () => this.scoopSnow(eq) });
         else this.info = 'Котелок полон';
       }
@@ -323,7 +326,7 @@ export class Interaction {
     }
     if (tg.includes('shovel')) {
       if (fire && fire.burning) A.push({ key: 'LMB', label: 'Засыпать огонь снегом', time: 1, run: () => this.smother(fire) });
-      else if (t.kind === 'ground' && !G.house.zoneAt(t.point)) A.push({ key: 'LMB', label: 'Нарезать снежный блок', time: 2.2, run: () => this.cutSnowBlock(t.point) });
+      else if ((t.kind === 'ground' || (t.kind === 'mountain' && this.hasSnow(t.point))) && !G.house.zoneAt(t.point)) A.push({ key: 'LMB', label: 'Нарезать снежный блок', time: 2.2, run: () => this.cutSnowBlock(t.point) });
       return;
     }
     if (tg.includes('hammer') && e?.kind === 'window') {
@@ -741,7 +744,7 @@ export class Interaction {
     const quality = (0.5 + 0.5 * G.body.dex) * (0.6 + 0.4 * P.stamina);
     const power = tool.def!.tool!.power * quality;
     const sfx = saw ? 'saw' : blunt ? 'hammer' : 'chop';
-    if (t.kind === 'none' || t.kind === 'static' || t.kind === 'ground') {
+    if (t.kind === 'none' || t.kind === 'static' || t.kind === 'mountain' || t.kind === 'ground') {
       if (t.kind !== 'none') G.audio.play('thud', { pos: t.point, vol: 0.5 });
       return;
     }
@@ -1106,7 +1109,7 @@ export class Interaction {
     G.fx.burst('snow', new THREE.Vector3(t.x, t.y + 1.5, t.z), 6);
   }
 
-  private makeCampfire(p: THREE.Vector3) {
+  private makeCampfire(p: THREE.Vector3, onMountain = false) {
     if (G.house.zoneAt(p)) {
       msg('Костёр в доме — плохая идея', 'warn');
       return;
@@ -1115,11 +1118,12 @@ export class Interaction {
       msg('Кострище уже рядом', 'warn');
       return;
     }
-    const y = G.lake.onIce(p) ? G.lake.levelAt(p.x, p.z) + 0.03 : G.terrain.heightAt(p.x, p.z);
-    G.fires.makeCampfire(new THREE.Vector3(p.x, y, p.z));
+    const y = onMountain ? p.y : G.lake.onIce(p) ? G.lake.levelAt(p.x, p.z) + 0.03 : G.terrain.heightAt(p.x, p.z);
+    const surface = onMountain ? (x: number, z: number) => G.mountains!.floorAt(x, y, z) : undefined;
+    G.fires.makeCampfire(new THREE.Vector3(p.x, y, p.z), surface);
     // the snow is scraped away down to the ground and heaped around the pit
     const snow = G.snow;
-    if (snow && !snow.isExperiment && 'clearPit' in snow) snow.clearPit(new THREE.Vector3(p.x, y, p.z));
+    if (!onMountain && snow && !snow.isExperiment && 'clearPit' in snow) snow.clearPit(new THREE.Vector3(p.x, y, p.z));
     G.audio.play('snow_scoop');
     msg('Кострище готово. Положите трут, растопку, дрова — и поджигайте.', 'good');
   }
