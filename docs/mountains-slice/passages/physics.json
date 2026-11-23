@@ -1,0 +1,221 @@
+{
+  "method": "continuous Rapier KCC from spawn, scripted directional intent and rope E/W/S",
+  "reports": [
+    {
+      "seed": 42,
+      "meshHash": "981f848aabc0150dc28c3c97f0867721d32241109a2a36c877ab279553b01a98",
+      "ticks": 5728,
+      "trace": {
+        "denStop": {
+          "x": 14.999958992004395,
+          "y": 0.1200001001358032,
+          "z": 20.33009910583496
+        },
+        "ropeTop": {
+          "x": -4,
+          "y": 14.070002174377441,
+          "z": 32.64577102661133
+        },
+        "upperExit": {
+          "x": 17.000003814697266,
+          "y": 22.030002212524415,
+          "z": -11.423768997192383
+        },
+        "lowerExit": {
+          "x": 17.000001907348633,
+          "y": 14.029999351501464,
+          "z": 15.908356666564941
+        },
+        "ropeBottom": {
+          "x": -4,
+          "y": 0.08125404119491575,
+          "z": 35.099998474121094
+        }
+      },
+      "denCeiling": {
+        "name": "passage-rock",
+        "distance": 2.6591713428497314
+      },
+      "retainedRoof": {
+        "name": "host-top",
+        "distance": 3
+      },
+      "deadEnd": {
+        "name": "passage-rock",
+        "distance": 4
+      },
+      "throughOpening": {
+        "name": "passage-floor",
+        "distance": 3.8510639667510986
+      },
+      "triangles": {
+        "passage-floor": 22,
+        "passage-rock": 92,
+        "rope": 280,
+        "rope-anchor": 40
+      }
+    },
+    {
+      "seed": 7,
+      "meshHash": "b27880346e7a1335d316b112251ef61cbbcb9d006821982badbe2b16aed55483",
+      "ticks": 5735,
+      "trace": {
+        "denStop": {
+          "x": 15.000077247619629,
+          "y": 0.11996695995330808,
+          "z": 20.33009910583496
+        },
+        "ropeTop": {
+          "x": -4,
+          "y": 14.070281600952148,
+          "z": 32.64595413208008
+        },
+        "upperExit": {
+          "x": 17.000003814697266,
+          "y": 22.030000305175783,
+          "z": -11.427151679992676
+        },
+        "lowerExit": {
+          "x": 17.000030517578125,
+          "y": 14.030099487304687,
+          "z": 15.908061027526855
+        },
+        "ropeBottom": {
+          "x": -4,
+          "y": 0.09759048223495481,
+          "z": 35.099998474121094
+        }
+      },
+      "denCeiling": {
+        "name": "passage-rock",
+        "distance": 2.603320360183716
+      },
+      "retainedRoof": {
+        "name": "host-top",
+        "distance": 3
+      },
+      "deadEnd": {
+        "name": "passage-rock",
+        "distance": 4
+      },
+      "throughOpening": {
+        "name": "passage-floor",
+        "distance": 3.8510639667510986
+      },
+      "triangles": {
+        "passage-floor": 22,
+        "passage-rock": 92,
+        "rope": 280,
+        "rope-anchor": 40
+      }
+    },
+    {
+      "seed": 8191,
+      "meshHash": "9de41a9f1de3695b274a9855bd7b3fefacc9f6c4df041be47f06f341864626b8",
+      "ticks": 5734,
+      "trace": {
+        "denStop": {
+          "x": 15.001558303833008,
+          "y": 0.11997625827789304,
+          "z": 20.33003807067871
+        },
+        "ropeTop": {
+          "x": -4,
+          "y": 14.078233337402343,
+          "z": 32.651153564453125
+        },
+        "upperExit": {
+          "x": 16.999950408935547,
+          "y": 22.030156707763673,
+          "z": -11.432926177978516
+        },
+        "lowerExit": {
+          "x": 17.000001907348633,
+          "y": 14.030099487304687,
+          "z": 15.89942455291748
+        },
+        "ropeBottom": {
+          "x": -4,
+          "y": 0.06675819158554075,
+          "z": 35.099998474121094
+        }
+      },
+      "denCeiling": {
+        "name": "passage-rock",
+        "distance": 2.8013336658477783
+      },
+      "retainedRoof": {
+        "name": "host-top",
+        "distance": 3
+      },
+      "deadEnd": {
+        "name": "passage-rock",
+        "distance": 4
+      },
+      "throughOpening": {
+        "name": "passage-floor",
+        "distance": 3.8510639667510986
+      },
+      "triangles": {
+        "passage-floor": 22,
+        "passage-rock": 92,
+        "rope": 280,
+        "rope-anchor": 40
+      }
+    },
+    {
+      "seed": 23011,
+      "meshHash": "7dd7c74243acba5be9f2e66563b1be7da4cce5f55552acb0810294b1ae3a3bc4",
+      "ticks": 5739,
+      "trace": {
+        "denStop": {
+          "x": 15.0001220703125,
+          "y": 0.1200001001358032,
+          "z": 20.330095291137695
+        },
+        "ropeTop": {
+          "x": -4,
+          "y": 14.068875885009765,
+          "z": 32.64503479003906
+        },
+        "upperExit": {
+          "x": 17,
+          "y": 22.030023193359376,
+          "z": -11.423032760620117
+        },
+        "lowerExit": {
+          "x": 17.000038146972656,
+          "y": 14.029998397827148,
+          "z": 15.915194511413574
+        },
+        "ropeBottom": {
+          "x": -4,
+          "y": 0.09805778264999387,
+          "z": 35.099998474121094
+        }
+      },
+      "denCeiling": {
+        "name": "passage-rock",
+        "distance": 2.781712055206299
+      },
+      "retainedRoof": {
+        "name": "host-top",
+        "distance": 3
+      },
+      "deadEnd": {
+        "name": "passage-rock",
+        "distance": 4
+      },
+      "throughOpening": {
+        "name": "passage-floor",
+        "distance": 3.8510639667510986
+      },
+      "triangles": {
+        "passage-floor": 22,
+        "passage-rock": 92,
+        "rope": 280,
+        "rope-anchor": 40
+      }
+    }
+  ]
+}
