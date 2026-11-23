@@ -25,13 +25,29 @@ async function check(seed, size) {
     assert.ok(Math.abs(region.heightAt(px, pz) - site.y) < .001);
     assert.ok(region.inside(px, pz, 30));
   }
+  // Scan all four sides, including the last few metres beyond the graded ground. The old
+  // seed-42 placement rose by 192 m on the south side in this 36 m band.
+  let rise = 0, drop = 0;
+  for (let outward = 0; outward <= 36; outward += 2) {
+    function measure(x, z) {
+      const delta = region.heightAt(site.x + x, site.z + z) - site.y;
+      rise = Math.max(rise, delta);
+      drop = Math.max(drop, -delta);
+    }
+    for (let x = -73; x <= 170; x += 2) { measure(x, -42 - outward); measure(x, 44 + outward); }
+    for (let z = -42; z <= 44; z += 2) { measure(-73 - outward, z); measure(170 + outward, z); }
+  }
+  assert.ok(rise < 30 && drop < 34, `foundation on a steep hillside: +${rise} / -${drop} m`);
+  if (seed === 42 && size === 3072) assert.ok(rise < 14, 'nearby ground obscures the first terrace');
   const landing = terrain.bridgeAnchors[0], bank = world(landing);
   assert.ok(Math.abs(region.outdoorHeightAt(bank.x, bank.z) - (site.y + landing.y)) < .01);
   assert.equal(region.outdoorHeightAt(0, 0), region.heightAt(0, 0));
   const foot = world(terrain.spawn);
-  for (let x = foot.x - 46; x < foot.x; x += 2) {
-    assert.ok(Math.abs(region.heightAt(x, foot.z) - region.heightAt(x + 2, foot.z)) <= 1.4,
-      `abrupt approach at ${x},${foot.z}`);
+  for (const z of [foot.z, ...[-16, -8, 0, 4].map(dz => site.z + dz)]) {
+    for (let x = foot.x - 46; x < foot.x; x += 2) {
+      assert.ok(Number.isNaN(region.waterAt(x, z)), 'west approach submerged');
+      assert.ok(Math.abs(region.heightAt(x, z) - region.heightAt(x + 2, z)) <= 1.4, `abrupt approach at ${x},${z}`);
+    }
   }
   let planted = 0;
   region.forEachProp(region.trees, site.x + 49, site.z, 147, i => {
@@ -45,9 +61,9 @@ async function check(seed, size) {
   });
   assert.ok(planted > 0);
   assert.equal(planted, terrain.trees.length);
-  console.log(`PASS seed ${seed}, ${size} m: foot ${foot.x},${foot.z}; ${planted} living plateau trees`);
+  console.log(`PASS seed ${seed}, ${size} m: foot ${foot.x},${foot.z}; ${planted} living plateau trees; surrounding relief +${rise.toFixed(1)} / -${drop.toFixed(1)} m`);
 }
 
 (async () => {
-  for (const [seed, size] of [[42, 3072], [7, 1536], [8191, 2048], [23011, 1536]]) await check(seed, size);
+  for (const [seed, size] of [[42, 3072], [42, 1536], [7, 1536], [7, 3072], [8191, 2048], [23011, 1536]]) await check(seed, size);
 })().catch(error => { console.error(error); process.exitCode = 1; });

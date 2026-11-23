@@ -5,9 +5,9 @@ const path = require('node:path');
 const Module = require('node:module');
 const { buildSync } = require('esbuild');
 const compiled = new Module(__filename);
-compiled._compile(buildSync({ stdin: { contents: "export { Region } from './src/gen/region'; export { blockTriangles } from './src/gen/cliffs';", resolveDir: path.join(__dirname, '..') },
+compiled._compile(buildSync({ stdin: { contents: "export { Region } from './src/gen/region'; export { MOUNTAIN_BLEND } from './src/gen/mountain-site'; export { blockTriangles } from './src/gen/cliffs';", resolveDir: path.join(__dirname, '..') },
   bundle: true, platform: 'node', format: 'cjs', write: false }).outputFiles[0].text, __filename);
-const { Region, blockTriangles } = compiled.exports;
+const { Region, MOUNTAIN_BLEND, blockTriangles } = compiled.exports;
 let checks = 0;
 const test = async (name, run) => { await run(); checks++; console.log('PASS ', name); };
 
@@ -69,7 +69,7 @@ function covers(region) {
     for (let j = 0; j < nf; j += 3) for (let i = 0; i < nf; i += 3) {
       const k = j * nf + i, x = i * 2 - lab.ox, z = j * 2 - lab.oz;
       if (Math.hypot(x - C.x, z - C.z) < 250) continue; // the stamped square reaches ~240 m
-      if (plain.inMountainSite(x, z, 34)) continue; // ordinary play also stamps a mountain approach
+      if (plain.inMountainSite(x, z, MOUNTAIN_BLEND + plain.cell)) continue; // ordinary play also stamps a mountain approach
       if (pads.some((p) => Math.hypot(p.x - x, p.z - z) < 16)) continue;
       if (Math.abs(lab.h[k] - plain.h[k]) > 1e-4) far++;
     }
