@@ -163,13 +163,14 @@ export class SnowTrailRenderer {
     const z0 = dirty ? Math.max(0, Math.floor(dirty.minZ / CELL - gz)) : 0;
     const z1 = dirty ? Math.min(SIZE - 1, Math.ceil(dirty.maxZ / CELL - gz) + 4) : SIZE - 1;
     if (x0 > x1 || z0 > z1) { e.signature = this.signature(e.x,e.z); return e.activeCount > 0; }
+    const readGrid = this.field.gridReader();
     for (let z = z0; z <= z1 + 4; z++) for (let x = x0; x <= x1 + 4; x++) {
       const ix = gx + x - 4, iz = gz + z - 4, i = z * RAW + x;
       // Sample the unchanged substrate once for this refresh. Both the material
       // read and the output pixel need exactly this value; do not cache across
       // frames, since roofs/shelters can change coverage.
       const initial = this.initial[i] = this.field.initialThickness(ix * CELL, iz * CELL);
-      const state = this.field.gridState(ix, iz, initial);
+      const state = readGrid(ix, iz, initial);
       this.raw[i] = state.height - initial;
       this.packed[i] = state.surfaceCompaction;
     }

@@ -454,16 +454,8 @@ export class Thermal {
     const wind = Math.min(G.weather.wind, 20);
     const ahOut = satAH(tout) * 0.85;
     this.sources();
-    const windows = G.house.windows.map((e) => e.data as WindowData);
-    const wl = windows.map((w) => this.windowLeak(w, wind));
-    const dl = this.doorLeak(wind);
-    // window area per window across faces (for splitting leaks)
-    const winArea = windows.map(() => 0);
-    let doorArea = 0;
-    for (const f of this.faces) {
-      if (f.win >= 0) winArea[f.win] += f.area * f.winFrac;
-      doorArea += f.area * f.door;
-    }
+    const openings = this.openingState(wind);
+    const { windows, wl, dl, winArea, doorArea } = openings;
     // draughts: speed of incoming air decays with distance from the opening
     this.draft.fill(0);
     for (const f of this.faces) {
@@ -482,7 +474,7 @@ export class Thermal {
       left -= dt;
       this.step(dt, tout, tground, wind, ahOut, windows, wl, dl, winArea, doorArea);
     }
-    this.aggregate(tout, wind);
+    this.aggregate(tout, wind, openings);
   }
 
   private spreadDraft() {
@@ -632,17 +624,32 @@ export class Thermal {
     }
   }
 
-  /** Zone averages and a breakdown of losses for the parameters panel. */
-  private aggregate(tout: number, wind: number) {
+  private openingState(wind: number) {
     const windows = G.house.windows.map((e) => e.data as WindowData);
     const wl = windows.map((w) => this.windowLeak(w, wind));
     const dl = this.doorLeak(wind);
+    // window area per window across faces (for splitting leaks)
+    const winArea = windows.map(() => 0);
+    let doorArea = 0;
+    for (const f of this.faces) {
+      if (f.win >= 0) winArea[f.win] += f.area * f.winFrac;
+      doorArea += f.area * f.door;
+    }
+    return { windows, wl, dl, winArea, doorArea };
+  }
+
+  /** Zone averages and a breakdown of losses for the parameters panel. */
+  private aggregate(tout: number, wind: number, openings = this.openingState(wind)) {
+    const { windows, wl, dl, winArea, doorArea } = openings;
+    const upperStart = GL * NX * NZ;
     for (const zn of ['ground', 'upper'] as ZoneName[]) {
       let vt = 0, vv = 0, rh = 0;
-      for (let c = 0; c < N; c++) {
+      const ground = zn === 'ground';
+      let heat = ground ? this.stoveRadW : 0;
+      const end = ground ? upperStart : N;
+      for (let c = ground ? 0 : upperStart; c < end; c++) {
         if (!this.active[c]) continue;
-        const k = Math.floor(c / (NX * NZ));
-        if (this.zoneOf(k) !== zn) continue;
+        heat += this.src[c];
         vt += this.T[c] * this.V[c];
         rh += clamp(this.AH[c] / satAH(this.T[c]), 0, 1.2) * this.V[c];
         vv += this.V[c];
@@ -652,12 +659,6 @@ export class Thermal {
       Z.rh = rh / vv;
       const sums: Record<string, number> = {};
       const add = (l: string, w: number) => (sums[l] = (sums[l] ?? 0) + w);
-      let winArea = windows.map(() => 0);
-      let doorArea = 0;
-      for (const f of this.faces) {
-        if (f.win >= 0) winArea[f.win] += f.area * f.winFrac;
-        doorArea += f.area * f.door;
-      }
       for (const f of this.faces) {
         if (f.zone !== zn) continue;
         const Tc = this.T[f.cell];
@@ -679,11 +680,7 @@ export class Thermal {
       }
       Z.parts = Object.entries(sums).map(([label, w]) => ({ label, w })).sort((a, b) => b.w - a.w);
       Z.lossW = Z.parts.reduce((s, p) => s + p.w, 0);
-      Z.heatW = zn === 'ground' ? this.stoveRadW : 0;
-      for (let c = 0; c < N; c++) {
-        if (!this.active[c]) continue;
-        if (this.zoneOf(Math.floor(c / (NX * NZ))) === zn) Z.heatW += this.src[c];
-      }
+      Z.heatW = heat;
       // conductance of the envelope (W/K), independent of current temperatures
       let ua = 0;
       for (const f of this.faces) {
