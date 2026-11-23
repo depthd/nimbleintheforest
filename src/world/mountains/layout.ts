@@ -93,7 +93,10 @@ export function planMountainLayout(seed: number) {
       !high && satelliteCount === 2 && rng.chance(.35));
     if (satelliteCount >= 3) {
       const l3 = side === 'east' ? l + 2 : l + u.length + 1;
-      const r3 = side === 'east' ? r - u.length - 1 : r - 2;
+      // Keep a walkable shelf around the far shoulder for the east-facing
+      // entrance. Short terraces still need enough room for the ascent itself.
+      const shoulder = Math.min(6, Math.max(2, r - l3 - 9));
+      const r3 = side === 'east' ? r - u.length - 1 : r - shoulder;
       const span = r3 - l3;
       const third = add('satellite', 3,
         box(l3, r3, offset - 12, offset + 9, u.top, u.top + Math.min(4.4, span * .37)),
