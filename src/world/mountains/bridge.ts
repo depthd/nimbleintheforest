@@ -22,7 +22,7 @@ const anchorKey = (a: Anchor) => `${a.tierId}:${a.x.toFixed(2)},${a.z.toFixed(2)
 
 // Sample the outward-facing lips of the actual upper surfaces. Some banks offer
 // several landings; an inner terrace or a summit hidden under a higher one cannot host a deck.
-function landingCandidates(terrain: Terrain) {
+function landingCandidates(terrain: Terrain, detailed: boolean) {
   const result = terrain.bridgeAnchors.filter(a => a.accessible);
   const tiers = terrain.tiers ?? [];
   for (const tier of tiers) {
@@ -31,12 +31,17 @@ function landingCandidates(terrain: Terrain) {
     for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       if (!tiers.some(other => other.accessible && other.mountainId !== tier.mountainId &&
         (other.center.x - tier.center.x) * nx + (other.center.z - tier.center.z) * nz > 0)) continue;
-      for (const fraction of [.16, .28, .42, .58, .72, .84]) {
+      const edgeLength = nx === 0 ? b.maxX - b.minX : b.maxZ - b.minZ;
+      // A steep second terrace can cover almost all of the approach, leaving a
+      // short ledge between two shoulders. Search these uncommon banks more finely.
+      const fractions = detailed ? Array.from({ length: Math.floor(edgeLength / 1.1) }, (_, i) => (i + .5) * 1.1 / edgeLength) :
+        [.16, .28, .42, .58, .72, .84];
+      for (const fraction of fractions) {
         const x = nx === 0 ? b.minX + fraction * (b.maxX - b.minX) : nx > 0 ? b.maxX - BEARING : b.minX + BEARING;
         const z = nz === 0 ? b.minZ + fraction * (b.maxZ - b.minZ) : nz > 0 ? b.maxZ - BEARING : b.minZ + BEARING;
         const y = terrain.sampleHeight(x, z);
         if (Math.abs(y - tier.center.y) > .45 || terrain.sampleHeight(x + 3 * nx, z + 3 * nz) > y - 2) continue;
-        if (result.some(a => a.tierId === tier.id && Math.hypot(a.x - x, a.z - z) < 2)) continue;
+        if (result.some(a => a.tierId === tier.id && Math.hypot(a.x - x, a.z - z) < (detailed ? .6 : 2))) continue;
         result.push({ x, y, z, mountainId: tier.mountainId, tierId: tier.id, accessible: true, outward: { x: nx, z: nz } });
       }
     }
@@ -123,8 +128,7 @@ function planPair(terrain: Terrain, from: Anchor, to: Anchor, span: number) {
   return { from, to, span, width, sag, dropAtCenter, point, sections, route, collider, suspenderPositions };
 }
 
-export function planMountainBridge(terrain: Terrain) {
-  const candidates = landingCandidates(terrain);
+function chooseCrossing(terrain: Terrain, candidates: Anchor[]) {
   const pairs: { from: Anchor; to: Anchor; span: number; priority: number }[] = [];
   const elevated = new Rng(terrain.seed ^ hashString('high crossing')).chance(.53);
   for (let i = 0; i < candidates.length; i++) for (let j = i + 1; j < candidates.length; j++) {
@@ -146,6 +150,12 @@ export function planMountainBridge(terrain: Terrain) {
     if (plan) return plan;
   }
   return null;
+}
+
+export function planMountainBridge(terrain: Terrain) {
+  const plan = chooseCrossing(terrain, landingCandidates(terrain, false));
+  if (plan || !terrain.tiers?.length) return plan;
+  return chooseCrossing(terrain, landingCandidates(terrain, true));
 }
 
 type BridgePlan = NonNullable<ReturnType<typeof planMountainBridge>>;

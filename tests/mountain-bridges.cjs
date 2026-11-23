@@ -22,7 +22,8 @@ function reachable(routes) {
 }
 
 const tiers = new Set(), spans = [], access = new Set();
-for (let seed = 0; seed < 48; seed++) {
+const seeds = [...Array(48).keys(), 2179]; // A narrow upper landing hidden between two shoulders.
+for (const seed of seeds) {
   const terrain = generateMountainTerrain(seed), plan = planMountainBridge(terrain);
   assert.ok(plan, `No crossing for seed ${seed}`);
   const [a, b] = [plan.from, plan.to].sort((left, right) => left.mountainId.localeCompare(right.mountainId));
@@ -49,4 +50,4 @@ const centre = bridge.point(bridge.span / 2);
 assert.equal(planMountainBridge({ ...stripped, trees: [{ ...centre, radius: .4, height: 8 }] }), null);
 assert.equal(planMountainBridge({ ...stripped, sampleHeight: () => centre.y }), null);
 assert.equal(planMountainBridge({ ...stripped, bridgeAnchors: [bridge.from, { ...bridge.to, accessible: false }] }), null);
-console.log(`PASS 48 seeded crossings, ${tiers.size} distinct tier pairs, both satellite access modes, blocked crossings and repeatability`);
+console.log(`PASS ${seeds.length} seeded crossings, ${tiers.size} distinct tier pairs, both satellite access modes, blocked crossings and repeatability`);
