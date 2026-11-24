@@ -28,7 +28,7 @@ export function surfaceRoof(meshes: MeshData[]) {
       const key = x + ',' + z; if (!bins.has(key)) bins.set(key, []); bins.get(key)!.push(tri);
     }
   }
-  const query: RoofSampler = (x: number, z: number): number | undefined => {
+  const query = (x: number, z: number): number | undefined => {
     let roof: number | undefined;
     for (const [a, b, c] of bins.get(Math.floor(x / cell) + ',' + Math.floor(z / cell)) || []) {
       const ux = b.x - a.x, uz = b.z - a.z, vx = c.x - a.x, vz = c.z - a.z, den = ux * vz - uz * vx;

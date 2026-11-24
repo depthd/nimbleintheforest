@@ -15,7 +15,7 @@ import { subtract, interior, type MeshData } from './cavity';
 import { ascentCenter, ascentSample } from './ascent';
 import { ringPoint, snowSettings, upperNormal } from './wedge-snow-layer';
 import { sampleGrid } from './seam-boundary';
-import { radialSurface } from './wedge-rocks';
+import { radialSurface, surfaceRoof } from './wedge-rocks';
 import { buildMountainSnow, mountainRim } from './mountain-snow';
 
 import { plateauRadius } from './plateau-profile';
@@ -60,7 +60,7 @@ async function start(){
   // At the upper exit the snow layer tapers into the turning route.
   const snowTopMaterial=snowMaterial.clone();snowTopMaterial.polygonOffset=true;snowTopMaterial.polygonOffsetFactor=-1;snowTopMaterial.polygonOffsetUnits=-1;
   const groups={stone:new THREE.Group(),rocks:new THREE.Group(),snow:new THREE.Group(),trees:new THREE.Group(),cave:new THREE.Group()};Object.values(groups).forEach(g=>scene.add(g));
-  function mesh(data: MeshData & { normals?: Float32Array; colors?: number[] }, mat: THREE.Material, grid?: typeof source) {
+  function mesh(data: MeshData & { normals?: Float32Array; colors?: number[] }, mat: THREE.Material, grid?: typeof source, tint = '#505a65') {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(data.positions,3));
     g.setIndex(new THREE.BufferAttribute(data.indices,1));
@@ -81,7 +81,7 @@ async function start(){
     }
     const colors=data.colors?new Float32Array(data.colors):new Float32Array(data.positions.length);
     if(!data.colors) {
-      const color=new THREE.Color('#505a65').toArray();
+      const color=new THREE.Color(tint).toArray();
       for(let k=0;k<colors.length;k+=3)colors.set(color,k);
     }
     g.setAttribute('color',new THREE.BufferAttribute(colors,3));
@@ -173,6 +173,7 @@ async function start(){
     baseStone.add(ground);
     scene.fog = new THREE.Fog('#d6dfe6', 980, 5400);
   }
+  const cliffMaterial = cliffDressingMaterial();
   for (const [name, data] of Object.entries(surfaces)) {
     const grid =
       name === 'plateau' || name === 'strip'
@@ -180,7 +181,15 @@ async function start(){
         : name === 'flank' || name === 'restored'
           ? source
           : undefined;
-    const m = mesh(data, grid ? smooth : material, grid);
+    const rimStone = name === 'underside';
+    const m = mesh(data, rimStone ? cliffMaterial : grid ? smooth : material, grid, rimStone ? '#605b72' : undefined);
+    if (rimStone) {
+      // Exposed rock between the attached slabs shares their world-space mineral
+      // pattern. The intact core carries neither joint darkening nor surface frost.
+      const finish = new Float32Array(data.positions.length);
+      for (let k = 2; k < finish.length; k += 3) finish[k] = 1;
+      m.geometry.setAttribute('rockFinish', new THREE.BufferAttribute(finish, 3));
+    }
     m.name = name;
     baseStone.add(m);
     if (stacked) {
@@ -211,8 +220,11 @@ async function start(){
     category.add(part);
   }
   place(mesh(cave, rockWithFrost(0)), tiers[0], groups.cave);
-  const wall = radialSurface([surfaces.underside]),
-    cliffMaterial = cliffDressingMaterial();
+  const rockRoof = {
+    height: (x: number, z: number) => sampleGrid(upper, x, z).y,
+    clearance: surfaceRoof([surfaces.strip, surfaces.plateau, snow.cap]).triangleClearance,
+  };
+  const wall = radialSurface([surfaces.underside]);
   const dressings: ReturnType<typeof buildMountainMasses>[] = [],
     sites: GroveSite[] = [];
   for (const [i, tier] of tiers.entries()) {
@@ -225,7 +237,7 @@ async function start(){
       (a) => ringPoint(rim, a),
       wall,
       (x, z) => sampleGrid(source, x, z).y,
-      (x, z) => sampleGrid(upper, x, z).y,
+      rockRoof,
       tier.seed,
       {
         cave: i === 0,

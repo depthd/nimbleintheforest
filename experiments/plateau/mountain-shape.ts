@@ -4,7 +4,7 @@ import { Rng, Simplex2, smoothstep } from '../../src/core/rng';
 import { ascentSample } from './ascent';
 import { wallOutcrop, type OutcropShape } from './wall-outcrop';
 import { ascentEnding } from './wedge-ascent';
-import { contourTangent, plateauRadius } from './plateau-profile';
+import { contourPoint, contourTangent, plateauRadius } from './plateau-profile';
 
 const noise = new Simplex2(new Rng(91842).next);
 const tau = Math.PI * 2;
@@ -57,7 +57,7 @@ export function buildMountainMasses(
   rimAt: (angle: number) => { x: number; y: number; z: number },
   wallAt: (angle: number, y: number) => Point2 | undefined,
   groundAt: (x: number, z: number) => number,
-  roofAt: (x: number, z: number) => number,
+  roof: { height: (x: number, z: number) => number; clearance: (triangle: Vector3[]) => number },
   seed = 13947,
   placement: {
     cave?: boolean;
@@ -143,13 +143,27 @@ export function buildMountainMasses(
     const control = corners.map(([u, v]) => [u, v, random.float(-0.22, 0.22), random.float(0.92, 1.08)]);
     if (kind === 'buttresses') {
       const pieces = wallOutcrop(s, control, seed ^ Math.round(s.x * 831 - s.z * 197));
+      // Seat the whole fracture in one move. A vertex-only check misses a roof
+      // edge crossing the middle of a facet or the cap of its neighbouring half.
+      let sink = 0;
+      for (const piece of pieces) {
+        for (const shell of [piece.rock, piece.snow]) {
+          for (let i = 0; i < shell.indices.length; i += 3) {
+            const triangle = [0, 1, 2].map(j => shell.points[shell.indices[i + j]]);
+            sink = Math.max(sink, 0.35 - roof.clearance(triangle));
+          }
+        }
+      }
       for (const piece of pieces) {
         for (const [shell, target, tint] of [
           [piece.rock, stone, color],
           [piece.snow, snow, white],
         ] as const) {
           const offset = target.positions.length / 3;
-          for (const point of shell.points) vertex(target, point, tint);
+          for (const point of shell.points) {
+            point.y -= sink;
+            vertex(target, point, tint);
+          }
           for (const index of shell.indices) target.indices.push(offset + index);
         }
         finishStone(0, 0.31, piece.clearance);
@@ -355,6 +369,7 @@ export function buildMountainMasses(
       const lipDepth = styleRng.float(0.1, 0.18);
       const levels = shelf ? [0, lipDepth, 0.28, 0.48, 1] : [0, lipDepth, crestBend, 0.79, 1];
       if (crossJoint) levels.splice(2, 1, crestBend - 0.012, crestBend, crestBend + 0.018);
+      if (!side) levels.splice(1, 0, lipDepth * 0.28, lipDepth * 0.62);
       const shoulder = styleRng.float(7, 19) * (side ? 0.32 : 1);
       const notch = styleRng.float(0.95, 2.65) * (side ? 0.65 : 1);
       const dipSign = jointPitch > 0 ? 1 : -1;
@@ -402,11 +417,25 @@ export function buildMountainMasses(
         }
         if (crossJoint && t === crestBend) out -= notch * (1 - smoothstep(0.56, 1, u));
         const widthFactor = side ? smoothstep(1.5, 32, p.y - base) : 1;
-        return new Vector3(
+        const face = new Vector3(
           p.x + (tx * lean + nx * out) * widthFactor,
           height,
           p.z + (tz * lean + nz * out) * widthFactor,
         );
+        // Follow the solid beneath the cornice at the face's final position.
+        // Rake can carry a shoulder into a different section of the curved rim.
+        if (!side && t > 0 && t < 0.48) {
+          const a = Math.atan2(face.z / 180, face.x / 260);
+          const backing = wallAt(a, face.y);
+          if (backing) {
+            const r = Math.hypot(face.x, face.z);
+            const overlap = Math.hypot(backing.x, backing.z) + 0.85 - r;
+            const adjustment = Math.max(0, overlap) * (1 - smoothstep(0.22, 0.48, t));
+            face.x += adjustment * face.x / r;
+            face.z += adjustment * face.z / r;
+          }
+        }
+        return face;
       }
       if (!side) {
         const steps = Math.ceil((span * (count === 2 ? 0.6 : 1)) / 8);
@@ -445,17 +474,21 @@ export function buildMountainMasses(
         const u = columns[c];
         const tangent = station(c === 0 ? start : end).tan;
         const inward = new Vector3(-tangent.z, 0, tangent.x).normalize();
-        const depth = side ? 9 : 19;
-        const steps = Math.ceil(depth / 3);
         const front = levels.map(level => surface(u, level));
+        // Root each exterior return inside the solid plateau. A fixed-length
+        // cheek leaves an open back behind a projecting shoulder.
+        const anchors = front.map(p => {
+          if (side) return p.clone().addScaledVector(inward, 9);
+          const inner = contourPoint(Math.atan2(p.z / 180, p.x / 260), 0.92);
+          return new Vector3(inner.x, p.y, inner.z);
+        });
+        const steps = Math.max(1, Math.ceil(Math.max(...anchors.map((p, i) => p.distanceTo(front[i]))) / 3));
         let previous = rows.map(row => row[c]);
-        // Follow the supporting roof into the joint. A single horizontal return
-        // can emerge through the snow where the roof descends behind the rim.
         for (let step = 1; step <= steps; step++) {
-          const inset = depth * step / steps;
-          const inside = front.map(point => {
-            const p = point.clone().addScaledVector(inward, inset);
-            p.y = Math.min(p.y, front[0].y - inset, roofAt(p.x, p.z) - 0.6);
+          const inside = front.map((point, k) => {
+            const p = point.clone().lerp(anchors[k], step / steps);
+            const inset = Math.hypot(p.x - point.x, p.z - point.z);
+            p.y = Math.min(p.y, front[0].y - inset, roof.height(p.x, p.z) - 0.6);
             return vertex(stone, p, color);
           });
           for (let k = 0; k + 1 < levels.length; k++) {
