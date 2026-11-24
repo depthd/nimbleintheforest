@@ -25,6 +25,9 @@ export function connectBanks(base: Tier, spur: Tier, rim: (a:number)=>Point, ter
       if (!(object instanceof Mesh) || object.name==='horizon') return;
       const g=object.geometry, v=g.getAttribute('position'), face=g.index?.array;
       if (!face) return;
+      if(!g.boundingBox)g.computeBoundingBox();
+      const box=g.boundingBox!.clone().applyMatrix4(object.matrixWorld);
+      if(box.min.x>x1 || box.max.x<x0 || box.min.z>z1 || box.max.z<z0)return;
       const m=object.matrixWorld.elements, p=v.array, world=new Float32Array(v.count*3);
       for(let i=0;i<p.length;i+=3){
         world[i]=m[0]*p[i]+m[8]*p[i+2]+m[12];

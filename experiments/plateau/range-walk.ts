@@ -18,7 +18,7 @@ function groundIndex(g:BufferGeometry) {
       bucket.push(a,b,c);
     }
   }
-  return (x:number,z:number,yScale:number,planScale:number,hit:(localY:number,walkable:boolean)=>void)=>{
+  return (x:number,z:number,yScale:number,xScale:number,zScale:number,hit:(localY:number,walkable:boolean)=>void)=>{
     const faces=bins.get(key(Math.floor(x/cell),Math.floor(z/cell)));
     if(!faces)return;
     for(let i=0;i<faces.length;i+=3){
@@ -29,12 +29,12 @@ function groundIndex(g:BufferGeometry) {
       const u=((x-ax)*cz-(z-az)*cx)/det,v=(bx*(z-az)-bz*(x-ax))/det;
       if(u<-.00001||v<-.00001||u+v>1.00001)continue;
       // An uphill normal within 49 degrees of vertical can support the feet.
-      const horizontal=Math.hypot(by*cz-bz*cy,bx*cy-by*cx)*yScale/planScale;
+      const horizontal=Math.hypot((by*cz-bz*cy)/xScale,(bx*cy-by*cx)/zScale)*yScale;
       hit(ay+u*by+v*cy,det<0 && horizontal<=-det*1.15);
     }
   };
 }
-export function walkingSurface(groups:Group[], extra:Mesh[]) {
+export function walkingSurface(groups:Group[], extra:Mesh[], groundAt=(x:number,z:number)=>0) {
   const meshes:Mesh[]=extra.slice();
   for(const group of groups){group.updateMatrixWorld(true);group.traverse(o=>{
     if(o instanceof Mesh && o.name!=='horizon' && o.name!=='snow-bottom' && o.geometry.attributes.position.count)
@@ -46,16 +46,17 @@ export function walkingSurface(groups:Group[], extra:Mesh[]) {
     const g=m.geometry;g.computeBoundingBox();
     const world=m.matrixWorld, inv=world.clone().invert();
     const s=new Vector3().setFromMatrixScale(world);
-    return {g,inv:inv.elements,box:g.boundingBox!.clone().applyMatrix4(world),sy:s.y,sx:s.x,y0:world.elements[13]};
+    return {g,inv:inv.elements,box:g.boundingBox!.clone().applyMatrix4(world),sy:s.y,sx:s.x,sz:s.z,y0:world.elements[13]};
   });
   const eye=1.62/metres, step=.46/metres;
   function floor(x:number,z:number,at:number) {
-    let foot=at>=-step && at<=step?0:-Infinity;
+    const ground=groundAt(x,z);
+    let foot=Math.abs(at-ground)<=step?ground:-Infinity;
     const obstructions:number[]=[];
-    for(const {g,box,inv,sy,sx,y0} of entries){
+    for(const {g,box,inv,sy,sx,sz,y0} of entries){
       if(x<box.min.x||x>box.max.x||z<box.min.z||z>box.max.z||box.max.y<at-step||box.min.y>at+step+eye+1)continue;
       let h=index.get(g);if(!h){h=groundIndex(g);index.set(g,h);}
-      h(inv[0]*x+inv[8]*z+inv[12],inv[2]*x+inv[10]*z+inv[14],sy,sx,(y,walkable)=>{
+      h(inv[0]*x+inv[8]*z+inv[12],inv[2]*x+inv[10]*z+inv[14],sy,sx,sz,(y,walkable)=>{
         const wy=y0+y*sy;
         if(walkable && wy>=at-step && wy<=at+step) foot=Math.max(foot,wy);
         else obstructions.push(wy);

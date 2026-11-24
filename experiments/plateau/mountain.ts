@@ -7,6 +7,9 @@ import { winterSky } from './winter-sky';
 import { walkingSurface } from './range-walk';
 import { mineralPaint } from './mineral-paint';
 import { rangeSeed, stream } from './range-seed';
+import { originalRange, readRangeSettings, type RangeSettings } from './range-settings';
+import { rangeLayout } from './range-layout';
+import { rangeGround } from './range-ground';
 import { connectBanks, metres } from './range-bridge';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -30,10 +33,43 @@ type WalkStart = {point:THREE.Vector3;aim:THREE.Vector3};
 const requested=new URLSearchParams(location.search).get('form');
 const forms={range:'Исходный хребет',peak:'Плато с пиком',ledge:'Гора с боковой тропой',vault:'Гора-арка'};
 const form = requested && Object.hasOwn(forms,requested) ? requested as keyof typeof forms : 'range';
+const settings=form==='range'?readRangeSettings(new URLSearchParams(location.search)):originalRange;
+const settingKeys=Object.keys(originalRange) as (keyof RangeSettings)[];
+const adjusted=form==='range' && settingKeys.some(k=>settings[k]!==originalRange[k]);
 const stacked=true;
 const status=document.querySelector<HTMLElement>('#status')!;
 const frame=()=>new Promise<void>(ok=>requestAnimationFrame(()=>ok()));
+function setupSceneControls(){
+  const seedInput = document.querySelector<HTMLInputElement>('#seed')!;
+  document.querySelector<HTMLElement>('#scene-settings')!.hidden=form!=='range';
+  const archive=document.querySelector<HTMLElement>('#archive')!;
+  archive.hidden=form==='range';
+  archive.querySelector('span')!.textContent=forms[form];
+  archive.querySelector('a')!.href='?form=range&seed='+rangeSeed;
+  const fields=settingKeys.map(key=>{
+    const select=document.querySelector<HTMLSelectElement>('#'+key)!;
+    select.value=settings[key];return {key,select};
+  });
+  seedInput.value=String(rangeSeed);
+  function load(value:string,reset=false){
+    const url=new URL(location.href);
+    url.searchParams.set('seed',value);url.searchParams.set('form',form);
+    for(const {key,select} of fields){
+      if(reset || form!=='range' || select.value===originalRange[key])url.searchParams.delete(key);
+      else url.searchParams.set(key,select.value);
+    }
+    if(reset)url.searchParams.delete('view');
+    location.assign(url.href);
+  }
+  const reset=document.querySelector<HTMLButtonElement>('#baseline')!;
+  reset.hidden=!adjusted;
+  reset.onclick=()=>load(String(rangeSeed),true);
+  document.querySelector<HTMLFormElement>('form')!.onsubmit=e=>{e.preventDefault();load(seedInput.value);};
+  document.querySelector<HTMLButtonElement>('#random')!.onclick=()=>load(String(crypto.getRandomValues(new Uint32Array(1))[0]));
+}
 async function start(){
+  setupSceneControls();
+  let ground:ReturnType<typeof rangeGround>|undefined;
   const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(1);renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;document.body.append(renderer.domElement);
   const scene=new THREE.Scene();scene.background=new THREE.Color('#c1d5e4');
   const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.2,stacked?10500:5000),controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=false;controls.maxDistance=stacked?3300:1800;
@@ -212,11 +248,26 @@ async function start(){
   const rim = mountainRim(junction);
   const snow = buildMountainSnow(upper, junction, [surfaces.plateau, surfaces.strip], mountainSnowProfile);
   const roof = (x: number, z: number) => snow.field(x, z).y;
-  const tiers = mountainTiers(stacked, roof, a=>ringPoint(rim,a),form);
+  const rimAt=(a:number)=>ringPoint(rim,a);
+  const original=mountainTiers(stacked,roof,rimAt,form);
+  const tiers=form==='range'?rangeLayout(original,settings,roof,rimAt):original;
+  if(settings.relief!=='flat'){
+    ground=rangeGround(tiers,settings.relief);
+    const groundSnow=snowMaterial.clone();
+    groundSnow.vertexColors=true;
+    const snowfield=mesh(ground.mesh,groundSnow);
+    const normals=snowfield.geometry.getAttribute('normal'),colors=snowfield.geometry.getAttribute('color');
+    for(let i=0;i<normals.count;i++){
+      const shade=THREE.MathUtils.clamp(.12+.96*(normals.getX(i)*.82-normals.getZ(i)*.57),0,.72);
+      colors.setXYZ(i,1-.52*shade,1-.34*shade,1-.15*shade);
+    }
+    snowfield.castShadow=false;
+    scene.add(snowfield);
+  }
   const baseStone = new THREE.Group(),
     upperStone = new THREE.Group(),
     snowCover = new THREE.Group();
-  if (stacked) {
+  if (stacked && !ground) {
     // Extend the flat lab ground beyond the broad camera views. Its four quads
     // meet the existing mesh edge to edge, without overlapping the cave floor.
     const near = (source.n * source.cell) / 2,
@@ -234,8 +285,8 @@ async function start(){
     ground.name = 'horizon';
     ground.castShadow = false;
     baseStone.add(ground);
-    scene.fog = new THREE.Fog('#d6dfe6', 980, 5400);
   }
+  scene.fog = new THREE.Fog('#d6dfe6', 980, 5400);
   for (const [name, data] of Object.entries(surfaces)) {
     const grid =
       name === 'plateau' || name === 'strip'
@@ -244,7 +295,8 @@ async function start(){
           ? source
           : undefined;
     const rimStone = name === 'underside';
-    const m = mesh(data, rimStone ? cliffMaterial : grid ? smooth : material, grid, rimStone ? '#605b72' : undefined);
+    const apron=name==='flank'||name==='restored';
+    const m = mesh(ground && apron?raisedFlank(data,.0001):data, rimStone ? cliffMaterial : grid ? smooth : material, grid, rimStone ? '#605b72' : undefined);
     if (rimStone) {
       // Exposed rock between the attached slabs shares their world-space mineral
       // pattern. The intact core carries neither joint darkening nor surface frost.
@@ -258,7 +310,7 @@ async function start(){
       // Upper tiers use the solid flank before the cave cut.
       const upperMesh =
         name === 'flank' || name === 'restored'
-          ? mesh(raisedFlank(junction.cut[name]), smooth, source)
+          ? mesh(raisedFlank(junction.cut[name],ground ? .0001 : 2), smooth, source)
           : m.clone();
       upperMesh.name = name;
       upperStone.add(upperMesh);
@@ -278,7 +330,7 @@ async function start(){
     part.name = tier.name;
     part.position.set(tier.x, tier.y, tier.z);
     part.rotation.y = tier.yaw;
-    part.scale.set(tier.width, tier.rise, tier.width);
+    part.scale.set(tier.width, tier.rise, tier.depth??tier.width);
     category.add(part);
   }
   place(mesh(cave, rockWithFrost(0)), tiers[0], groups.cave);
@@ -290,7 +342,7 @@ async function start(){
   const dressings: ReturnType<typeof buildMountainMasses>[] = [],
     sites: GroveSite[] = [];
   const vault=form==='vault'?rangeVault(tiers,roof,stream('rock vault')):undefined;
-  const summitTier=tiers.find(t=>t.name==='summit')!;
+  const summitTier=tiers.find(t=>t.name==='summit')??tiers[0];
   const peakSite={x:65,z:52}, peakWidth=stream('peak width').float(72,91);
   const summitCenter=worldPlan(summitTier,peakSite.x,peakSite.z);
   const summitFoot=new THREE.Vector3(summitCenter.x,summitTier.y+summitTier.rise*roof(peakSite.x,peakSite.z)-3,summitCenter.z);
@@ -335,12 +387,12 @@ async function start(){
       heightFactor: tier.name === 'summit' ? .64 : parent ? .85 : 1,
       outcrops: dressing.stoneFootprints,
       rootAt: (x, z, outside) => {
-        if ((outside && i > 0) || reserved(x, z, 5)) return;
-        if (outside && tiers.slice(1).filter(t=>!t.parent).some(other=>{
+        if ((outside && (parent || (!adjusted && i>0))) || reserved(x, z, 5)) return;
+        if (outside && tiers.filter(t=>!t.parent && t!==tier).some(other=>{
           const w=worldPlan(tier,x,z), q=localPlan(other,w.x,w.z); return plateauRadius(q.x,q.z)<1.43;
         })) return;
         const p = worldPlan(tier, x, z);
-        return { ...p, y: tier.y + tier.rise * (outside ? 0 : roof(x, z)) };
+        return { ...p, y: outside?(ground?.floor(p.x,p.z)??0):tier.y+tier.rise*roof(x,z) };
       },
     });
   }
@@ -368,7 +420,8 @@ async function start(){
     for (const v of Object.values(views))
       for (const p of [v.eye, v.target]) {
         p[0] *= base.width;
-        p[2] *= base.width;
+        p[2] *= base.depth??base.width;
+        p[1] *= form==='range'?base.rise:1;
       }
     Object.assign(views, {
       wall: { eye: [-950,160,-580], target:[-270,66,-126], fov:27 },
@@ -393,6 +446,28 @@ async function start(){
     const p=ringPoint(rim,i*Math.PI/50),w=worldPlan(t,p.x*1.13,p.z*1.13);
     return [new THREE.Vector3(w.x,t.y,w.z),new THREE.Vector3(w.x,t.y+t.rise*(p.y+13),w.z)];
   }).flat());
+  const roots=tiers.filter(t=>!t.parent);
+  if(roots.length>2){
+    const bounds=new THREE.Box3().setFromPoints(outlinePoints);
+    const center=bounds.getCenter(new THREE.Vector3()), radius=bounds.getSize(new THREE.Vector3()).length()*.55;
+    sun.position.normalize().multiplyScalar(radius*2.2).add(center);
+    sun.target.position.copy(center);
+    Object.assign(sun.shadow.camera,{left:-radius,right:radius,top:radius,bottom:-radius,far:radius*3.5});
+    sun.shadow.camera.updateProjectionMatrix();
+  }
+  if(adjusted){
+    for(const [i,root] of roots.entries()){
+      const name='massif'+(i+1);
+      const members=[root];
+      for(let j=0;j<members.length;j++)members.push(...tiers.filter(t=>t.parent===members[j].name));
+      const top=Math.max(...members.map(t=>t.y+105*t.rise));
+      const eye=worldPlan(root,-600,-440);
+      views[name]={eye:[eye.x,top+260,eye.z],target:[root.x,top*.41,root.z],fov:48};
+      const button=document.createElement('button');
+      button.dataset.view=name;button.textContent='Гора '+(i+1);
+      document.querySelector('nav')!.insertBefore(button,document.querySelector('#walk'));
+    }
+  }
   const arch=dressing.arch!;
   function trailSpot(x:number,lift:number) {
     const p=ascentSample(x), w=worldPlan(base,x,p.z);
@@ -403,7 +478,7 @@ async function start(){
   const trunks = groves.userData.trunks.map((t: {x:number;y:number;z:number;radius:number;height:number})=>({
     x:t.x*metres,y:t.y*metres,z:t.z*metres,radius:t.radius*metres,height:t.height*metres
   }));
-  const bridge = form==='range' ? connectBanks(base,spur,a=>ringPoint(rim,a),[groups.rocks,groups.stone,groups.snow],trunks,rangeSeed) : null;
+  const bridge = form==='range' && spur ? connectBanks(base,spur,rimAt,[groups.rocks,groups.stone,groups.snow],trunks,rangeSeed) : null;
   if (bridge) {
     scene.add(bridge.group);
     const mid = bridge.point(bridge.span/2);
@@ -438,19 +513,26 @@ async function start(){
       return {point:new THREE.Vector3(v.x,v.y,v.z).divideScalar(metres),
         aim:new THREE.Vector3(bridge.to.x,bridge.to.y,bridge.to.z).divideScalar(metres)};
     }
-    const start=ascentSample(-317),w=worldPlan(base,-317,start.z);
-    return {point:new THREE.Vector3(w.x,0,w.z),aim:new THREE.Vector3().fromArray(trailSpot(arch.x,0))};
+    const root=roots.find((_,i)=>name==='massif'+(i+1))??base;
+    const start=ascentSample(-317),w=worldPlan(root,-317,start.z);
+    const next=ascentSample(-240),aim=worldPlan(root,-240,next.z);
+    return {point:new THREE.Vector3(w.x,ground?.floor(w.x,w.z)??0,w.z),aim:new THREE.Vector3(aim.x,root.y+next.y*root.rise,aim.z)};
   }
-  activate(views,outlinePoints,axis,extras,spawn,(form==='range'?'два массива':forms[form])+(bridge?' · мост '+Math.round(bridge.span)+' м':''),
-    {bridge,ascentSample,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,vault,peak});
+  const countLabel=['','1 массив','2 массива','3 массива','4 массива'][Number(settings.count)];
+  activate(views,outlinePoints,axis,extras,spawn,(form==='range'?countLabel:forms[form])+(bridge?' · мост '+Math.round(bridge.span)+' м':''),
+    {bridge,ascentSample,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,vault,peak,settings,groundAt:ground?.floor});
 
   function activate(views:Record<string,View>,outlinePoints:THREE.Vector3[],axis:THREE.Vector3,extras:THREE.Mesh[],
     spawn:(name:string)=>WalkStart,label:string,diagnostics:Record<string,unknown>){
   let activeView='range';
   function frameRange(){
-    const view=views.range, aim=new THREE.Box3().setFromPoints(outlinePoints).getCenter(new THREE.Vector3());
-    axis.normalize();
-    const right=new THREE.Vector3().crossVectors(camera.up,axis).normalize(),up=new THREE.Vector3().crossVectors(axis,right);
+    fit(views.range,axis);
+    if(adjusted)fit(views.top,new THREE.Vector3(0,1,.001));
+  }
+  function fit(view:View,direction:THREE.Vector3){
+    const aim=new THREE.Box3().setFromPoints(outlinePoints).getCenter(new THREE.Vector3());
+    direction.normalize();
+    const right=new THREE.Vector3().crossVectors(camera.up,direction).normalize(),up=new THREE.Vector3().crossVectors(direction,right);
     for(const v of [right,up]){
       const values=outlinePoints.map(p=>p.clone().sub(aim).dot(v));
       aim.addScaledVector(v,(Math.min(...values)+Math.max(...values))*.5);
@@ -458,24 +540,19 @@ async function start(){
     const tan=Math.tan(THREE.MathUtils.degToRad(view.fov!)/2);
     const distance=Math.max(...outlinePoints.map(p=>{
       const q=p.clone().sub(aim);
-      return q.dot(axis)+1.08*Math.max(Math.abs(q.dot(right))/(tan*camera.aspect),Math.abs(q.dot(up))/tan);
+      return q.dot(direction)+1.08*Math.max(Math.abs(q.dot(right))/(tan*camera.aspect),Math.abs(q.dot(up))/tan);
     }));
-    view.eye=aim.clone().addScaledVector(axis,distance).toArray();view.target=aim.toArray();
+    view.eye=aim.clone().addScaledVector(direction,distance).toArray();view.target=aim.toArray();
+    if(adjusted){
+      controls.maxDistance=Math.max(controls.maxDistance,distance*1.25);
+      camera.far=Math.max(camera.far,distance*2);
+      if(scene.fog instanceof THREE.Fog){
+        scene.fog.near=Math.max(980,distance*.67);scene.fog.far=Math.max(5400,distance*2.2);
+      }
+    }
   }
 
   frameRange();
-  const seedInput = document.querySelector<HTMLInputElement>('#seed')!;
-  const select = document.querySelector<HTMLSelectElement>('#form')!;
-  select.value=form;
-  seedInput.value=String(rangeSeed);
-  function load(value:string){
-    const url=new URL(location.href);
-    url.searchParams.set('seed',value);url.searchParams.set('form',select.value);
-    location.assign(url.href);
-  }
-  select.onchange=()=>load(seedInput.validity.valid ? seedInput.value : String(rangeSeed));
-  document.querySelector<HTMLFormElement>('form')!.onsubmit=e=>{e.preventDefault();load(seedInput.value);};
-  document.querySelector<HTMLButtonElement>('#random')!.onclick=()=>load(String(crypto.getRandomValues(new Uint32Array(1))[0]));
   for(const button of document.querySelectorAll<HTMLButtonElement>('[data-view]')){
     if(!views[button.dataset.view!])button.hidden=true;
   }
@@ -495,7 +572,7 @@ async function start(){
   }
   function startWalk(){
     if(walking){endWalk();return;}
-    contact??=walkingSurface([groups.stone,groups.rocks,groups.cave,groups.snow],extras);
+    contact??=walkingSurface([groups.stone,groups.rocks,groups.cave,groups.snow],extras,ground?.floor);
     const {point,aim}=spawn(activeView);
     foot.copy(point); foot.y=contact.floor(foot.x,foot.z,foot.y)??foot.y;
     yaw=Math.atan2(foot.x-aim.x,foot.z-aim.z);pitch=.09;
@@ -527,7 +604,7 @@ async function start(){
     if((dx||dz)&&!contact!.move(foot,dx,dz)){if(!contact!.move(foot,dx,0))contact!.move(foot,0,dz);}
     lookFromFoot();draw();
   }else if(keys.size){const forward=new THREE.Vector3();camera.getWorldDirection(forward);const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize(),move=new THREE.Vector3();if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;move.multiplyScalar(dt*(keys.has('ShiftLeft')?100:25));camera.position.add(move);controls.target.add(move);controls.update();draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
-  window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();frameRange();if(activeView==='range'&&!walking)view('range');else draw();});
+  window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();frameRange();if(!walking && (activeView==='range'||(adjusted && activeView==='top')))view(activeView);else draw();});
   const initialView=new URLSearchParams(location.search).get('view');
   renderer.shadowMap.needsUpdate=true;
   view(initialView && Object.hasOwn(views,initialView)?initialView:'range');

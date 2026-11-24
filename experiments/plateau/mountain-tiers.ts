@@ -11,6 +11,7 @@ export interface Tier {
   z: number;
   yaw: number;
   width: number;
+  depth?: number;
   rise: number;
   seed: number;
 }
@@ -18,7 +19,8 @@ export interface Tier {
 export function worldPlan(tier: Tier, x: number, z: number) {
   const c = Math.cos(tier.yaw),
     s = Math.sin(tier.yaw);
-  return { x: tier.x + tier.width * (x * c + z * s), z: tier.z + tier.width * (z * c - x * s) };
+  const dx=x*tier.width, dz=z*(tier.depth??tier.width);
+  return { x: tier.x + dx*c + dz*s, z: tier.z + dz*c - dx*s };
 }
 
 export function localPlan(tier: Tier, x: number, z: number) {
@@ -26,7 +28,17 @@ export function localPlan(tier: Tier, x: number, z: number) {
     dz = z - tier.z,
     c = Math.cos(tier.yaw),
     s = Math.sin(tier.yaw);
-  return { x: (dx * c - dz * s) / tier.width, z: (dz * c + dx * s) / tier.width };
+  return { x: (dx * c - dz * s) / tier.width, z: (dz * c + dx * s) / (tier.depth??tier.width) };
+}
+
+export function seatOnParent(tier:Tier, parent:Tier, roof:(x:number,z:number)=>number) {
+  let lowest=Infinity;
+  for(let i=0;i<72;i++) for(let j=0;j<=12;j++){
+    const p=contourPoint(2*Math.PI*i/72,1.17*j/12);
+    const w=worldPlan(tier,p.x,p.z), q=localPlan(parent,w.x,w.z);
+    lowest=Math.min(lowest,roof(q.x,q.z));
+  }
+  tier.y=parent.y+parent.rise*lowest-4;
 }
 
 export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => number,
@@ -53,15 +65,7 @@ export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => 
     const center=worldPlan(parent,spec.x,spec.z);
     const tier={...spec,...center,parent:parent.name,yaw:parent.yaw+spec.yaw,width:parent.width*spec.width,y:0};
     tier.rise=tierRise(tier.rise,tier.width);
-    let lowest = Infinity;
-    for (let i = 0; i < 72; i++)
-      for (let j = 0; j <= 12; j++) {
-        const p = contourPoint((2 * Math.PI * i) / 72, (1.17 * j) / 12);
-        const w = worldPlan(tier, p.x, p.z),
-          q = localPlan(parent, w.x, w.z);
-        lowest = Math.min(lowest, roof(q.x, q.z));
-      }
-    tier.y = parent.y + parent.rise * lowest - 4;
+    seatOnParent(tier,parent,roof);
     tiers.push(tier);
   }
   for (const spec of [
@@ -124,7 +128,7 @@ export function supportedSite(tier: Tier, parent: Tier | undefined, x: number, z
 
 // Only the bottom tier owns the surrounding ground plane. At upper tiers the
 // retained apron ends below the supporting snowfield, including at the ramp.
-export function raisedFlank(data: MeshData): MeshData {
+export function raisedFlank(data: MeshData, minimumHeight=2): MeshData {
   const positions: number[] = [],
     indices: number[] = [],
     remap = new Map<number, number>();
@@ -132,7 +136,7 @@ export function raisedFlank(data: MeshData): MeshData {
     const a = data.indices[i],
       b = data.indices[i + 1],
       c = data.indices[i + 2];
-    if (Math.max(data.positions[a * 3 + 1], data.positions[b * 3 + 1], data.positions[c * 3 + 1]) < 2)
+    if (Math.max(data.positions[a * 3 + 1], data.positions[b * 3 + 1], data.positions[c * 3 + 1]) < minimumHeight)
       continue;
     for (const id of [a, b, c]) {
       let to = remap.get(id);
