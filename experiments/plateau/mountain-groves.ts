@@ -1,4 +1,4 @@
-import { Box3, Group, InstancedMesh, Matrix4, Mesh, MeshStandardMaterial, Object3D } from 'three';
+import { Box3, Group, InstancedMesh, Matrix4, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Rng } from '../../src/core/rng';
 import { plateauRadius } from './plateau-profile';
@@ -12,7 +12,7 @@ export interface GroveSite {
   rootAt: (x: number, z: number, outside: boolean) => { x: number; y: number; z: number } | undefined;
 }
 
-export async function buildMountainGroves(sites: GroveSite[]) {
+export async function buildMountainGroves(sites: GroveSite[], ledgeTrees: {root:Vector3;height:number}[] = []) {
   const tree = (
     await new GLTFLoader().loadAsync(new URL('../../models/conifer_c1.glb', document.baseURI).href)
   ).scene;
@@ -70,6 +70,16 @@ export async function buildMountainGroves(sites: GroveSite[]) {
       }
     }
     counts.push(poses.length - start);
+  }
+  for (const { root, height } of ledgeTrees) {
+    const scale=height/modelHeight;
+    transform.position.copy(root);
+    transform.position.y -= .23 + bounds.min.y*scale;
+    transform.rotation.set(0,root.x*.31,0);
+    transform.scale.setScalar(scale);
+    transform.updateMatrix();
+    poses.push(transform.matrix.clone());
+    trunks.push({x:root.x,y:root.y,z:root.z,height,radius:height*.04});
   }
   const group = new Group(),
     matrix = new Matrix4();

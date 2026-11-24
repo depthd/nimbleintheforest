@@ -1,8 +1,11 @@
+import { ledgeMountain } from './ledge-mountain';
+import { rangeVault } from './range-vault';
+import { rockHorn } from './landform-mesh';
 import { generateRockCore } from './range-core';
 import { winterSky } from './winter-sky';
 import { walkingSurface } from './range-walk';
 import { mineralPaint } from './mineral-paint';
-import { rangeSeed } from './range-seed';
+import { rangeSeed, stream } from './range-seed';
 import { connectBanks, metres } from './range-bridge';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -21,6 +24,11 @@ import { buildMountainSnow, mountainRim } from './mountain-snow';
 import { plateauRadius } from './plateau-profile';
 import { localPlan, mountainTiers, raisedFlank, reservedForUpper, supportedSite, worldPlan, type Tier } from './mountain-tiers';
 
+type View = {eye:number[];target:number[];fov?:number};
+type WalkStart = {point:THREE.Vector3;aim:THREE.Vector3};
+const requested=new URLSearchParams(location.search).get('form');
+const forms={range:'Исходный хребет',peak:'Плато с пиком',ledge:'Гора с боковой тропой',vault:'Гора-арка'};
+const form = requested && Object.hasOwn(forms,requested) ? requested as keyof typeof forms : 'range';
 const stacked=true;
 const status=document.querySelector<HTMLElement>('#status')!;
 const frame=()=>new Promise<void>(ok=>requestAnimationFrame(()=>ok()));
@@ -35,11 +43,6 @@ async function start(){
   }
   sun.shadow.normalBias=.6;const fill=new THREE.HemisphereLight('#d1def3','#95909c',2.5);scene.add(sun,sun.target,fill);groundUniforms.uNoise.value=noiseTexture();scene.add(winterSky(groundUniforms.uNoise.value));
   await frame();
-  const {source,upper,junction}=generateRockCore();
-  const surfaces=Object.fromEntries(Object.entries(junction.cut).map(([k,m])=>[k,subtract(m)]));
-  const rawPositions=new Float32Array(source.heights.length*3),rawIndices:number[]=[];for(let k=0;k<source.heights.length;k++)rawPositions.set([source.x0+k%(source.n+1)*source.cell,source.heights[k],source.z0+Math.floor(k/(source.n+1))*source.cell],k*3);
-  for(let z=0;z<source.n;z++)for(let x=0;x<source.n;x++){const a=z*(source.n+1)+x;rawIndices.push(a,a+source.n+1,a+1,a+1,a+source.n+1,a+source.n+2);}
-  const cave=interior({positions:rawPositions,indices:new Uint32Array(rawIndices)});
   const paint = mineralPaint(rangeSeed);
   function bedrockMaterial(){
     const mat=makeRockMaterial(), compile=mat.onBeforeCompile;
@@ -60,7 +63,7 @@ async function start(){
   // At the upper exit the snow layer tapers into the turning route.
   const snowTopMaterial=snowMaterial.clone();snowTopMaterial.polygonOffset=true;snowTopMaterial.polygonOffsetFactor=-1;snowTopMaterial.polygonOffsetUnits=-1;
   const groups={stone:new THREE.Group(),rocks:new THREE.Group(),snow:new THREE.Group(),trees:new THREE.Group(),cave:new THREE.Group()};Object.values(groups).forEach(g=>scene.add(g));
-  function mesh(data: MeshData & { normals?: Float32Array; colors?: number[] }, mat: THREE.Material, grid?: typeof source, tint = '#505a65') {
+  function mesh(data: MeshData & { normals?: Float32Array; colors?: number[] }, mat: THREE.Material, grid?: ReturnType<typeof generateRockCore>['source'], tint = '#505a65') {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(data.positions,3));
     g.setIndex(new THREE.BufferAttribute(data.indices,1));
@@ -144,12 +147,64 @@ async function start(){
     mat.customProgramCacheKey = () => 'mountain-jointed-rock';
     return mat;
   }
+  const cliffMaterial = cliffDressingMaterial();
+  function addLandform(data:MeshData, name:string, snowy=false) {
+    const obj = mesh(data,snowy ? snowTopMaterial : cliffMaterial, undefined, '#625d78');
+    obj.name=name;
+    if(!snowy){
+      const finish=new Float32Array(data.positions.length);
+      for(let i=0;i<finish.length;i+=3){finish[i]=.04;finish[i+1]=.14;finish[i+2]=1;}
+      obj.geometry.setAttribute('rockFinish',new THREE.BufferAttribute(finish,3));
+    }
+    (snowy ? groups.snow : groups.stone).add(obj);
+    if(snowy){
+      const bed=mesh(data,material);
+      bed.name=name+'-bed'; bed.position.y=-.42;
+      groups.stone.add(bed);
+    }
+    return obj;
+  }
+  if(form==='ledge'){
+    const mountain=ledgeMountain(stream('ledge massif'));
+    addLandform(mountain.rock,'ledge-walls');
+    groups.rocks.add(addLandform(mountain.outcrops,'ledge-outcrops'));
+    addLandform(mountain.snow,'ledge-tread',true);
+    addLandform(mountain.summit.rock,'peak');
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(18000,18000),snowMaterial);
+    ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+    scene.fog=new THREE.Fog('#d6dfe6',980,5400);
+    groups.trees.add(await buildMountainGroves([],mountain.trees));
+    const route=mountain.route;
+    const last=route.length-1, middle=Math.floor(last*.48);
+    function along(i:number){
+      return {point:route[i],aim:route[Math.min(i+2,last)]};
+    }
+    const mid=along(middle), end=route[last];
+    const trailEye=mid.point.clone().add(new THREE.Vector3(0,11,0));
+    const trailAim=route[middle+3].clone();
+    trailAim.y=Math.min(trailEye.y-2,trailAim.y+3);
+    const views:Record<string,View>={
+      range:{eye:[],target:[],fov:34},
+      trail:{eye:trailEye.toArray(),target:trailAim.toArray(),fov:66},
+      summit:{eye:end.clone().add(new THREE.Vector3(115,80,125)).toArray(),target:end.toArray(),fov:45},
+      top:{eye:[0,1000,.1],target:[0,0,0],fov:34}
+    };
+    const outline=[...route,mountain.summit.tip];
+    activate(views,outline,new THREE.Vector3(1,.30,.82),[], name=>along(name==='trail'?middle:name==='summit'?last-2:0),
+      forms.ledge,{landform:mountain});
+    return;
+  }
+  const {source,upper,junction}=generateRockCore();
+  const surfaces=Object.fromEntries(Object.entries(junction.cut).map(([k,m])=>[k,subtract(m)]));
+  const rawPositions=new Float32Array(source.heights.length*3),rawIndices:number[]=[];for(let k=0;k<source.heights.length;k++)rawPositions.set([source.x0+k%(source.n+1)*source.cell,source.heights[k],source.z0+Math.floor(k/(source.n+1))*source.cell],k*3);
+  for(let z=0;z<source.n;z++)for(let x=0;x<source.n;x++){const a=z*(source.n+1)+x;rawIndices.push(a,a+source.n+1,a+1,a+1,a+source.n+1,a+source.n+2);}
+  const cave=interior({positions:rawPositions,indices:new Uint32Array(rawIndices)});
   status.textContent = 'Снежный край и плато…';
   await frame();
   const rim = mountainRim(junction);
   const snow = buildMountainSnow(upper, junction, [surfaces.plateau, surfaces.strip], mountainSnowProfile);
   const roof = (x: number, z: number) => snow.field(x, z).y;
-  const tiers = mountainTiers(stacked, roof, a=>ringPoint(rim,a));
+  const tiers = mountainTiers(stacked, roof, a=>ringPoint(rim,a),form);
   const baseStone = new THREE.Group(),
     upperStone = new THREE.Group(),
     snowCover = new THREE.Group();
@@ -173,7 +228,6 @@ async function start(){
     baseStone.add(ground);
     scene.fog = new THREE.Fog('#d6dfe6', 980, 5400);
   }
-  const cliffMaterial = cliffDressingMaterial();
   for (const [name, data] of Object.entries(surfaces)) {
     const grid =
       name === 'plateau' || name === 'strip'
@@ -227,12 +281,29 @@ async function start(){
   const wall = radialSurface([surfaces.underside]);
   const dressings: ReturnType<typeof buildMountainMasses>[] = [],
     sites: GroveSite[] = [];
+  if(form==='vault'){
+    for(const tier of tiers){tier.y*=1.30;tier.rise*=1.30;}
+  }
+  const vault=form==='vault'?rangeVault(tiers,roof,stream('rock vault')):undefined;
+  if(vault)tiers.push(vault.crest);
+  const summitTier=tiers.find(t=>t.name==='summit')!;
+  const peakSite={x:65,z:52}, peakWidth=stream('peak width').float(72,91);
+  const summitCenter=worldPlan(summitTier,peakSite.x,peakSite.z);
+  const summitFoot=new THREE.Vector3(summitCenter.x,summitTier.y+summitTier.rise*roof(peakSite.x,peakSite.z)-3,summitCenter.z);
+  const peak=form==='peak'?rockHorn(summitFoot,peakWidth*summitTier.width,stream('peak rise').float(59,89),stream('plateau horn')):undefined;
+  if(peak) addLandform(peak.rock,'peak');
   for (const [i, tier] of tiers.entries()) {
     status.textContent = 'Скалы и снежные полки · ' + (i + 1) + ' / ' + tiers.length;
     await frame();
     const parent = tiers.find(t=>t.name===tier.parent),
       child = tiers.find(t=>t.parent===tier.name);
-    const reserved = (x: number, z: number, r: number) => reservedForUpper(tier, child, x, z, r);
+    const reserved = (x: number, z: number, r: number) => {
+      if(reservedForUpper(tier,child,x,z,r))return true;
+      if(peak && tier===summitTier && Math.hypot(x-peakSite.x,z-peakSite.z)<peakWidth+r)return true;
+      if(!vault || parent)return false;
+      const w=worldPlan(tier,x,z);
+      return vault.route.some(p=>Math.hypot(w.x-p.x,w.z-p.z)<r*tier.width+23);
+    };
     const dressing = buildMountainMasses(
       (a) => ringPoint(rim, a),
       wall,
@@ -269,11 +340,13 @@ async function start(){
       },
     });
   }
-  const groves = await buildMountainGroves(sites);
+  if(vault){addLandform(vault.rock,'vault');addLandform(vault.snow,'vault-roof',true);}
+  const groves = await buildMountainGroves(sites,vault?.trees.filter(tree=>{
+    const p=localPlan(vault.crest,tree.root.x,tree.root.z); return plateauRadius(p.x,p.z)>1.2;
+  }));
   groups.trees.add(groves);
   groups.trees.userData.count = groves.userData.count;
   const dressing = dressings[0];
-  let activeView='overview';
   const views:Record<string,{eye:number[];target:number[];fov?:number}>={
     wall:{eye:[-510,160,-314],target:[-146,66,-68],fov:27},
     front:{eye:[-970,191,-395],target:[-6,48,2],fov:17},
@@ -308,15 +381,68 @@ async function start(){
     }
   }
   const base = tiers[0], spur = tiers.find(t=>t.name==='spur')!;
-  const center = {x:(base.x+spur.x)*.42,z:(base.z+spur.z)*.46};
-  views.range = {eye:[center.x-1460,685,center.z-Math.sign(spur.z)*780],target:[center.x,81,center.z],fov:34};
+  views.range = {eye:[],target:[],fov:34};
   const outlinePoints=tiers.flatMap(t=>Array.from({length:100},(_,i)=>{
     const p=ringPoint(rim,i*Math.PI/50),w=worldPlan(t,p.x*1.13,p.z*1.13);
     return [new THREE.Vector3(w.x,t.y,w.z),new THREE.Vector3(w.x,t.y+t.rise*(p.y+13),w.z)];
   }).flat());
+  const arch=dressing.arch!;
+  function trailSpot(x:number,lift:number) {
+    const p=ascentSample(x), w=worldPlan(base,x,p.z);
+    return [w.x,base.y+p.y*base.rise+lift,w.z];
+  }
+  views.arch = {eye:trailSpot(arch.x-84,13),target:trailSpot(arch.x+4,40),fov:60};
+  status.textContent='Поиск опор для моста…'; await frame();
+  const trunks = groves.userData.trunks.map((t: {x:number;y:number;z:number;radius:number;height:number})=>({
+    x:t.x*metres,y:t.y*metres,z:t.z*metres,radius:t.radius*metres,height:t.height*metres
+  }));
+  const bridge = form==='range' ? connectBanks(base,spur,a=>ringPoint(rim,a),[groups.rocks,groups.stone,groups.snow],trunks,rangeSeed) : null;
+  if (bridge) {
+    scene.add(bridge.group);
+    const mid = bridge.point(bridge.span/2);
+    const loc = [mid.x/metres,mid.y/metres,mid.z/metres];
+    views.bridge = {eye:[loc[0]-170,loc[1]+80,loc[2]+Math.sign(spur.z)*68],target:loc,fov:48};
+  } else document.querySelector<HTMLElement>('[data-view="bridge"]')!.hidden=true;
+  if(peak) outlinePoints.push(peak.tip);
+  if(vault){
+    outlinePoints.push(...vault.route);
+    views.vault={eye:vault.mid.clone().add(new THREE.Vector3(-650,90,70)).toArray(),
+      target:vault.mid.clone().setY(vault.mid.y*.69).toArray(),fov:48};
+    views.passage={eye:vault.passage[0].clone().add(new THREE.Vector3(0,14,0)).toArray(),
+      target:vault.mid.clone().setY(95).toArray(),fov:62};
+    views.roof={eye:vault.route[11].clone().add(new THREE.Vector3(0,12,0)).toArray(),
+      target:vault.route[16].clone().add(new THREE.Vector3(0,11,0)).toArray(),fov:66};
+  }
+  const axis=new THREE.Vector3(-1460,604,spur?-Math.sign(spur.z)*780:-520);
+  if(vault) {
+    axis.copy(vault.passage[0]).sub(vault.passage[1]).normalize();
+    axis.z=.12;axis.y=.24;
+  }
+  const extras:THREE.Mesh[]=[];
+  if(bridge){
+    const deck=mesh(bridge.collider,snowMaterial);deck.scale.setScalar(1/metres);extras.push(deck);
+    for(const obj of bridge.group.children) if(obj instanceof THREE.Mesh && obj.name==='bank-sill') extras.push(obj);
+  }
+  function spawn(name:string):WalkStart{
+    if(vault && name==='roof')return {point:vault.route[11],aim:vault.route[15]};
+    if(vault && (name==='range'||name==='passage'||name==='vault'))return {point:vault.passage[0],aim:vault.passage[1]};
+    if(name==='bridge' && bridge){
+      const v=bridge.point(-2.2);
+      return {point:new THREE.Vector3(v.x,v.y,v.z).divideScalar(metres),
+        aim:new THREE.Vector3(bridge.to.x,bridge.to.y,bridge.to.z).divideScalar(metres)};
+    }
+    const start=ascentSample(-317),w=worldPlan(base,-317,start.z);
+    return {point:new THREE.Vector3(w.x,0,w.z),aim:new THREE.Vector3().fromArray(trailSpot(arch.x,0))};
+  }
+  activate(views,outlinePoints,axis,extras,spawn,(form==='range'?'два массива':forms[form])+(bridge?' · мост '+Math.round(bridge.span)+' м':''),
+    {bridge,ascentSample,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,vault,peak});
+
+  function activate(views:Record<string,View>,outlinePoints:THREE.Vector3[],axis:THREE.Vector3,extras:THREE.Mesh[],
+    spawn:(name:string)=>WalkStart,label:string,diagnostics:Record<string,unknown>){
+  let activeView='range';
   function frameRange(){
-    const view=views.range, aim=new THREE.Vector3(center.x,81,center.z);
-    const axis=new THREE.Vector3(-1460,604,-Math.sign(spur.z)*780).normalize();
+    const view=views.range, aim=new THREE.Box3().setFromPoints(outlinePoints).getCenter(new THREE.Vector3());
+    axis.normalize();
     const right=new THREE.Vector3().crossVectors(camera.up,axis).normalize(),up=new THREE.Vector3().crossVectors(axis,right);
     for(const v of [right,up]){
       const values=outlinePoints.map(p=>p.clone().sub(aim).dot(v));
@@ -329,33 +455,23 @@ async function start(){
     }));
     view.eye=aim.clone().addScaledVector(axis,distance).toArray();view.target=aim.toArray();
   }
+
   frameRange();
-  const arch=dressing.arch!;
-  function trailSpot(x:number,lift:number) {
-    const p=ascentSample(x), w=worldPlan(base,x,p.z);
-    return [w.x,base.y+p.y*base.rise+lift,w.z];
-  }
-  views.arch = {eye:trailSpot(arch.x-84,13),target:trailSpot(arch.x+4,40),fov:60};
-  status.textContent='Поиск опор для моста…'; await frame();
-  const trunks = groves.userData.trunks.map((t: {x:number;y:number;z:number;radius:number;height:number})=>({
-    x:t.x*metres,y:t.y*metres,z:t.z*metres,radius:t.radius*metres,height:t.height*metres
-  }));
-  const bridge = connectBanks(base,spur,a=>ringPoint(rim,a),[groups.rocks,groups.stone,groups.snow],trunks,rangeSeed);
-  if (bridge) {
-    scene.add(bridge.group);
-    const mid = bridge.point(bridge.span/2);
-    const loc = [mid.x/metres,mid.y/metres,mid.z/metres];
-    views.bridge = {eye:[loc[0]-170,loc[1]+80,loc[2]+Math.sign(spur.z)*68],target:loc,fov:48};
-  } else document.querySelector<HTMLElement>('[data-view="bridge"]')!.hidden=true;
   const seedInput = document.querySelector<HTMLInputElement>('#seed')!;
-  seedInput.value = String(rangeSeed);
-  function loadSeed(value: string) {
-    const url = new URL(location.href);
-    url.searchParams.set('seed',value);
+  const select = document.querySelector<HTMLSelectElement>('#form')!;
+  select.value=form;
+  seedInput.value=String(rangeSeed);
+  function load(value:string){
+    const url=new URL(location.href);
+    url.searchParams.set('seed',value);url.searchParams.set('form',select.value);
     location.assign(url.href);
   }
-  document.querySelector<HTMLFormElement>('form')!.onsubmit=e=>{e.preventDefault();loadSeed(seedInput.value);};
-  document.querySelector<HTMLButtonElement>('#random')!.onclick=()=>loadSeed(String(crypto.getRandomValues(new Uint32Array(1))[0]));
+  select.onchange=()=>load(seedInput.validity.valid ? seedInput.value : String(rangeSeed));
+  document.querySelector<HTMLFormElement>('form')!.onsubmit=e=>{e.preventDefault();load(seedInput.value);};
+  document.querySelector<HTMLButtonElement>('#random')!.onclick=()=>load(String(crypto.getRandomValues(new Uint32Array(1))[0]));
+  for(const button of document.querySelectorAll<HTMLButtonElement>('[data-view]')){
+    if(!views[button.dataset.view!])button.hidden=true;
+  }
   const walkingButton=document.querySelector<HTMLButtonElement>('#walk')!;
   let walking=false, contact:ReturnType<typeof walkingSurface>|undefined, pitch=0, yaw=0, dragging=false;
   const foot=new THREE.Vector3(), forward=new THREE.Vector3();
@@ -372,23 +488,10 @@ async function start(){
   }
   function startWalk(){
     if(walking){endWalk();return;}
-    if(!contact){
-      const extras:THREE.Mesh[]=[];
-      if(bridge){
-        const deck=mesh(bridge.collider,snowMaterial);deck.scale.setScalar(1/metres);extras.push(deck);
-        for(const obj of bridge.group.children) if(obj instanceof THREE.Mesh && obj.name==='bank-sill') extras.push(obj);
-      }
-      contact=walkingSurface([groups.stone,groups.rocks,groups.cave,groups.snow],extras);
-    }
-    const base=tiers[0],start=ascentSample(-317),w=worldPlan(base,-317,start.z);
-    foot.set(w.x,0,w.z);foot.y=contact.floor(foot.x,foot.z,0)??0;
-    let aim=trailSpot(arch.x,0);
-    if(activeView==='bridge' && bridge){
-      const landing=bridge.point(-2.2), far=bridge.to;
-      const floor=contact.floor(landing.x/metres,landing.z/metres,landing.y/metres);
-      if(floor!==undefined){foot.set(landing.x/metres,floor,landing.z/metres);aim=[far.x/metres,far.y/metres,far.z/metres];}
-    }
-    yaw=Math.atan2(foot.x-aim[0],foot.z-aim[2]);pitch=.09;
+    contact??=walkingSurface([groups.stone,groups.rocks,groups.cave,groups.snow],extras);
+    const {point,aim}=spawn(activeView);
+    foot.copy(point); foot.y=contact.floor(foot.x,foot.z,foot.y)??foot.y;
+    yaw=Math.atan2(foot.x-aim.x,foot.z-aim.z);pitch=.09;
     camera.fov=68;camera.updateProjectionMatrix();controls.enabled=false;walking=true;
     document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed','false'));
     walkingButton.setAttribute('aria-pressed','true');walkingButton.textContent='Выйти из прогулки';
@@ -418,7 +521,10 @@ async function start(){
     lookFromFoot();draw();
   }else if(keys.size){const forward=new THREE.Vector3();camera.getWorldDirection(forward);const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize(),move=new THREE.Vector3();if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;move.multiplyScalar(dt*(keys.has('ShiftLeft')?100:25));camera.position.add(move);controls.target.add(move);controls.update();draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
   window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();frameRange();if(activeView==='range'&&!walking)view('range');else draw();});
-  renderer.shadowMap.needsUpdate=true;view('range');status.textContent='Сид '+rangeSeed+' · два массива'+(bridge?' · мост '+Math.round(bridge.span)+' м':'');
-  (window as any).__mountain={ready:true,rangeSeed,bridge,ascentSample,startWalk,endWalk,foot,walkSurface:()=>contact,renderer,scene,camera,controls,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:snow.stats})};
+  renderer.shadowMap.needsUpdate=true;view('range');status.textContent='Сид '+rangeSeed+' · '+label;
+  (window as any).__mountain={...diagnostics,ready:true,rangeSeed,form,startWalk,endWalk,foot,walkSurface:()=>contact,
+    renderer,scene,camera,controls,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,
+    fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:(diagnostics.snow as typeof snow|undefined)?.stats})};
+  }
 }
 start().catch(e=>{status.textContent='Ошибка: '+e.message;console.error(e);});

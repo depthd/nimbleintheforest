@@ -30,7 +30,7 @@ export function localPlan(tier: Tier, x: number, z: number) {
 }
 
 export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => number,
-  rimAt: (angle: number) => {x: number; z: number}) {
+  rimAt: (angle: number) => {x: number; z: number}, form = 'range') {
   const rng = stream('tier layout');
   const nextSeed = () => rng.int(0, 0x7fffffff);
   const base: Tier = {
@@ -65,6 +65,7 @@ export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => 
     { name: 'middle', x: rng.float(108,124), z: rng.float(34,45), yaw: rng.float(.16,.47), width: rng.float(.425,.46), rise: rng.float(.81,.94), seed: nextSeed() },
     { name: 'summit', x: rng.float(88,105), z: rng.float(33,47), yaw: rng.float(-2.8,-2.28), width: rng.float(.40,.46), rise: rng.float(.52,.66), seed: nextSeed() },
   ]) addUpper(tiers[tiers.length-1],spec);
+  if (form === 'peak') return tiers;
   const spur: Tier = { name: 'spur', x: 0, y: 0, z: 0, width: rng.float(.95, 1.34),
     rise: rng.float(.93, 1.09), yaw: rng.float(-1.55, 1.55), seed: nextSeed() };
   const facingLip = (tier: Tier, direction: number) => {
@@ -79,6 +80,19 @@ export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => 
   const near = facingLip(base, side), far = facingLip(spur, -side);
   spur.x = near.x - far.x + rng.float(-48, 48);
   spur.z = near.z - far.z + side*rng.float(64, 101);
+  if (form === 'vault') {
+    const size = rng.float(1.50, 1.80);
+    const ratio = size / spur.width;
+    spur.x = near.x - far.x*ratio + rng.float(-38,38);
+    spur.z = near.z - far.z*ratio + side*rng.float(238,295);
+    spur.width = size;
+    tiers.push(spur);
+    addUpper(spur,{name:'spur-middle',x:rng.float(75,120),z:rng.float(35,46),yaw:rng.float(-.7,.3),
+      width:rng.float(.46,.54),rise:rng.float(.78,.94),seed:nextSeed()});
+    addUpper(tiers[tiers.length-1],{name:'spur-crest',x:rng.float(88,112),z:rng.float(33,44),yaw:rng.float(-2.8,-1.9),
+      width:rng.float(.38,.48),rise:rng.float(.48,.66),seed:nextSeed()});
+    return tiers;
+  }
   tiers.push(spur);
   if (stream('foothills').chance(.31))
     addUpper(spur,{name:'spur-crest',x:rng.float(104,120),z:rng.float(31,43),yaw:rng.float(-.6,.4),
