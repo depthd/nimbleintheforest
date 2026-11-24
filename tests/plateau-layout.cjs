@@ -5,7 +5,8 @@ const {buildSync}=require('esbuild');
 
 const source=buildSync({stdin:{contents:`
   export { mountainTiers, localPlan, worldPlan } from './mountain-tiers';
-  export { rangeLayout } from './range-layout';
+  export { rangeLayout, shapeRange } from './range-layout';
+  export { ascent, ascentSample } from './ascent';
   export { rangeGround } from './range-ground';
   export { readRangeSettings } from './range-settings';
   export { contourPoint } from './plateau-profile';
@@ -43,6 +44,36 @@ for(const seed of [0,42,817]){
       }
     }
   }
+  // The route must change between neighbours even when the mountain shares
+  // the same source meshes. World placement and its inverse follow the banks.
+  const shaped=layout('count=3&layers=3&shape=mixed');
+  const duplicate=layout('count=3&layers=3&shape=mixed');
+  for(const tiers of [shaped,duplicate])m.exports.shapeRange(tiers,roof,rim);
+  const {start,end,rise}=m.exports.ascent, signatures=new Set();
+  for(const [i,tier] of shaped.entries()){
+    const pass=tier.passage;
+    const samples=Array.from({length:end-start+1},(_,j)=>pass.route(start+j));
+    assert.equal(samples[0].y,0);
+    assert.equal(samples.at(-1).y,rise);
+    assert.ok(samples.every(p=>p.y>=0 && p.y<=rise+1e-6),'the dip stays above the approach');
+    assert.deepEqual(samples, samples.map(s=>duplicate[i].passage.route(s.x)));
+    const widths=samples.map(p=>p.w),grades=samples.slice(1).map((p,j)=>p.y-samples[j].y);
+    assert.ok(Math.max(...widths)>1.4*Math.min(...widths),'a tight section and an opening');
+    assert.ok(grades.some(v=>v<-.07) && grades.some(v=>v>.3),'downhill and uphill terrain');
+    assert.ok(grades.filter(v=>Math.abs(v)<.001).length>=8,'walkable landing within the climb');
+    const headings=samples.slice(6).map((p,j)=>Math.atan2(p.z-samples[j].z,6));
+    assert.ok(Math.max(...headings)-Math.min(...headings)>1,'substantial change of direction');
+    signatures.add(JSON.stringify(samples.filter((_,j)=>j%25===0).map(p=>Math.round(p.z))));
+    for(let x=-326;x<320;x+=19){
+      let prev=-Infinity;
+      for(let z=-345;z<=345;z+=11){
+        const mapped=pass.lateral(x,z),world=worldPlan(tier,x,z),back=localPlan(tier,world.x,world.z);
+        assert.ok(mapped>prev && Math.hypot(back.x-x,back.z-z)<1e-7);
+        prev=mapped;
+      }
+    }
+  }
+  assert.equal(signatures.size,shaped.length);
   const trio=layout('count=3&layers=auto'),quad=layout('count=4&layers=auto');
   assert.deepEqual(trio,quad.slice(0,trio.length));
   assert.ok(layout('height=high')[0].rise>original[0].rise);

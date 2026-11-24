@@ -2,6 +2,7 @@ import { stream } from './range-seed';
 import { distanceToAscent } from './mountain-snow';
 import { contourPoint, plateauRadius } from './plateau-profile';
 import type { MeshData } from './cavity';
+import type { PassageShape } from './passage-shape';
 
 export interface Tier {
   name: string;
@@ -14,12 +15,13 @@ export interface Tier {
   depth?: number;
   rise: number;
   seed: number;
+  passage?: PassageShape;
 }
 
 export function worldPlan(tier: Tier, x: number, z: number) {
   const c = Math.cos(tier.yaw),
     s = Math.sin(tier.yaw);
-  const dx=x*tier.width, dz=z*(tier.depth??tier.width);
+  const dx=x*tier.width, dz=(tier.passage?.lateral(x,z)??z)*(tier.depth??tier.width);
   return { x: tier.x + dx*c + dz*s, z: tier.z + dz*c - dx*s };
 }
 
@@ -28,7 +30,8 @@ export function localPlan(tier: Tier, x: number, z: number) {
     dz = z - tier.z,
     c = Math.cos(tier.yaw),
     s = Math.sin(tier.yaw);
-  return { x: (dx * c - dz * s) / tier.width, z: (dz * c + dx * s) / (tier.depth??tier.width) };
+  const localX=(dx*c-dz*s)/tier.width, localZ=(dz*c+dx*s)/(tier.depth??tier.width);
+  return {x:localX,z:tier.passage?.lateral(localX,localZ,true)??localZ};
 }
 
 export function seatOnParent(tier:Tier, parent:Tier, roof:(x:number,z:number)=>number) {
@@ -36,7 +39,8 @@ export function seatOnParent(tier:Tier, parent:Tier, roof:(x:number,z:number)=>n
   for(let i=0;i<72;i++) for(let j=0;j<=12;j++){
     const p=contourPoint(2*Math.PI*i/72,1.17*j/12);
     const w=worldPlan(tier,p.x,p.z), q=localPlan(parent,w.x,w.z);
-    lowest=Math.min(lowest,roof(q.x,q.z));
+    const y=roof(q.x,q.z);
+    lowest=Math.min(lowest,parent.passage?.elevation(q.x,y,q.z)??y);
   }
   tier.y=parent.y+parent.rise*lowest-4;
 }

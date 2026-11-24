@@ -8,7 +8,8 @@ import { walkingSurface } from './range-walk';
 import { mineralPaint } from './mineral-paint';
 import { rangeSeed, stream } from './range-seed';
 import { originalRange, readRangeSettings, type RangeSettings } from './range-settings';
-import { rangeLayout } from './range-layout';
+import { rangeLayout, shapeRange } from './range-layout';
+import { refinePassageFaces, shapePassageMesh } from './passage-mesh';
 import { rangeGround } from './range-ground';
 import { connectBanks, metres } from './range-bridge';
 import * as THREE from 'three';
@@ -251,6 +252,7 @@ async function start(){
   const rimAt=(a:number)=>ringPoint(rim,a);
   const original=mountainTiers(stacked,roof,rimAt,form);
   const tiers=form==='range'?rangeLayout(original,settings,roof,rimAt):original;
+  if(form==='range')shapeRange(tiers,roof,rimAt);
   if(settings.relief!=='flat'){
     ground=rangeGround(tiers,settings.relief);
     const groundSnow=snowMaterial.clone();
@@ -304,13 +306,14 @@ async function start(){
       for (let k = 2; k < finish.length; k += 3) finish[k] = 1;
       m.geometry.setAttribute('rockFinish', new THREE.BufferAttribute(finish, 3));
     }
+    if(form==='range' && name==='interior')m.geometry=refinePassageFaces(m.geometry);
     m.name = name;
     baseStone.add(m);
     if (stacked) {
       // Upper tiers use the solid flank before the cave cut.
       const upperMesh =
         name === 'flank' || name === 'restored'
-          ? mesh(raisedFlank(junction.cut[name],ground ? .0001 : 2), smooth, source)
+          ? mesh(raisedFlank(junction.cut[name],form==='range' || ground ? .0001 : 2), smooth, source)
           : m.clone();
       upperMesh.name = name;
       upperStone.add(upperMesh);
@@ -327,6 +330,12 @@ async function start(){
     snowCover.add(m);
   }
   function place(part: THREE.Object3D, tier: Tier, category: THREE.Group) {
+    if(tier.passage){
+      const passage=tier.passage;
+      part.traverse(o=>{
+        if(o instanceof THREE.Mesh && o.name!=='horizon')o.geometry=shapePassageMesh(o.geometry,passage);
+      });
+    }
     part.name = tier.name;
     part.position.set(tier.x, tier.y, tier.z);
     part.rotation.y = tier.yaw;
@@ -378,6 +387,7 @@ async function start(){
     const outcrops = mesh(dressing.rocks, cliffMaterial);
     outcrops.geometry.setAttribute('rockFinish', new THREE.BufferAttribute(dressing.rocks.finish, 3));
     rocks.add(outcrops, mesh(dressing.snow, snowTopMaterial));
+    if(tier.passage)for(const o of rocks.children)if(o instanceof THREE.Mesh)o.geometry=refinePassageFaces(o.geometry);
     place(rocks, tier, groups.rocks);
     place(i === 0 ? baseStone : upperStone.clone(), tier, groups.stone);
     place(snowCover.clone(), tier, groups.snow);
@@ -392,7 +402,8 @@ async function start(){
           const w=worldPlan(tier,x,z), q=localPlan(other,w.x,w.z); return plateauRadius(q.x,q.z)<1.43;
         })) return;
         const p = worldPlan(tier, x, z);
-        return { ...p, y: outside?(ground?.floor(p.x,p.z)??0):tier.y+tier.rise*roof(x,z) };
+        const y=roof(x,z);
+        return { ...p, y: outside?(ground?.floor(p.x,p.z)??0):tier.y+tier.rise*(tier.passage?.elevation(x,y,z)??y) };
       },
     });
   }
@@ -469,11 +480,25 @@ async function start(){
     }
   }
   const arch=dressing.arch!;
-  function trailSpot(x:number,lift:number) {
-    const p=ascentSample(x), w=worldPlan(base,x,p.z);
-    return [w.x,base.y+p.y*base.rise+lift,w.z];
+  function trailSpot(x:number,lift:number,tier=base) {
+    const p=ascentSample(x), w=worldPlan(tier,x,p.z);
+    return [w.x,tier.y+(tier.passage?.elevation(x,p.y,p.z)??p.y)*tier.rise+lift,w.z];
   }
   views.arch = {eye:trailSpot(arch.x-84,13),target:trailSpot(arch.x+4,40),fov:60};
+  const trailStation=base.passage?.benchX??-229;
+  const passageBounds:THREE.Vector3[]=[];
+  if(base.passage){
+    views.trail={eye:trailSpot(trailStation,10),target:trailSpot(trailStation+22,9),fov:70};
+    views.ascent={eye:[],target:[],fov:43};
+    for(let x=-315;x<=35;x+=5){
+      const s=ascentSample(x);
+      for(const side of [-1,1]){
+        const w=worldPlan(base,x,s.z+side*(s.w+12));
+        passageBounds.push(new THREE.Vector3(w.x,base.y+base.rise*base.passage.route(x).y,w.z),
+          new THREE.Vector3(w.x,base.y+base.rise*105,w.z));
+      }
+    }
+  }
   status.textContent='Поиск опор для моста…'; await frame();
   const trunks = groves.userData.trunks.map((t: {x:number;y:number;z:number;radius:number;height:number})=>({
     x:t.x*metres,y:t.y*metres,z:t.z*metres,radius:t.radius*metres,height:t.height*metres
@@ -506,6 +531,7 @@ async function start(){
     for(const obj of bridge.group.children) if(obj instanceof THREE.Mesh && obj.name==='bank-sill') extras.push(obj);
   }
   function spawn(name:string):WalkStart{
+    if(form==='range' && name==='trail')return {point:new THREE.Vector3().fromArray(trailSpot(trailStation,0)),aim:new THREE.Vector3().fromArray(trailSpot(trailStation+15,0))};
     if(vault && name==='roof')return {point:vault.route[17],aim:vault.route[22]};
     if(vault && (name==='range'||name==='passage'||name==='vault'))return {point:vault.passage[0],aim:vault.passage[1]};
     if(name==='bridge' && bridge){
@@ -516,29 +542,30 @@ async function start(){
     const root=roots.find((_,i)=>name==='massif'+(i+1))??base;
     const start=ascentSample(-317),w=worldPlan(root,-317,start.z);
     const next=ascentSample(-240),aim=worldPlan(root,-240,next.z);
-    return {point:new THREE.Vector3(w.x,ground?.floor(w.x,w.z)??0,w.z),aim:new THREE.Vector3(aim.x,root.y+next.y*root.rise,aim.z)};
+    return {point:new THREE.Vector3(w.x,ground?.floor(w.x,w.z)??0,w.z),aim:new THREE.Vector3(aim.x,root.y+(root.passage?.route(-240).y??next.y)*root.rise,aim.z)};
   }
   const countLabel=['','1 массив','2 массива','3 массива','4 массива'][Number(settings.count)];
   activate(views,outlinePoints,axis,extras,spawn,(form==='range'?countLabel:forms[form])+(bridge?' · мост '+Math.round(bridge.span)+' м':''),
-    {bridge,ascentSample,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,vault,peak,settings,groundAt:ground?.floor});
+    {bridge,ascentSample,source,upper,junction,surfaces,cave,dressing,dressings,tiers,snow,vault,peak,settings,groundAt:ground?.floor},passageBounds);
 
   function activate(views:Record<string,View>,outlinePoints:THREE.Vector3[],axis:THREE.Vector3,extras:THREE.Mesh[],
-    spawn:(name:string)=>WalkStart,label:string,diagnostics:Record<string,unknown>){
+    spawn:(name:string)=>WalkStart,label:string,diagnostics:Record<string,unknown>,passageBounds:THREE.Vector3[]=[]){
   let activeView='range';
   function frameRange(){
+    if(passageBounds.length)fit(views.ascent,new THREE.Vector3(0,1,.17),passageBounds);
     fit(views.range,axis);
     if(adjusted)fit(views.top,new THREE.Vector3(0,1,.001));
   }
-  function fit(view:View,direction:THREE.Vector3){
-    const aim=new THREE.Box3().setFromPoints(outlinePoints).getCenter(new THREE.Vector3());
+  function fit(view:View,direction:THREE.Vector3,points=outlinePoints){
+    const aim=new THREE.Box3().setFromPoints(points).getCenter(new THREE.Vector3());
     direction.normalize();
     const right=new THREE.Vector3().crossVectors(camera.up,direction).normalize(),up=new THREE.Vector3().crossVectors(direction,right);
     for(const v of [right,up]){
-      const values=outlinePoints.map(p=>p.clone().sub(aim).dot(v));
+      const values=points.map(p=>p.clone().sub(aim).dot(v));
       aim.addScaledVector(v,(Math.min(...values)+Math.max(...values))*.5);
     }
     const tan=Math.tan(THREE.MathUtils.degToRad(view.fov!)/2);
-    const distance=Math.max(...outlinePoints.map(p=>{
+    const distance=Math.max(...points.map(p=>{
       const q=p.clone().sub(aim);
       return q.dot(direction)+1.08*Math.max(Math.abs(q.dot(right))/(tan*camera.aspect),Math.abs(q.dot(up))/tan);
     }));
@@ -604,7 +631,7 @@ async function start(){
     if((dx||dz)&&!contact!.move(foot,dx,dz)){if(!contact!.move(foot,dx,0))contact!.move(foot,0,dz);}
     lookFromFoot();draw();
   }else if(keys.size){const forward=new THREE.Vector3();camera.getWorldDirection(forward);const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize(),move=new THREE.Vector3();if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;move.multiplyScalar(dt*(keys.has('ShiftLeft')?100:25));camera.position.add(move);controls.target.add(move);controls.update();draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
-  window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();frameRange();if(!walking && (activeView==='range'||(adjusted && activeView==='top')))view(activeView);else draw();});
+  window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();frameRange();if(!walking && (activeView==='range'||(activeView==='ascent' && passageBounds.length)||(adjusted && activeView==='top')))view(activeView);else draw();});
   const initialView=new URLSearchParams(location.search).get('view');
   renderer.shadowMap.needsUpdate=true;
   view(initialView && Object.hasOwn(views,initialView)?initialView:'range');
