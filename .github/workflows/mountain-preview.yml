@@ -3,9 +3,16 @@ on:
   workflow_dispatch:
     inputs:
       sha:
-        description: Full tested game SHA on the default branch
+        description: Full tested SHA for the selected preview
         required: true
         type: string
+      target:
+        description: Preview to publish
+        type: choice
+        default: mountains
+        options:
+          - mountains
+          - range
       previous_pages_run:
         description: Actions run ID of the currently deployed GitHub Pages artifact
         required: true
@@ -27,7 +34,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Extract the tested standalone range
+        if: inputs.target == 'range'
+        env:
+          SOURCE_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/feature/seeded-plateau-range
+          mkdir -p dist
+          git show "$SOURCE_SHA:preview/index.html" > dist/index.html
+          test -s dist/index.html
       - name: Select the tested game
+        if: inputs.target != 'range'
         env:
           SOURCE_SHA: ${{ inputs.sha }}
         run: |
@@ -35,11 +54,14 @@ jobs:
           git merge-base --is-ancestor "$SOURCE_SHA" HEAD
           git checkout --detach "$SOURCE_SHA"
       - uses: actions/setup-node@v4
+        if: inputs.target != 'range'
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+        if: inputs.target != 'range'
       - run: npm run build
+        if: inputs.target != 'range'
       - name: Verify the active Pages deployment
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,10 +93,11 @@ jobs:
           run-id: ${{ inputs.previous_pages_run }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/previous-artifact
-      - name: Keep the live site and replace its mountain preview
+      - name: Update the selected preview in the live site
         env:
           PREVIOUS_RUN: ${{ inputs.previous_pages_run }}
           SOURCE_SHA: ${{ inputs.sha }}
+          TARGET: ${{ inputs.target || 'mountains' }}
           SITE_URL: https://depthd.github.io/nimbleintheforest
         run: |
           set -euo pipefail
@@ -93,8 +116,12 @@ jobs:
             verify_live mountains/version.json mountains/version.json
           fi
           node -e 'require("fs").writeFileSync("dist/version.json", JSON.stringify({sha:process.env.SOURCE_SHA,run:process.env.GITHUB_RUN_ID,previousPagesRun:process.env.PREVIOUS_RUN}))'
-          rm -rf -- "$site/mountains"
-          mv dist "$site/mountains"
+          case "$TARGET" in mountains|range) ;; *) exit 1 ;; esac
+          if [[ -e "$site/range" ]]; then
+            verify_live range/version.json range/version.json
+          fi
+          rm -rf -- "$site/$TARGET"
+          mv dist "$site/$TARGET"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ runner.temp }}/previous-site
@@ -111,7 +138,8 @@ jobs:
     steps:
       - id: publish
         uses: actions/deploy-pages@v4
-      - name: Link to the mountain preview
+      - name: Link to the published preview
         env:
           SITE_URL: ${{ steps.publish.outputs.page_url }}
-        run: echo "[Открыть горы](${SITE_URL%/}/mountains/)" >> "$GITHUB_STEP_SUMMARY"
+          TARGET: ${{ inputs.target || 'mountains' }}
+        run: echo "[Открыть тест](${SITE_URL%/}/$TARGET/)" >> "$GITHUB_STEP_SUMMARY"
