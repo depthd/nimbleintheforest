@@ -225,6 +225,7 @@ async function start(){
       (a) => ringPoint(rim, a),
       wall,
       (x, z) => sampleGrid(source, x, z).y,
+      (x, z) => sampleGrid(upper, x, z).y,
       tier.seed,
       {
         cave: i === 0,

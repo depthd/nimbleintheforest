@@ -57,6 +57,7 @@ export function buildMountainMasses(
   rimAt: (angle: number) => { x: number; y: number; z: number },
   wallAt: (angle: number, y: number) => Point2 | undefined,
   groundAt: (x: number, z: number) => number,
+  roofAt: (x: number, z: number) => number,
   seed = 13947,
   placement: {
     cave?: boolean;
@@ -441,17 +442,29 @@ export function buildMountainMasses(
         }
       }
       for (const c of [0, columns.length - 1]) {
-        const t = station(c === 0 ? start : end).tan,
-          l = Math.hypot(t.x, t.z);
-        const back = new Vector3(-t.z / l, 0, t.x / l).multiplyScalar(side ? 9 : 19);
-        const inside = levels.map((level) => vertex(stone, surface(columns[c], level).add(back), color));
-        for (let k = 0; k + 1 < levels.length; k++) {
-          const hi = rows[k][c],
-            lo = rows[k + 1][c],
-            i = inside[k],
-            j = inside[k + 1];
-          if (c === 0) stone.indices.push(hi, lo, j, hi, j, i);
-          else stone.indices.push(lo, hi, i, lo, i, j);
+        const u = columns[c];
+        const tangent = station(c === 0 ? start : end).tan;
+        const inward = new Vector3(-tangent.z, 0, tangent.x).normalize();
+        const depth = side ? 9 : 19;
+        const steps = Math.ceil(depth / 3);
+        const front = levels.map(level => surface(u, level));
+        let previous = rows.map(row => row[c]);
+        // Follow the supporting roof into the joint. A single horizontal return
+        // can emerge through the snow where the roof descends behind the rim.
+        for (let step = 1; step <= steps; step++) {
+          const inset = depth * step / steps;
+          const inside = front.map(point => {
+            const p = point.clone().addScaledVector(inward, inset);
+            p.y = Math.min(p.y, front[0].y - inset, roofAt(p.x, p.z) - 0.6);
+            return vertex(stone, p, color);
+          });
+          for (let k = 0; k + 1 < levels.length; k++) {
+            const hi = previous[k], lo = previous[k + 1];
+            const i = inside[k], j = inside[k + 1];
+            if (c === 0) stone.indices.push(hi, lo, j, hi, j, i);
+            else stone.indices.push(lo, hi, i, lo, i, j);
+          }
+          previous = inside;
         }
       }
     }
