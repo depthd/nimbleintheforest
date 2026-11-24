@@ -1,92 +1,159 @@
 import { Vector3 } from 'three';
 import { Rng, Simplex2, smoothstep } from '../../src/core/rng';
-import { Surface, rockHorn } from './landform-mesh';
+import { Surface } from './landform-mesh';
+
+const slices = 84;
+const turn = Math.PI * 2;
+const wrap = (j: number) => ((j % slices) + slices) % slices;
 
 export function ledgeMountain(rng: Rng) {
-  const rock = new Surface(), snow = new Surface(), noise = new Simplex2(rng.next);
-  const count = 52, tau = 2*Math.PI;
-  const start = rng.float(-.7, .65), turns = rng.float(1.28, 1.83);
-  const radius = rng.float(170, 202), height = rng.float(312, 388);
-  const stretch = rng.float(.82, 1.1), drift = rng.float(-42, 45);
-  const phase = rng.float(0,tau), phase2 = rng.float(0,tau);
-  const outcrops = new Surface();
-  function section(j:number) {
-    const a = start + tau*j/count, c = Math.cos(a), s = Math.sin(a);
-    const progress = Math.max(0,Math.min(1,j/(count*turns)));
-    // Spend more angular distance on the smaller upper circumference.
-    const u = progress + .023*Math.sin(tau*progress+phase)*Math.sin(Math.PI*progress);
-    const t = Math.expm1(-1.34*u)/Math.expm1(-1.34);
-    const shape = 1+.12*Math.sin(3*a+phase)+.085*Math.cos(5*a+phase2)+.09*noise.noise(2.4*c+t,2.4*s);
-    const beyond = Math.max(0,j/count-turns);
-    const r = radius * (1-.72*t-.16*Math.min(1,beyond)) * shape;
-    const width = (21 + 4*Math.sin(2*a+phase2) + 12*Math.pow(.5+.5*Math.cos(3*a+phase),4)) * (1-.80*Math.min(1,beyond));
-    const point = (rad:number, y:number) => new Vector3(drift*t+rad*c, y, 14*t+stretch*rad*s);
-    const y = t*height;
-    const inner = point(r-width*.48,y), outer = point(r+width*.53,y-.36);
-    const lip = point(r+width*.56,y-1.55);
-    const foot = inner.clone().lerp(outer,.49);
-    return {inner,outer,lip,foot,a,t};
+  const rock = new Surface(), snow = new Surface(), outcrops = new Surface();
+  const noise = new Simplex2(rng.next);
+  const aspect = rng.float(.78, 1.14), rotation = rng.float(0, turn);
+  const crownRadius = rng.float(51, 85), lean = rng.float(-.25, .31);
+  const levels = rng.int(3, 4), crownStrike = rng.float(0, turn);
+  const cr = Math.cos(rotation), sr = Math.sin(rotation);
+  const angles = Array.from({length:slices}, (_,i) => turn*i/slices);
+  function point(i:number,r:number,y:number) {
+    const a=angles[wrap(i)], x=r*(Math.cos(a)+lean), z=r*Math.sin(a)*aspect;
+    return new Vector3(x*cr-z*sr,y,x*sr+z*cr);
   }
-  function joinWall(i:number) {
-    const column = (j:number) => {
-      const lo = section(j-count).inner, {lip:hi,a} = section(j);
-      const relief = Math.min(1, Math.max(0,hi.y-lo.y)/55);
-      const toe=lo.clone();
-      toe.y += Math.min(16,(hi.y-lo.y)*.55);
-      toe.x-=Math.cos(a)*2*relief;toe.z-=Math.sin(a)*2*relief;
-      return [lo,toe,...[.30,.74].map((f,k)=>{
-        const n=noise.noise(2.2*Math.cos(a)+k,2.2*Math.sin(a)+lo.y*.002);
-        const p=toe.clone().lerp(hi,f+.16*n);
-        const rib=Math.pow(.5+.5*Math.cos(4*a+phase+.8*f),6);
-        const shift=relief*(6+18*n+9*Math.cos(7*a+phase+f)+19*rib);
-        p.x+=Math.cos(a)*shift; p.z+=Math.sin(a)*shift;
-        return p;
-      }),hi];
-    };
-    const a=column(i), b=column(i+1);
-    for(let k=0;k<a.length-1;k++) rock.quad(a[k],a[k+1],b[k+1],b[k]);
-    // Project irregular slabs from the actual cliff panels. Their toes sit
-    // above the headroom envelope and the crowns stop below the snowy lip.
-    const slab = (j:number, wall:Vector3[])=>{
-      const angle=section(j).a, span=wall[4].y-wall[0].y;
-      const field=noise.noise(2.7*Math.cos(angle)+wall[0].y*.006,2.7*Math.sin(angle)+phase);
-      const mass=smoothstep(-.32,.40,field)*smoothstep(48,100,span);
-      const outward=new Vector3(Math.cos(angle),0,Math.sin(angle));
-      const toe=wall[1].clone().lerp(wall[2],.21);
-      const brow=wall[3].clone().lerp(wall[4],.36+.23*field);
-      return {mass,points:[toe.clone().addScaledVector(outward,-3),
-        toe.clone().lerp(wall[2],.68).addScaledVector(outward,17*mass-3),
-        brow.clone().addScaledVector(outward,27*mass-3),
-        brow.clone().lerp(wall[4],.19).addScaledVector(outward,-4)]};
-    };
-    const left=slab(i,a), right=slab(i+1,b);
-    if(left.mass+right.mass>.01){
-      for(let k=0;k<3;k++)outcrops.quad(left.points[k],left.points[k+1],right.points[k+1],right.points[k]);
+
+  // Plan the landings first. A climb follows a sector of a terrace and crosses
+  // radially onto the next one at a saddle. The next climb can turn back.
+  let entry=rng.int(0,slices-1), direction=rng.chance(.5)?1:-1;
+  const shelves=Array.from({length:levels},(_,k)=>{
+    if(k && (k===1 || rng.chance(.57)))direction*=-1;
+    const start=entry, flat=rng.int(5,15), ramp=rng.int(23,35), exit=flat+ramp+2;
+    entry=wrap(start+direction*exit);
+    const pocket=rng.float(19,35), setback=rng.float(17,38);
+    const phase=rng.float(0,turn), pocketCenter=rng.float(.25,.82)*flat;
+    const wantedRise=rng.float(65,101);
+    const stations=angles.map((a,i)=>{
+      const u=wrap((i-start)*direction);
+      const before=u>slices-10?u-slices:u;
+      const band=smoothstep(-8,-2,before)*(1-smoothstep(exit+2,exit+9,before));
+      const hollow=Math.exp(-((before-pocketCenter)**2)/28);
+      const width=band*(17+2.2*Math.sin(2*a+phase)+pocket*hollow+8*Math.exp(-((u-exit)**2)/15));
+      const spur=4+setback*(.65+.35*Math.cos(2*a+phase))+
+        18*Math.max(0,noise.noise(2*Math.cos(a)+k,2*Math.sin(a)));
+      return {u,width,spur,inner:0,outer:0,y:0,cover:0};
+    });
+    return {stations,start,flat,ramp,exit,direction,wantedRise,phase};
+  });
+
+  // Nest the profiles in plan. Narrow shelves can disappear completely into
+  // an exposed cliff; the stone still has a coherent footprint at that angle.
+  for(const [i,a] of angles.entries()){
+    let r=crownRadius*(1+.21*Math.cos(2*a+crownStrike)+.13*noise.noise(Math.cos(a)*2,Math.sin(a)*2));
+    for(let k=levels-1;k>=0;k--){
+      const s=shelves[k].stations[i];
+      s.inner=r; s.outer=r+s.width;
+      r=s.outer+s.spur;
     }
   }
-  const route:Vector3[]=[], trees: {root:Vector3;height:number}[]=[];
-  const last = Math.ceil(turns*count);
-  // Each tread is a shared edge between the headwall above and the cliff below.
-  // The final revolution closes the summit, narrowing the last wall into it.
-  for(let j=0; j<last+count; j++){
-    const a=section(j), b=section(j+1);
-    joinWall(j);
-    rock.quad(a.lip,a.outer,b.outer,b.lip);
-    snow.quad(a.outer,a.inner,b.inner,b.outer);
-    if(j<last) route.push(a.foot);
-    if(j>3 && j<last && (j%13===4 || j%19===6) && rng.chance(.72)){
-      trees.push({root:a.inner.clone().lerp(a.outer,.1),height:rng.float(7,13)});
+  let elevation=0;
+  for(const shelf of shelves){
+    // Integrate rise against the actual available run. This bounds the grade
+    // on a tight inside corner too, where an angular step covers fewer metres.
+    const rise=[0];
+    for(let j=0;j<shelf.ramp;j++){
+      const index=wrap(shelf.start+shelf.direction*(shelf.flat+j));
+      const next=wrap(index+shelf.direction), s=shelf.stations[index];
+      const tangent=point(next,s.inner,0).sub(point(index,s.inner,0));
+      const radial=point(index,1,0).normalize();
+      const run=tangent.clone().cross(radial).length();
+      const easing=.5+.5*Math.sin(Math.PI*(j+.5)/shelf.ramp);
+      rise.push(rise[j]+.77*run*easing);
+    }
+    const total=rise[shelf.ramp], height=Math.min(shelf.wantedRise,total);
+    for(const [i,s] of shelf.stations.entries()){
+      const climb=rise[Math.max(0,Math.min(shelf.ramp,s.u-shelf.flat))]/total;
+      s.y=elevation+height*climb*(1-smoothstep(shelf.exit+6,shelf.exit+22,s.u));
+      const exposure=.53+.46*Math.cos(angles[i]*2+shelf.phase);
+      const drift=noise.noise(Math.cos(angles[i])*2.7+shelf.phase,Math.sin(angles[i])*2.7);
+      const shelter=s.u<shelf.flat || Math.abs(s.u-shelf.exit)<3 ? .31 : -.10;
+      s.cover=smoothstep(.22,.76,exposure*.64+drift*.47+shelter);
+    }
+    elevation+=height;
+  }
+
+  const route:Vector3[]=[], trees:{root:Vector3;height:number}[]=[];
+  const outline:Vector3[]=[];
+  for(const [k,shelf] of shelves.entries()){
+    const stations=shelf.stations;
+    const top=stations.map((s,i)=>{
+      const outer=point(i,s.outer,s.y), inner=point(i,s.inner,s.y);
+      return {outer,inner,edge:inner.clone().lerp(outer,s.cover),foot:inner.clone().lerp(outer,.5)};
+    });
+    function wall(i:number){
+      const s=stations[i], a=angles[i], hi=top[i].outer;
+      const prev=k?shelves[k-1].stations[i]:null;
+      const lo=point(i,prev?.inner??s.outer+19,prev?.y??-.6);
+      const outward=point(i,1,0).normalize();
+      const span=hi.y-lo.y, relief=smoothstep(16,67,span);
+      const joint=noise.noise(Math.cos(a)*2.6+k*1.3,Math.sin(a)*2.6);
+      const base=lo.clone().lerp(hi,.33+joint*.11);
+      const shoulder=lo.clone().lerp(hi,.78+joint*.09);
+      base.addScaledVector(outward,relief*(3+8*joint));
+      shoulder.addScaledVector(outward,relief*(4+13*joint));
+      const mass=relief*smoothstep(-.23,.52,joint);
+      const toe=lo.clone().lerp(base,.79), brow=shoulder.clone().lerp(hi,.24);
+      return {profile:[lo,base,shoulder,hi],mass,slab:[
+        toe.clone().addScaledVector(outward,-3),
+        base.clone().lerp(shoulder,.28).addScaledVector(outward,20*mass-3),
+        brow.clone().addScaledVector(outward,24*mass-3),
+        brow.clone().lerp(hi,.30).addScaledVector(outward,-3)]};
+    }
+    const walls=angles.map((_,i)=>wall(i));
+    for(let i=0;i<slices;i++){
+      const j=wrap(i+1), a=top[i], b=top[j], left=walls[i], right=walls[j];
+      for(let h=0;h<3;h++){
+        rock.quad(left.profile[h],left.profile[h+1],right.profile[h+1],right.profile[h]);
+        if(left.mass+right.mass>.05)outcrops.quad(left.slab[h],left.slab[h+1],right.slab[h+1],right.slab[h]);
+      }
+      rock.quad(a.outer,a.edge,b.edge,b.outer);
+      snow.quad(a.edge,a.inner,b.inner,b.edge);
+      outline.push(a.outer,left.profile[0]);
+      if(stations[i].width>23 && rng.chance(.13))
+        trees.push({root:a.inner.clone().lerp(a.outer,.10),height:rng.float(7,13)});
+    }
+    for(let step=0;step<=shelf.exit;step++){
+      const i=wrap(shelf.start+shelf.direction*step);
+      route.push(top[i].foot);
+    }
+    // Include both lips of the level crossing in the physical route.
+    route.push(top[wrap(shelf.start+shelf.direction*shelf.exit)].inner);
+    if(k+1<levels){
+      const next=shelves[k+1], s=next.stations[next.start];
+      route.push(point(next.start,s.outer,s.y));
     }
   }
-  route.push(section(last).foot);
-  const center=new Vector3(drift,height,14);
-  for(let j=last;j<last+count;j++){
-    snow.triangle(center,section(j+1).inner,section(j).inner);
+
+  // Grow a broad, asymmetric crown directly out of the final cliff. Its high
+  // side is a ridge with a shoulder; the arrival pocket stays on the low side.
+  const last=shelves[levels-1], arrival=angles[entry];
+  const crownHeight=rng.float(35,73), offset=rng.float(.35,1.05);
+  const summit=new Surface(), rim:Vector3[]=[], brow:Vector3[]=[];
+  for(const [i,a] of angles.entries()){
+    const s=last.stations[i], shoulder=(1-Math.cos(a-arrival+offset))*.5;
+    rim.push(point(i,s.inner,s.y));
+    brow.push(point(i,s.inner*(.32+.44*shoulder),elevation+2+smoothstep(.04,.48,1-Math.cos(a-arrival))*(crownHeight*(.12+.88*shoulder)+4*noise.noise(Math.cos(a)*2,Math.sin(a)*2))));
   }
-  const summit = rockHorn(center.clone().add(new Vector3(-2,-height*.17,1)), radius*.19, height*rng.float(.39,.47),rng);
-  for(let i=0;i<58;i++){
-    const a=rng.float(0,tau), r=radius*rng.float(1.45,2);
-    trees.push({root:new Vector3(r*Math.cos(a),0,r*stretch*Math.sin(a)),height:rng.float(6,17)});
+  const tip=brow.reduce((best,p)=>p.y>best.y?p:best);
+  const center=tip.clone().multiplyScalar(.20).setY(elevation+crownHeight*.85);
+  for(let i=0;i<slices;i++){
+    const j=wrap(i+1), h=Math.max(rim[i].y,rim[j].y);
+    const ledge=h>elevation-3 && brow[i].y-h<20;
+    (ledge?snow:summit).quad(rim[i],brow[i],brow[j],rim[j]);
+    snow.triangle(center,brow[j],brow[i]);
   }
-  return {rock:rock.data(),outcrops:outcrops.data(),snow:snow.data(),summit,route,trees};
+  const approach=point(entry,last.stations[entry].inner, elevation).lerp(brow[entry],.28);
+  route.push(approach);
+  outline.push(...brow);
+  for(let i=0;i<48;i++){
+    const j=rng.int(0,slices-1);
+    trees.push({root:point(j,shelves[0].stations[j].outer+rng.float(36,125),0),height:rng.float(6,15)});
+  }
+  return {rock:rock.data(),outcrops:outcrops.data(),snow:snow.data(),summit:{rock:summit.data(),tip},route,trees,outline};
 }

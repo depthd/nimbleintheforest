@@ -50,12 +50,20 @@ assert.deepEqual(reference.rock.positions,generate(42).rock.positions);
 for(const seed of [0,1,2,15,42,817,17825,4294967295]){
   const mountain=generate(seed);
   if(seed!==42)assert.notDeepEqual(mountain.route,reference.route);
+  const turns=mountain.route.slice(1).map((b,i)=>{
+    const a=mountain.route[i];
+    return Math.atan2(a.x*b.z-a.z*b.x,a.x*b.x+a.z*b.z);
+  });
+  assert.ok(turns.some(t=>t>.025) && turns.some(t=>t<-.025),'the route doubles back on a terrace');
   traverse(surface([mountain.rock,mountain.snow,mountain.outcrops,mountain.summit.rock]),mountain.route,seed);
   const {mountainTiers,rangeVault,contourPoint} = mod.exports;
   const roof=()=>130;
   const tiers=mountainTiers(true,roof,contourPoint,'vault');
   const vault=rangeVault(tiers,roof,new Rng(seed));
-  const collision=surface([vault.rock,vault.snow]);
+  assert.ok([vault.rock,vault.snow].some(mesh=>mesh.positions.some((x,i,data)=>
+    i%3===0 && Math.hypot(x-vault.crest.x,data[i+1]-vault.crest.y,data[i+2]-vault.crest.z)<.001)),
+    'the crest belongs to the same roof geometry as the crossing');
+  const collision=surface([vault.rock,vault.snow,vault.outcrops,vault.patchSnow]);
   // The terminal sections are seated on the bank meshes in the assembled stand.
   traverse(collision,vault.route.slice(1,-1),seed);
   traverse(collision,vault.passage,seed);

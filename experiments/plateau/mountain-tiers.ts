@@ -33,6 +33,8 @@ export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => 
   rimAt: (angle: number) => {x: number; z: number}, form = 'range') {
   const rng = stream('tier layout');
   const nextSeed = () => rng.int(0, 0x7fffffff);
+  // Scale each vault bank before seating its children on the resulting roof.
+  const tierRise=(rise:number,width:number)=>form==='vault'?Math.min(rise*1.30,width*1.48):rise;
   const base: Tier = {
     name: 'lower',
     x: 0,
@@ -40,7 +42,7 @@ export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => 
     z: 0,
     yaw: 0,
     width: stacked ? rng.float(1.79, 1.93) : 1,
-    rise: 1,
+    rise: form==='vault'?1.30:1,
     seed: nextSeed(),
   };
   const tiers = [base];
@@ -50,6 +52,7 @@ export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => 
   function addUpper(parent:Tier, spec:{name:string;x:number;z:number;yaw:number;width:number;rise:number;seed:number}){
     const center=worldPlan(parent,spec.x,spec.z);
     const tier={...spec,...center,parent:parent.name,yaw:parent.yaw+spec.yaw,width:parent.width*spec.width,y:0};
+    tier.rise=tierRise(tier.rise,tier.width);
     let lowest = Infinity;
     for (let i = 0; i < 72; i++)
       for (let j = 0; j <= 12; j++) {
@@ -86,6 +89,7 @@ export function mountainTiers(stacked: boolean, roof: (x: number, z: number) => 
     spur.x = near.x - far.x*ratio + rng.float(-38,38);
     spur.z = near.z - far.z*ratio + side*rng.float(238,295);
     spur.width = size;
+    spur.rise = tierRise(spur.rise,size);
     tiers.push(spur);
     addUpper(spur,{name:'spur-middle',x:rng.float(75,120),z:rng.float(35,46),yaw:rng.float(-.7,.3),
       width:rng.float(.46,.54),rise:rng.float(.78,.94),seed:nextSeed()});

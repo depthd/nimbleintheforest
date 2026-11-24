@@ -1,3 +1,4 @@
+import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 import { ledgeMountain } from './ledge-mountain';
 import { rangeVault } from './range-vault';
 import { rockHorn } from './landform-mesh';
@@ -158,6 +159,13 @@ async function start(){
     }
     (snowy ? groups.snow : groups.stone).add(obj);
     if(snowy){
+      // Adjacent snow triangles share a surface normal at the same position.
+      // This avoids spokes of light across a broad snow pocket.
+      const unwelded=obj.geometry;
+      unwelded.deleteAttribute('normal');
+      obj.geometry=mergeVertices(unwelded);
+      obj.geometry.computeVertexNormals();
+      unwelded.dispose();
       const bed=mesh(data,material);
       bed.name=name+'-bed'; bed.position.y=-.42;
       groups.stone.add(bed);
@@ -189,7 +197,7 @@ async function start(){
       summit:{eye:end.clone().add(new THREE.Vector3(115,80,125)).toArray(),target:end.toArray(),fov:45},
       top:{eye:[0,1000,.1],target:[0,0,0],fov:34}
     };
-    const outline=[...route,mountain.summit.tip];
+    const outline=mountain.outline;
     activate(views,outline,new THREE.Vector3(1,.30,.82),[], name=>along(name==='trail'?middle:name==='summit'?last-2:0),
       forms.ledge,{landform:mountain});
     return;
@@ -281,11 +289,7 @@ async function start(){
   const wall = radialSurface([surfaces.underside]);
   const dressings: ReturnType<typeof buildMountainMasses>[] = [],
     sites: GroveSite[] = [];
-  if(form==='vault'){
-    for(const tier of tiers){tier.y*=1.30;tier.rise*=1.30;}
-  }
   const vault=form==='vault'?rangeVault(tiers,roof,stream('rock vault')):undefined;
-  if(vault)tiers.push(vault.crest);
   const summitTier=tiers.find(t=>t.name==='summit')!;
   const peakSite={x:65,z:52}, peakWidth=stream('peak width').float(72,91);
   const summitCenter=worldPlan(summitTier,peakSite.x,peakSite.z);
@@ -340,10 +344,13 @@ async function start(){
       },
     });
   }
-  if(vault){addLandform(vault.rock,'vault');addLandform(vault.snow,'vault-roof',true);}
-  const groves = await buildMountainGroves(sites,vault?.trees.filter(tree=>{
-    const p=localPlan(vault.crest,tree.root.x,tree.root.z); return plateauRadius(p.x,p.z)>1.2;
-  }));
+  if(vault){
+    addLandform(vault.rock,'vault');
+    addLandform(vault.snow,'vault-roof',true);
+    groups.rocks.add(addLandform(vault.outcrops,'vault-buttresses'));
+    groups.snow.add(mesh(vault.patchSnow,snowTopMaterial));
+  }
+  const groves = await buildMountainGroves(sites,vault?.trees);
   groups.trees.add(groves);
   groups.trees.userData.count = groves.userData.count;
   const dressing = dressings[0];
@@ -405,13 +412,13 @@ async function start(){
   } else document.querySelector<HTMLElement>('[data-view="bridge"]')!.hidden=true;
   if(peak) outlinePoints.push(peak.tip);
   if(vault){
-    outlinePoints.push(...vault.route);
-    views.vault={eye:vault.mid.clone().add(new THREE.Vector3(-650,90,70)).toArray(),
+    outlinePoints.push(...vault.route,vault.crest);
+    views.vault={eye:vault.mid.clone().add(new THREE.Vector3(-780,58,35)).toArray(),
       target:vault.mid.clone().setY(vault.mid.y*.69).toArray(),fov:48};
     views.passage={eye:vault.passage[0].clone().add(new THREE.Vector3(0,14,0)).toArray(),
       target:vault.mid.clone().setY(95).toArray(),fov:62};
-    views.roof={eye:vault.route[11].clone().add(new THREE.Vector3(0,12,0)).toArray(),
-      target:vault.route[16].clone().add(new THREE.Vector3(0,11,0)).toArray(),fov:66};
+    views.roof={eye:vault.route[17].clone().add(new THREE.Vector3(0,15,0)).toArray(),
+      target:vault.route[26].clone().toArray(),fov:66};
   }
   const axis=new THREE.Vector3(-1460,604,spur?-Math.sign(spur.z)*780:-520);
   if(vault) {
@@ -424,7 +431,7 @@ async function start(){
     for(const obj of bridge.group.children) if(obj instanceof THREE.Mesh && obj.name==='bank-sill') extras.push(obj);
   }
   function spawn(name:string):WalkStart{
-    if(vault && name==='roof')return {point:vault.route[11],aim:vault.route[15]};
+    if(vault && name==='roof')return {point:vault.route[17],aim:vault.route[22]};
     if(vault && (name==='range'||name==='passage'||name==='vault'))return {point:vault.passage[0],aim:vault.passage[1]};
     if(name==='bridge' && bridge){
       const v=bridge.point(-2.2);
@@ -521,7 +528,10 @@ async function start(){
     lookFromFoot();draw();
   }else if(keys.size){const forward=new THREE.Vector3();camera.getWorldDirection(forward);const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize(),move=new THREE.Vector3();if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;move.multiplyScalar(dt*(keys.has('ShiftLeft')?100:25));camera.position.add(move);controls.target.add(move);controls.update();draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
   window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();frameRange();if(activeView==='range'&&!walking)view('range');else draw();});
-  renderer.shadowMap.needsUpdate=true;view('range');status.textContent='Сид '+rangeSeed+' · '+label;
+  const initialView=new URLSearchParams(location.search).get('view');
+  renderer.shadowMap.needsUpdate=true;
+  view(initialView && Object.hasOwn(views,initialView)?initialView:'range');
+  status.textContent='Сид '+rangeSeed+' · '+label;
   (window as any).__mountain={...diagnostics,ready:true,rangeSeed,form,startWalk,endWalk,foot,walkSurface:()=>contact,
     renderer,scene,camera,controls,groups,view,views,state:()=>({view:activeView,exposure:renderer.toneMappingExposure,
     fill:fill.intensity,snow:groups.snow.visible,rocks:groups.rocks.visible,snowStats:(diagnostics.snow as typeof snow|undefined)?.stats})};

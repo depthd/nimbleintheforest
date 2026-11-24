@@ -4,6 +4,12 @@ import { Rng, Simplex2 } from '../../src/core/rng';
 export class Surface {
   private vertices: number[] = [];
   private indices: number[] = [];
+  // Keep the original shared vertices of the weathered rock and its snow cap.
+  shell(shell: {points: Vector3[]; indices: number[]}) {
+    const base=this.vertices.length/3;
+    for(const p of shell.points)this.vertices.push(p.x,p.y,p.z);
+    for(const i of shell.indices)this.indices.push(base+i);
+  }
   triangle(a: Vector3, b: Vector3, c: Vector3) {
     const i = this.vertices.length / 3;
     this.vertices.push(...a.toArray(), ...b.toArray(), ...c.toArray());
